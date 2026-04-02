@@ -46,7 +46,7 @@ export type MoveValidation =
 interface TaskState {
   tasks: Task[];
   viewMode: ViewMode;
-  vacationMode: boolean;
+  routinesEnabled: boolean;
   focusTaskId: string | null;
   editingTaskId: string | null;
   showCompletionStats: boolean;
