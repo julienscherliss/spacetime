@@ -265,7 +265,7 @@ export function TaskEditPanel() {
                   {isRecurring && (
                     <span className="text-[7px] font-mono text-muted-foreground/40 tracking-widest">
                       <Repeat size={8} className="inline mr-0.5" />
-                      RECURRING
+                      ROUTINE
                     </span>
                   )}
                 </div>
@@ -532,7 +532,7 @@ export function TaskEditPanel() {
             {/* Delete confirmation for recurring */}
             {showDeleteConfirm && (
               <div className="mt-3 p-2.5 border border-border rounded-sm bg-muted/30">
-                <p className="text-[9px] font-mono text-foreground/70 mb-2">Delete recurring task?</p>
+                <p className="text-[9px] font-mono text-foreground/70 mb-2">Delete routine task?</p>
                 <div className="flex gap-1.5">
                   <button
                     onClick={() => { deleteTask(task.id); setEditingTask(null); }}

@@ -5,7 +5,7 @@ import { PriorityBadge } from '@/components/PriorityBadge';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 export function CalendarView() {
-  const { tasks, vacationMode, setEditingTask } = useTaskStore();
+  const { tasks, routinesEnabled, setEditingTask } = useTaskStore();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
@@ -38,9 +38,9 @@ export function CalendarView() {
   }, [currentMonth]);
 
   const filteredTasks = useMemo(() => {
-    if (!vacationMode) return tasks;
+    if (routinesEnabled) return tasks;
     return tasks.filter((t) => t.type !== 'recurring');
-  }, [tasks, vacationMode]);
+  }, [tasks, routinesEnabled]);
 
   const taskCountByDate = useMemo(() => {
     const counts: Record<string, number> = {};

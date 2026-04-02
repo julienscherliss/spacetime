@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { useTaskStore, ViewMode } from '@/store/taskStore';
 import { AddTaskModal } from '@/components/AddTaskModal';
-import { Focus, List, CalendarDays, Grid3X3, Palmtree } from 'lucide-react';
+import { Focus, List, CalendarDays, Grid3X3, Repeat } from 'lucide-react';
 
 const views: { mode: ViewMode; icon: typeof Focus; label: string }[] = [
   { mode: 'focus', icon: Focus, label: 'FOCUS' },
@@ -11,7 +11,7 @@ const views: { mode: ViewMode; icon: typeof Focus; label: string }[] = [
 ];
 
 export function AppNav() {
-  const { viewMode, setViewMode, vacationMode, toggleVacationMode } = useTaskStore();
+  const { viewMode, setViewMode, routinesEnabled, toggleRoutines } = useTaskStore();
 
   return (
     <nav className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border/60">
@@ -49,15 +49,15 @@ export function AppNav() {
         {/* Actions */}
         <div className="flex items-center gap-1.5">
           <button
-            onClick={toggleVacationMode}
+            onClick={toggleRoutines}
             className={`flex items-center gap-1 px-2 py-1.5 rounded-sm text-[9px] font-mono tracking-wider transition-colors ${
-              vacationMode
+              routinesEnabled
                 ? 'bg-primary/8 text-primary border border-primary/15'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            <Palmtree size={11} strokeWidth={1.5} />
-            <span className="hidden sm:inline">{vacationMode ? 'ON' : 'OFF'}</span>
+            <Repeat size={11} strokeWidth={1.5} />
+            <span className="hidden sm:inline">{routinesEnabled ? 'ROUTINES' : 'ROUTINES OFF'}</span>
           </button>
           <AddTaskModal />
         </div>

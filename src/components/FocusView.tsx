@@ -5,12 +5,12 @@ import { PriorityBadge } from '@/components/PriorityBadge';
 import { ChevronRight } from 'lucide-react';
 
 export function FocusView() {
-  const { tasks, vacationMode, getNextTask } = useTaskStore();
+  const { tasks, routinesEnabled, getNextTask } = useTaskStore();
   const { minutes: nowMinutes, dateStr: today } = useCurrentTime(5000);
 
   const todayTasks = tasks
     .filter((t) => !t.completed && t.date === today && t.time &&
-      !(vacationMode && t.type === 'recurring'))
+      !(!routinesEnabled && t.type === 'recurring'))
     .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
 
   const activeTask = todayTasks.find((t) => {

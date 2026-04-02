@@ -46,14 +46,14 @@ export type MoveValidation =
 interface TaskState {
   tasks: Task[];
   viewMode: ViewMode;
-  vacationMode: boolean;
+  routinesEnabled: boolean;
   focusTaskId: string | null;
   editingTaskId: string | null;
   showCompletionStats: boolean;
   dailyStats: DailyStats | null;
 
   setViewMode: (mode: ViewMode) => void;
-  toggleVacationMode: () => void;
+  toggleRoutines: () => void;
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'completed' | 'moveCount' | 'originalPriority'>) => void;
   updateTask: (id: string, updates: Partial<Pick<Task, 'title' | 'date' | 'time' | 'duration' | 'priority' | 'recurrence' | 'type'>>) => void;
   updateFutureInstances: (parentId: string, updates: Partial<Pick<Task, 'title' | 'time' | 'duration' | 'priority' | 'recurrence' | 'type'>>) => void;
@@ -309,14 +309,14 @@ export const useTaskStore = create<TaskState>()(
         },
       ],
       viewMode: 'day',
-      vacationMode: false,
+      routinesEnabled: true,
       focusTaskId: null,
       editingTaskId: null,
       showCompletionStats: false,
       dailyStats: null,
 
       setViewMode: (mode) => set({ viewMode: mode }),
-      toggleVacationMode: () => set((s) => ({ vacationMode: !s.vacationMode })),
+      toggleRoutines: () => set((s) => ({ routinesEnabled: !s.routinesEnabled })),
 
       addTask: (taskData) => {
         const task: Task = {
@@ -487,7 +487,7 @@ export const useTaskStore = create<TaskState>()(
       getTasksForDate: (date) => {
         const state = get();
         return state.tasks.filter((t) => t.date === date && !t.completed &&
-          !(state.vacationMode && t.type === 'recurring'));
+          !(!state.routinesEnabled && t.type === 'recurring'));
       },
 
       getCurrentFocusTask: () => {

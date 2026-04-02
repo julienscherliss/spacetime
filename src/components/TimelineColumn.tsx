@@ -354,6 +354,7 @@ export function TimelineColumn({
         const isActive = task.id === activeTaskId;
         const isResizingThis = resizing?.id === task.id;
         const isLocked = task.priority >= 3;
+        const isRoutine = task.type === 'recurring';
 
         const borderLeftColor = {
           0: 'hsl(var(--priority-0) / 0.3)',
@@ -402,7 +403,9 @@ export function TimelineColumn({
               className={`h-full rounded-[2px] transition-all duration-200 ${
                 isActive
                   ? 'bg-card border border-primary/20 shadow-sm'
-                  : 'bg-card border border-[hsl(var(--task-border))] hover:border-[hsl(var(--task-hover))] hover:shadow-sm'
+                  : isRoutine
+                    ? 'bg-card border border-border/60 border-dashed hover:border-[hsl(var(--task-hover))] hover:shadow-sm'
+                    : 'bg-card border border-[hsl(var(--task-border))] hover:border-[hsl(var(--task-hover))] hover:shadow-sm'
               }`}
               style={{
                 borderLeftColor,
