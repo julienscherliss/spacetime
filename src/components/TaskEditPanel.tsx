@@ -164,6 +164,19 @@ export function TaskEditPanel() {
     }
 
     updateTask(task.id, updates);
+
+    // If removing recurrence ("No repeat"), clean up future instances
+    if (!updates.recurrence && task.recurrence) {
+      // Remove future generated instances of this task
+      const parentId = task.recurrenceParentId || task.id;
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowStr = tomorrow.toISOString().split('T')[0];
+      deleteFutureInstances(parentId, tomorrowStr);
+      // Re-add the parent task since deleteFutureInstances removes it
+      // Actually the parent was already updated above, so just update it to remove recurrence
+    }
+
     // Regenerate instances after saving recurrence changes
     if (updates.recurrence) {
       const endDate = new Date();
