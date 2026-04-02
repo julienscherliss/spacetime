@@ -143,6 +143,71 @@ export function TimelineColumn({
     };
   }, [resizing, resizeTask]);
 
+  // Drag-to-create: mouse handlers
+  const handleCreateMouseDown = useCallback((e: React.MouseEvent) => {
+    // Only on the background, not on tasks
+    if ((e.target as HTMLElement).closest('[data-task-block]')) return;
+    if (newTaskInput) return; // already showing input
+    const mins = getMinutesFromY(e.clientY);
+    const snapped = snapTo15(mins);
+    setCreating({ startMin: snapped, currentMin: snapped });
+  }, [getMinutesFromY, newTaskInput]);
+
+  useEffect(() => {
+    if (!creating) return;
+    const handleMouseMove = (e: MouseEvent) => {
+      const mins = getMinutesFromY(e.clientY);
+      const snapped = snapTo15(mins);
+      setCreating(prev => prev ? { ...prev, currentMin: snapped } : null);
+    };
+    const handleMouseUp = () => {
+      if (!creating) return;
+      const startMin = Math.min(creating.startMin, creating.currentMin);
+      const endMin = Math.max(creating.startMin, creating.currentMin);
+      const duration = Math.max(15, endMin - startMin);
+      const time = minutesToTime(startMin);
+      const top = ((startMin - START_HOUR * 60) / 60) * HOUR_HEIGHT;
+      const height = (duration / 60) * HOUR_HEIGHT;
+      setCreating(null);
+      setNewTaskTitle('');
+      setNewTaskInput({ time, duration, top, height });
+      setTimeout(() => newTaskRef.current?.focus(), 50);
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [creating, getMinutesFromY]);
+
+  const handleNewTaskSubmit = useCallback(() => {
+    if (!newTaskInput || !newTaskTitle.trim()) {
+      setNewTaskInput(null);
+      return;
+    }
+    addTask({
+      title: newTaskTitle.trim(),
+      date,
+      time: newTaskInput.time,
+      duration: newTaskInput.duration,
+      priority: 0,
+      type: 'one-time',
+    });
+    setNewTaskInput(null);
+    setNewTaskTitle('');
+  }, [newTaskInput, newTaskTitle, date, addTask]);
+
+  // Creating preview dimensions
+  const creatingPreview = creating ? (() => {
+    const startMin = Math.min(creating.startMin, creating.currentMin);
+    const endMin = Math.max(creating.startMin, creating.currentMin);
+    const duration = Math.max(15, endMin - startMin);
+    const top = ((startMin - START_HOUR * 60) / 60) * HOUR_HEIGHT;
+    const height = (duration / 60) * HOUR_HEIGHT;
+    return { top, height, time: minutesToTime(startMin), duration };
+  })() : null;
+
   const timeLabelsWidth = showTimeLabels ? '2.5rem' : '0';
 
   return (
@@ -153,6 +218,7 @@ export function TimelineColumn({
       onDragOver={handleDragOver}
       onDragLeave={() => setDragOverTime(null)}
       onDrop={handleDrop}
+      onMouseDown={handleCreateMouseDown}
     >
       {/* Hour grid lines */}
       {HOURS.map((hour, i) => (
