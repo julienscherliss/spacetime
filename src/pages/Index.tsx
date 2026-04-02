@@ -9,15 +9,15 @@ import { DailyCompletionModal } from '@/components/DailyCompletionModal';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Index = () => {
-  const { viewMode, vacationMode } = useTaskStore();
+  const { viewMode, routinesEnabled } = useTaskStore();
 
   return (
-    <div className={`min-h-screen bg-background ${vacationMode ? 'vacation-active' : ''}`}>
+    <div className={`min-h-screen bg-background`}>
       <AppNav />
 
-      {/* Vacation banner */}
+      {/* Routines off banner */}
       <AnimatePresence>
-        {vacationMode && (
+        {!routinesEnabled && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
@@ -26,7 +26,7 @@ const Index = () => {
           >
             <div className="bg-muted border-b border-border/30 text-center py-2">
               <span className="text-[10px] font-mono text-muted-foreground tracking-[0.2em]">
-                VACATION MODE — RECURRING TASKS PAUSED
+                ROUTINES OFF — ROUTINE TASKS HIDDEN
               </span>
             </div>
           </motion.div>

@@ -32,7 +32,7 @@ export function DayView() {
   }, [bindScrollZoom, bindPinchZoom]);
 
   const dayTasks = tasks.filter((t) => t.date === selectedDate &&
-    !(vacationMode && t.type === 'recurring'));
+    !(!routinesEnabled && t.type === 'recurring'));
   const completedCount = dayTasks.filter((t) => t.completed).length;
   const isToday = selectedDate === today;
 

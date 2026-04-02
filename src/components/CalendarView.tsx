@@ -38,9 +38,9 @@ export function CalendarView() {
   }, [currentMonth]);
 
   const filteredTasks = useMemo(() => {
-    if (!vacationMode) return tasks;
+    if (routinesEnabled) return tasks;
     return tasks.filter((t) => t.type !== 'recurring');
-  }, [tasks, vacationMode]);
+  }, [tasks, routinesEnabled]);
 
   const taskCountByDate = useMemo(() => {
     const counts: Record<string, number> = {};
