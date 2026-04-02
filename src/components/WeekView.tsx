@@ -32,6 +32,7 @@ export function WeekView() {
     }
   }, [weekDays, generateRecurringInstances]);
 
+  return (
     <div className="px-2 py-5 overflow-x-auto">
       <div className="mb-4 px-2">
         <h2 className="text-lg font-display font-bold text-foreground tracking-tight">
