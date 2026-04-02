@@ -50,6 +50,9 @@ export function CalendarView() {
     return counts;
   }, [filteredTasks]);
 
+  const maxTasks = Math.max(1, ...Object.values(taskCountByDate));
+  const today = new Date().toISOString().split('T')[0];
+
   const selectedTasks = selectedDate
     ? filteredTasks.filter((t) => t.date === selectedDate).sort((a, b) => (a.time || '').localeCompare(b.time || ''))
     : [];
