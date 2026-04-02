@@ -7,7 +7,7 @@ import { ZoomControl } from '@/components/ZoomControl';
 import { useTimeScale } from '@/hooks/useTimeScale';
 
 export function WeekView() {
-  const { tasks, vacationMode, generateRecurringInstances } = useTaskStore();
+  const { tasks, routinesEnabled, generateRecurringInstances } = useTaskStore();
   const { minutes: nowMinutes, dateStr: today } = useCurrentTime(15000);
   const scrollRef = useRef<HTMLDivElement>(null);
 
