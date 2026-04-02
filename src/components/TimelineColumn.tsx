@@ -24,7 +24,7 @@ export function TimelineColumn({
   isToday,
   showTimeLabels = true,
 }: TimelineColumnProps) {
-  const { setEditingTask, reorderTask, moveTask, resizeTask, completeTask, canMoveTask } = useTaskStore();
+  const { setEditingTask, reorderTask, moveTask, resizeTask, completeTask, canMoveTask, addTask } = useTaskStore();
   const colRef = useRef<HTMLDivElement>(null);
   const [dragOverTime, setDragOverTime] = useState<string | null>(null);
   const [dragValid, setDragValid] = useState(true);
@@ -36,6 +36,20 @@ export function TimelineColumn({
     origTime: string;
     origDuration: number;
   } | null>(null);
+
+  // Drag-to-create state
+  const [creating, setCreating] = useState<{
+    startMin: number;
+    currentMin: number;
+  } | null>(null);
+  const [newTaskInput, setNewTaskInput] = useState<{
+    time: string;
+    duration: number;
+    top: number;
+    height: number;
+  } | null>(null);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const newTaskRef = useRef<HTMLInputElement>(null);
 
   const activeTasks = tasks.filter((t) => !t.completed && t.time);
   const nowTop = ((nowMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT;
