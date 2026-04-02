@@ -5,6 +5,7 @@ import { timeToMinutes, minutesToTime, snapTo15 } from '@/hooks/useCurrentTime';
 import { Check } from 'lucide-react';
 
 export const DEFAULT_HOUR_HEIGHT = 56;
+export const HOUR_HEIGHT = DEFAULT_HOUR_HEIGHT; // backward compat
 export const START_HOUR = 6;
 export const END_HOUR = 23;
 export const HOURS = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
