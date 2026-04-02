@@ -396,13 +396,56 @@ export function TimelineColumn({
         );
       })}
 
-      {/* Free time label */}
-      {isToday && !activeTaskId && nowTop > 0 && nowTop < HOURS.length * HOUR_HEIGHT && (
+      {/* Drag-to-create preview */}
+      {creatingPreview && (
         <div
-          className="absolute z-20 pointer-events-none"
-          style={{ top: nowTop + 4, left: showTimeLabels ? '2.75rem' : '2px' }}
+          className="absolute right-1 z-20 pointer-events-none"
+          style={{
+            top: creatingPreview.top,
+            height: creatingPreview.height,
+            left: showTimeLabels ? '2.75rem' : '2px',
+          }}
         >
-          <span className="text-[8px] font-mono text-muted-foreground/25 tracking-widest">FREE</span>
+          <div className="h-full rounded-[2px] border border-primary/30 bg-primary/[0.06] border-dashed">
+            <div className="px-2 py-1">
+              <span className="text-[8px] font-mono text-primary/60">
+                {creatingPreview.time} · {creatingPreview.duration}m
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* New task inline input */}
+      {newTaskInput && (
+        <div
+          className="absolute right-1 z-30"
+          style={{
+            top: newTaskInput.top,
+            height: Math.max(newTaskInput.height, 28),
+            left: showTimeLabels ? '2.75rem' : '2px',
+          }}
+        >
+          <div className="h-full rounded-[2px] border border-primary/40 bg-card shadow-sm flex items-start px-2 py-1 gap-1.5"
+               style={{ borderLeftWidth: '2px', borderLeftColor: 'hsl(var(--priority-0) / 0.4)' }}>
+            <div className="flex-1 min-w-0">
+              <input
+                ref={newTaskRef}
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleNewTaskSubmit();
+                  if (e.key === 'Escape') setNewTaskInput(null);
+                }}
+                onBlur={handleNewTaskSubmit}
+                placeholder="Task name..."
+                className="w-full bg-transparent text-[10px] font-mono text-foreground placeholder:text-muted-foreground/30 focus:outline-none leading-tight"
+              />
+              <span className="text-[8px] font-mono text-muted-foreground/40">
+                {newTaskInput.time} · {newTaskInput.duration}m
+              </span>
+            </div>
+          </div>
         </div>
       )}
     </div>
