@@ -308,7 +308,7 @@ export function TimelineColumn({
               left: timeLabelsWidth,
             }}
           />
-        </>
+        </Fragment>
       ))}
 
       {/* Now line */}
