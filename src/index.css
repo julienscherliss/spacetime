@@ -4,52 +4,56 @@
 
 @layer base {
   :root {
-    --background: 0 0% 6%;
-    --foreground: 0 0% 92%;
+    --background: 0 0% 5%;
+    --foreground: 0 0% 88%;
 
-    --card: 0 0% 9%;
-    --card-foreground: 0 0% 92%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 88%;
 
-    --popover: 0 0% 9%;
-    --popover-foreground: 0 0% 92%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 88%;
 
-    --primary: 14 80% 54%;
+    --primary: 14 76% 50%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 14%;
-    --secondary-foreground: 0 0% 72%;
+    --secondary: 0 0% 11%;
+    --secondary-foreground: 0 0% 60%;
 
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 48%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 40%;
 
-    --accent: 14 80% 54%;
+    --accent: 14 76% 50%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 16%;
-    --input: 0 0% 16%;
-    --ring: 14 80% 54%;
+    --border: 0 0% 13%;
+    --input: 0 0% 13%;
+    --ring: 14 76% 50%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 8%;
-    --sidebar-foreground: 0 0% 72%;
-    --sidebar-primary: 14 80% 54%;
+    --sidebar-background: 0 0% 6%;
+    --sidebar-foreground: 0 0% 60%;
+    --sidebar-primary: 14 76% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 14%;
-    --sidebar-accent-foreground: 0 0% 92%;
-    --sidebar-border: 0 0% 16%;
-    --sidebar-ring: 14 80% 54%;
+    --sidebar-accent: 0 0% 11%;
+    --sidebar-accent-foreground: 0 0% 88%;
+    --sidebar-border: 0 0% 13%;
+    --sidebar-ring: 14 76% 50%;
 
     /* Custom tokens */
-    --surface-elevated: 0 0% 11%;
-    --grid-line: 0 0% 14%;
-    --priority-0: 0 0% 40%;
-    --priority-1: 45 80% 55%;
-    --priority-2: 25 90% 55%;
-    --priority-3: 0 80% 55%;
+    --surface-elevated: 0 0% 9%;
+    --grid-line: 0 0% 10%;
+    --priority-0: 0 0% 44%;
+    --priority-1: 45 70% 52%;
+    --priority-2: 25 85% 52%;
+    --priority-3: 0 75% 52%;
+
+    /* Task card */
+    --task-glow: 14 76% 50%;
+    --task-border: 0 0% 15%;
   }
 }
 
@@ -69,22 +73,80 @@
   }
 }
 
-/* Subtle grid background */
+/* Subtle grid background - softened */
 .bg-grid {
   background-image: 
-    linear-gradient(hsl(var(--grid-line)) 1px, transparent 1px),
-    linear-gradient(90deg, hsl(var(--grid-line)) 1px, transparent 1px);
-  background-size: 40px 40px;
+    linear-gradient(hsl(var(--grid-line) / 0.5) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--grid-line) / 0.5) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+.bg-grid-fade {
+  background-image: 
+    linear-gradient(hsl(var(--grid-line) / 0.3) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--grid-line) / 0.3) 1px, transparent 1px);
+  background-size: 48px 48px;
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 30%, transparent 100%);
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 30%, transparent 100%);
+}
+
+/* Task card glow */
+.task-card {
+  background: hsl(var(--surface-elevated));
+  border: 1px solid hsl(var(--task-border));
+  transition: all 0.3s ease;
+}
+
+.task-card:hover {
+  border-color: hsl(var(--task-glow) / 0.3);
+  box-shadow: 0 0 20px -8px hsl(var(--task-glow) / 0.15);
+}
+
+/* Drag ghost */
+.drag-ghost {
+  opacity: 0.85;
+  box-shadow: 0 8px 32px -4px hsl(var(--task-glow) / 0.3);
+  border-color: hsl(var(--task-glow) / 0.5) !important;
+}
+
+.drop-target {
+  background: hsl(var(--primary) / 0.06);
+  border: 1px dashed hsl(var(--primary) / 0.3);
+  border-radius: var(--radius);
+}
+
+/* Vacation mode desaturation */
+.vacation-active {
+  filter: saturate(0.6) brightness(0.95);
+}
+
+/* Now line */
+.now-line {
+  position: relative;
+}
+.now-line::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: hsl(var(--primary));
+  box-shadow: 0 0 8px hsl(var(--primary) / 0.5);
 }
 
 /* Scrollbar styling */
 ::-webkit-scrollbar {
-  width: 4px;
+  width: 3px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.3);
+  background: hsl(var(--muted-foreground) / 0.2);
   border-radius: 2px;
+}
+
+/* Skip button micro-friction */
+.skip-btn {
+  transition: opacity 0.6s ease 0.4s;
 }

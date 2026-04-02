@@ -4,13 +4,15 @@ import { FocusView } from '@/components/FocusView';
 import { DayView } from '@/components/DayView';
 import { WeekView } from '@/components/WeekView';
 import { CalendarView } from '@/components/CalendarView';
+import { TaskEditPanel } from '@/components/TaskEditPanel';
+import { DailyCompletionModal } from '@/components/DailyCompletionModal';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Index = () => {
   const { viewMode, vacationMode } = useTaskStore();
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className={`min-h-screen bg-background ${vacationMode ? 'vacation-active' : ''}`}>
       <AppNav />
 
       {/* Vacation banner */}
@@ -22,9 +24,9 @@ const Index = () => {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="bg-primary/5 border-b border-primary/10 text-center py-2">
-              <span className="text-xs font-mono text-primary tracking-wider">
-                🌴 VACATION MODE — recurring tasks paused
+            <div className="bg-muted border-b border-border/30 text-center py-2">
+              <span className="text-[10px] font-mono text-muted-foreground tracking-[0.2em]">
+                VACATION MODE — RECURRING TASKS PAUSED
               </span>
             </div>
           </motion.div>
@@ -34,10 +36,10 @@ const Index = () => {
       <AnimatePresence mode="wait">
         <motion.div
           key={viewMode}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.25 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
         >
           {viewMode === 'focus' && <FocusView />}
           {viewMode === 'day' && <DayView />}
@@ -45,6 +47,9 @@ const Index = () => {
           {viewMode === 'calendar' && <CalendarView />}
         </motion.div>
       </AnimatePresence>
+
+      <TaskEditPanel />
+      <DailyCompletionModal />
     </div>
   );
 };
