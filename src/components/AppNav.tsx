@@ -14,32 +14,32 @@ export function AppNav() {
   const { viewMode, setViewMode, vacationMode, toggleVacationMode } = useTaskStore();
 
   return (
-    <nav className="sticky top-0 z-40 bg-background/90 backdrop-blur-md border-b border-border/50">
-      <div className="max-w-5xl mx-auto flex items-center justify-between px-4 py-2.5">
+    <nav className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border/60">
+      <div className="max-w-5xl mx-auto flex items-center justify-between px-4 py-2">
         {/* Logo */}
-        <h1 className="text-xl font-display font-bold text-foreground tracking-tighter">
+        <h1 className="text-lg font-display font-bold text-foreground tracking-tight">
           DO<span className="text-primary">.</span>
         </h1>
 
         {/* View toggles */}
-        <div className="flex items-center bg-muted rounded-md p-0.5 gap-0.5">
+        <div className="flex items-center bg-muted/50 rounded-sm p-0.5 gap-px">
           {views.map(({ mode, icon: Icon, label }) => (
             <button
               key={mode}
               onClick={() => setViewMode(mode)}
-              className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-mono tracking-[0.15em] transition-colors ${
+              className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-[9px] font-mono tracking-[0.12em] transition-colors ${
                 viewMode === mode ? 'text-foreground' : 'text-muted-foreground hover:text-foreground/60'
               }`}
             >
               {viewMode === mode && (
                 <motion.div
                   layoutId="activeView"
-                  className="absolute inset-0 bg-elevated rounded border border-border/50"
-                  transition={{ type: 'spring', bounce: 0.1, duration: 0.45 }}
+                  className="absolute inset-0 bg-card rounded-sm border border-border/50 shadow-sm"
+                  transition={{ type: 'spring', bounce: 0.08, duration: 0.4 }}
                 />
               )}
               <span className="relative z-10 flex items-center gap-1.5">
-                <Icon size={12} />
+                <Icon size={11} strokeWidth={1.5} />
                 <span className="hidden sm:inline">{label}</span>
               </span>
             </button>
@@ -50,13 +50,13 @@ export function AppNav() {
         <div className="flex items-center gap-1.5">
           <button
             onClick={toggleVacationMode}
-            className={`flex items-center gap-1.5 px-2.5 py-2 rounded text-[10px] font-mono tracking-wider transition-colors ${
+            className={`flex items-center gap-1 px-2 py-1.5 rounded-sm text-[9px] font-mono tracking-wider transition-colors ${
               vacationMode
-                ? 'bg-primary/10 text-primary border border-primary/20'
-                : 'bg-secondary text-muted-foreground hover:text-foreground'
+                ? 'bg-primary/8 text-primary border border-primary/15'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            <Palmtree size={12} />
+            <Palmtree size={11} strokeWidth={1.5} />
             <span className="hidden sm:inline">{vacationMode ? 'ON' : 'OFF'}</span>
           </button>
           <AddTaskModal />
