@@ -309,7 +309,7 @@ export const useTaskStore = create<TaskState>()(
         },
       ],
       viewMode: 'day',
-      vacationMode: false,
+      routinesEnabled: true,
       focusTaskId: null,
       editingTaskId: null,
       showCompletionStats: false,
