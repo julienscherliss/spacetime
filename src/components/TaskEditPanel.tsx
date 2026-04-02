@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useTaskStore, Priority, RecurrencePattern } from '@/store/taskStore';
+import { useTaskStore, Priority, RecurrencePattern, CustomUnit } from '@/store/taskStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { X, Play, Calendar, Clock, Trash2, Repeat, ChevronDown } from 'lucide-react';
 import { minutesToTime, timeToMinutes } from '@/hooks/useCurrentTime';
@@ -24,8 +24,14 @@ const RECURRENCE_OPTIONS = [
 ] as const;
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const UNIT_OPTIONS: { label: string; value: CustomUnit }[] = [
+  { label: 'days', value: 'days' },
+  { label: 'weeks', value: 'weeks' },
+  { label: 'months', value: 'months' },
+  { label: 'years', value: 'years' },
+];
 
-function recurrenceToValue(r?: RecurrencePattern): string {
+function recurrenceToType(r?: RecurrencePattern): string {
   if (!r) return 'none';
   return r.type;
 }
@@ -36,14 +42,24 @@ function recurrenceLabel(r?: RecurrencePattern): string {
     case 'daily': return 'Daily';
     case 'weekdays': return 'Mon–Fri';
     case 'weekly': return `Weekly (${r.days.map(d => DAY_LABELS[d]).join(', ')})`;
-    case 'monthly': return `Monthly (${r.dayOfMonth}th)`;
+    case 'monthly': return `Monthly (day ${r.dayOfMonth})`;
     case 'yearly': return 'Yearly';
-    case 'custom': return `Every ${r.intervalDays} days`;
+    case 'custom': {
+      const base = `Every ${r.interval} ${r.unit}`;
+      if (r.unit === 'weeks' && r.days && r.days.length > 0) {
+        return `${base} on ${r.days.map(d => DAY_LABELS[d]).join(', ')}`;
+      }
+      return base;
+    }
   }
 }
 
 export function TaskEditPanel() {
-  const { tasks, editingTaskId, setEditingTask, updateTask, deleteTask, deleteRecurrenceSeries, setFocusTask, setViewMode } = useTaskStore();
+  const {
+    tasks, editingTaskId, setEditingTask, updateTask, updateFutureInstances,
+    deleteTask, deleteFutureInstances, deleteRecurrenceSeries,
+    setFocusTask, setViewMode, generateRecurringInstances,
+  } = useTaskStore();
   const task = tasks.find((t) => t.id === editingTaskId);
 
   const [title, setTitle] = useState(task?.title || '');
@@ -51,15 +67,24 @@ export function TaskEditPanel() {
   const [duration, setDuration] = useState(task?.duration || 30);
   const [date, setDate] = useState(task?.date || '');
   const [priority, setPriority] = useState<Priority>(task?.priority || 0);
-  const [recurrenceType, setRecurrenceType] = useState(recurrenceToValue(task?.recurrence));
+  const [recurrenceType, setRecurrenceType] = useState(recurrenceToType(task?.recurrence));
   const [weeklyDays, setWeeklyDays] = useState<number[]>(
-    task?.recurrence?.type === 'weekly' ? task.recurrence.days : [new Date().getDay()]
+    task?.recurrence?.type === 'weekly' ? task.recurrence.days :
+    task?.recurrence?.type === 'custom' && task.recurrence.days ? task.recurrence.days :
+    [new Date().getDay()]
   );
   const [customInterval, setCustomInterval] = useState(
-    task?.recurrence?.type === 'custom' ? task.recurrence.intervalDays : 2
+    task?.recurrence?.type === 'custom' ? task.recurrence.interval : 1
+  );
+  const [customUnit, setCustomUnit] = useState<CustomUnit>(
+    task?.recurrence?.type === 'custom' ? task.recurrence.unit : 'weeks'
   );
   const [showRecurrence, setShowRecurrence] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showEditScope, setShowEditScope] = useState(false);
+  const [pendingUpdates, setPendingUpdates] = useState<Partial<Pick<typeof task, 'title' | 'time' | 'duration' | 'priority' | 'recurrence' | 'type'>> | null>(null);
+
+  const isRecurring = task?.recurrence || task?.isRecurrenceInstance;
 
   useEffect(() => {
     if (task) {
@@ -68,10 +93,17 @@ export function TaskEditPanel() {
       setDuration(task.duration || 30);
       setDate(task.date);
       setPriority(task.priority);
-      setRecurrenceType(recurrenceToValue(task.recurrence));
-      setWeeklyDays(task.recurrence?.type === 'weekly' ? task.recurrence.days : [new Date().getDay()]);
-      setCustomInterval(task.recurrence?.type === 'custom' ? task.recurrence.intervalDays : 2);
+      setRecurrenceType(recurrenceToType(task.recurrence));
+      setWeeklyDays(
+        task.recurrence?.type === 'weekly' ? task.recurrence.days :
+        task.recurrence?.type === 'custom' && task.recurrence.days ? task.recurrence.days :
+        [new Date().getDay()]
+      );
+      setCustomInterval(task.recurrence?.type === 'custom' ? task.recurrence.interval : 1);
+      setCustomUnit(task.recurrence?.type === 'custom' ? task.recurrence.unit : 'weeks');
       setShowDeleteConfirm(false);
+      setShowEditScope(false);
+      setPendingUpdates(null);
     }
   }, [task?.id]);
 
@@ -80,39 +112,110 @@ export function TaskEditPanel() {
       case 'none': return undefined;
       case 'daily': return { type: 'daily' };
       case 'weekdays': return { type: 'weekdays' };
-      case 'weekly': return { type: 'weekly', days: weeklyDays };
-      case 'monthly': return { type: 'monthly', dayOfMonth: new Date(date).getDate() };
+      case 'weekly': return { type: 'weekly', days: weeklyDays.length > 0 ? weeklyDays : [new Date().getDay()] };
+      case 'monthly': return { type: 'monthly', dayOfMonth: new Date(date + 'T12:00:00').getDate() };
       case 'yearly': {
-        const d = new Date(date);
+        const d = new Date(date + 'T12:00:00');
         return { type: 'yearly', month: d.getMonth(), dayOfMonth: d.getDate() };
       }
-      case 'custom': return { type: 'custom', intervalDays: customInterval };
+      case 'custom': {
+        const pattern: RecurrencePattern = {
+          type: 'custom',
+          interval: Math.max(1, customInterval),
+          unit: customUnit,
+        };
+        if (customUnit === 'weeks') {
+          pattern.days = weeklyDays.length > 0 ? weeklyDays : [new Date().getDay()];
+        }
+        return pattern;
+      }
       default: return undefined;
     }
   };
 
-  const handleSave = () => {
-    if (!task) return;
+  const getUpdates = () => {
     const recurrence = buildRecurrence();
-    updateTask(task.id, {
+    return {
       title,
       time,
       duration,
       date,
       priority,
       recurrence,
-      type: recurrence ? 'recurring' : 'one-time',
-    });
+      type: recurrence ? 'recurring' as const : 'one-time' as const,
+    };
+  };
+
+  const handleSave = () => {
+    if (!task) return;
+    const updates = getUpdates();
+
+    // If this is a recurring task and user changed something meaningful, ask scope
+    if (isRecurring && !showEditScope) {
+      const hasRecurrenceChange = JSON.stringify(task.recurrence) !== JSON.stringify(updates.recurrence);
+      const hasContentChange = task.title !== updates.title || task.time !== updates.time ||
+        task.duration !== updates.duration || task.priority !== updates.priority;
+
+      if (hasRecurrenceChange || hasContentChange) {
+        setPendingUpdates(updates);
+        setShowEditScope(true);
+        return;
+      }
+    }
+
+    updateTask(task.id, updates);
+    // Regenerate instances after saving recurrence changes
+    if (updates.recurrence) {
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + 60);
+      setTimeout(() => {
+        generateRecurringInstances(
+          new Date().toISOString().split('T')[0],
+          endDate.toISOString().split('T')[0]
+        );
+      }, 50);
+    }
+  };
+
+  const handleSaveThisOnly = () => {
+    if (!task || !pendingUpdates) return;
+    updateTask(task.id, { ...pendingUpdates, date });
+    setShowEditScope(false);
+    setPendingUpdates(null);
+    setEditingTask(null);
+  };
+
+  const handleSaveAllFuture = () => {
+    if (!task || !pendingUpdates) return;
+    const parentId = task.recurrenceParentId || task.id;
+    updateFutureInstances(parentId, pendingUpdates);
+    // Regenerate instances
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + 60);
+    setTimeout(() => {
+      generateRecurringInstances(
+        new Date().toISOString().split('T')[0],
+        endDate.toISOString().split('T')[0]
+      );
+    }, 50);
+    setShowEditScope(false);
+    setPendingUpdates(null);
+    setEditingTask(null);
   };
 
   const handleClose = () => {
-    handleSave();
-    setEditingTask(null);
+    if (!showEditScope) {
+      handleSave();
+      if (!showEditScope) {
+        setEditingTask(null);
+      }
+    }
   };
 
   const handleFocus = () => {
     if (!task) return;
-    handleSave();
+    if (!showEditScope) handleSave();
+    if (showEditScope) return;
     setFocusTask(task.id);
     setEditingTask(null);
     setViewMode('focus');
@@ -136,7 +239,7 @@ export function TaskEditPanel() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.98 }}
             transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className="bg-card border border-border rounded-sm p-4 w-full max-w-xs shadow-lg"
+            className="bg-card border border-border rounded-sm p-4 w-full max-w-xs shadow-lg max-h-[85vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -147,8 +250,14 @@ export function TaskEditPanel() {
                   onChange={(e) => setTitle(e.target.value)}
                   className="w-full bg-transparent font-display font-bold text-foreground text-sm leading-tight focus:outline-none border-b border-transparent focus:border-border transition-colors"
                 />
-                <div className="mt-1.5">
+                <div className="mt-1.5 flex items-center gap-2">
                   <PriorityBadge priority={priority} />
+                  {isRecurring && (
+                    <span className="text-[7px] font-mono text-muted-foreground/40 tracking-widest">
+                      <Repeat size={8} className="inline mr-0.5" />
+                      RECURRING
+                    </span>
+                  )}
                 </div>
               </div>
               <button
@@ -222,65 +331,132 @@ export function TaskEditPanel() {
                 className="flex items-center gap-1.5 text-[9px] font-mono tracking-wider text-muted-foreground/60 hover:text-foreground transition-colors w-full"
               >
                 <Repeat size={10} strokeWidth={1.5} />
-                <span>{recurrenceLabel(buildRecurrence())}</span>
-                <ChevronDown size={9} className={`ml-auto transition-transform ${showRecurrence ? 'rotate-180' : ''}`} />
+                <span className="flex-1 text-left">{recurrenceLabel(buildRecurrence())}</span>
+                <ChevronDown size={9} className={`transition-transform ${showRecurrence ? 'rotate-180' : ''}`} />
               </button>
 
-              {showRecurrence && (
-                <div className="mt-2 space-y-2 pl-4 border-l border-border/50">
-                  {RECURRENCE_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => setRecurrenceType(opt.value)}
-                      className={`block w-full text-left text-[9px] font-mono tracking-wider py-1 px-2 rounded-sm transition-colors ${
-                        recurrenceType === opt.value
-                          ? 'text-foreground bg-muted/60'
-                          : 'text-muted-foreground/50 hover:text-foreground hover:bg-muted/30'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-
-                  {/* Weekly day picker */}
-                  {recurrenceType === 'weekly' && (
-                    <div className="flex gap-1 pt-1">
-                      {DAY_LABELS.map((label, i) => (
+              <AnimatePresence>
+                {showRecurrence && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-2 space-y-1 pl-4 border-l border-border/50">
+                      {RECURRENCE_OPTIONS.map((opt) => (
                         <button
-                          key={i}
-                          onClick={() => {
-                            setWeeklyDays(prev =>
-                              prev.includes(i) ? prev.filter(d => d !== i) : [...prev, i]
-                            );
-                          }}
-                          className={`w-7 h-7 rounded-sm text-[8px] font-mono transition-colors ${
-                            weeklyDays.includes(i)
-                              ? 'bg-primary/10 text-primary border border-primary/20'
-                              : 'text-muted-foreground/40 border border-border hover:border-border'
+                          key={opt.value}
+                          onClick={() => setRecurrenceType(opt.value)}
+                          className={`block w-full text-left text-[9px] font-mono tracking-wider py-1 px-2 rounded-sm transition-colors ${
+                            recurrenceType === opt.value
+                              ? 'text-foreground bg-muted/60'
+                              : 'text-muted-foreground/50 hover:text-foreground hover:bg-muted/30'
                           }`}
                         >
-                          {label[0]}
+                          {opt.label}
                         </button>
                       ))}
-                    </div>
-                  )}
 
-                  {/* Custom interval */}
-                  {recurrenceType === 'custom' && (
-                    <div className="flex items-center gap-2 pt-1">
-                      <span className="text-[8px] font-mono text-muted-foreground/50">Every</span>
-                      <input
-                        type="number"
-                        value={customInterval}
-                        onChange={(e) => setCustomInterval(Math.max(1, Number(e.target.value)))}
-                        min={1}
-                        className="w-14 bg-muted/50 border border-border rounded-sm px-2 py-1 text-[10px] font-mono text-foreground focus:outline-none"
-                      />
-                      <span className="text-[8px] font-mono text-muted-foreground/50">days</span>
+                      {/* Weekly day picker */}
+                      {recurrenceType === 'weekly' && (
+                        <div className="pt-2">
+                          <label className="block text-[7px] font-mono tracking-widest text-muted-foreground/40 mb-1.5">REPEAT ON</label>
+                          <div className="flex gap-1">
+                            {DAY_LABELS.map((label, i) => (
+                              <button
+                                key={i}
+                                onClick={() => {
+                                  setWeeklyDays(prev =>
+                                    prev.includes(i)
+                                      ? prev.length > 1 ? prev.filter(d => d !== i) : prev
+                                      : [...prev, i]
+                                  );
+                                }}
+                                className={`w-7 h-7 rounded-sm text-[8px] font-mono transition-colors ${
+                                  weeklyDays.includes(i)
+                                    ? 'bg-primary/10 text-primary border border-primary/20'
+                                    : 'text-muted-foreground/40 border border-border hover:border-border'
+                                }`}
+                              >
+                                {label[0]}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Custom repeat builder */}
+                      {recurrenceType === 'custom' && (
+                        <div className="pt-2 space-y-2.5">
+                          <label className="block text-[7px] font-mono tracking-widest text-muted-foreground/40">REPEAT EVERY</label>
+
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              value={customInterval}
+                              onChange={(e) => setCustomInterval(Math.max(1, Number(e.target.value)))}
+                              min={1}
+                              className="w-12 bg-muted/50 border border-border rounded-sm px-2 py-1.5 text-[10px] font-mono text-foreground text-center focus:outline-none focus:ring-1 focus:ring-primary/30"
+                            />
+                            <div className="flex gap-0.5">
+                              {UNIT_OPTIONS.map((u) => (
+                                <button
+                                  key={u.value}
+                                  onClick={() => setCustomUnit(u.value)}
+                                  className={`px-2 py-1.5 rounded-sm text-[8px] font-mono tracking-wider border transition-colors ${
+                                    customUnit === u.value
+                                      ? 'text-foreground bg-muted/60 border-border'
+                                      : 'text-muted-foreground/40 border-transparent hover:text-foreground'
+                                  }`}
+                                >
+                                  {u.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Day picker for custom weeks */}
+                          {customUnit === 'weeks' && (
+                            <div>
+                              <label className="block text-[7px] font-mono tracking-widest text-muted-foreground/40 mb-1.5">ON THESE DAYS</label>
+                              <div className="flex gap-1">
+                                {DAY_LABELS.map((label, i) => (
+                                  <button
+                                    key={i}
+                                    onClick={() => {
+                                      setWeeklyDays(prev =>
+                                        prev.includes(i)
+                                          ? prev.length > 1 ? prev.filter(d => d !== i) : prev
+                                          : [...prev, i]
+                                      );
+                                    }}
+                                    className={`w-7 h-7 rounded-sm text-[8px] font-mono transition-colors ${
+                                      weeklyDays.includes(i)
+                                        ? 'bg-primary/10 text-primary border border-primary/20'
+                                        : 'text-muted-foreground/40 border border-border hover:border-border'
+                                    }`}
+                                  >
+                                    {label[0]}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Monthly info */}
+                          {customUnit === 'months' && (
+                            <p className="text-[8px] font-mono text-muted-foreground/40">
+                              On day {new Date(date + 'T12:00:00').getDate()} of each month
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Move info */}
@@ -290,29 +466,52 @@ export function TaskEditPanel() {
               </div>
             )}
 
+            {/* Edit scope prompt */}
+            {showEditScope && (
+              <div className="mb-3 p-2.5 border border-border rounded-sm bg-muted/30">
+                <p className="text-[9px] font-mono text-foreground/70 mb-2">Apply changes to:</p>
+                <div className="flex gap-1.5">
+                  <button
+                    onClick={handleSaveThisOnly}
+                    className="flex-1 py-1.5 rounded-sm border border-border text-[8px] font-mono tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    This only
+                  </button>
+                  <button
+                    onClick={handleSaveAllFuture}
+                    className="flex-1 py-1.5 rounded-sm border border-primary/20 text-[8px] font-mono tracking-wider text-primary hover:bg-primary/5 transition-colors"
+                  >
+                    All future
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Actions */}
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={handleFocus}
-                className="flex-1 flex items-center justify-center gap-1 py-2 rounded-sm bg-primary text-primary-foreground font-mono text-[9px] tracking-widest hover:bg-primary/90 transition-colors"
-              >
-                <Play size={10} strokeWidth={1.5} />
-                FOCUS
-              </button>
-              <button
-                onClick={() => {
-                  if (task.recurrence && !task.isRecurrenceInstance) {
-                    setShowDeleteConfirm(true);
-                  } else {
-                    deleteTask(task.id);
-                    setEditingTask(null);
-                  }
-                }}
-                className="p-2 rounded-sm border border-border text-muted-foreground hover:text-destructive hover:border-destructive/20 transition-colors"
-              >
-                <Trash2 size={12} strokeWidth={1.5} />
-              </button>
-            </div>
+            {!showEditScope && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={handleFocus}
+                  className="flex-1 flex items-center justify-center gap-1 py-2 rounded-sm bg-primary text-primary-foreground font-mono text-[9px] tracking-widest hover:bg-primary/90 transition-colors"
+                >
+                  <Play size={10} strokeWidth={1.5} />
+                  FOCUS
+                </button>
+                <button
+                  onClick={() => {
+                    if (isRecurring) {
+                      setShowDeleteConfirm(true);
+                    } else {
+                      deleteTask(task.id);
+                      setEditingTask(null);
+                    }
+                  }}
+                  className="p-2 rounded-sm border border-border text-muted-foreground hover:text-destructive hover:border-destructive/20 transition-colors"
+                >
+                  <Trash2 size={12} strokeWidth={1.5} />
+                </button>
+              </div>
+            )}
 
             {/* Delete confirmation for recurring */}
             {showDeleteConfirm && (
@@ -328,11 +527,15 @@ export function TaskEditPanel() {
                   <button
                     onClick={() => {
                       const parentId = task.recurrenceParentId || task.id;
-                      deleteRecurrenceSeries(parentId);
+                      if (task.isRecurrenceInstance) {
+                        deleteFutureInstances(parentId, task.date);
+                      } else {
+                        deleteRecurrenceSeries(parentId);
+                      }
                     }}
                     className="flex-1 py-1.5 rounded-sm border border-destructive/20 text-[8px] font-mono tracking-wider text-destructive hover:bg-destructive/5 transition-colors"
                   >
-                    All tasks
+                    All future
                   </button>
                 </div>
               </div>
