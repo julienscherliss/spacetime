@@ -6,13 +6,15 @@ export type Priority = 0 | 1 | 2 | 3;
 export type TaskType = 'one-time' | 'recurring';
 export type ViewMode = 'focus' | 'day' | 'week' | 'calendar';
 
+export type CustomUnit = 'days' | 'weeks' | 'months' | 'years';
+
 export type RecurrencePattern =
   | { type: 'daily' }
   | { type: 'weekly'; days: number[] } // 0=Sun, 1=Mon...
   | { type: 'monthly'; dayOfMonth: number }
   | { type: 'yearly'; month: number; dayOfMonth: number }
   | { type: 'weekdays' }
-  | { type: 'custom'; intervalDays: number };
+  | { type: 'custom'; interval: number; unit: CustomUnit; days?: number[] };
 
 export interface Task {
   id: string;
@@ -27,7 +29,7 @@ export interface Task {
   createdAt: string;
   moveCount: number;
   recurrence?: RecurrencePattern;
-  recurrenceParentId?: string; // links instances to parent
+  recurrenceParentId?: string;
   isRecurrenceInstance?: boolean;
 }
 
@@ -54,8 +56,10 @@ interface TaskState {
   toggleVacationMode: () => void;
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'completed' | 'moveCount' | 'originalPriority'>) => void;
   updateTask: (id: string, updates: Partial<Pick<Task, 'title' | 'date' | 'time' | 'duration' | 'priority' | 'recurrence' | 'type'>>) => void;
+  updateFutureInstances: (parentId: string, updates: Partial<Pick<Task, 'title' | 'time' | 'duration' | 'priority' | 'recurrence' | 'type'>>) => void;
   completeTask: (id: string) => void;
   deleteTask: (id: string) => void;
+  deleteFutureInstances: (parentId: string, fromDate: string) => void;
   deleteRecurrenceSeries: (parentId: string) => void;
   canMoveTask: (id: string, newDate: string) => MoveValidation;
   moveTask: (id: string, newDate: string, newTime?: string) => { blocked: boolean };
@@ -74,66 +78,150 @@ interface TaskState {
 
 const generateId = () => Math.random().toString(36).substring(2, 10);
 
-function getNextOccurrence(pattern: RecurrencePattern, fromDate: string): string | null {
-  const d = new Date(fromDate + 'T00:00:00');
-  switch (pattern.type) {
-    case 'daily':
-      d.setDate(d.getDate() + 1);
-      return d.toISOString().split('T')[0];
-    case 'weekly': {
-      for (let i = 1; i <= 7; i++) {
-        const next = new Date(d);
-        next.setDate(next.getDate() + i);
-        if (pattern.days.includes(next.getDay())) {
-          return next.toISOString().split('T')[0];
-        }
-      }
-      return null;
-    }
-    case 'weekdays': {
-      for (let i = 1; i <= 7; i++) {
-        const next = new Date(d);
-        next.setDate(next.getDate() + i);
-        const day = next.getDay();
-        if (day >= 1 && day <= 5) {
-          return next.toISOString().split('T')[0];
-        }
-      }
-      return null;
-    }
-    case 'monthly':
-      d.setMonth(d.getMonth() + 1);
-      d.setDate(pattern.dayOfMonth);
-      return d.toISOString().split('T')[0];
-    case 'yearly':
-      d.setFullYear(d.getFullYear() + 1);
-      d.setMonth(pattern.month);
-      d.setDate(pattern.dayOfMonth);
-      return d.toISOString().split('T')[0];
-    case 'custom':
-      d.setDate(d.getDate() + pattern.intervalDays);
-      return d.toISOString().split('T')[0];
-  }
+// ─── Recurrence engine ────────────────────────────────────────
+
+function addDays(dateStr: string, n: number): string {
+  const d = new Date(dateStr + 'T12:00:00');
+  d.setDate(d.getDate() + n);
+  return d.toISOString().split('T')[0];
 }
 
-function getAllOccurrences(pattern: RecurrencePattern, startDate: string, rangeStart: string, rangeEnd: string): string[] {
+function addMonths(dateStr: string, n: number, dayOfMonth: number): string {
+  const d = new Date(dateStr + 'T12:00:00');
+  d.setMonth(d.getMonth() + n);
+  // Clamp to last day of target month
+  const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  d.setDate(Math.min(dayOfMonth, lastDay));
+  return d.toISOString().split('T')[0];
+}
+
+function addYears(dateStr: string, n: number, month: number, dayOfMonth: number): string {
+  const d = new Date(dateStr + 'T12:00:00');
+  d.setFullYear(d.getFullYear() + n);
+  d.setMonth(month);
+  const lastDay = new Date(d.getFullYear(), month + 1, 0).getDate();
+  d.setDate(Math.min(dayOfMonth, lastDay));
+  return d.toISOString().split('T')[0];
+}
+
+function getDayOfWeek(dateStr: string): number {
+  return new Date(dateStr + 'T12:00:00').getDay();
+}
+
+function getAllOccurrences(
+  pattern: RecurrencePattern,
+  startDate: string,
+  rangeStart: string,
+  rangeEnd: string
+): string[] {
   const dates: string[] = [];
-  let current = startDate;
-  // Include the start date if in range
-  if (current >= rangeStart && current <= rangeEnd) {
-    dates.push(current);
-  }
-  // Generate up to 60 occurrences max
-  for (let i = 0; i < 60; i++) {
-    const next = getNextOccurrence(pattern, current);
-    if (!next || next > rangeEnd) break;
-    if (next >= rangeStart) {
-      dates.push(next);
+  const limit = 200;
+
+  switch (pattern.type) {
+    case 'daily': {
+      let cur = startDate;
+      for (let i = 0; i < limit; i++) {
+        if (cur > rangeEnd) break;
+        if (cur >= rangeStart) dates.push(cur);
+        cur = addDays(cur, 1);
+      }
+      break;
     }
-    current = next;
+    case 'weekdays': {
+      let cur = startDate;
+      for (let i = 0; i < limit; i++) {
+        if (cur > rangeEnd) break;
+        const dow = getDayOfWeek(cur);
+        if (dow >= 1 && dow <= 5 && cur >= rangeStart) dates.push(cur);
+        cur = addDays(cur, 1);
+      }
+      break;
+    }
+    case 'weekly': {
+      // Every 1 week on specific days
+      let cur = startDate;
+      for (let i = 0; i < limit; i++) {
+        if (cur > rangeEnd) break;
+        if (pattern.days.includes(getDayOfWeek(cur)) && cur >= rangeStart) {
+          dates.push(cur);
+        }
+        cur = addDays(cur, 1);
+      }
+      break;
+    }
+    case 'monthly': {
+      let cur = startDate;
+      for (let i = 0; i < limit; i++) {
+        if (cur > rangeEnd) break;
+        if (cur >= rangeStart) dates.push(cur);
+        cur = addMonths(cur, 1, pattern.dayOfMonth);
+      }
+      break;
+    }
+    case 'yearly': {
+      let cur = startDate;
+      for (let i = 0; i < limit; i++) {
+        if (cur > rangeEnd) break;
+        if (cur >= rangeStart) dates.push(cur);
+        cur = addYears(cur, 1, pattern.month, pattern.dayOfMonth);
+      }
+      break;
+    }
+    case 'custom': {
+      const { interval, unit, days: customDays } = pattern;
+      if (unit === 'days') {
+        let cur = startDate;
+        for (let i = 0; i < limit; i++) {
+          if (cur > rangeEnd) break;
+          if (cur >= rangeStart) dates.push(cur);
+          cur = addDays(cur, interval);
+        }
+      } else if (unit === 'weeks') {
+        // Every N weeks on specific days (or same weekday as start)
+        const targetDays = customDays && customDays.length > 0 ? customDays : [getDayOfWeek(startDate)];
+        let weekStart = startDate;
+        // Rewind to start of week (Sunday)
+        const startDow = getDayOfWeek(weekStart);
+        let cur = addDays(weekStart, -startDow);
+        for (let w = 0; w < limit; w++) {
+          for (const dow of targetDays) {
+            const day = addDays(cur, dow);
+            if (day >= startDate && day <= rangeEnd && day >= rangeStart) {
+              dates.push(day);
+            }
+          }
+          cur = addDays(cur, 7 * interval);
+          if (cur > rangeEnd) break;
+        }
+        // Deduplicate and sort
+        const unique = [...new Set(dates)].sort();
+        dates.length = 0;
+        dates.push(...unique);
+      } else if (unit === 'months') {
+        const dayOfMonth = new Date(startDate + 'T12:00:00').getDate();
+        let cur = startDate;
+        for (let i = 0; i < limit; i++) {
+          if (cur > rangeEnd) break;
+          if (cur >= rangeStart) dates.push(cur);
+          cur = addMonths(cur, interval, dayOfMonth);
+        }
+      } else if (unit === 'years') {
+        const sd = new Date(startDate + 'T12:00:00');
+        let cur = startDate;
+        for (let i = 0; i < limit; i++) {
+          if (cur > rangeEnd) break;
+          if (cur >= rangeStart) dates.push(cur);
+          cur = addYears(cur, interval, sd.getMonth(), sd.getDate());
+        }
+      }
+      break;
+    }
   }
+
   return dates;
 }
+
+// ─── Store ────────────────────────────────────────
 
 export const useTaskStore = create<TaskState>()(
   persist(
@@ -246,6 +334,21 @@ export const useTaskStore = create<TaskState>()(
           tasks: s.tasks.map((t) => (t.id === id ? { ...t, ...updates } : t)),
         })),
 
+      updateFutureInstances: (parentId, updates) => {
+        const today = new Date().toISOString().split('T')[0];
+        set((s) => ({
+          tasks: s.tasks.map((t) => {
+            // Update the parent itself
+            if (t.id === parentId) return { ...t, ...updates };
+            // Update future instances of this parent
+            if (t.recurrenceParentId === parentId && t.date >= today && !t.completed) {
+              return { ...t, ...updates };
+            }
+            return t;
+          }),
+        }));
+      },
+
       completeTask: (id) => {
         set((s) => ({
           tasks: s.tasks.map((t) =>
@@ -268,6 +371,16 @@ export const useTaskStore = create<TaskState>()(
           editingTaskId: s.editingTaskId === id ? null : s.editingTaskId,
         })),
 
+      deleteFutureInstances: (parentId, fromDate) =>
+        set((s) => ({
+          tasks: s.tasks.filter((t) => {
+            if (t.id === parentId) return false;
+            if (t.recurrenceParentId === parentId && t.date >= fromDate) return false;
+            return true;
+          }),
+          editingTaskId: null,
+        })),
+
       deleteRecurrenceSeries: (parentId) =>
         set((s) => ({
           tasks: s.tasks.filter((t) => t.id !== parentId && t.recurrenceParentId !== parentId),
@@ -278,7 +391,6 @@ export const useTaskStore = create<TaskState>()(
         const task = get().tasks.find((t) => t.id === id);
         if (!task) return { allowed: false, reason: 'Task not found' };
         if (task.date === newDate) {
-          // Same-day reorder: blocked for LOCK
           if (task.priority >= 3) {
             return { allowed: false, reason: 'Task is locked' };
           }
@@ -313,7 +425,6 @@ export const useTaskStore = create<TaskState>()(
           return { blocked: true };
         }
 
-        // Only escalate priority on cross-day moves
         const crossDay = task.date !== newDate;
         const newPriority = crossDay
           ? Math.min(3, task.priority + 1) as Priority
@@ -336,7 +447,6 @@ export const useTaskStore = create<TaskState>()(
       },
 
       resizeTask: (id, newTime, newDuration) => {
-        // Resize NEVER escalates priority
         set((s) => ({
           tasks: s.tasks.map((t) =>
             t.id === id ? { ...t, time: newTime, duration: Math.max(15, newDuration) } : t
@@ -347,7 +457,6 @@ export const useTaskStore = create<TaskState>()(
       reorderTask: (id, newTime) => {
         const task = get().tasks.find((t) => t.id === id);
         if (!task) return;
-        // LOCK tasks cannot be reordered
         if (task.priority >= 3) return;
         set((s) => ({
           tasks: s.tasks.map((t) =>
@@ -417,9 +526,9 @@ export const useTaskStore = create<TaskState>()(
         state.tasks
           .filter((t) => t.isRecurrenceInstance && t.recurrenceParentId)
           .forEach((t) => {
-            const set = existingInstanceDates.get(t.recurrenceParentId!) || new Set();
-            set.add(t.date);
-            existingInstanceDates.set(t.recurrenceParentId!, set);
+            const s = existingInstanceDates.get(t.recurrenceParentId!) || new Set();
+            s.add(t.date);
+            existingInstanceDates.set(t.recurrenceParentId!, s);
           });
 
         const newTasks: Task[] = [];
@@ -428,7 +537,7 @@ export const useTaskStore = create<TaskState>()(
           const occurrences = getAllOccurrences(parent.recurrence, parent.date, startDate, endDate);
           const existing = existingInstanceDates.get(parent.id) || new Set();
           for (const occ of occurrences) {
-            if (occ === parent.date) continue; // parent already covers its own date
+            if (occ === parent.date) continue;
             if (existing.has(occ)) continue;
             newTasks.push({
               id: generateId(),
