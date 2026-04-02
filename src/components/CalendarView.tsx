@@ -37,19 +37,21 @@ export function CalendarView() {
     return days;
   }, [currentMonth]);
 
+  const filteredTasks = useMemo(() => {
+    if (!vacationMode) return tasks;
+    return tasks.filter((t) => t.type !== 'recurring');
+  }, [tasks, vacationMode]);
+
   const taskCountByDate = useMemo(() => {
     const counts: Record<string, number> = {};
-    tasks.forEach((t) => {
+    filteredTasks.forEach((t) => {
       if (!t.completed) counts[t.date] = (counts[t.date] || 0) + 1;
     });
     return counts;
-  }, [tasks]);
-
-  const maxTasks = Math.max(1, ...Object.values(taskCountByDate));
-  const today = new Date().toISOString().split('T')[0];
+  }, [filteredTasks]);
 
   const selectedTasks = selectedDate
-    ? tasks.filter((t) => t.date === selectedDate).sort((a, b) => (a.time || '').localeCompare(b.time || ''))
+    ? filteredTasks.filter((t) => t.date === selectedDate).sort((a, b) => (a.time || '').localeCompare(b.time || ''))
     : [];
 
   // Heat: neutral greys → warm hint

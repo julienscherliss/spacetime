@@ -8,7 +8,7 @@ import { ZoomControl } from '@/components/ZoomControl';
 import { useTimeScale } from '@/hooks/useTimeScale';
 
 export function DayView() {
-  const { tasks, generateRecurringInstances } = useTaskStore();
+  const { tasks, vacationMode, generateRecurringInstances } = useTaskStore();
   const { minutes: nowMinutes, dateStr: today } = useCurrentTime(15000);
   const [selectedDate] = useState(today);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -31,7 +31,8 @@ export function DayView() {
     return () => { cleanScroll?.(); cleanPinch?.(); };
   }, [bindScrollZoom, bindPinchZoom]);
 
-  const dayTasks = tasks.filter((t) => t.date === selectedDate);
+  const dayTasks = tasks.filter((t) => t.date === selectedDate &&
+    !(vacationMode && t.type === 'recurring'));
   const completedCount = dayTasks.filter((t) => t.completed).length;
   const isToday = selectedDate === today;
 
