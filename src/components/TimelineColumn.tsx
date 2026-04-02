@@ -354,6 +354,7 @@ export function TimelineColumn({
         const isActive = task.id === activeTaskId;
         const isResizingThis = resizing?.id === task.id;
         const isLocked = task.priority >= 3;
+        const isRoutine = task.type === 'recurring';
 
         const borderLeftColor = {
           0: 'hsl(var(--priority-0) / 0.3)',
