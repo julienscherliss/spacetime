@@ -60,6 +60,7 @@ interface TaskState {
   completeTask: (id: string) => void;
   deleteTask: (id: string) => void;
   deleteFutureInstances: (parentId: string, fromDate: string) => void;
+  removeInstances: (parentId: string) => void;
   deleteRecurrenceSeries: (parentId: string) => void;
   canMoveTask: (id: string, newDate: string) => MoveValidation;
   moveTask: (id: string, newDate: string, newTime?: string) => { blocked: boolean };
@@ -379,6 +380,11 @@ export const useTaskStore = create<TaskState>()(
             return true;
           }),
           editingTaskId: null,
+        })),
+
+      removeInstances: (parentId) =>
+        set((s) => ({
+          tasks: s.tasks.filter((t) => t.recurrenceParentId !== parentId),
         })),
 
       deleteRecurrenceSeries: (parentId) =>

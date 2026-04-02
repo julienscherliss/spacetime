@@ -57,7 +57,7 @@ function recurrenceLabel(r?: RecurrencePattern): string {
 export function TaskEditPanel() {
   const {
     tasks, editingTaskId, setEditingTask, updateTask, updateFutureInstances,
-    deleteTask, deleteFutureInstances, deleteRecurrenceSeries,
+    deleteTask, deleteFutureInstances, deleteRecurrenceSeries, removeInstances,
     setFocusTask, setViewMode, generateRecurringInstances,
   } = useTaskStore();
   const task = tasks.find((t) => t.id === editingTaskId);
@@ -164,8 +164,18 @@ export function TaskEditPanel() {
     }
 
     updateTask(task.id, updates);
+
+    // If removing recurrence ("No repeat"), clean up future instances
+    if (!updates.recurrence && task.recurrence) {
+      const parentId = task.recurrenceParentId || task.id;
+      removeInstances(parentId);
+    }
+
     // Regenerate instances after saving recurrence changes
     if (updates.recurrence) {
+      // First remove old instances, then regenerate
+      const parentId = task.recurrenceParentId || task.id;
+      removeInstances(parentId);
       const endDate = new Date();
       endDate.setDate(endDate.getDate() + 60);
       setTimeout(() => {
@@ -348,7 +358,13 @@ export function TaskEditPanel() {
                       {RECURRENCE_OPTIONS.map((opt) => (
                         <button
                           key={opt.value}
-                          onClick={() => setRecurrenceType(opt.value)}
+                          onClick={() => {
+                            setRecurrenceType(opt.value);
+                            // Close dropdown for all options except custom (needs more config)
+                            if (opt.value !== 'custom') {
+                              setShowRecurrence(false);
+                            }
+                          }}
                           className={`block w-full text-left text-[9px] font-mono tracking-wider py-1 px-2 rounded-sm transition-colors ${
                             recurrenceType === opt.value
                               ? 'text-foreground bg-muted/60'
