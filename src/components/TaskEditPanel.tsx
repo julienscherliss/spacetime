@@ -265,7 +265,7 @@ export function TaskEditPanel() {
                   {isRecurring && (
                     <span className="text-[7px] font-mono text-muted-foreground/40 tracking-widest">
                       <Repeat size={8} className="inline mr-0.5" />
-                      RECURRING
+                      ROUTINE
                     </span>
                   )}
                 </div>
