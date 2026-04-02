@@ -4,7 +4,7 @@ import { PriorityBadge } from '@/components/PriorityBadge';
 import { timeToMinutes, minutesToTime, snapTo15 } from '@/hooks/useCurrentTime';
 import { Check } from 'lucide-react';
 
-export const HOUR_HEIGHT = 56;
+export const DEFAULT_HOUR_HEIGHT = 56;
 export const START_HOUR = 6;
 export const END_HOUR = 23;
 export const HOURS = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
@@ -15,6 +15,7 @@ interface TimelineColumnProps {
   nowMinutes: number;
   isToday: boolean;
   showTimeLabels?: boolean;
+  hourHeight?: number;
 }
 
 function formatDuration(mins: number): string {
