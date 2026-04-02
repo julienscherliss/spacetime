@@ -32,7 +32,9 @@ export function TimelineColumn({
   nowMinutes,
   isToday,
   showTimeLabels = true,
+  hourHeight: hourHeightProp,
 }: TimelineColumnProps) {
+  const HOUR_HEIGHT = hourHeightProp ?? DEFAULT_HOUR_HEIGHT;
   const { setEditingTask, reorderTask, moveTask, resizeTask, completeTask, canMoveTask, addTask } = useTaskStore();
   const colRef = useRef<HTMLDivElement>(null);
   const [dragOverTime, setDragOverTime] = useState<string | null>(null);
