@@ -1,11 +1,10 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 
-const SCALE_MIN = 28;   // compressed: ~28px per hour
-const SCALE_DEFAULT = 56; // default
-const SCALE_MAX = 120;  // detailed: ~120px per hour
-const SCALE_STEP = 8;
-const SCROLL_SENSITIVITY = 0.4;
+export const SCALE_MIN = 28;
+export const SCALE_DEFAULT = 56;
+export const SCALE_MAX = 120;
 
+const SCROLL_SENSITIVITY = 0.4;
 const STORAGE_KEY_PREFIX = 'do-timescale-';
 
 function clamp(v: number, min: number, max: number) {
@@ -30,22 +29,24 @@ export function useTimeScale(view: 'day' | 'week') {
   const [hourHeight, setHourHeight] = useState(() => loadScale(view));
   const isDraggingRef = useRef(false);
 
-  // Persist on change
   useEffect(() => {
     saveScale(view, hourHeight);
   }, [hourHeight, view]);
 
-  // Reload when view changes
   useEffect(() => {
     setHourHeight(loadScale(view));
   }, [view]);
 
+  const setScale = useCallback((v: number) => {
+    setHourHeight(clamp(v, SCALE_MIN, SCALE_MAX));
+  }, []);
+
   const zoomIn = useCallback(() => {
-    setHourHeight(h => clamp(h + SCALE_STEP, SCALE_MIN, SCALE_MAX));
+    setHourHeight(h => clamp(h + 4, SCALE_MIN, SCALE_MAX));
   }, []);
 
   const zoomOut = useCallback(() => {
-    setHourHeight(h => clamp(h - SCALE_STEP, SCALE_MIN, SCALE_MAX));
+    setHourHeight(h => clamp(h - 4, SCALE_MIN, SCALE_MAX));
   }, []);
 
   const resetZoom = useCallback(() => {
@@ -56,24 +57,19 @@ export function useTimeScale(view: 'day' | 'week') {
     isDraggingRef.current = v;
   }, []);
 
-  // Attach Alt+scroll handler to a container ref
   const bindScrollZoom = useCallback((container: HTMLElement | null) => {
     if (!container) return;
-
     const handler = (e: WheelEvent) => {
       if (isDraggingRef.current) return;
-      // Alt/Option + scroll
       if (!e.altKey) return;
       e.preventDefault();
       const delta = -e.deltaY * SCROLL_SENSITIVITY;
       setHourHeight(h => clamp(h + delta, SCALE_MIN, SCALE_MAX));
     };
-
     container.addEventListener('wheel', handler, { passive: false });
     return () => container.removeEventListener('wheel', handler);
   }, []);
 
-  // Pinch-to-zoom for touch
   const bindPinchZoom = useCallback((container: HTMLElement | null) => {
     if (!container) return;
     let initialDistance = 0;
@@ -113,6 +109,7 @@ export function useTimeScale(view: 'day' | 'week') {
 
   return {
     hourHeight,
+    setScale,
     zoomIn,
     zoomOut,
     resetZoom,

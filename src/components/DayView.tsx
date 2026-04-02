@@ -14,7 +14,7 @@ export function DayView() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const {
-    hourHeight, zoomIn, zoomOut, resetZoom,
+    hourHeight, zoomIn, zoomOut, resetZoom, setScale,
     bindScrollZoom, bindPinchZoom,
     zoomPercent, isMin, isMax, isDefault,
   } = useTimeScale('day');
@@ -78,6 +78,7 @@ export function DayView() {
             onZoomIn={zoomIn}
             onZoomOut={zoomOut}
             onReset={resetZoom}
+            onSetScale={setScale}
             zoomPercent={zoomPercent}
             isMin={isMin}
             isMax={isMax}

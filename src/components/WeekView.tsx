@@ -12,7 +12,7 @@ export function WeekView() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const {
-    hourHeight, zoomIn, zoomOut, resetZoom,
+    hourHeight, zoomIn, zoomOut, resetZoom, setScale,
     bindScrollZoom, bindPinchZoom,
     zoomPercent, isMin, isMax, isDefault,
   } = useTimeScale('week');
@@ -86,7 +86,7 @@ export function WeekView() {
               {HOURS.map((hour, i) => (
                 <div
                   key={hour}
-                  className="absolute left-0 right-0 text-[8px] font-mono text-muted-foreground/25 text-right pr-1.5 -mt-1.5 select-none"
+                  className="absolute left-0 right-0 text-[8px] font-mono text-muted-foreground/50 font-medium text-right pr-1.5 -mt-1.5 select-none"
                   style={{ top: i * hourHeight }}
                 >
                   {hour.toString().padStart(2, '0')}
@@ -122,6 +122,7 @@ export function WeekView() {
             onZoomIn={zoomIn}
             onZoomOut={zoomOut}
             onReset={resetZoom}
+            onSetScale={setScale}
             zoomPercent={zoomPercent}
             isMin={isMin}
             isMax={isMax}

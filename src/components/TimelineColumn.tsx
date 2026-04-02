@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback, useEffect, Fragment } from 'react';
 import { useTaskStore, Task } from '@/store/taskStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { timeToMinutes, minutesToTime, snapTo15 } from '@/hooks/useCurrentTime';
@@ -89,7 +89,7 @@ export function TimelineColumn({
     const rect = colRef.current.getBoundingClientRect();
     const y = clientY - rect.top;
     return START_HOUR * 60 + (y / HOUR_HEIGHT) * 60;
-  }, []);
+  }, [HOUR_HEIGHT]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -269,7 +269,7 @@ export function TimelineColumn({
           style={{ top: i * HOUR_HEIGHT }}
         >
           {showTimeLabels && (
-            <div className="w-10 shrink-0 text-[9px] font-mono text-muted-foreground/40 -mt-1.5 text-right pr-2 select-none">
+            <div className="w-10 shrink-0 text-[9px] font-mono text-muted-foreground/60 font-medium -mt-1.5 text-right pr-2 select-none">
               {hour.toString().padStart(2, '0')}
             </div>
           )}
@@ -277,16 +277,38 @@ export function TimelineColumn({
         </div>
       ))}
 
-      {/* Half-hour lines */}
-      {HOURS.map((hour, i) => (
+      {/* Half-hour lines — visible at default zoom and above */}
+      {HOUR_HEIGHT >= 40 && HOURS.map((hour, i) => (
         <div
-          key={`h-${hour}`}
+          key={`h30-${hour}`}
           className="absolute right-0 border-t border-border/20"
           style={{
             top: i * HOUR_HEIGHT + HOUR_HEIGHT / 2,
             left: timeLabelsWidth,
           }}
         />
+      ))}
+
+      {/* 15-min lines — visible when zoomed in (hourHeight >= 72) */}
+      {HOUR_HEIGHT >= 72 && HOURS.map((hour, i) => (
+        <Fragment key={`q-${hour}`}>
+          <div
+            key={`h15-${hour}`}
+            className="absolute right-0 border-t border-border/10"
+            style={{
+              top: i * HOUR_HEIGHT + HOUR_HEIGHT / 4,
+              left: timeLabelsWidth,
+            }}
+          />
+          <div
+            key={`h45-${hour}`}
+            className="absolute right-0 border-t border-border/10"
+            style={{
+              top: i * HOUR_HEIGHT + (HOUR_HEIGHT * 3) / 4,
+              left: timeLabelsWidth,
+            }}
+          />
+        </Fragment>
       ))}
 
       {/* Now line */}
