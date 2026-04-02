@@ -8,18 +8,17 @@ const labels: Record<Priority, string> = {
 };
 
 export function PriorityBadge({ priority }: { priority: Priority }) {
-  const styles = {
-    0: 'bg-priority-0/10 text-priority-0 border-priority-0/20',
-    1: 'bg-priority-1/15 text-priority-1 border-priority-1/25',
-    2: 'bg-priority-2/15 text-priority-2 border-priority-2/30',
-    3: 'bg-priority-3/20 text-priority-3 border-priority-3/40',
+  const colors = {
+    0: 'bg-[hsl(var(--priority-0)/0.08)] text-[hsl(var(--priority-0))] border-[hsl(var(--priority-0)/0.15)]',
+    1: 'bg-[hsl(var(--priority-1)/0.1)] text-[hsl(var(--priority-1))] border-[hsl(var(--priority-1)/0.2)]',
+    2: 'bg-[hsl(var(--priority-2)/0.12)] text-[hsl(var(--priority-2))] border-[hsl(var(--priority-2)/0.25)]',
+    3: 'bg-[hsl(var(--priority-3)/0.15)] text-[hsl(var(--priority-3))] border-[hsl(var(--priority-3)/0.3)]',
   }[priority];
 
-  // Higher priority = more visual weight
-  const fontWeight = priority >= 2 ? 'font-semibold' : '';
+  const weight = priority >= 2 ? 'font-semibold' : '';
 
   return (
-    <span className={`inline-flex items-center px-1.5 py-0.5 text-[9px] font-mono tracking-[0.15em] rounded-sm border ${styles} ${fontWeight}`}>
+    <span className={`inline-flex items-center px-1.5 py-0.5 text-[8px] font-mono tracking-[0.15em] rounded-sm border ${colors} ${weight}`}>
       {labels[priority]}
     </span>
   );

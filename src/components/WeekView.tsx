@@ -1,153 +1,96 @@
 import { useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
-import { PriorityBadge } from '@/components/PriorityBadge';
+import { useCurrentTime } from '@/hooks/useCurrentTime';
+import { TimelineColumn, HOUR_HEIGHT, HOURS, START_HOUR } from '@/components/TimelineColumn';
 import { BlockedModal } from '@/components/BlockedModal';
-import { Clock, ArrowUp } from 'lucide-react';
 
 export function WeekView() {
-  const { tasks, setEditingTask, moveTask } = useTaskStore();
+  const { tasks } = useTaskStore();
+  const { minutes: nowMinutes, dateStr: today } = useCurrentTime(15000);
   const [blockedTaskId, setBlockedTaskId] = useState<string | null>(null);
-  const [dragOverDay, setDragOverDay] = useState<string | null>(null);
-  const [dragTaskId, setDragTaskId] = useState<string | null>(null);
 
   const weekDays = useMemo(() => {
-    const today = new Date();
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+    const todayDate = new Date();
+    const monday = new Date(todayDate);
+    monday.setDate(todayDate.getDate() - ((todayDate.getDay() + 6) % 7));
 
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(monday);
       d.setDate(monday.getDate() + i);
+      const dateStr = d.toISOString().split('T')[0];
       return {
-        date: d.toISOString().split('T')[0],
+        date: dateStr,
         label: d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase(),
         day: d.getDate(),
-        isToday: d.toISOString().split('T')[0] === today.toISOString().split('T')[0],
+        isToday: dateStr === today,
       };
     });
-  }, []);
-
-  // Preview escalation info for dragged task
-  const draggedTask = dragTaskId ? tasks.find((t) => t.id === dragTaskId) : null;
-  const wouldEscalate = draggedTask && dragOverDay && dragOverDay !== draggedTask.date;
-  const nextPriority = draggedTask ? Math.min(3, draggedTask.priority + 1) : 0;
-
-  const handleDrop = (e: React.DragEvent, targetDate: string) => {
-    e.preventDefault();
-    const taskId = e.dataTransfer.getData('taskId');
-    const sourceDate = e.dataTransfer.getData('sourceDate');
-    if (!taskId || sourceDate === targetDate) {
-      setDragOverDay(null);
-      setDragTaskId(null);
-      return;
-    }
-
-    const result = moveTask(taskId, targetDate);
-    if (result.blocked) setBlockedTaskId(taskId);
-
-    setDragOverDay(null);
-    setDragTaskId(null);
-  };
+  }, [today]);
 
   return (
-    <div className="px-4 py-8 overflow-x-auto">
-      <h2 className="text-2xl font-display font-bold text-foreground tracking-tight mb-8 px-2">
-        This Week
-      </h2>
+    <div className="px-2 py-6 overflow-x-auto">
+      <div className="mb-5 px-2">
+        <h2 className="text-xl font-display font-bold text-foreground tracking-tight">
+          This Week
+        </h2>
+      </div>
 
-      {/* Escalation preview */}
-      {wouldEscalate && (
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-4 mx-2 px-3 py-2 rounded bg-card border border-primary/20 flex items-center gap-2"
-        >
-          <ArrowUp size={12} className="text-primary" />
-          <span className="text-[10px] font-mono text-muted-foreground tracking-wider">
-            MOVE → PRIORITY WILL INCREASE TO{' '}
-            <span className="text-primary">{['FLEX', 'SEMI', 'FIXED', 'LOCK'][nextPriority]}</span>
-          </span>
-        </motion.div>
-      )}
-
-      <div className="grid grid-cols-7 gap-2 min-w-[800px]">
-        {weekDays.map((day, di) => {
-          const dayTasks = tasks
-            .filter((t) => t.date === day.date && !t.completed)
-            .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
-          const isDragOver = dragOverDay === day.date;
-
-          return (
-            <motion.div
+      <div className="min-w-[900px]">
+        {/* Day headers */}
+        <div className="flex">
+          {/* Time label spacer */}
+          <div className="w-11 shrink-0" />
+          {weekDays.map((day) => (
+            <div
               key={day.date}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: di * 0.04, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-              className="flex flex-col"
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDragOverDay(day.date);
-              }}
-              onDragLeave={() => setDragOverDay(null)}
-              onDrop={(e) => handleDrop(e, day.date)}
+              className={`flex-1 text-center py-2 border-b transition-colors ${
+                day.isToday ? 'border-primary/20' : 'border-border/15'
+              }`}
             >
-              {/* Day header */}
-              <div className={`text-center py-3 rounded-t-md border-b transition-colors ${
-                day.isToday
-                  ? 'bg-primary/[0.06] border-primary/20'
-                  : 'bg-card border-border/50'
-              }`}>
-                <div className="text-[9px] font-mono tracking-[0.2em] text-muted-foreground">
-                  {day.label}
-                </div>
-                <div className={`text-lg font-display font-bold ${day.isToday ? 'text-primary' : 'text-foreground'}`}>
-                  {day.day}
-                </div>
+              <div className="text-[8px] font-mono tracking-[0.2em] text-muted-foreground/40">
+                {day.label}
               </div>
+              <div className={`text-sm font-display font-bold ${day.isToday ? 'text-primary' : 'text-foreground/60'}`}>
+                {day.day}
+              </div>
+            </div>
+          ))}
+        </div>
 
-              {/* Tasks */}
-              <div className={`flex-1 border-x border-b rounded-b-md p-1.5 space-y-1.5 min-h-[220px] transition-colors ${
-                isDragOver
-                  ? 'bg-primary/[0.04] border-primary/20'
-                  : 'bg-card/30 border-border/30'
-              }`}>
-                {dayTasks.map((task) => (
-                  <div
-                    key={task.id}
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData('taskId', task.id);
-                      e.dataTransfer.setData('sourceDate', task.date);
-                      setDragTaskId(task.id);
-                    }}
-                    onDragEnd={() => { setDragTaskId(null); setDragOverDay(null); }}
-                    onClick={() => setEditingTask(task.id)}
-                    className="task-card rounded-md p-2 cursor-grab active:cursor-grabbing"
-                  >
-                    <div className="text-[11px] font-mono text-foreground leading-tight mb-1.5 truncate">
-                      {task.title}
-                    </div>
-                    <div className="flex items-center justify-between gap-1">
-                      {task.time && (
-                        <span className="text-[9px] font-mono text-muted-foreground flex items-center gap-0.5">
-                          <Clock size={8} />
-                          {task.time}
-                        </span>
-                      )}
-                      <PriorityBadge priority={task.priority} />
-                    </div>
-                  </div>
-                ))}
-                {dayTasks.length === 0 && (
-                  <div className="flex items-center justify-center h-full min-h-[100px]">
-                    <span className="text-[10px] font-mono text-muted-foreground/20">—</span>
-                  </div>
-                )}
+        {/* Timeline grid */}
+        <div className="flex overflow-y-auto" style={{ maxHeight: 'calc(100vh - 180px)' }}>
+          {/* Shared time labels */}
+          <div className="w-11 shrink-0 relative" style={{ height: HOURS.length * HOUR_HEIGHT }}>
+            {HOURS.map((hour, i) => (
+              <div
+                key={hour}
+                className="absolute left-0 right-0 text-[9px] font-mono text-muted-foreground/25 text-right pr-2 -mt-1.5 select-none"
+                style={{ top: i * HOUR_HEIGHT }}
+              >
+                {hour.toString().padStart(2, '0')}
               </div>
-            </motion.div>
-          );
-        })}
+            ))}
+          </div>
+
+          {/* Day columns */}
+          {weekDays.map((day) => {
+            const dayTasks = tasks.filter((t) => t.date === day.date);
+            return (
+              <div
+                key={day.date}
+                className={`flex-1 border-l border-border/10 ${day.isToday ? 'bg-primary/[0.02]' : ''}`}
+              >
+                <TimelineColumn
+                  date={day.date}
+                  tasks={dayTasks}
+                  nowMinutes={nowMinutes}
+                  isToday={day.isToday}
+                  showTimeLabels={false}
+                />
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <BlockedModal taskId={blockedTaskId || ''} open={!!blockedTaskId} onClose={() => setBlockedTaskId(null)} />

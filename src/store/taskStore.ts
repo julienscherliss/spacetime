@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { getWeekBounds } from '@/hooks/useCurrentTime';
 
 export type Priority = 0 | 1 | 2 | 3;
 export type TaskType = 'one-time' | 'recurring';
@@ -11,9 +12,9 @@ export interface Task {
   type: TaskType;
   priority: Priority;
   originalPriority: Priority;
-  date: string; // YYYY-MM-DD
-  time?: string; // HH:MM
-  duration?: number; // minutes
+  date: string;
+  time?: string;
+  duration?: number;
   completed: boolean;
   createdAt: string;
   moveCount: number;
@@ -24,6 +25,10 @@ export interface DailyStats {
   total: number;
   pushed: number;
 }
+
+export type MoveValidation =
+  | { allowed: true }
+  | { allowed: false; reason: string };
 
 interface TaskState {
   tasks: Task[];
@@ -40,7 +45,9 @@ interface TaskState {
   updateTask: (id: string, updates: Partial<Pick<Task, 'title' | 'date' | 'time' | 'duration'>>) => void;
   completeTask: (id: string) => void;
   deleteTask: (id: string) => void;
+  canMoveTask: (id: string, newDate: string) => MoveValidation;
   moveTask: (id: string, newDate: string, newTime?: string) => { blocked: boolean };
+  resizeTask: (id: string, newTime: string, newDuration: number) => void;
   reorderTask: (id: string, newTime: string) => void;
   skipFocusTask: () => void;
   setFocusTask: (id: string | null) => void;
@@ -171,7 +178,6 @@ export const useTaskStore = create<TaskState>()(
           ),
           editingTaskId: s.editingTaskId === id ? null : s.editingTaskId,
         }));
-        // Check if all today's tasks are done
         const state = get();
         const today = new Date().toISOString().split('T')[0];
         const todayTasks = state.tasks.filter((t) => t.date === today);
@@ -187,11 +193,36 @@ export const useTaskStore = create<TaskState>()(
           editingTaskId: s.editingTaskId === id ? null : s.editingTaskId,
         })),
 
+      canMoveTask: (id, newDate) => {
+        const task = get().tasks.find((t) => t.id === id);
+        if (!task) return { allowed: false, reason: 'Task not found' };
+        if (task.date === newDate) return { allowed: true };
+
+        if (task.priority >= 3) {
+          return { allowed: false, reason: 'Cannot move locked task' };
+        }
+        if (task.priority >= 2) {
+          return { allowed: false, reason: 'Cannot move outside current day' };
+        }
+        if (task.priority >= 1) {
+          const srcWeek = getWeekBounds(task.date);
+          if (newDate < srcWeek.start || newDate > srcWeek.end) {
+            return { allowed: false, reason: 'Cannot move outside current week' };
+          }
+        }
+        return { allowed: true };
+      },
+
       moveTask: (id, newDate, newTime) => {
         const task = get().tasks.find((t) => t.id === id);
         if (!task) return { blocked: false };
 
         if (task.priority >= 3) {
+          return { blocked: true };
+        }
+
+        const validation = get().canMoveTask(id, newDate);
+        if (!validation.allowed) {
           return { blocked: true };
         }
 
@@ -212,6 +243,14 @@ export const useTaskStore = create<TaskState>()(
         return { blocked: false };
       },
 
+      resizeTask: (id, newTime, newDuration) => {
+        set((s) => ({
+          tasks: s.tasks.map((t) =>
+            t.id === id ? { ...t, time: newTime, duration: Math.max(15, newDuration) } : t
+          ),
+        }));
+      },
+
       reorderTask: (id, newTime) => {
         set((s) => ({
           tasks: s.tasks.map((t) =>
@@ -225,7 +264,6 @@ export const useTaskStore = create<TaskState>()(
         const todayTasks = state.tasks
           .filter((t) => !t.completed && t.date === new Date().toISOString().split('T')[0])
           .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
-
         const currentIdx = todayTasks.findIndex((t) => t.id === state.focusTaskId);
         const nextTask = todayTasks[currentIdx + 1] || todayTasks[0];
         set({ focusTaskId: nextTask?.id || null });
@@ -244,10 +282,9 @@ export const useTaskStore = create<TaskState>()(
           if (task) return task;
         }
         const today = new Date().toISOString().split('T')[0];
-        const todayTasks = state.tasks
+        return state.tasks
           .filter((t) => !t.completed && t.date === today)
-          .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
-        return todayTasks[0];
+          .sort((a, b) => (a.time || '').localeCompare(b.time || ''))[0];
       },
 
       getNextTask: (currentId) => {
