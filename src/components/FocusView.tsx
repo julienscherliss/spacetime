@@ -5,7 +5,7 @@ import { PriorityBadge } from '@/components/PriorityBadge';
 import { ChevronRight } from 'lucide-react';
 
 export function FocusView() {
-  const { tasks, vacationMode, getNextTask } = useTaskStore();
+  const { tasks, routinesEnabled, getNextTask } = useTaskStore();
   const { minutes: nowMinutes, dateStr: today } = useCurrentTime(5000);
 
   const todayTasks = tasks
