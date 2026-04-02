@@ -348,7 +348,13 @@ export function TaskEditPanel() {
                       {RECURRENCE_OPTIONS.map((opt) => (
                         <button
                           key={opt.value}
-                          onClick={() => setRecurrenceType(opt.value)}
+                          onClick={() => {
+                            setRecurrenceType(opt.value);
+                            // Close dropdown for all options except custom (needs more config)
+                            if (opt.value !== 'custom') {
+                              setShowRecurrence(false);
+                            }
+                          }}
                           className={`block w-full text-left text-[9px] font-mono tracking-wider py-1 px-2 rounded-sm transition-colors ${
                             recurrenceType === opt.value
                               ? 'text-foreground bg-muted/60'
