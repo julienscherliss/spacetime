@@ -86,7 +86,7 @@ export function WeekView() {
               {HOURS.map((hour, i) => (
                 <div
                   key={hour}
-                  className="absolute left-0 right-0 text-[8px] font-mono text-muted-foreground/25 text-right pr-1.5 -mt-1.5 select-none"
+                  className="absolute left-0 right-0 text-[8px] font-mono text-muted-foreground/50 font-medium text-right pr-1.5 -mt-1.5 select-none"
                   style={{ top: i * hourHeight }}
                 >
                   {hour.toString().padStart(2, '0')}
