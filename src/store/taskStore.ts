@@ -53,7 +53,7 @@ interface TaskState {
   dailyStats: DailyStats | null;
 
   setViewMode: (mode: ViewMode) => void;
-  toggleVacationMode: () => void;
+  toggleRoutines: () => void;
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'completed' | 'moveCount' | 'originalPriority'>) => void;
   updateTask: (id: string, updates: Partial<Pick<Task, 'title' | 'date' | 'time' | 'duration' | 'priority' | 'recurrence' | 'type'>>) => void;
   updateFutureInstances: (parentId: string, updates: Partial<Pick<Task, 'title' | 'time' | 'duration' | 'priority' | 'recurrence' | 'type'>>) => void;
