@@ -1,11 +1,11 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useTaskStore } from '@/store/taskStore';
 import { useCurrentTime } from '@/hooks/useCurrentTime';
 import { TimelineColumn, HOUR_HEIGHT, HOURS } from '@/components/TimelineColumn';
 import { BlockedModal } from '@/components/BlockedModal';
 
 export function WeekView() {
-  const { tasks } = useTaskStore();
+  const { tasks, generateRecurringInstances } = useTaskStore();
   const { minutes: nowMinutes, dateStr: today } = useCurrentTime(15000);
 
   const weekDays = useMemo(() => {
@@ -25,6 +25,12 @@ export function WeekView() {
       };
     });
   }, [today]);
+
+  useEffect(() => {
+    if (weekDays.length > 0) {
+      generateRecurringInstances(weekDays[0].date, weekDays[weekDays.length - 1].date);
+    }
+  }, [weekDays, generateRecurringInstances]);
 
   return (
     <div className="px-2 py-5 overflow-x-auto">
