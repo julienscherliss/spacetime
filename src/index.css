@@ -4,55 +4,57 @@
 
 @layer base {
   :root {
-    --background: 0 0% 4%;
-    --foreground: 0 0% 82%;
+    /* Light industrial palette */
+    --background: 0 0% 96%;
+    --foreground: 0 0% 12%;
 
-    --card: 0 0% 7%;
-    --card-foreground: 0 0% 82%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 12%;
 
-    --popover: 0 0% 7%;
-    --popover-foreground: 0 0% 82%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 12%;
 
-    --primary: 14 72% 48%;
+    --primary: 12 76% 50%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 9%;
-    --secondary-foreground: 0 0% 55%;
+    --secondary: 0 0% 91%;
+    --secondary-foreground: 0 0% 40%;
 
-    --muted: 0 0% 8%;
-    --muted-foreground: 0 0% 38%;
+    --muted: 0 0% 93%;
+    --muted-foreground: 0 0% 45%;
 
-    --accent: 14 72% 48%;
+    --accent: 12 76% 50%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 68% 48%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 11%;
-    --input: 0 0% 11%;
-    --ring: 14 72% 48%;
+    --border: 0 0% 87%;
+    --input: 0 0% 87%;
+    --ring: 12 76% 50%;
 
-    --radius: 0.375rem;
+    --radius: 0.25rem;
 
-    --sidebar-background: 0 0% 5%;
-    --sidebar-foreground: 0 0% 55%;
-    --sidebar-primary: 14 72% 48%;
+    --sidebar-background: 0 0% 94%;
+    --sidebar-foreground: 0 0% 45%;
+    --sidebar-primary: 12 76% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 9%;
-    --sidebar-accent-foreground: 0 0% 82%;
-    --sidebar-border: 0 0% 11%;
-    --sidebar-ring: 14 72% 48%;
+    --sidebar-accent: 0 0% 91%;
+    --sidebar-accent-foreground: 0 0% 12%;
+    --sidebar-border: 0 0% 87%;
+    --sidebar-ring: 12 76% 50%;
 
     /* Custom tokens */
-    --surface-elevated: 0 0% 7.5%;
-    --grid-line: 0 0% 9%;
-    --priority-0: 0 0% 44%;
-    --priority-1: 45 65% 50%;
-    --priority-2: 25 80% 50%;
+    --surface-elevated: 0 0% 100%;
+    --surface-inset: 0 0% 94%;
+    --grid-line: 0 0% 88%;
+    --priority-0: 0 0% 55%;
+    --priority-1: 40 55% 48%;
+    --priority-2: 22 80% 50%;
     --priority-3: 0 70% 50%;
 
-    --task-glow: 14 72% 48%;
-    --task-border: 0 0% 13%;
+    --task-border: 0 0% 85%;
+    --task-hover: 0 0% 80%;
   }
 }
 
@@ -68,53 +70,41 @@
 
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Space Grotesk', sans-serif;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.015em;
   }
 }
 
-/* Subtle grid background - faded */
+/* Measurement grid — extremely subtle */
 .bg-grid {
   background-image: 
-    linear-gradient(hsl(var(--grid-line) / 0.3) 1px, transparent 1px),
-    linear-gradient(90deg, hsl(var(--grid-line) / 0.3) 1px, transparent 1px);
+    linear-gradient(hsl(var(--grid-line) / 0.4) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--grid-line) / 0.4) 1px, transparent 1px);
   background-size: 48px 48px;
 }
 
 .bg-grid-fade {
   background-image: 
-    linear-gradient(hsl(var(--grid-line) / 0.15) 1px, transparent 1px),
-    linear-gradient(90deg, hsl(var(--grid-line) / 0.15) 1px, transparent 1px);
+    linear-gradient(hsl(var(--grid-line) / 0.25) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--grid-line) / 0.25) 1px, transparent 1px);
   background-size: 48px 48px;
   -webkit-mask-image: radial-gradient(ellipse 60% 50% at 50% 50%, black 20%, transparent 100%);
   mask-image: radial-gradient(ellipse 60% 50% at 50% 50%, black 20%, transparent 100%);
 }
 
-/* Task card */
-.task-card {
-  background: hsl(var(--surface-elevated));
-  border: 1px solid hsl(var(--task-border));
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
-}
-
-.task-card:hover {
-  border-color: hsl(var(--task-glow) / 0.25);
-  box-shadow: 0 0 16px -6px hsl(var(--task-glow) / 0.12);
-}
-
 /* Vacation mode */
 .vacation-active {
-  filter: saturate(0.5) brightness(0.92);
+  filter: saturate(0.4) brightness(0.97);
 }
 
-/* Scrollbar */
+/* Scrollbar — minimal */
 ::-webkit-scrollbar {
-  width: 2px;
+  width: 3px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.15);
+  background: hsl(var(--muted-foreground) / 0.2);
   border-radius: 2px;
 }
 
