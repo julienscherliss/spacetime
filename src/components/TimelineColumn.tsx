@@ -81,7 +81,7 @@ export function TimelineColumn({
     if (sourceDate && sourceDate !== date) {
       const validation = canMoveTask(taskId, date);
       if (!validation.allowed) {
-        setDragMsg(validation.reason);
+        setDragMsg('reason' in validation ? validation.reason : 'Cannot move');
         setDragValid(false);
         setTimeout(() => { setDragMsg(''); setDragValid(true); }, 2000);
         setDragOverTime(null);
