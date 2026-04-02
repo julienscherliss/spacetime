@@ -19,22 +19,37 @@ export interface Task {
   moveCount: number;
 }
 
+export interface DailyStats {
+  completed: number;
+  total: number;
+  pushed: number;
+}
+
 interface TaskState {
   tasks: Task[];
   viewMode: ViewMode;
   vacationMode: boolean;
   focusTaskId: string | null;
-  
+  editingTaskId: string | null;
+  showCompletionStats: boolean;
+  dailyStats: DailyStats | null;
+
   setViewMode: (mode: ViewMode) => void;
   toggleVacationMode: () => void;
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'completed' | 'moveCount' | 'originalPriority'>) => void;
+  updateTask: (id: string, updates: Partial<Pick<Task, 'title' | 'date' | 'time' | 'duration'>>) => void;
   completeTask: (id: string) => void;
   deleteTask: (id: string) => void;
-  moveTask: (id: string, newDate: string) => { blocked: boolean };
+  moveTask: (id: string, newDate: string, newTime?: string) => { blocked: boolean };
+  reorderTask: (id: string, newTime: string) => void;
   skipFocusTask: () => void;
   setFocusTask: (id: string | null) => void;
+  setEditingTask: (id: string | null) => void;
   getTasksForDate: (date: string) => Task[];
   getCurrentFocusTask: () => Task | undefined;
+  getNextTask: (currentId: string) => Task | undefined;
+  getDailyStats: () => DailyStats;
+  dismissCompletionStats: () => void;
 }
 
 const generateId = () => Math.random().toString(36).substring(2, 10);
@@ -46,9 +61,9 @@ export const useTaskStore = create<TaskState>()(
         {
           id: 'demo-1',
           title: 'Review quarterly goals',
-          type: 'one-time',
-          priority: 1,
-          originalPriority: 0,
+          type: 'one-time' as TaskType,
+          priority: 1 as Priority,
+          originalPriority: 0 as Priority,
           date: new Date().toISOString().split('T')[0],
           time: '09:00',
           duration: 30,
@@ -59,9 +74,9 @@ export const useTaskStore = create<TaskState>()(
         {
           id: 'demo-2',
           title: 'Ship feature update',
-          type: 'one-time',
-          priority: 2,
-          originalPriority: 1,
+          type: 'one-time' as TaskType,
+          priority: 2 as Priority,
+          originalPriority: 1 as Priority,
           date: new Date().toISOString().split('T')[0],
           time: '11:00',
           duration: 60,
@@ -72,9 +87,9 @@ export const useTaskStore = create<TaskState>()(
         {
           id: 'demo-3',
           title: 'Write documentation',
-          type: 'one-time',
-          priority: 0,
-          originalPriority: 0,
+          type: 'one-time' as TaskType,
+          priority: 0 as Priority,
+          originalPriority: 0 as Priority,
           date: new Date().toISOString().split('T')[0],
           time: '14:00',
           duration: 45,
@@ -85,9 +100,9 @@ export const useTaskStore = create<TaskState>()(
         {
           id: 'demo-4',
           title: 'Morning standup',
-          type: 'recurring',
-          priority: 3,
-          originalPriority: 3,
+          type: 'recurring' as TaskType,
+          priority: 3 as Priority,
+          originalPriority: 3 as Priority,
           date: new Date().toISOString().split('T')[0],
           time: '08:30',
           duration: 15,
@@ -98,9 +113,9 @@ export const useTaskStore = create<TaskState>()(
         {
           id: 'demo-5',
           title: 'Team retrospective',
-          type: 'one-time',
-          priority: 1,
-          originalPriority: 0,
+          type: 'one-time' as TaskType,
+          priority: 1 as Priority,
+          originalPriority: 0 as Priority,
           date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
           time: '15:00',
           duration: 60,
@@ -111,9 +126,9 @@ export const useTaskStore = create<TaskState>()(
         {
           id: 'demo-6',
           title: 'Code review',
-          type: 'one-time',
-          priority: 0,
-          originalPriority: 0,
+          type: 'one-time' as TaskType,
+          priority: 0 as Priority,
+          originalPriority: 0 as Priority,
           date: new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0],
           time: '10:00',
           duration: 30,
@@ -122,9 +137,12 @@ export const useTaskStore = create<TaskState>()(
           moveCount: 0,
         },
       ],
-      viewMode: 'focus',
+      viewMode: 'day',
       vacationMode: false,
       focusTaskId: null,
+      editingTaskId: null,
+      showCompletionStats: false,
+      dailyStats: null,
 
       setViewMode: (mode) => set({ viewMode: mode }),
       toggleVacationMode: () => set((s) => ({ vacationMode: !s.vacationMode })),
@@ -141,17 +159,35 @@ export const useTaskStore = create<TaskState>()(
         set((s) => ({ tasks: [...s.tasks, task] }));
       },
 
-      completeTask: (id) =>
+      updateTask: (id, updates) =>
+        set((s) => ({
+          tasks: s.tasks.map((t) => (t.id === id ? { ...t, ...updates } : t)),
+        })),
+
+      completeTask: (id) => {
         set((s) => ({
           tasks: s.tasks.map((t) =>
             t.id === id ? { ...t, completed: true } : t
           ),
-        })),
+          editingTaskId: s.editingTaskId === id ? null : s.editingTaskId,
+        }));
+        // Check if all today's tasks are done
+        const state = get();
+        const today = new Date().toISOString().split('T')[0];
+        const todayTasks = state.tasks.filter((t) => t.date === today);
+        const allDone = todayTasks.length > 0 && todayTasks.every((t) => t.completed);
+        if (allDone) {
+          set({ showCompletionStats: true, dailyStats: get().getDailyStats() });
+        }
+      },
 
       deleteTask: (id) =>
-        set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) })),
+        set((s) => ({
+          tasks: s.tasks.filter((t) => t.id !== id),
+          editingTaskId: s.editingTaskId === id ? null : s.editingTaskId,
+        })),
 
-      moveTask: (id, newDate) => {
+      moveTask: (id, newDate, newTime) => {
         const task = get().tasks.find((t) => t.id === id);
         if (!task) return { blocked: false };
 
@@ -163,11 +199,25 @@ export const useTaskStore = create<TaskState>()(
         set((s) => ({
           tasks: s.tasks.map((t) =>
             t.id === id
-              ? { ...t, date: newDate, priority: newPriority, moveCount: t.moveCount + 1 }
+              ? {
+                  ...t,
+                  date: newDate,
+                  time: newTime ?? t.time,
+                  priority: newPriority,
+                  moveCount: t.moveCount + 1,
+                }
               : t
           ),
         }));
         return { blocked: false };
+      },
+
+      reorderTask: (id, newTime) => {
+        set((s) => ({
+          tasks: s.tasks.map((t) =>
+            t.id === id ? { ...t, time: newTime } : t
+          ),
+        }));
       },
 
       skipFocusTask: () => {
@@ -182,6 +232,7 @@ export const useTaskStore = create<TaskState>()(
       },
 
       setFocusTask: (id) => set({ focusTaskId: id }),
+      setEditingTask: (id) => set({ editingTaskId: id }),
 
       getTasksForDate: (date) =>
         get().tasks.filter((t) => t.date === date && !t.completed),
@@ -198,6 +249,27 @@ export const useTaskStore = create<TaskState>()(
           .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
         return todayTasks[0];
       },
+
+      getNextTask: (currentId) => {
+        const today = new Date().toISOString().split('T')[0];
+        const todayTasks = get()
+          .tasks.filter((t) => !t.completed && t.date === today)
+          .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+        const idx = todayTasks.findIndex((t) => t.id === currentId);
+        return todayTasks[idx + 1];
+      },
+
+      getDailyStats: () => {
+        const today = new Date().toISOString().split('T')[0];
+        const todayTasks = get().tasks.filter((t) => t.date === today);
+        return {
+          completed: todayTasks.filter((t) => t.completed).length,
+          total: todayTasks.length,
+          pushed: todayTasks.filter((t) => t.moveCount > 0).length,
+        };
+      },
+
+      dismissCompletionStats: () => set({ showCompletionStats: false }),
     }),
     { name: 'do-task-store' }
   )
