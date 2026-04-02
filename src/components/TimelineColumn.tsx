@@ -24,7 +24,7 @@ export function TimelineColumn({
   isToday,
   showTimeLabels = true,
 }: TimelineColumnProps) {
-  const { setEditingTask, reorderTask, moveTask, resizeTask, completeTask, canMoveTask } = useTaskStore();
+  const { setEditingTask, reorderTask, moveTask, resizeTask, completeTask, canMoveTask, addTask } = useTaskStore();
   const colRef = useRef<HTMLDivElement>(null);
   const [dragOverTime, setDragOverTime] = useState<string | null>(null);
   const [dragValid, setDragValid] = useState(true);
@@ -36,6 +36,20 @@ export function TimelineColumn({
     origTime: string;
     origDuration: number;
   } | null>(null);
+
+  // Drag-to-create state
+  const [creating, setCreating] = useState<{
+    startMin: number;
+    currentMin: number;
+  } | null>(null);
+  const [newTaskInput, setNewTaskInput] = useState<{
+    time: string;
+    duration: number;
+    top: number;
+    height: number;
+  } | null>(null);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const newTaskRef = useRef<HTMLInputElement>(null);
 
   const activeTasks = tasks.filter((t) => !t.completed && t.time);
   const nowTop = ((nowMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT;
@@ -129,6 +143,71 @@ export function TimelineColumn({
     };
   }, [resizing, resizeTask]);
 
+  // Drag-to-create: mouse handlers
+  const handleCreateMouseDown = useCallback((e: React.MouseEvent) => {
+    // Only on the background, not on tasks
+    if ((e.target as HTMLElement).closest('[data-task-block]')) return;
+    if (newTaskInput) return; // already showing input
+    const mins = getMinutesFromY(e.clientY);
+    const snapped = snapTo15(mins);
+    setCreating({ startMin: snapped, currentMin: snapped });
+  }, [getMinutesFromY, newTaskInput]);
+
+  useEffect(() => {
+    if (!creating) return;
+    const handleMouseMove = (e: MouseEvent) => {
+      const mins = getMinutesFromY(e.clientY);
+      const snapped = snapTo15(mins);
+      setCreating(prev => prev ? { ...prev, currentMin: snapped } : null);
+    };
+    const handleMouseUp = () => {
+      if (!creating) return;
+      const startMin = Math.min(creating.startMin, creating.currentMin);
+      const endMin = Math.max(creating.startMin, creating.currentMin);
+      const duration = Math.max(15, endMin - startMin);
+      const time = minutesToTime(startMin);
+      const top = ((startMin - START_HOUR * 60) / 60) * HOUR_HEIGHT;
+      const height = (duration / 60) * HOUR_HEIGHT;
+      setCreating(null);
+      setNewTaskTitle('');
+      setNewTaskInput({ time, duration, top, height });
+      setTimeout(() => newTaskRef.current?.focus(), 50);
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [creating, getMinutesFromY]);
+
+  const handleNewTaskSubmit = useCallback(() => {
+    if (!newTaskInput || !newTaskTitle.trim()) {
+      setNewTaskInput(null);
+      return;
+    }
+    addTask({
+      title: newTaskTitle.trim(),
+      date,
+      time: newTaskInput.time,
+      duration: newTaskInput.duration,
+      priority: 0,
+      type: 'one-time',
+    });
+    setNewTaskInput(null);
+    setNewTaskTitle('');
+  }, [newTaskInput, newTaskTitle, date, addTask]);
+
+  // Creating preview dimensions
+  const creatingPreview = creating ? (() => {
+    const startMin = Math.min(creating.startMin, creating.currentMin);
+    const endMin = Math.max(creating.startMin, creating.currentMin);
+    const duration = Math.max(15, endMin - startMin);
+    const top = ((startMin - START_HOUR * 60) / 60) * HOUR_HEIGHT;
+    const height = (duration / 60) * HOUR_HEIGHT;
+    return { top, height, time: minutesToTime(startMin), duration };
+  })() : null;
+
   const timeLabelsWidth = showTimeLabels ? '2.5rem' : '0';
 
   return (
@@ -139,6 +218,7 @@ export function TimelineColumn({
       onDragOver={handleDragOver}
       onDragLeave={() => setDragOverTime(null)}
       onDrop={handleDrop}
+      onMouseDown={handleCreateMouseDown}
     >
       {/* Hour grid lines */}
       {HOURS.map((hour, i) => (
@@ -224,6 +304,7 @@ export function TimelineColumn({
         return (
           <div
             key={task.id}
+            data-task-block
             draggable={!isResizingThis}
             onDragStart={(e) => {
               e.dataTransfer.setData('taskId', task.id);
@@ -323,6 +404,59 @@ export function TimelineColumn({
           style={{ top: nowTop + 4, left: showTimeLabels ? '2.75rem' : '2px' }}
         >
           <span className="text-[8px] font-mono text-muted-foreground/25 tracking-widest">FREE</span>
+        </div>
+      )}
+
+      {/* Drag-to-create preview */}
+      {creatingPreview && (
+        <div
+          className="absolute right-1 z-20 pointer-events-none"
+          style={{
+            top: creatingPreview.top,
+            height: creatingPreview.height,
+            left: showTimeLabels ? '2.75rem' : '2px',
+          }}
+        >
+          <div className="h-full rounded-[2px] border border-primary/30 bg-primary/[0.06] border-dashed">
+            <div className="px-2 py-1">
+              <span className="text-[8px] font-mono text-primary/60">
+                {creatingPreview.time} · {creatingPreview.duration}m
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* New task inline input */}
+      {newTaskInput && (
+        <div
+          className="absolute right-1 z-30"
+          style={{
+            top: newTaskInput.top,
+            height: Math.max(newTaskInput.height, 28),
+            left: showTimeLabels ? '2.75rem' : '2px',
+          }}
+        >
+          <div className="h-full rounded-[2px] border border-primary/40 bg-card shadow-sm flex items-start px-2 py-1 gap-1.5"
+               style={{ borderLeftWidth: '2px', borderLeftColor: 'hsl(var(--priority-0) / 0.4)' }}>
+            <div className="flex-1 min-w-0">
+              <input
+                ref={newTaskRef}
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleNewTaskSubmit();
+                  if (e.key === 'Escape') setNewTaskInput(null);
+                }}
+                onBlur={handleNewTaskSubmit}
+                placeholder="Task name..."
+                className="w-full bg-transparent text-[10px] font-mono text-foreground placeholder:text-muted-foreground/30 focus:outline-none leading-tight"
+              />
+              <span className="text-[8px] font-mono text-muted-foreground/40">
+                {newTaskInput.time} · {newTaskInput.duration}m
+              </span>
+            </div>
+          </div>
         </div>
       )}
     </div>
