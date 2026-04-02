@@ -316,7 +316,7 @@ export const useTaskStore = create<TaskState>()(
       dailyStats: null,
 
       setViewMode: (mode) => set({ viewMode: mode }),
-      toggleVacationMode: () => set((s) => ({ vacationMode: !s.vacationMode })),
+      toggleRoutines: () => set((s) => ({ routinesEnabled: !s.routinesEnabled })),
 
       addTask: (taskData) => {
         const task: Task = {
