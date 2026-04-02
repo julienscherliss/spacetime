@@ -304,6 +304,7 @@ export function TimelineColumn({
         return (
           <div
             key={task.id}
+            data-task-block
             draggable={!isResizingThis}
             onDragStart={(e) => {
               e.dataTransfer.setData('taskId', task.id);
