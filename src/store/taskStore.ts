@@ -6,6 +6,14 @@ export type Priority = 0 | 1 | 2 | 3;
 export type TaskType = 'one-time' | 'recurring';
 export type ViewMode = 'focus' | 'day' | 'week' | 'calendar';
 
+export type RecurrencePattern =
+  | { type: 'daily' }
+  | { type: 'weekly'; days: number[] } // 0=Sun, 1=Mon...
+  | { type: 'monthly'; dayOfMonth: number }
+  | { type: 'yearly'; month: number; dayOfMonth: number }
+  | { type: 'weekdays' }
+  | { type: 'custom'; intervalDays: number };
+
 export interface Task {
   id: string;
   title: string;
@@ -18,6 +26,9 @@ export interface Task {
   completed: boolean;
   createdAt: string;
   moveCount: number;
+  recurrence?: RecurrencePattern;
+  recurrenceParentId?: string; // links instances to parent
+  isRecurrenceInstance?: boolean;
 }
 
 export interface DailyStats {
@@ -42,9 +53,10 @@ interface TaskState {
   setViewMode: (mode: ViewMode) => void;
   toggleVacationMode: () => void;
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'completed' | 'moveCount' | 'originalPriority'>) => void;
-  updateTask: (id: string, updates: Partial<Pick<Task, 'title' | 'date' | 'time' | 'duration'>>) => void;
+  updateTask: (id: string, updates: Partial<Pick<Task, 'title' | 'date' | 'time' | 'duration' | 'priority' | 'recurrence' | 'type'>>) => void;
   completeTask: (id: string) => void;
   deleteTask: (id: string) => void;
+  deleteRecurrenceSeries: (parentId: string) => void;
   canMoveTask: (id: string, newDate: string) => MoveValidation;
   moveTask: (id: string, newDate: string, newTime?: string) => { blocked: boolean };
   resizeTask: (id: string, newTime: string, newDuration: number) => void;
@@ -57,9 +69,71 @@ interface TaskState {
   getNextTask: (currentId: string) => Task | undefined;
   getDailyStats: () => DailyStats;
   dismissCompletionStats: () => void;
+  generateRecurringInstances: (startDate: string, endDate: string) => void;
 }
 
 const generateId = () => Math.random().toString(36).substring(2, 10);
+
+function getNextOccurrence(pattern: RecurrencePattern, fromDate: string): string | null {
+  const d = new Date(fromDate + 'T00:00:00');
+  switch (pattern.type) {
+    case 'daily':
+      d.setDate(d.getDate() + 1);
+      return d.toISOString().split('T')[0];
+    case 'weekly': {
+      for (let i = 1; i <= 7; i++) {
+        const next = new Date(d);
+        next.setDate(next.getDate() + i);
+        if (pattern.days.includes(next.getDay())) {
+          return next.toISOString().split('T')[0];
+        }
+      }
+      return null;
+    }
+    case 'weekdays': {
+      for (let i = 1; i <= 7; i++) {
+        const next = new Date(d);
+        next.setDate(next.getDate() + i);
+        const day = next.getDay();
+        if (day >= 1 && day <= 5) {
+          return next.toISOString().split('T')[0];
+        }
+      }
+      return null;
+    }
+    case 'monthly':
+      d.setMonth(d.getMonth() + 1);
+      d.setDate(pattern.dayOfMonth);
+      return d.toISOString().split('T')[0];
+    case 'yearly':
+      d.setFullYear(d.getFullYear() + 1);
+      d.setMonth(pattern.month);
+      d.setDate(pattern.dayOfMonth);
+      return d.toISOString().split('T')[0];
+    case 'custom':
+      d.setDate(d.getDate() + pattern.intervalDays);
+      return d.toISOString().split('T')[0];
+  }
+}
+
+function getAllOccurrences(pattern: RecurrencePattern, startDate: string, rangeStart: string, rangeEnd: string): string[] {
+  const dates: string[] = [];
+  let current = startDate;
+  // Include the start date if in range
+  if (current >= rangeStart && current <= rangeEnd) {
+    dates.push(current);
+  }
+  // Generate up to 60 occurrences max
+  for (let i = 0; i < 60; i++) {
+    const next = getNextOccurrence(pattern, current);
+    if (!next || next > rangeEnd) break;
+    if (next >= rangeStart) {
+      dates.push(next);
+    }
+    current = next;
+  }
+  return dates;
+}
 
 export const useTaskStore = create<TaskState>()(
   persist(
@@ -116,6 +190,7 @@ export const useTaskStore = create<TaskState>()(
           completed: false,
           createdAt: new Date().toISOString(),
           moveCount: 0,
+          recurrence: { type: 'weekdays' },
         },
         {
           id: 'demo-5',
@@ -193,10 +268,22 @@ export const useTaskStore = create<TaskState>()(
           editingTaskId: s.editingTaskId === id ? null : s.editingTaskId,
         })),
 
+      deleteRecurrenceSeries: (parentId) =>
+        set((s) => ({
+          tasks: s.tasks.filter((t) => t.id !== parentId && t.recurrenceParentId !== parentId),
+          editingTaskId: null,
+        })),
+
       canMoveTask: (id, newDate) => {
         const task = get().tasks.find((t) => t.id === id);
         if (!task) return { allowed: false, reason: 'Task not found' };
-        if (task.date === newDate) return { allowed: true };
+        if (task.date === newDate) {
+          // Same-day reorder: blocked for LOCK
+          if (task.priority >= 3) {
+            return { allowed: false, reason: 'Task is locked' };
+          }
+          return { allowed: true };
+        }
 
         if (task.priority >= 3) {
           return { allowed: false, reason: 'Cannot move locked task' };
@@ -226,7 +313,12 @@ export const useTaskStore = create<TaskState>()(
           return { blocked: true };
         }
 
-        const newPriority = Math.min(3, task.priority + 1) as Priority;
+        // Only escalate priority on cross-day moves
+        const crossDay = task.date !== newDate;
+        const newPriority = crossDay
+          ? Math.min(3, task.priority + 1) as Priority
+          : task.priority;
+
         set((s) => ({
           tasks: s.tasks.map((t) =>
             t.id === id
@@ -235,7 +327,7 @@ export const useTaskStore = create<TaskState>()(
                   date: newDate,
                   time: newTime ?? t.time,
                   priority: newPriority,
-                  moveCount: t.moveCount + 1,
+                  moveCount: crossDay ? t.moveCount + 1 : t.moveCount,
                 }
               : t
           ),
@@ -244,6 +336,7 @@ export const useTaskStore = create<TaskState>()(
       },
 
       resizeTask: (id, newTime, newDuration) => {
+        // Resize NEVER escalates priority
         set((s) => ({
           tasks: s.tasks.map((t) =>
             t.id === id ? { ...t, time: newTime, duration: Math.max(15, newDuration) } : t
@@ -252,6 +345,10 @@ export const useTaskStore = create<TaskState>()(
       },
 
       reorderTask: (id, newTime) => {
+        const task = get().tasks.find((t) => t.id === id);
+        if (!task) return;
+        // LOCK tasks cannot be reordered
+        if (task.priority >= 3) return;
         set((s) => ({
           tasks: s.tasks.map((t) =>
             t.id === id ? { ...t, time: newTime } : t
@@ -272,8 +369,11 @@ export const useTaskStore = create<TaskState>()(
       setFocusTask: (id) => set({ focusTaskId: id }),
       setEditingTask: (id) => set({ editingTaskId: id }),
 
-      getTasksForDate: (date) =>
-        get().tasks.filter((t) => t.date === date && !t.completed),
+      getTasksForDate: (date) => {
+        const state = get();
+        return state.tasks.filter((t) => t.date === date && !t.completed &&
+          !(state.vacationMode && t.type === 'recurring'));
+      },
 
       getCurrentFocusTask: () => {
         const state = get();
@@ -307,6 +407,51 @@ export const useTaskStore = create<TaskState>()(
       },
 
       dismissCompletionStats: () => set({ showCompletionStats: false }),
+
+      generateRecurringInstances: (startDate, endDate) => {
+        const state = get();
+        const recurringParents = state.tasks.filter(
+          (t) => t.recurrence && !t.isRecurrenceInstance
+        );
+        const existingInstanceDates = new Map<string, Set<string>>();
+        state.tasks
+          .filter((t) => t.isRecurrenceInstance && t.recurrenceParentId)
+          .forEach((t) => {
+            const set = existingInstanceDates.get(t.recurrenceParentId!) || new Set();
+            set.add(t.date);
+            existingInstanceDates.set(t.recurrenceParentId!, set);
+          });
+
+        const newTasks: Task[] = [];
+        for (const parent of recurringParents) {
+          if (!parent.recurrence) continue;
+          const occurrences = getAllOccurrences(parent.recurrence, parent.date, startDate, endDate);
+          const existing = existingInstanceDates.get(parent.id) || new Set();
+          for (const occ of occurrences) {
+            if (occ === parent.date) continue; // parent already covers its own date
+            if (existing.has(occ)) continue;
+            newTasks.push({
+              id: generateId(),
+              title: parent.title,
+              type: 'recurring',
+              priority: parent.originalPriority,
+              originalPriority: parent.originalPriority,
+              date: occ,
+              time: parent.time,
+              duration: parent.duration,
+              completed: false,
+              createdAt: new Date().toISOString(),
+              moveCount: 0,
+              recurrenceParentId: parent.id,
+              isRecurrenceInstance: true,
+              recurrence: parent.recurrence,
+            });
+          }
+        }
+        if (newTasks.length > 0) {
+          set((s) => ({ tasks: [...s.tasks, ...newTasks] }));
+        }
+      },
     }),
     { name: 'do-task-store' }
   )

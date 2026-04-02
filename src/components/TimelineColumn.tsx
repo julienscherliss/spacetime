@@ -17,6 +17,13 @@ interface TimelineColumnProps {
   showTimeLabels?: boolean;
 }
 
+function formatDuration(mins: number): string {
+  if (mins < 60) return `${mins}m`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
 export function TimelineColumn({
   date,
   tasks,
@@ -29,12 +36,22 @@ export function TimelineColumn({
   const [dragOverTime, setDragOverTime] = useState<string | null>(null);
   const [dragValid, setDragValid] = useState(true);
   const [dragMsg, setDragMsg] = useState('');
+
+  // Track whether a drag/resize happened to suppress click
+  const didDragRef = useRef(false);
+
   const [resizing, setResizing] = useState<{
     id: string;
     edge: 'top' | 'bottom';
     startY: number;
     origTime: string;
     origDuration: number;
+  } | null>(null);
+
+  // Live resize feedback
+  const [resizePreview, setResizePreview] = useState<{
+    time: string;
+    duration: number;
   } | null>(null);
 
   // Drag-to-create state
@@ -104,10 +121,17 @@ export function TimelineColumn({
     setDragOverTime(null);
   }, [date, getMinutesFromY, canMoveTask, moveTask, reorderTask]);
 
-  // Resize
+  // Resize — completely silent, no dialogs
   const handleResizeStart = useCallback((e: React.MouseEvent, task: Task, edge: 'top' | 'bottom') => {
     e.preventDefault();
     e.stopPropagation();
+    // LOCK tasks cannot be resized
+    if (task.priority >= 3) {
+      setDragMsg('Task is locked');
+      setTimeout(() => setDragMsg(''), 1500);
+      return;
+    }
+    didDragRef.current = true;
     setResizing({
       id: task.id,
       edge,
@@ -124,17 +148,25 @@ export function TimelineColumn({
       const deltaMinutes = (deltaY / HOUR_HEIGHT) * 60;
       if (resizing.edge === 'bottom') {
         const newDuration = snapTo15(resizing.origDuration + deltaMinutes);
-        resizeTask(resizing.id, resizing.origTime, Math.max(15, newDuration));
+        const clamped = Math.max(15, newDuration);
+        resizeTask(resizing.id, resizing.origTime, clamped);
+        setResizePreview({ time: resizing.origTime, duration: clamped });
       } else {
         const origStart = timeToMinutes(resizing.origTime);
         const newStart = snapTo15(origStart + deltaMinutes);
         const newDuration = resizing.origDuration + (origStart - newStart);
         if (newDuration >= 15) {
           resizeTask(resizing.id, minutesToTime(newStart), newDuration);
+          setResizePreview({ time: minutesToTime(newStart), duration: newDuration });
         }
       }
     };
-    const handleMouseUp = () => setResizing(null);
+    const handleMouseUp = () => {
+      setResizing(null);
+      setResizePreview(null);
+      // Keep didDragRef true briefly to suppress the click
+      setTimeout(() => { didDragRef.current = false; }, 50);
+    };
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
     return () => {
@@ -145,9 +177,8 @@ export function TimelineColumn({
 
   // Drag-to-create: mouse handlers
   const handleCreateMouseDown = useCallback((e: React.MouseEvent) => {
-    // Only on the background, not on tasks
     if ((e.target as HTMLElement).closest('[data-task-block]')) return;
-    if (newTaskInput) return; // already showing input
+    if (newTaskInput) return;
     const mins = getMinutesFromY(e.clientY);
     const snapped = snapTo15(mins);
     setCreating({ startMin: snapped, currentMin: snapped });
@@ -210,6 +241,12 @@ export function TimelineColumn({
 
   const timeLabelsWidth = showTimeLabels ? '2.5rem' : '0';
 
+  // Handle task click — only if no drag/resize happened
+  const handleTaskClick = useCallback((taskId: string) => {
+    if (didDragRef.current) return;
+    setEditingTask(taskId);
+  }, [setEditingTask]);
+
   return (
     <div
       ref={colRef}
@@ -248,7 +285,7 @@ export function TimelineColumn({
         />
       ))}
 
-      {/* Now line — accent color, only visual element using primary */}
+      {/* Now line */}
       {isToday && nowTop > 0 && nowTop < HOURS.length * HOUR_HEIGHT && (
         <div
           className="absolute right-0 z-30 pointer-events-none"
@@ -275,7 +312,7 @@ export function TimelineColumn({
         </div>
       )}
 
-      {/* Validation message */}
+      {/* Validation / lock message */}
       {dragMsg && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 px-2.5 py-1 rounded-sm bg-card border border-destructive/20 shadow-sm">
           <span className="text-[8px] font-mono text-destructive tracking-wider">{dragMsg}</span>
@@ -290,8 +327,8 @@ export function TimelineColumn({
         const height = Math.max(((task.duration || 30) / 60) * HOUR_HEIGHT, 18);
         const isActive = task.id === activeTaskId;
         const isResizingThis = resizing?.id === task.id;
+        const isLocked = task.priority >= 3;
 
-        // Priority left-border color
         const borderLeftColor = {
           0: 'hsl(var(--priority-0) / 0.3)',
           1: 'hsl(var(--priority-1) / 0.5)',
@@ -305,15 +342,29 @@ export function TimelineColumn({
           <div
             key={task.id}
             data-task-block
-            draggable={!isResizingThis}
+            draggable={!isResizingThis && !isLocked}
             onDragStart={(e) => {
+              if (isLocked) {
+                e.preventDefault();
+                setDragMsg('Task is locked');
+                setTimeout(() => setDragMsg(''), 1500);
+                return;
+              }
+              didDragRef.current = true;
               e.dataTransfer.setData('taskId', task.id);
               e.dataTransfer.setData('sourceDate', task.date);
               e.dataTransfer.effectAllowed = 'move';
             }}
-            onClick={() => setEditingTask(task.id)}
+            onDragEnd={() => {
+              setTimeout(() => { didDragRef.current = false; }, 50);
+            }}
+            onClick={() => handleTaskClick(task.id)}
             className={`absolute right-1 group select-none transition-shadow duration-200 ${
-              isResizingThis ? 'cursor-ns-resize' : 'cursor-grab active:cursor-grabbing'
+              isLocked
+                ? 'cursor-default'
+                : isResizingThis
+                  ? 'cursor-ns-resize'
+                  : 'cursor-grab active:cursor-grabbing'
             } ${isActive ? 'z-[15]' : 'z-10'}`}
             style={{
               top,
@@ -332,13 +383,15 @@ export function TimelineColumn({
                 borderLeftWidth,
               }}
             >
-              {/* Resize handle — top */}
-              <div
-                onMouseDown={(e) => handleResizeStart(e, task, 'top')}
-                className="absolute top-0 left-0 right-0 h-[5px] cursor-ns-resize z-20 opacity-0 group-hover:opacity-100"
-              >
-                <div className="mx-auto mt-[1px] w-6 h-[1.5px] rounded-full bg-muted-foreground/20 transition-colors group-hover:bg-muted-foreground/40" />
-              </div>
+              {/* Resize handle — top (hidden for LOCK) */}
+              {!isLocked && (
+                <div
+                  onMouseDown={(e) => handleResizeStart(e, task, 'top')}
+                  className="absolute top-0 left-0 right-0 h-[5px] cursor-ns-resize z-20 opacity-0 group-hover:opacity-100"
+                >
+                  <div className="mx-auto mt-[1px] w-6 h-[1.5px] rounded-full bg-muted-foreground/20 transition-colors group-hover:bg-muted-foreground/40" />
+                </div>
+              )}
 
               {/* Content */}
               <div className="flex items-start justify-between h-full px-2 py-1 overflow-hidden">
@@ -354,11 +407,11 @@ export function TimelineColumn({
                         {task.time}
                       </span>
                       {task.duration && (
-                        <span className="text-[8px] font-mono text-muted-foreground/35">{task.duration}m</span>
+                        <span className="text-[8px] font-mono text-muted-foreground/35">{formatDuration(task.duration)}</span>
                       )}
                       {isActive && (
                         <span className="text-[8px] font-mono text-primary/70">
-                          {Math.max(0, taskMinutes + (task.duration || 30) - nowMinutes)}m left
+                          {formatDuration(Math.max(0, taskMinutes + (task.duration || 30) - nowMinutes))} left
                         </span>
                       )}
                     </div>
@@ -375,6 +428,15 @@ export function TimelineColumn({
                 </div>
               </div>
 
+              {/* Live resize duration indicator */}
+              {isResizingThis && resizePreview && (
+                <div className="absolute -right-1 top-1/2 -translate-y-1/2 translate-x-full z-30 px-1.5 py-0.5 rounded-sm bg-card border border-border shadow-sm pointer-events-none">
+                  <span className="text-[8px] font-mono text-foreground/70 whitespace-nowrap">
+                    {resizePreview.time} – {minutesToTime(timeToMinutes(resizePreview.time) + resizePreview.duration)} · {formatDuration(resizePreview.duration)}
+                  </span>
+                </div>
+              )}
+
               {/* Active progress fill */}
               {isActive && task.time && (
                 <div
@@ -385,13 +447,15 @@ export function TimelineColumn({
                 />
               )}
 
-              {/* Resize handle — bottom */}
-              <div
-                onMouseDown={(e) => handleResizeStart(e, task, 'bottom')}
-                className="absolute bottom-0 left-0 right-0 h-[5px] cursor-ns-resize z-20 opacity-0 group-hover:opacity-100"
-              >
-                <div className="mx-auto mb-[1px] w-6 h-[1.5px] rounded-full bg-muted-foreground/20 transition-colors group-hover:bg-muted-foreground/40" />
-              </div>
+              {/* Resize handle — bottom (hidden for LOCK) */}
+              {!isLocked && (
+                <div
+                  onMouseDown={(e) => handleResizeStart(e, task, 'bottom')}
+                  className="absolute bottom-0 left-0 right-0 h-[5px] cursor-ns-resize z-20 opacity-0 group-hover:opacity-100"
+                >
+                  <div className="mx-auto mb-[1px] w-6 h-[1.5px] rounded-full bg-muted-foreground/20 transition-colors group-hover:bg-muted-foreground/40" />
+                </div>
+              )}
             </div>
           </div>
         );
@@ -420,7 +484,7 @@ export function TimelineColumn({
           <div className="h-full rounded-[2px] border border-primary/30 bg-primary/[0.06] border-dashed">
             <div className="px-2 py-1">
               <span className="text-[8px] font-mono text-primary/60">
-                {creatingPreview.time} · {creatingPreview.duration}m
+                {creatingPreview.time} · {formatDuration(creatingPreview.duration)}
               </span>
             </div>
           </div>
@@ -453,7 +517,7 @@ export function TimelineColumn({
                 className="w-full bg-transparent text-[10px] font-mono text-foreground placeholder:text-muted-foreground/30 focus:outline-none leading-tight"
               />
               <span className="text-[8px] font-mono text-muted-foreground/40">
-                {newTaskInput.time} · {newTaskInput.duration}m
+                {newTaskInput.time} · {formatDuration(newTaskInput.duration)}
               </span>
             </div>
           </div>
