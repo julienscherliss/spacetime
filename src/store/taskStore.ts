@@ -387,6 +387,7 @@ export const useTaskStore = create<TaskState>()(
           tasks: s.tasks.filter((t) => t.recurrenceParentId !== parentId),
         })),
 
+      deleteRecurrenceSeries: (parentId) =>
         set((s) => ({
           tasks: s.tasks.filter((t) => t.id !== parentId && t.recurrenceParentId !== parentId),
           editingTaskId: null,
