@@ -291,7 +291,7 @@ export function TimelineColumn({
 
       {/* 15-min lines — visible when zoomed in (hourHeight >= 72) */}
       {HOUR_HEIGHT >= 72 && HOURS.map((hour, i) => (
-        <>
+        <Fragment key={`q-${hour}`}>
           <div
             key={`h15-${hour}`}
             className="absolute right-0 border-t border-border/10"
