@@ -397,6 +397,16 @@ export function TimelineColumn({
         );
       })}
 
+      {/* Free time label */}
+      {isToday && !activeTaskId && nowTop > 0 && nowTop < HOURS.length * HOUR_HEIGHT && (
+        <div
+          className="absolute z-20 pointer-events-none"
+          style={{ top: nowTop + 4, left: showTimeLabels ? '2.75rem' : '2px' }}
+        >
+          <span className="text-[8px] font-mono text-muted-foreground/25 tracking-widest">FREE</span>
+        </div>
+      )}
+
       {/* Drag-to-create preview */}
       {creatingPreview && (
         <div
