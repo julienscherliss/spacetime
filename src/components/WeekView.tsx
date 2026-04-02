@@ -26,7 +26,12 @@ export function WeekView() {
     });
   }, [today]);
 
-  return (
+  useEffect(() => {
+    if (weekDays.length > 0) {
+      generateRecurringInstances(weekDays[0].date, weekDays[weekDays.length - 1].date);
+    }
+  }, [weekDays, generateRecurringInstances]);
+
     <div className="px-2 py-5 overflow-x-auto">
       <div className="mb-4 px-2">
         <h2 className="text-lg font-display font-bold text-foreground tracking-tight">
