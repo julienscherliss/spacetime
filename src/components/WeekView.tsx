@@ -122,6 +122,7 @@ export function WeekView() {
             onZoomIn={zoomIn}
             onZoomOut={zoomOut}
             onReset={resetZoom}
+            onSetScale={setScale}
             zoomPercent={zoomPercent}
             isMin={isMin}
             isMax={isMax}
