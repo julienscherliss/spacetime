@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
 import { useCurrentTime } from '@/hooks/useCurrentTime';
@@ -6,9 +6,13 @@ import { TimelineColumn } from '@/components/TimelineColumn';
 import { BlockedModal } from '@/components/BlockedModal';
 
 export function DayView() {
-  const { tasks } = useTaskStore();
+  const { tasks, generateRecurringInstances } = useTaskStore();
   const { minutes: nowMinutes, dateStr: today } = useCurrentTime(15000);
   const [selectedDate] = useState(today);
+
+  useEffect(() => {
+    generateRecurringInstances(selectedDate, selectedDate);
+  }, [selectedDate, generateRecurringInstances]);
 
   const dayTasks = tasks.filter((t) => t.date === selectedDate);
   const completedCount = dayTasks.filter((t) => t.completed).length;
