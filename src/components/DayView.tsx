@@ -1,18 +1,35 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
 import { useCurrentTime } from '@/hooks/useCurrentTime';
 import { TimelineColumn } from '@/components/TimelineColumn';
 import { BlockedModal } from '@/components/BlockedModal';
+import { ZoomControl } from '@/components/ZoomControl';
+import { useTimeScale } from '@/hooks/useTimeScale';
 
 export function DayView() {
   const { tasks, generateRecurringInstances } = useTaskStore();
   const { minutes: nowMinutes, dateStr: today } = useCurrentTime(15000);
   const [selectedDate] = useState(today);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const {
+    hourHeight, zoomIn, zoomOut, resetZoom,
+    bindScrollZoom, bindPinchZoom,
+    zoomPercent, isMin, isMax, isDefault,
+  } = useTimeScale('day');
 
   useEffect(() => {
     generateRecurringInstances(selectedDate, selectedDate);
   }, [selectedDate, generateRecurringInstances]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const cleanScroll = bindScrollZoom(el);
+    const cleanPinch = bindPinchZoom(el);
+    return () => { cleanScroll?.(); cleanPinch?.(); };
+  }, [bindScrollZoom, bindPinchZoom]);
 
   const dayTasks = tasks.filter((t) => t.date === selectedDate);
   const completedCount = dayTasks.filter((t) => t.completed).length;
@@ -33,7 +50,7 @@ export function DayView() {
         </p>
       </div>
 
-      {/* Progress — thin, neutral */}
+      {/* Progress */}
       <div className="h-px bg-border/40 mb-4 overflow-hidden">
         <motion.div
           className="h-full bg-primary/50"
@@ -43,15 +60,30 @@ export function DayView() {
         />
       </div>
 
-      {/* Timeline */}
-      <div className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 160px)' }}>
-        <TimelineColumn
-          date={selectedDate}
-          tasks={dayTasks}
-          nowMinutes={nowMinutes}
-          isToday={isToday}
-          showTimeLabels
-        />
+      {/* Timeline + Zoom control */}
+      <div className="flex gap-3">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 160px)' }}>
+          <TimelineColumn
+            date={selectedDate}
+            tasks={dayTasks}
+            nowMinutes={nowMinutes}
+            isToday={isToday}
+            showTimeLabels
+            hourHeight={hourHeight}
+          />
+        </div>
+
+        <div className="shrink-0 pt-2">
+          <ZoomControl
+            onZoomIn={zoomIn}
+            onZoomOut={zoomOut}
+            onReset={resetZoom}
+            zoomPercent={zoomPercent}
+            isMin={isMin}
+            isMax={isMax}
+            isDefault={isDefault}
+          />
+        </div>
       </div>
 
       {/* Completed */}
