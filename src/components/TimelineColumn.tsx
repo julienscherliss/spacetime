@@ -89,7 +89,7 @@ export function TimelineColumn({
     const rect = colRef.current.getBoundingClientRect();
     const y = clientY - rect.top;
     return START_HOUR * 60 + (y / HOUR_HEIGHT) * 60;
-  }, []);
+  }, [HOUR_HEIGHT]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
