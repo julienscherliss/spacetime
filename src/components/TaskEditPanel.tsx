@@ -57,7 +57,7 @@ function recurrenceLabel(r?: RecurrencePattern): string {
 export function TaskEditPanel() {
   const {
     tasks, editingTaskId, setEditingTask, updateTask, updateFutureInstances,
-    deleteTask, deleteFutureInstances, deleteRecurrenceSeries,
+    deleteTask, deleteFutureInstances, deleteRecurrenceSeries, removeInstances,
     setFocusTask, setViewMode, generateRecurringInstances,
   } = useTaskStore();
   const task = tasks.find((t) => t.id === editingTaskId);
