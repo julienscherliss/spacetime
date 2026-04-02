@@ -8,7 +8,7 @@ import { ZoomControl } from '@/components/ZoomControl';
 import { useTimeScale } from '@/hooks/useTimeScale';
 
 export function DayView() {
-  const { tasks, vacationMode, generateRecurringInstances } = useTaskStore();
+  const { tasks, routinesEnabled, generateRecurringInstances } = useTaskStore();
   const { minutes: nowMinutes, dateStr: today } = useCurrentTime(15000);
   const [selectedDate] = useState(today);
   const scrollRef = useRef<HTMLDivElement>(null);
