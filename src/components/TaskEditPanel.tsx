@@ -149,6 +149,7 @@ export function TaskEditPanel() {
       priority,
       recurrence,
       type: recurrence ? 'recurring' as const : 'one-time' as const,
+      isRoutine: recurrence ? isRoutine : false,
     };
   };
 
