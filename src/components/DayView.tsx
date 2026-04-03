@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
 import { useCalendarStore } from '@/store/calendarStore';
+import { useTouchDragStore } from '@/store/touchDragStore';
 import { useCurrentTime, formatTime12h } from '@/hooks/useCurrentTime';
 import { TimelineColumn } from '@/components/TimelineColumn';
 import { BlockedModal } from '@/components/BlockedModal';
@@ -41,6 +42,9 @@ export function DayView() {
     if (connected) fetchEvents(selectedDate, selectedDate);
   }, [selectedDate, connected]);
 
+  // Lock scroll during active touch drag
+  const isDragging = useTouchDragStore((s) => !!s.dragging);
+
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -48,6 +52,15 @@ export function DayView() {
     const cleanPinch = bindPinchZoom(el);
     return () => { cleanScroll?.(); cleanPinch?.(); };
   }, [bindScrollZoom, bindPinchZoom]);
+
+  // Prevent scroll container from scrolling while dragging a task
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !isDragging) return;
+    const prevent = (e: TouchEvent) => { e.preventDefault(); };
+    el.addEventListener('touchmove', prevent, { passive: false });
+    return () => el.removeEventListener('touchmove', prevent);
+  }, [isDragging]);
 
   // Swipe gesture handlers
   const handleTouchStart = useCallback((e: React.TouchEvent) => {

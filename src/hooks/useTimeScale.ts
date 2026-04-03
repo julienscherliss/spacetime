@@ -74,6 +74,8 @@ export function useTimeScale(view: 'day' | 'week') {
     if (!container) return;
     let initialDistance = 0;
     let initialScale = SCALE_DEFAULT;
+    let initialScrollTop = 0;
+    let gestureMidY = 0;
 
     const getDistance = (touches: TouchList) => {
       if (touches.length < 2) return 0;
@@ -82,10 +84,19 @@ export function useTimeScale(view: 'day' | 'week') {
       return Math.sqrt(dx * dx + dy * dy);
     };
 
+    const getMidY = (touches: TouchList) => {
+      if (touches.length < 2) return 0;
+      return (touches[0].clientY + touches[1].clientY) / 2;
+    };
+
     const onTouchStart = (e: TouchEvent) => {
       if (e.touches.length === 2) {
         initialDistance = getDistance(e.touches);
         initialScale = loadScale(view);
+        initialScrollTop = container.scrollTop;
+        // Store the gesture midpoint relative to the container's viewport
+        const rect = container.getBoundingClientRect();
+        gestureMidY = getMidY(e.touches) - rect.top;
       }
     };
 
@@ -94,7 +105,16 @@ export function useTimeScale(view: 'day' | 'week') {
       e.preventDefault();
       const dist = getDistance(e.touches);
       const ratio = dist / initialDistance;
-      setHourHeight(clamp(initialScale * ratio, SCALE_MIN, SCALE_MAX));
+      const newScale = clamp(initialScale * ratio, SCALE_MIN, SCALE_MAX);
+
+      // Calculate the "time position" under the gesture midpoint at the start
+      // timePos = (scrollTop + gestureMidY) / initialScale  (in "hours" units)
+      const timePos = (initialScrollTop + gestureMidY) / initialScale;
+
+      setHourHeight(newScale);
+
+      // Adjust scroll so the same time position stays under the gesture midpoint
+      container.scrollTop = timePos * newScale - gestureMidY;
     };
 
     container.addEventListener('touchstart', onTouchStart, { passive: true });

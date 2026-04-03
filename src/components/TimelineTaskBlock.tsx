@@ -63,10 +63,10 @@ export function TimelineTaskBlock({
     },
     canDrag: !isLocked && !isResizingThis,
     onTap: () => handleTaskClick(task.id),
-    onDragStart: ({ element }) => {
+    onDragStart: ({ point, element }) => {
       didDragRef.current = true;
       const blockRect = element.getBoundingClientRect();
-      dragOffsetRef.current = blockRect.height / 2;
+      dragOffsetRef.current = point.y - blockRect.top;
     },
     onDragEnd: () => {
       setTimeout(() => {
