@@ -789,7 +789,7 @@ export function TimelineColumn({
       )}
 
       {/* Scheduled task drag overlay — red dashed outline */}
-      {scheduledDragActive && scheduledDragMinutes !== null && (
+      {scheduledDragActive && scheduledDragMinutes !== null && useScheduledDragStore.getState().targetDate === date && (
         <div
           className="absolute right-1 z-[25] pointer-events-none"
           style={{

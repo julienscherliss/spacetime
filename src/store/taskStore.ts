@@ -35,7 +35,10 @@ export interface Task {
   recurrenceParentId?: string;
   isRecurrenceInstance?: boolean;
   isRoutine?: boolean;
-  linked?: boolean; // linked repeating tasks share edits
+  linked?: boolean;
+  seriesId?: string;          // recurrence origin — shared by all instances from one template
+  linkedGroupId?: string;     // synchronization group — only truly linked tasks share this
+  detachedFromSeries?: boolean; // explicitly detached from series behaviour
   inWaitingRoom?: boolean;
   waitingRoomCount?: number;
 }
@@ -91,25 +94,25 @@ function deriveType(recurrence?: RecurrencePattern): TaskType {
   return recurrence ? 'recurring' : 'one-time';
 }
 
-function getRecurringSeriesId(task: Task): string | null {
-  if (task.recurrenceParentId) return task.recurrenceParentId;
-  if (task.recurrence || task.isRecurrenceInstance || task.type === 'recurring') return task.id;
-  return null;
-}
-
+/**
+ * Compute set of task IDs that should be affected by a schedule change.
+ * Uses explicit linkedGroupId — never inferred from series membership alone.
+ */
 function getLinkedScheduleTargetIds(tasks: Task[], activeTask: Task): Set<string> {
   const targetIds = new Set<string>([activeTask.id]);
-  const seriesId = getRecurringSeriesId(activeTask);
 
-  if (!seriesId || activeTask.linked !== true) {
+  // Only propagate if the task is explicitly linked AND has a linkedGroupId
+  if (activeTask.linked !== true || !activeTask.linkedGroupId) {
     return targetIds;
   }
 
+  const groupId = activeTask.linkedGroupId;
   tasks.forEach((candidate) => {
-    if (candidate.completed || candidate.linked !== true) return;
-    if (getRecurringSeriesId(candidate) === seriesId) {
-      targetIds.add(candidate.id);
-    }
+    if (candidate.id === activeTask.id) return;
+    if (candidate.completed) return;
+    if (candidate.linked !== true) return;
+    if (candidate.linkedGroupId !== groupId) return;
+    targetIds.add(candidate.id);
   });
 
   return targetIds;
@@ -270,11 +273,17 @@ export const useTaskStore = create<TaskState>()(
 
       addTask: (taskData) => {
         const type = deriveType(taskData.recurrence);
+        const id = generateId();
+        const seriesId = taskData.recurrenceParentId || id;
+        const linkedGroupId = taskData.linked ? seriesId : undefined;
         const task: Task = {
           ...taskData,
           type,
           isRoutine: taskData.isRoutine ?? (type === 'recurring'),
-          id: generateId(),
+          id,
+          seriesId,
+          linkedGroupId,
+          detachedFromSeries: false,
           originalPriority: taskData.priority,
           completed: false,
           createdAt: new Date().toISOString(),
@@ -301,10 +310,14 @@ export const useTaskStore = create<TaskState>()(
         if ('recurrence' in updates) {
           resolvedUpdates.type = deriveType(updates.recurrence);
         }
+        // Find the parent to get its linkedGroupId
+        const parent = get().tasks.find((t) => t.id === parentId);
+        const groupId = parent?.linkedGroupId;
         set((s) => ({
           tasks: s.tasks.map((t) => {
             if (t.id === parentId) return { ...t, ...resolvedUpdates };
-            if (t.recurrenceParentId === parentId && t.date >= today && !t.completed && t.linked === true) {
+            // Only propagate via explicit linkedGroupId match
+            if (groupId && t.linkedGroupId === groupId && t.linked === true && t.date >= today && !t.completed) {
               return { ...t, ...resolvedUpdates };
             }
             return t;
@@ -573,6 +586,9 @@ export const useTaskStore = create<TaskState>()(
               recurrence: parent.recurrence,
               isRoutine: parent.isRoutine,
               linked: parent.linked,
+              seriesId: parent.seriesId || parent.id,
+              linkedGroupId: parent.linked ? (parent.linkedGroupId || parent.id) : undefined,
+              detachedFromSeries: false,
             });
           }
         }
