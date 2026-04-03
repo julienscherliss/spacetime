@@ -538,6 +538,33 @@ export const useTaskStore = create<TaskState>()(
         }
       },
     }),
-    { name: 'do-task-store' }
+    {
+      name: 'do-task-store',
+      onRehydrateStorage: () => (state) => {
+        // Migrate any non-UUID task IDs (e.g. old "demo-1" format)
+        if (state?.tasks) {
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          const needsMigration = state.tasks.some(t => !uuidRegex.test(t.id));
+          if (needsMigration) {
+            const idMap = new Map<string, string>();
+            state.tasks = state.tasks.map(t => {
+              if (!uuidRegex.test(t.id)) {
+                const newId = crypto.randomUUID();
+                idMap.set(t.id, newId);
+                return { ...t, id: newId };
+              }
+              return t;
+            });
+            // Fix recurrence parent references
+            state.tasks = state.tasks.map(t => {
+              if (t.recurrenceParentId && idMap.has(t.recurrenceParentId)) {
+                return { ...t, recurrenceParentId: idMap.get(t.recurrenceParentId) };
+              }
+              return t;
+            });
+          }
+        }
+      },
+    }
   )
 );
