@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTaskStore } from '@/store/taskStore';
+import { useCalendarStore } from '@/store/calendarStore';
 import { useCurrentTime } from '@/hooks/useCurrentTime';
 import { WeekGrid, useWeekDays } from '@/components/WeekGrid';
 import { BlockedModal } from '@/components/BlockedModal';
@@ -31,6 +32,14 @@ export function WeekView() {
       generateRecurringInstances(start, end);
     }
   }, [week1, week2, stacked, generateRecurringInstances]);
+
+  // Fetch Google Calendar events for visible weeks
+  const { connected, fetchEvents } = useCalendarStore();
+  useEffect(() => {
+    const start = week1[0]?.date;
+    const end = stacked ? week2[week2.length - 1]?.date : week1[week1.length - 1]?.date;
+    if (connected && start && end) fetchEvents(start, end);
+  }, [week1, week2, stacked, connected]);
 
   useEffect(() => {
     const el = scrollRef.current;

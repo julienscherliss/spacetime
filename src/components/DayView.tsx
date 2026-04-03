@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
+import { useCalendarStore } from '@/store/calendarStore';
 import { useCurrentTime } from '@/hooks/useCurrentTime';
 import { TimelineColumn } from '@/components/TimelineColumn';
 import { BlockedModal } from '@/components/BlockedModal';
@@ -22,6 +23,12 @@ export function DayView() {
   useEffect(() => {
     generateRecurringInstances(selectedDate, selectedDate);
   }, [selectedDate, generateRecurringInstances]);
+
+  // Fetch Google Calendar events for the visible date
+  const { connected, fetchEvents } = useCalendarStore();
+  useEffect(() => {
+    if (connected) fetchEvents(selectedDate, selectedDate);
+  }, [selectedDate, connected]);
 
   useEffect(() => {
     const el = scrollRef.current;

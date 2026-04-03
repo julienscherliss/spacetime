@@ -14,7 +14,77 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      google_calendars: {
+        Row: {
+          color: string | null
+          connection_id: string
+          created_at: string | null
+          google_calendar_id: string
+          id: string
+          name: string
+          visible: boolean | null
+        }
+        Insert: {
+          color?: string | null
+          connection_id: string
+          created_at?: string | null
+          google_calendar_id: string
+          id?: string
+          name: string
+          visible?: boolean | null
+        }
+        Update: {
+          color?: string | null
+          connection_id?: string
+          created_at?: string | null
+          google_calendar_id?: string
+          id?: string
+          name?: string
+          visible?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "google_calendars_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "google_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      google_connections: {
+        Row: {
+          access_token: string
+          created_at: string | null
+          device_id: string
+          email: string | null
+          id: string
+          refresh_token: string | null
+          token_expires_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          access_token: string
+          created_at?: string | null
+          device_id: string
+          email?: string | null
+          id?: string
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          access_token?: string
+          created_at?: string | null
+          device_id?: string
+          email?: string | null
+          id?: string
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
