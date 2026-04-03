@@ -122,6 +122,7 @@ export function TimelineTaskBlock({
         top,
         height,
         left: showTimeLabels ? '3.25rem' : '2px',
+        touchAction: isLocked ? 'auto' : 'none',
       }}
     >
       <div
