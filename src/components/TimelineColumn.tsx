@@ -345,7 +345,10 @@ export function TimelineColumn({
         setCreating(null);
         setNewTaskTitle('');
         setNewTaskInput({ time, duration, top, height });
-        setTimeout(() => newTaskRef.current?.focus(), 50);
+        setTimeout(() => {
+          newTaskRef.current?.focus();
+          newTaskRef.current?.click(); // Helps trigger iOS keyboard
+        }, 100);
       } else {
         setCreating(null);
       }
