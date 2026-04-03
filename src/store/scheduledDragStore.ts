@@ -24,6 +24,7 @@ interface ScheduledDragActions {
   }) => void;
   activate: () => void;
   updatePosition: (minutes: number) => void;
+  setTargetDate: (date: string) => void;
   endDrag: () => ScheduledDragState;
   cancel: () => void;
 }
@@ -54,6 +55,7 @@ export const useScheduledDragStore = create<ScheduledDragState & ScheduledDragAc
     }),
   activate: () => set({ active: true }),
   updatePosition: (minutes) => set({ currentMinutes: minutes }),
+  setTargetDate: (date) => set({ targetDate: date }),
   endDrag: () => {
     const state = { ...get() };
     set(initial);
