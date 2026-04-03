@@ -297,7 +297,7 @@ export function TaskEditPanel() {
                       ROUTINE
                     </span>
                   )}
-                  {isLinked && recurrenceType !== 'none' && (
+                  {isLinked && isRecurring && (
                     <span className="text-[7px] font-mono text-primary/40 tracking-widest">
                       <Link size={8} className="inline mr-0.5" />
                       LINKED
@@ -572,7 +572,7 @@ export function TaskEditPanel() {
             )}
 
             {/* Link/Unlink toggle */}
-            {recurrenceType !== 'none' && (
+            {isRecurring && (
               <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   {isLinked ? <Link size={10} className="text-primary/50" /> : <Unlink size={10} className="text-muted-foreground/30" />}
@@ -596,7 +596,7 @@ export function TaskEditPanel() {
             )}
 
             {/* Linked info */}
-            {isLinked && recurrenceType !== 'none' && (
+            {isLinked && isRecurring && (
               <p className="text-[8px] font-mono text-muted-foreground/30 mb-3 pl-1">
                 Changes to time, duration, or notes will apply to all future instances.
               </p>
