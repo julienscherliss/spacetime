@@ -501,6 +501,23 @@ export function TimelineColumn({
     return () => window.removeEventListener('touchend', handleGlobalTouchEnd);
   }, [date, HOUR_HEIGHT, addTask, canMoveTask, moveTask, reorderTask]);
 
+  // Track touch drag ghost position over this column for live drop preview
+  const touchDragging = useTouchDragStore((s) => s.dragging);
+  const touchGhostPos = useTouchDragStore((s) => s.ghostPos);
+
+  const touchDropPreview = (() => {
+    if (!touchDragging || !touchGhostPos || !colRef.current) return null;
+    const rect = colRef.current.getBoundingClientRect();
+    if (touchGhostPos.x < rect.left || touchGhostPos.x > rect.right) return null;
+    const y = touchGhostPos.y - rect.top - dragOffsetRef.current;
+    const mins = START_HOUR * 60 + (y / HOUR_HEIGHT) * 60;
+    const snapped = snapTo15(mins);
+    const duration = touchDragging.duration || 30;
+    const top = ((snapped - START_HOUR * 60) / 60) * HOUR_HEIGHT;
+    const height = Math.max((duration / 60) * HOUR_HEIGHT, 22);
+    return { top, height, time: minutesToTime(snapped), duration };
+  })();
+
   return (
     <div
       ref={colRef}
