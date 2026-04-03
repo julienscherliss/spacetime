@@ -280,7 +280,8 @@ export const useTaskStore = create<TaskState>()(
         set((s) => ({
           tasks: s.tasks.map((t) => {
             if (t.id === parentId) return { ...t, ...resolvedUpdates };
-            if (t.recurrenceParentId === parentId && t.date >= today && !t.completed) {
+            // Only propagate to instances that are still linked
+            if (t.recurrenceParentId === parentId && t.date >= today && !t.completed && t.linked !== false) {
               return { ...t, ...resolvedUpdates };
             }
             return t;

@@ -694,7 +694,7 @@ export function TimelineColumn({
         const isActive = task.id === activeTaskId;
         const isResizingThis = resizing?.id === task.id;
         const isLocked = task.priority >= 3;
-        const showUnlinkedOutline = task.type === 'recurring' && task.linked === false;
+        const showUnlinkedOutline = false; // unlinked state shown via icon, not border
 
         return (
           <TimelineTaskBlock

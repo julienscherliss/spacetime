@@ -1,5 +1,5 @@
 import { MutableRefObject, useRef, useCallback } from 'react';
-import { Check } from 'lucide-react';
+import { Check, Link, Unlink } from 'lucide-react';
 import { Task } from '@/store/taskStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { formatTime12h } from '@/hooks/useCurrentTime';
