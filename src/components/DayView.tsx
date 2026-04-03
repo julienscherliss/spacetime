@@ -24,6 +24,12 @@ export function DayView() {
     generateRecurringInstances(selectedDate, selectedDate);
   }, [selectedDate, generateRecurringInstances]);
 
+  // Fetch Google Calendar events for the visible date
+  const { connected, fetchEvents } = useCalendarStore();
+  useEffect(() => {
+    if (connected) fetchEvents(selectedDate, selectedDate);
+  }, [selectedDate, connected]);
+
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;

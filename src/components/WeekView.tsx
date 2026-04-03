@@ -33,6 +33,14 @@ export function WeekView() {
     }
   }, [week1, week2, stacked, generateRecurringInstances]);
 
+  // Fetch Google Calendar events for visible weeks
+  const { connected, fetchEvents } = useCalendarStore();
+  useEffect(() => {
+    const start = week1[0]?.date;
+    const end = stacked ? week2[week2.length - 1]?.date : week1[week1.length - 1]?.date;
+    if (connected && start && end) fetchEvents(start, end);
+  }, [week1, week2, stacked, connected]);
+
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
