@@ -1,8 +1,9 @@
 import { useRef, useState, useCallback, useEffect, Fragment } from 'react';
 import { useTaskStore, Task } from '@/store/taskStore';
+import { useCalendarStore, CalendarEvent } from '@/store/calendarStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { timeToMinutes, minutesToTime, snapTo15 } from '@/hooks/useCurrentTime';
-import { Check } from 'lucide-react';
+import { Check, Calendar as CalIcon } from 'lucide-react';
 
 export const DEFAULT_HOUR_HEIGHT = 56;
 export const HOUR_HEIGHT = DEFAULT_HOUR_HEIGHT; // backward compat
