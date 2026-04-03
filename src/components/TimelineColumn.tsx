@@ -282,7 +282,8 @@ export function TimelineColumn({
       const target = e.target as HTMLElement;
       if (target.closest('[data-task-block]') || target.closest('input') || target.closest('button')) return;
       const touch = e.touches[0];
-      const mins = getMinutes(touch.clientY);
+      // Offset touch point upward slightly — iOS reports contact below visual tap point
+      const mins = getMinutes(touch.clientY - 8);
       const snapped = snapTo15(mins);
       createTouchRef.current = { startMin: snapped, startY: touch.clientY, startX: touch.clientX, activated: false };
       createTouchTimer.current = setTimeout(() => {
