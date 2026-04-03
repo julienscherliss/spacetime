@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback, useEffect, Fragment } from 'react';
 import { useTaskStore, Task } from '@/store/taskStore';
 import { useCalendarStore, CalendarEvent } from '@/store/calendarStore';
+import { useLibraryStore } from '@/store/libraryStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { timeToMinutes, minutesToTime, snapTo15 } from '@/hooks/useCurrentTime';
 import { Check, Calendar as CalIcon } from 'lucide-react';
