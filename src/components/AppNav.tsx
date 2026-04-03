@@ -13,6 +13,7 @@ const views: { mode: ViewMode; icon: typeof Focus; label: string }[] = [
 
 export function AppNav() {
   const { viewMode, setViewMode, routinesEnabled, toggleRoutines } = useTaskStore();
+  const { panelOpen, setPanelOpen, connected } = useCalendarStore();
 
   return (
     <nav className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border/60">
