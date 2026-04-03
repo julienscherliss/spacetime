@@ -596,7 +596,7 @@ export function TaskEditPanel() {
             )}
 
             {/* Linked info */}
-            {isLinked && recurrenceType !== 'none' && (
+            {isLinked && isRecurring && (
               <p className="text-[8px] font-mono text-muted-foreground/30 mb-3 pl-1">
                 Changes to time, duration, or notes will apply to all future instances.
               </p>
