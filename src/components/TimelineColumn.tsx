@@ -4,8 +4,9 @@ import { useCalendarStore, CalendarEvent } from '@/store/calendarStore';
 import { useLibraryStore } from '@/store/libraryStore';
 import { useTouchDragStore } from '@/store/touchDragStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
+import { TimelineTaskBlock } from '@/components/TimelineTaskBlock';
 import { timeToMinutes, minutesToTime, snapTo15, formatTime12h, formatHour12h } from '@/hooks/useCurrentTime';
-import { Check, Calendar as CalIcon } from 'lucide-react';
+import { Calendar as CalIcon } from 'lucide-react';
 
 export const DEFAULT_HOUR_HEIGHT = 56;
 export const HOUR_HEIGHT = DEFAULT_HOUR_HEIGHT;
@@ -438,6 +439,22 @@ export function TimelineColumn({
             date,
             time: newTime,
           } as any);
+        } else if (dragging.type === 'task') {
+          if (dragging.sourceDate && dragging.sourceDate !== date) {
+            const validation = canMoveTask(dragging.id, date);
+            if (!validation.allowed) {
+              setDragMsg('reason' in validation ? validation.reason : 'Cannot move');
+              setDragValid(false);
+              setTimeout(() => {
+                setDragMsg('');
+                setDragValid(true);
+              }, 2000);
+            } else {
+              moveTask(dragging.id, date, newTime);
+            }
+          } else {
+            reorderTask(dragging.id, newTime);
+          }
         }
 
         useTouchDragStore.getState().endDrag();
@@ -446,7 +463,7 @@ export function TimelineColumn({
 
     window.addEventListener('touchend', handleGlobalTouchEnd);
     return () => window.removeEventListener('touchend', handleGlobalTouchEnd);
-  }, [date, HOUR_HEIGHT, addTask]);
+  }, [date, HOUR_HEIGHT, addTask, canMoveTask, moveTask, reorderTask]);
 
   return (
     <div
@@ -554,141 +571,27 @@ export function TimelineColumn({
         const isLocked = task.priority >= 3;
         const isRoutine = task.isRoutine !== false && task.type === 'recurring';
 
-        const borderLeftColor = {
-          0: 'hsl(var(--priority-0) / 0.3)',
-          1: 'hsl(var(--priority-1) / 0.5)',
-          2: 'hsl(var(--priority-2) / 0.6)',
-          3: 'hsl(var(--priority-3) / 0.7)',
-        }[task.priority];
-
-        const borderLeftWidth = task.priority >= 2 ? '3px' : '2px';
-
         return (
-          <div
+          <TimelineTaskBlock
             key={task.id}
-            data-task-block
-            draggable={!isResizingThis && !isLocked}
-            onDragStart={(e) => {
-              if (isLocked) {
-                e.preventDefault();
-                setDragMsg('Task is locked');
-                setTimeout(() => setDragMsg(''), 1500);
-                return;
-              }
-              didDragRef.current = true;
-              const blockRect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-              dragOffsetRef.current = e.clientY - blockRect.top;
-              e.dataTransfer.setData('taskId', task.id);
-              e.dataTransfer.setData('sourceDate', task.date);
-              e.dataTransfer.effectAllowed = 'move';
-            }}
-            onDragEnd={() => {
-              setTimeout(() => { didDragRef.current = false; }, 50);
-            }}
-            onClick={() => handleTaskClick(task.id)}
-            className={`absolute right-1 group draggable-item select-none transition-shadow duration-200 ${
-              isLocked
-                ? 'cursor-default'
-                : isResizingThis
-                  ? 'cursor-ns-resize'
-                  : 'cursor-grab active:cursor-grabbing'
-            } ${isActive ? 'z-[15]' : 'z-10'}`}
-            style={{
-              top,
-              height,
-              left: showTimeLabels ? '3.25rem' : '2px',
-            }}
-          >
-            <div
-              className={`h-full rounded-[2px] transition-all duration-200 ${
-                isActive
-                  ? 'bg-card border border-primary/20 shadow-sm'
-                  : isRoutine
-                    ? 'bg-card border border-border/60 border-dashed hover:border-[hsl(var(--task-hover))] hover:shadow-sm'
-                    : 'bg-card border border-[hsl(var(--task-border))] hover:border-[hsl(var(--task-hover))] hover:shadow-sm'
-              }`}
-              style={{
-                borderLeftColor,
-                borderLeftWidth,
-              }}
-            >
-              {/* Resize handle — top */}
-              {!isLocked && (
-                <div
-                  onMouseDown={(e) => handleResizeStart(e, task, 'top')}
-                  onTouchStart={(e) => handleResizeStart(e, task, 'top')}
-                  className="absolute top-0 left-0 right-0 h-[8px] cursor-ns-resize z-20 opacity-0 group-hover:opacity-100 touch:opacity-100"
-                >
-                  <div className="mx-auto mt-[1px] w-8 h-[2px] rounded-full bg-muted-foreground/20 transition-colors group-hover:bg-muted-foreground/40" />
-                </div>
-              )}
-
-              {/* Content */}
-              <div className="flex items-start justify-between h-full px-2 py-1 overflow-hidden">
-                <div className="flex-1 min-w-0">
-                  <div className={`text-[12px] font-mono leading-tight truncate ${
-                    isActive ? 'text-foreground font-medium' : 'text-foreground/75'
-                  }`}>
-                    {task.title}
-                  </div>
-                  {height > 36 && (
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-[10px] font-mono text-muted-foreground/50">
-                        {formatTime12h(task.time)}
-                      </span>
-                      {task.duration && (
-                        <span className="text-[10px] font-mono text-muted-foreground/35">{formatDuration(task.duration)}</span>
-                      )}
-                      {isActive && (
-                        <span className="text-[10px] font-mono text-primary/70">
-                          {formatDuration(Math.max(0, taskMinutes + (task.duration || 30) - nowMinutes))} left
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-1 shrink-0 ml-1">
-                  <PriorityBadge priority={task.priority} />
-                  <button
-                    onClick={(e) => { e.stopPropagation(); completeTask(task.id); }}
-                    className="p-1 rounded-sm text-muted-foreground/20 hover:text-primary hover:bg-primary/5 transition-all opacity-0 group-hover:opacity-100"
-                  >
-                    <Check size={12} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Live resize duration indicator */}
-              {isResizingThis && resizePreview && (
-                <div className="absolute -right-1 top-1/2 -translate-y-1/2 translate-x-full z-30 px-2 py-1 rounded-sm bg-card border border-border shadow-sm pointer-events-none">
-                  <span className="text-[10px] font-mono text-foreground/70 whitespace-nowrap">
-                    {formatTime12h(resizePreview.time)} – {formatTime12h(timeToMinutes(resizePreview.time) + resizePreview.duration)} · {formatDuration(resizePreview.duration)}
-                  </span>
-                </div>
-              )}
-
-              {/* Active progress fill */}
-              {isActive && task.time && (
-                <div
-                  className="absolute bottom-0 left-0 right-0 bg-primary/[0.04] pointer-events-none rounded-b-[2px]"
-                  style={{
-                    height: `${Math.min(100, ((nowMinutes - taskMinutes) / (task.duration || 30)) * 100)}%`,
-                  }}
-                />
-              )}
-
-              {/* Resize handle — bottom */}
-              {!isLocked && (
-                <div
-                  onMouseDown={(e) => handleResizeStart(e, task, 'bottom')}
-                  onTouchStart={(e) => handleResizeStart(e, task, 'bottom')}
-                  className="absolute bottom-0 left-0 right-0 h-[8px] cursor-ns-resize z-20 opacity-0 group-hover:opacity-100 touch:opacity-100"
-                >
-                  <div className="mx-auto mb-[1px] w-8 h-[2px] rounded-full bg-muted-foreground/20 transition-colors group-hover:bg-muted-foreground/40" />
-                </div>
-              )}
-            </div>
-          </div>
+            task={task}
+            top={top}
+            height={height}
+            isActive={isActive}
+            isLocked={isLocked}
+            isRoutine={isRoutine}
+            isResizingThis={isResizingThis}
+            showTimeLabels={showTimeLabels}
+            nowMinutes={nowMinutes}
+            resizePreview={resizePreview}
+            didDragRef={didDragRef}
+            dragOffsetRef={dragOffsetRef}
+            completeTask={completeTask}
+            handleTaskClick={handleTaskClick}
+            handleResizeStart={handleResizeStart}
+            setDragMsg={setDragMsg}
+            formatDuration={formatDuration}
+          />
         );
       })}
 
