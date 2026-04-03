@@ -79,6 +79,7 @@ export function TaskEditPanel() {
   const [customUnit, setCustomUnit] = useState<CustomUnit>(
     task?.recurrence?.type === 'custom' ? task.recurrence.unit : 'weeks'
   );
+  const [isRoutine, setIsRoutine] = useState(task?.isRoutine !== false && task?.type === 'recurring');
   const [showRecurrence, setShowRecurrence] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showEditScope, setShowEditScope] = useState(false);
