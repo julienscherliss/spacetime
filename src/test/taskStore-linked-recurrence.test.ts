@@ -85,4 +85,17 @@ describe('linked recurrence schedule propagation', () => {
     expect(tasks.find((task) => task.id === 'linked')).toMatchObject({ time: '15:00', duration: 45 });
     expect(tasks.find((task) => task.id === 'detached')).toMatchObject({ time: '13:00', duration: 30 });
   });
+  it('does NOT propagate across different linkedGroupIds even if seriesId matches', () => {
+    const parent = makeTask({ id: 'parent', linked: true, seriesId: 'series-1', linkedGroupId: 'group-A', date: '2026-04-01' });
+    const sameGroup = makeTask({ id: 'same-group', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: true, seriesId: 'series-1', linkedGroupId: 'group-A', date: '2026-04-02' });
+    const diffGroup = makeTask({ id: 'diff-group', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: true, seriesId: 'series-1', linkedGroupId: 'group-B', date: '2026-04-03' });
+
+    resetStore([parent, sameGroup, diffGroup]);
+    useTaskStore.getState().reorderTask('parent', '15:00');
+
+    const tasks = useTaskStore.getState().tasks;
+    expect(tasks.find((task) => task.id === 'parent')?.time).toBe('15:00');
+    expect(tasks.find((task) => task.id === 'same-group')?.time).toBe('15:00');
+    expect(tasks.find((task) => task.id === 'diff-group')?.time).toBe('13:00');
+  });
 });
