@@ -502,7 +502,7 @@ export const useTaskStore = create<TaskState>()(
       getTasksForDate: (date) => {
         const state = get();
         return state.tasks.filter((t) => t.date === date && !t.completed &&
-          !(!state.routinesEnabled && t.type === 'recurring'));
+          !(!state.routinesEnabled && t.isRoutine !== false && t.type === 'recurring'));
       },
 
       getCurrentFocusTask: () => {
