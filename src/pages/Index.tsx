@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useTaskStore } from '@/store/taskStore';
 import { AppNav } from '@/components/AppNav';
 import { FocusView } from '@/components/FocusView';
@@ -8,10 +9,26 @@ import { TaskEditPanel } from '@/components/TaskEditPanel';
 import { DailyCompletionModal } from '@/components/DailyCompletionModal';
 import { CalendarPanel } from '@/components/CalendarPanel';
 import { LibraryPanel } from '@/components/LibraryPanel';
+import { WaitingRoom } from '@/components/WaitingRoom';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Index = () => {
-  const { viewMode, routinesEnabled } = useTaskStore();
+  const { viewMode, routinesEnabled, moveOverdueToWaitingRoom } = useTaskStore();
+  const [waitingOpen, setWaitingOpen] = useState(false);
+
+  // Move overdue tasks to waiting room periodically
+  useEffect(() => {
+    moveOverdueToWaitingRoom();
+    const interval = setInterval(moveOverdueToWaitingRoom, 60000); // every minute
+    return () => clearInterval(interval);
+  }, [moveOverdueToWaitingRoom]);
+
+  // Listen for waiting room toggle from nav
+  useEffect(() => {
+    const handler = () => setWaitingOpen((o) => !o);
+    window.addEventListener('toggle-waiting-room', handler);
+    return () => window.removeEventListener('toggle-waiting-room', handler);
+  }, []);
 
   return (
     <div className={`min-h-screen bg-background`}>
@@ -54,6 +71,7 @@ const Index = () => {
       <DailyCompletionModal />
       <CalendarPanel />
       <LibraryPanel />
+      <WaitingRoom open={waitingOpen} onClose={() => setWaitingOpen(false)} />
     </div>
   );
 };

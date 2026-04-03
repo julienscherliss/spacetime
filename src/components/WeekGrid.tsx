@@ -10,17 +10,36 @@ interface WeekGridProps {
   hourHeight: number;
   routinesEnabled: boolean;
   label?: string;
-  compact?: boolean; // mobile mode
+  compact?: boolean;
+  dayCount?: number; // 3 for mobile, 7 for desktop
 }
 
-function getWeekDays(offset: number, today: string) {
+function getWeekDays(offset: number, today: string, count: number = 7) {
   const todayDate = new Date();
-  const monday = new Date(todayDate);
-  monday.setDate(todayDate.getDate() - ((todayDate.getDay() + 6) % 7) + offset * 7);
-
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
+  if (count === 7) {
+    // Full week starting Monday
+    const monday = new Date(todayDate);
+    monday.setDate(todayDate.getDate() - ((todayDate.getDay() + 6) % 7) + offset * 7);
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      const dateStr = d.toISOString().split('T')[0];
+      return {
+        date: dateStr,
+        label: d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase(),
+        shortLabel: d.toLocaleDateString('en-US', { weekday: 'narrow' }).toUpperCase(),
+        day: d.getDate(),
+        month: d.toLocaleDateString('en-US', { month: 'short' }),
+        isToday: dateStr === today,
+      };
+    });
+  }
+  // 3-day view centered on today + offset
+  const center = new Date(todayDate);
+  center.setDate(todayDate.getDate() + offset * count);
+  return Array.from({ length: count }, (_, i) => {
+    const d = new Date(center);
+    d.setDate(center.getDate() + i);
     const dateStr = d.toISOString().split('T')[0];
     return {
       date: dateStr,
@@ -43,8 +62,8 @@ export function formatWeekRange(days: { date: string; day: number; month: string
   return `${first.month} ${first.day} – ${last.month} ${last.day}`;
 }
 
-export function useWeekDays(offset: number, today: string) {
-  return useMemo(() => getWeekDays(offset, today), [offset, today]);
+export function useWeekDays(offset: number, today: string, count: number = 7) {
+  return useMemo(() => getWeekDays(offset, today, count), [offset, today, count]);
 }
 
 export function WeekGrid({
@@ -55,9 +74,10 @@ export function WeekGrid({
   routinesEnabled,
   label,
   compact = false,
+  dayCount = 7,
 }: WeekGridProps) {
   const { tasks } = useTaskStore();
-  const weekDays = useWeekDays(weekOffset, today);
+  const weekDays = useWeekDays(weekOffset, today, dayCount);
   const rangeLabel = label || formatWeekRange(weekDays);
 
   return (
@@ -68,7 +88,9 @@ export function WeekGrid({
           {rangeLabel}
         </span>
         {weekOffset === 0 && (
-          <span className="text-[9px] font-mono text-primary/50 tracking-widest">THIS WEEK</span>
+          <span className="text-[9px] font-mono text-primary/50 tracking-widest">
+            {dayCount === 7 ? 'THIS WEEK' : 'NOW'}
+          </span>
         )}
       </div>
 
@@ -111,7 +133,7 @@ export function WeekGrid({
 
         {/* Day columns */}
         {weekDays.map((day) => {
-          const dayTasks = tasks.filter((t) => t.date === day.date &&
+          const dayTasks = tasks.filter((t) => t.date === day.date && !t.inWaitingRoom &&
             !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring'));
           return (
             <div
