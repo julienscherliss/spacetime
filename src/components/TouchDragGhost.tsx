@@ -6,23 +6,37 @@ export function TouchDragGhost() {
   const ghostPos = useTouchDragStore((s) => s.ghostPos);
   const preview = useTouchDragStore((s) => s.preview);
 
-  // Global fallback: if touchend fires and dragging is still active after a tick, cancel it
-  // (TimelineColumn's handler runs synchronously and calls endDrag, so if it's still set, drop missed)
+  // When dragging is active, OWN the global touchmove/touchend so the ghost
+  // keeps following even if the source component unmounts (e.g. Library panel closes).
   useEffect(() => {
     if (!dragging) return;
-    const handler = () => {
+
+    const handleMove = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      if (touch) {
+        useTouchDragStore.getState().moveGhost({ x: touch.clientX, y: touch.clientY });
+      }
+    };
+
+    // Fallback cleanup: if touchend fires and dragging is still active after a tick,
+    // TimelineColumn's handler runs synchronously first. If it handled the drop it
+    // already called endDrag. If dragging is still set, the drop missed — clean up.
+    const handleEnd = () => {
       setTimeout(() => {
         const { dragging: stillDragging } = useTouchDragStore.getState();
         if (stillDragging) {
           useTouchDragStore.getState().endDrag();
         }
-      }, 50);
+      }, 80);
     };
-    window.addEventListener('touchend', handler);
-    window.addEventListener('touchcancel', handler);
+
+    window.addEventListener('touchmove', handleMove, { passive: true });
+    window.addEventListener('touchend', handleEnd);
+    window.addEventListener('touchcancel', handleEnd);
     return () => {
-      window.removeEventListener('touchend', handler);
-      window.removeEventListener('touchcancel', handler);
+      window.removeEventListener('touchmove', handleMove);
+      window.removeEventListener('touchend', handleEnd);
+      window.removeEventListener('touchcancel', handleEnd);
     };
   }, [dragging]);
 
