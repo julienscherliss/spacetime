@@ -125,6 +125,22 @@ export function TimelineColumn({
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const newTaskRef = useRef<HTMLInputElement>(null);
 
+  // Auto-focus new task input when it appears
+  useEffect(() => {
+    if (newTaskInput && newTaskRef.current) {
+      // Use multiple attempts to force iOS keyboard
+      const focus = () => {
+        newTaskRef.current?.focus();
+      };
+      requestAnimationFrame(() => {
+        focus();
+        setTimeout(focus, 50);
+        setTimeout(focus, 150);
+        setTimeout(focus, 300);
+      });
+    }
+  }, [newTaskInput]);
+
   const activeTasks = tasks.filter((t) => !t.completed && t.time);
   const nowTop = ((nowMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT;
 
