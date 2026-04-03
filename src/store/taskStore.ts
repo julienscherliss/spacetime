@@ -524,7 +524,7 @@ export const useTaskStore = create<TaskState>()(
         const today = new Date().toISOString().split('T')[0];
         const todayTasks = state.tasks
           .filter((t) => !t.completed && t.date === today &&
-            !(!state.routinesEnabled && t.type === 'recurring'))
+            !(!state.routinesEnabled && t.isRoutine !== false && t.type === 'recurring'))
           .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
         const idx = todayTasks.findIndex((t) => t.id === currentId);
         return todayTasks[idx + 1];
