@@ -157,6 +157,7 @@ export function TimelineColumn({
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     const taskId = e.dataTransfer.getData('taskId');
+    const taskDuration = parseInt(e.dataTransfer.getData('taskDuration') || '30', 10);
     const libraryTaskId = e.dataTransfer.getData('libraryTaskId');
     const sourceDate = e.dataTransfer.getData('sourceDate');
 
