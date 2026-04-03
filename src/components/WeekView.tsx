@@ -16,6 +16,7 @@ export function WeekView() {
   const [weekOffset, setWeekOffset] = useState(0);
   const [week2Offset, setWeek2Offset] = useState(1); // independent second week
   const [stacked, setStacked] = useState(false);
+  const preStackScaleRef = useRef<number | null>(null);
   const isMobile = useIsMobile();
 
   // Swipe state for mobile
@@ -125,7 +126,21 @@ export function WeekView() {
         {!isMobile && (
           <button
             onClick={() => {
-              if (!stacked) setWeek2Offset(weekOffset + 1);
+              if (!stacked) {
+                setWeek2Offset(weekOffset + 1);
+                // Save current scale and auto-fit both weeks
+                preStackScaleRef.current = hourHeight;
+                // Each week grid is 24 * hourHeight px; we want 2 grids + ~80px headers to fit in viewport
+                const available = window.innerHeight - 200; // header + padding
+                const fitScale = Math.floor(available / (24 * 2));
+                setScale(Math.max(fitScale, 28)); // clamp to min
+              } else {
+                // Restore previous scale
+                if (preStackScaleRef.current !== null) {
+                  setScale(preStackScaleRef.current);
+                  preStackScaleRef.current = null;
+                }
+              }
               setStacked(s => !s);
             }}
             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm text-[10px] font-mono tracking-widest transition-colors border ${
