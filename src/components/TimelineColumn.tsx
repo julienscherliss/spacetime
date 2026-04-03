@@ -92,6 +92,7 @@ export function TimelineColumn({
   const { setEditingTask, reorderTask, moveTask, resizeTask, completeTask, canMoveTask, addTask } = useTaskStore();
   const colRef = useRef<HTMLDivElement>(null);
   const [dragOverTime, setDragOverTime] = useState<string | null>(null);
+  const [dragOverDuration, setDragOverDuration] = useState<number>(30);
   const [dragValid, setDragValid] = useState(true);
   const [dragMsg, setDragMsg] = useState('');
 
