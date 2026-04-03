@@ -118,7 +118,8 @@
 }
 
 .draggable-item {
-  touch-action: manipulation;
+  touch-action: none;
+  -webkit-user-drag: none;
 }
 
 /* Skip button micro-friction */

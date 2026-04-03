@@ -1,10 +1,10 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Task } from '@/store/taskStore';
 import { X, Clock, GripVertical, AlertCircle } from 'lucide-react';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useTouchDragStore } from '@/store/touchDragStore';
+import { useIntentionalTouchDrag } from '@/hooks/useIntentionalTouchDrag';
 
 function ReflectionModal({ task, onConfirm, onCancel }: { task: Task; onConfirm: () => void; onCancel: () => void }) {
   const count = task.waitingRoomCount || 1;
@@ -55,53 +55,18 @@ function ReflectionModal({ task, onConfirm, onCancel }: { task: Task; onConfirm:
 }
 
 function WaitingRoomItem({ task, isMobile, onReflect, onClosePanel }: { task: Task; isMobile: boolean; onReflect: () => void; onClosePanel: () => void }) {
-  const touchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
-
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    const startPos = { x: touch.clientX, y: touch.clientY };
-    touchStartPosRef.current = startPos;
-    touchTimerRef.current = setTimeout(() => {
-      useTouchDragStore.getState().startDrag(
-        { type: 'waitingRoom', id: task.id, title: task.title, duration: task.duration || 30 },
-        startPos,
-      );
-      onClosePanel();
-    }, 300);
-  }, [task]);
-
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    const { dragging } = useTouchDragStore.getState();
-    if (dragging) {
-      e.preventDefault();
-      const touch = e.touches[0];
-      useTouchDragStore.getState().moveGhost({ x: touch.clientX, y: touch.clientY });
-    } else if (touchTimerRef.current && touchStartPosRef.current) {
-      const touch = e.touches[0];
-      const dx = Math.abs(touch.clientX - touchStartPosRef.current.x);
-      const dy = Math.abs(touch.clientY - touchStartPosRef.current.y);
-      if (dx > 10 || dy > 10) {
-        clearTimeout(touchTimerRef.current);
-        touchTimerRef.current = null;
-      }
-    }
-  }, []);
-
-  const handleTouchEnd = useCallback(() => {
-    if (touchTimerRef.current) {
-      clearTimeout(touchTimerRef.current);
-      touchTimerRef.current = null;
-    }
-  }, []);
+  const itemRef = useIntentionalTouchDrag<HTMLDivElement>({
+    payload: { type: 'waitingRoom', id: task.id, title: task.title, duration: task.duration || 30 },
+    onTap: onReflect,
+    onDragStart: onClosePanel,
+  });
 
   return (
     <div
+      ref={itemRef}
       className={`group flex items-center gap-2 rounded-sm hover:bg-muted/40 transition-colors cursor-pointer draggable-item select-none ${isMobile ? 'py-3 px-3' : 'py-2 px-2'}`}
       onClick={onReflect}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
+      onContextMenu={(e) => e.preventDefault()}
     >
       <GripVertical size={isMobile ? 14 : 11} className="text-muted-foreground/20 shrink-0" />
       <div className="flex-1 min-w-0">

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   useLibraryStore,
@@ -11,7 +11,7 @@ import {
   ArrowDownAZ, Clock3, FolderOpen, Pencil, Tag,
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useTouchDragStore } from '@/store/touchDragStore';
+import { useIntentionalTouchDrag } from '@/hooks/useIntentionalTouchDrag';
 
 function CategoryDot({ category }: { category: string }) {
   const builtInColors: Record<string, string> = {
@@ -32,55 +32,22 @@ function LibraryItem({ item, isMobile }: { item: LibraryTask; isMobile: boolean 
   const [title, setTitle] = useState(item.title);
   const [showCat, setShowCat] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const touchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const itemRef = useIntentionalTouchDrag<HTMLDivElement>({
+    payload: { type: 'library', id: item.id, title: item.title, duration: item.defaultDuration },
+    disabled: editing,
+    onDragStart: () => {
+      useLibraryStore.getState().setPanelOpen(false);
+    },
+  });
 
   const handleSave = () => {
     if (title.trim()) updateItem(item.id, { title: title.trim() });
     setEditing(false);
   };
 
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    const startPos = { x: touch.clientX, y: touch.clientY };
-    touchStartPosRef.current = startPos;
-    touchTimerRef.current = setTimeout(() => {
-      useTouchDragStore.getState().startDrag(
-        { type: 'library', id: item.id, title: item.title, duration: item.defaultDuration },
-        startPos,
-      );
-      // Close the library panel so the schedule is visible for dropping
-      useLibraryStore.getState().setPanelOpen(false);
-    }, 300);
-  }, [item]);
-
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    const { dragging } = useTouchDragStore.getState();
-    if (dragging) {
-      e.preventDefault();
-      const touch = e.touches[0];
-      useTouchDragStore.getState().moveGhost({ x: touch.clientX, y: touch.clientY });
-    } else if (touchTimerRef.current && touchStartPosRef.current) {
-      const touch = e.touches[0];
-      const dx = Math.abs(touch.clientX - touchStartPosRef.current.x);
-      const dy = Math.abs(touch.clientY - touchStartPosRef.current.y);
-      if (dx > 10 || dy > 10) {
-        clearTimeout(touchTimerRef.current);
-        touchTimerRef.current = null;
-      }
-    }
-  }, []);
-
-  const handleTouchEnd = useCallback(() => {
-    if (touchTimerRef.current) {
-      clearTimeout(touchTimerRef.current);
-      touchTimerRef.current = null;
-    }
-    // Touch end on the ghost is handled by TimelineColumn
-  }, []);
-
   return (
     <div
+      ref={itemRef}
       draggable={!isMobile}
       onDragStart={(e) => {
         e.dataTransfer.setData('libraryTaskId', item.id);
@@ -88,9 +55,7 @@ function LibraryItem({ item, isMobile }: { item: LibraryTask; isMobile: boolean 
         e.dataTransfer.setData('libraryDuration', String(item.defaultDuration));
         e.dataTransfer.effectAllowed = 'move';
       }}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
+      onContextMenu={(e) => e.preventDefault()}
       className={`group flex items-center gap-2 rounded-sm hover:bg-muted/40 transition-colors cursor-grab active:cursor-grabbing draggable-item select-none ${
         isMobile ? 'py-3 px-3' : 'py-2 px-2'
       }`}
@@ -130,6 +95,7 @@ function LibraryItem({ item, isMobile }: { item: LibraryTask; isMobile: boolean 
       <div className={`flex items-center gap-1 ${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
         <button
           onClick={(e) => { e.stopPropagation(); setEditing(true); }}
+          data-touch-ignore
           className="p-1 text-muted-foreground/30 hover:text-foreground transition-colors"
         >
           <Pencil size={isMobile ? 12 : 10} />
@@ -137,6 +103,7 @@ function LibraryItem({ item, isMobile }: { item: LibraryTask; isMobile: boolean 
         <div className="relative">
           <button
             onClick={(e) => { e.stopPropagation(); setShowCat(!showCat); }}
+            data-touch-ignore
             className="p-1 text-muted-foreground/30 hover:text-foreground transition-colors"
           >
             <FolderOpen size={isMobile ? 12 : 10} />
@@ -151,6 +118,7 @@ function LibraryItem({ item, isMobile }: { item: LibraryTask; isMobile: boolean 
                     updateItem(item.id, { category: cat.value });
                     setShowCat(false);
                   }}
+                  data-touch-ignore
                   className={`w-full text-left px-2.5 py-1.5 text-[10px] font-mono tracking-wider transition-colors flex items-center gap-2 ${
                     item.category === cat.value
                       ? 'text-foreground bg-muted/50'
@@ -166,6 +134,7 @@ function LibraryItem({ item, isMobile }: { item: LibraryTask; isMobile: boolean 
         </div>
         <button
           onClick={(e) => { e.stopPropagation(); deleteItem(item.id); }}
+          data-touch-ignore
           className="p-1 text-muted-foreground/30 hover:text-destructive transition-colors"
         >
           <Trash2 size={isMobile ? 12 : 10} />
