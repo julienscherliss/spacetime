@@ -1,10 +1,9 @@
-import { MutableRefObject } from 'react';
+import { MutableRefObject, useRef, useCallback } from 'react';
 import { Check } from 'lucide-react';
 import { Task } from '@/store/taskStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { formatTime12h } from '@/hooks/useCurrentTime';
-import { useIntentionalTouchDrag } from '@/hooks/useIntentionalTouchDrag';
-import { useTouchDragStore } from '@/store/touchDragStore';
+import { useScheduledDragStore } from '@/store/scheduledDragStore';
 
 interface TimelineTaskBlockProps {
   task: Task;
@@ -24,7 +23,11 @@ interface TimelineTaskBlockProps {
   handleResizeStart: (e: React.MouseEvent | React.TouchEvent, task: Task, edge: 'top' | 'bottom') => void;
   setDragMsg: (message: string) => void;
   formatDuration: (mins: number) => string;
+  hourHeight: number;
+  startHour: number;
 }
+
+const DRAG_THRESHOLD = 8;
 
 export function TimelineTaskBlock({
   task,
@@ -44,11 +47,14 @@ export function TimelineTaskBlock({
   handleResizeStart,
   setDragMsg,
   formatDuration,
+  hourHeight,
+  startHour,
 }: TimelineTaskBlockProps) {
   const taskMinutes = task.time ? parseInt(task.time.split(':')[0], 10) * 60 + parseInt(task.time.split(':')[1], 10) : 0;
-  const touchDragging = useTouchDragStore((s) => s.dragging);
-  const isTouchDraggingThis = touchDragging?.type === 'task' && touchDragging.id === task.id;
-  const supportsTouch = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
+  const isDraggingThis = useScheduledDragStore((s) => s.active && s.taskId === task.id);
+
+  const pointerStartRef = useRef<{ x: number; y: number; pointerId: number } | null>(null);
+  const elRef = useRef<HTMLDivElement | null>(null);
 
   const borderLeftColor = {
     0: 'hsl(var(--priority-0) / 0.3)',
@@ -57,75 +63,109 @@ export function TimelineTaskBlock({
     3: 'hsl(var(--priority-3) / 0.7)',
   }[task.priority];
 
-  const taskRef = useIntentionalTouchDrag<HTMLDivElement>({
-    payload: {
-      type: 'task',
-      id: task.id,
-      title: task.title,
-      duration: task.duration || 30,
+  const snapTo15 = (mins: number) => Math.round(mins / 15) * 15;
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    if (isLocked || isResizingThis) return;
+    // Ignore buttons, inputs, resize handles
+    const target = e.target as HTMLElement;
+    if (target.closest('button, input, textarea, [data-touch-ignore]')) return;
+
+    pointerStartRef.current = { x: e.clientX, y: e.clientY, pointerId: e.pointerId };
+
+    // Capture grab offset relative to the task block top
+    const blockRect = elRef.current?.getBoundingClientRect();
+    const grabOffset = blockRect ? e.clientY - blockRect.top : 0;
+
+    useScheduledDragStore.getState().startDrag({
+      taskId: task.id,
       sourceDate: task.date,
-    },
-    canDrag: !isLocked && !isResizingThis,
-    preventScrollOnTouchStart: !isLocked && !isResizingThis,
-    onTap: () => handleTaskClick(task.id),
-    onDragStart: ({ point, element }) => {
+      originalTime: task.time || '09:00',
+      duration: task.duration || 30,
+      grabOffsetY: grabOffset,
+    });
+
+    // Set pointer capture on the element for reliable tracking
+    elRef.current?.setPointerCapture(e.pointerId);
+  }, [isLocked, isResizingThis, task.id, task.date, task.time, task.duration]);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!pointerStartRef.current) return;
+    const store = useScheduledDragStore.getState();
+    if (!store.taskId) return;
+
+    const dx = e.clientX - pointerStartRef.current.x;
+    const dy = e.clientY - pointerStartRef.current.y;
+    const distance = Math.hypot(dx, dy);
+
+    if (!store.active) {
+      if (distance < DRAG_THRESHOLD) return;
+      useScheduledDragStore.getState().activate();
       didDragRef.current = true;
-      const blockRect = element.getBoundingClientRect();
-      dragOffsetRef.current = point.y - blockRect.top;
-    },
-    onDragEnd: () => {
-      setTimeout(() => {
-        didDragRef.current = false;
-      }, 50);
-    },
-    onCancel: () => {
-      didDragRef.current = false;
-    },
-  });
+    }
+
+    // Compute minutes from the column. We need the column's rect.
+    // The task block is inside the column, so we go up to find it.
+    const col = elRef.current?.closest('[data-timeline-column]') as HTMLElement | null;
+    if (!col) return;
+    const colRect = col.getBoundingClientRect();
+    const yInCol = e.clientY - colRect.top - store.grabOffsetY;
+    const rawMinutes = startHour * 60 + (yInCol / hourHeight) * 60;
+    const snapped = snapTo15(rawMinutes);
+    useScheduledDragStore.getState().updatePosition(snapped);
+  }, [didDragRef, hourHeight, startHour]);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    if (!pointerStartRef.current) return;
+    const store = useScheduledDragStore.getState();
+    
+    if (store.active) {
+      // Drop is handled by TimelineColumn listening to the store
+      // Just end the drag - TimelineColumn will read the final position
+      // We don't end here - let the column handle it via a useEffect
+    } else {
+      // It was a tap
+      useScheduledDragStore.getState().cancel();
+      handleTaskClick(task.id);
+    }
+
+    elRef.current?.releasePointerCapture(e.pointerId);
+    pointerStartRef.current = null;
+    setTimeout(() => { didDragRef.current = false; }, 50);
+  }, [handleTaskClick, task.id, didDragRef]);
+
+  const handlePointerCancel = useCallback((e: React.PointerEvent) => {
+    useScheduledDragStore.getState().cancel();
+    pointerStartRef.current = null;
+    elRef.current?.releasePointerCapture(e.pointerId);
+    didDragRef.current = false;
+  }, [didDragRef]);
 
   return (
     <div
-      ref={taskRef}
+      ref={elRef}
       data-task-block
-      draggable={!supportsTouch && !isResizingThis && !isLocked}
-      onTouchStartCapture={() => {
-        didDragRef.current = false;
-      }}
-      onDragStart={(e) => {
-        if (isLocked) {
-          e.preventDefault();
-          setDragMsg('Task is locked');
-          setTimeout(() => setDragMsg(''), 1500);
-          return;
-        }
-        didDragRef.current = true;
-        const blockRect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-        dragOffsetRef.current = e.clientY - blockRect.top;
-        e.dataTransfer.setData('taskId', task.id);
-        e.dataTransfer.setData('taskDuration', String(task.duration || 30));
-        e.dataTransfer.setData('sourceDate', task.date);
-        e.dataTransfer.effectAllowed = 'move';
-      }}
-      onDragEnd={() => {
-        setTimeout(() => {
-          didDragRef.current = false;
-        }, 50);
-      }}
-      onClick={() => handleTaskClick(task.id)}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
       onContextMenu={(e) => e.preventDefault()}
-      className={`absolute right-1 group draggable-item select-none transition-[opacity,box-shadow] duration-200 ${
+      className={`absolute right-1 group select-none transition-[opacity,box-shadow] duration-200 ${
         isLocked
           ? 'cursor-default'
           : isResizingThis
             ? 'cursor-ns-resize'
             : 'cursor-grab active:cursor-grabbing'
-      } ${isActive ? 'z-[15]' : 'z-10'} ${isTouchDraggingThis ? 'opacity-20' : 'opacity-100'}`}
+      } ${isActive ? 'z-[15]' : 'z-10'} ${isDraggingThis ? 'opacity-0' : 'opacity-100'}`}
       style={{
         top,
         height,
         left: showTimeLabels ? '3.25rem' : '2px',
         touchAction: isLocked ? 'auto' : 'none',
-      }}
+        WebkitUserSelect: 'none',
+        WebkitTouchCallout: 'none',
+        userSelect: 'none',
+      } as React.CSSProperties}
     >
       <div
         className={`h-full rounded-[2px] transition-all duration-200 ${

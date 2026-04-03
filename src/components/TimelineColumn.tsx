@@ -3,6 +3,7 @@ import { useTaskStore, Task } from '@/store/taskStore';
 import { useCalendarStore, CalendarEvent } from '@/store/calendarStore';
 import { useLibraryStore } from '@/store/libraryStore';
 import { useTouchDragStore } from '@/store/touchDragStore';
+import { useScheduledDragStore } from '@/store/scheduledDragStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { TimelineTaskBlock } from '@/components/TimelineTaskBlock';
 import { timeToMinutes, minutesToTime, snapTo15, formatTime12h, formatHour12h } from '@/hooks/useCurrentTime';
@@ -534,9 +535,43 @@ export function TimelineColumn({
     return { top, height, time: minutesToTime(snapped), duration };
   })();
 
+  // Scheduled drag: handle drop when pointer is released
+  const scheduledDragActive = useScheduledDragStore((s) => s.active);
+  const scheduledDragTaskId = useScheduledDragStore((s) => s.taskId);
+  const scheduledDragMinutes = useScheduledDragStore((s) => s.currentMinutes);
+  const scheduledDragDuration = useScheduledDragStore((s) => s.duration);
+
+  useEffect(() => {
+    if (!scheduledDragActive) return;
+    const handleUp = () => {
+      const state = useScheduledDragStore.getState();
+      if (!state.active || state.currentMinutes === null || !state.taskId) {
+        useScheduledDragStore.getState().cancel();
+        return;
+      }
+      const newTime = minutesToTime(state.currentMinutes);
+      if (state.sourceDate && state.sourceDate !== date) {
+        const validation = canMoveTask(state.taskId, date);
+        if (!validation.allowed) {
+          setDragMsg('reason' in validation ? validation.reason : 'Cannot move');
+          setTimeout(() => setDragMsg(''), 2000);
+          useScheduledDragStore.getState().cancel();
+          return;
+        }
+        moveTask(state.taskId, date, newTime);
+      } else {
+        reorderTask(state.taskId, newTime);
+      }
+      useScheduledDragStore.getState().endDrag();
+    };
+    window.addEventListener('pointerup', handleUp);
+    return () => window.removeEventListener('pointerup', handleUp);
+  }, [scheduledDragActive, date, canMoveTask, moveTask, reorderTask]);
+
   return (
     <div
       ref={colRef}
+      data-timeline-column
       className="relative select-none"
       style={{ height: HOURS.length * HOUR_HEIGHT, WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
       onDragOver={handleDragOver}
@@ -681,6 +716,8 @@ export function TimelineColumn({
             handleResizeStart={handleResizeStart}
             setDragMsg={setDragMsg}
             formatDuration={formatDuration}
+            hourHeight={HOUR_HEIGHT}
+            startHour={START_HOUR}
           />
         );
       })}
@@ -745,6 +782,26 @@ export function TimelineColumn({
               />
               <span className="text-[10px] font-mono text-muted-foreground/40">
                 {formatTime12h(newTaskInput.time)} · {formatDuration(newTaskInput.duration)}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Scheduled task drag overlay — red dashed outline */}
+      {scheduledDragActive && scheduledDragMinutes !== null && (
+        <div
+          className="absolute right-1 z-[25] pointer-events-none"
+          style={{
+            top: ((scheduledDragMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT,
+            height: Math.max(((scheduledDragDuration || 30) / 60) * HOUR_HEIGHT, 22),
+            left: showTimeLabels ? '3.25rem' : '2px',
+          }}
+        >
+          <div className="h-full rounded-[2px] border-2 border-dashed border-destructive/60 bg-destructive/[0.04]">
+            <div className="px-2 py-1">
+              <span className="text-[10px] font-mono text-destructive/70">
+                {formatTime12h(minutesToTime(scheduledDragMinutes))} · {formatDuration(scheduledDragDuration || 30)}
               </span>
             </div>
           </div>
