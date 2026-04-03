@@ -97,6 +97,7 @@ export function TaskEditPanel() {
       setDuration(task.duration || 30);
       setDate(task.date);
       setPriority(task.priority);
+      setIsRoutine(task.isRoutine !== false && task.type === 'recurring');
       setRecurrenceType(recurrenceToType(task.recurrence));
       setWeeklyDays(
         task.recurrence?.type === 'weekly' ? task.recurrence.days :
