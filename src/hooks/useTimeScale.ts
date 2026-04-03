@@ -38,7 +38,7 @@ export function useTimeScale(view: 'day' | 'week') {
   }, [view]);
 
   const setScale = useCallback((v: number) => {
-    setHourHeight(clamp(v, SCALE_MIN, SCALE_MAX));
+    setHourHeight(clamp(v, 10, SCALE_MAX));
   }, []);
 
   const zoomIn = useCallback(() => {
