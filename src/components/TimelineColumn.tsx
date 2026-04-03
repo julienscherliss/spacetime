@@ -496,6 +496,9 @@ export function TimelineColumn({
         );
       })}
 
+      {/* Google Calendar events */}
+      <CalendarEventBlocks date={date} hourHeight={HOUR_HEIGHT} showTimeLabels={showTimeLabels} />
+
       {/* Free time label */}
       {isToday && !activeTaskId && nowTop > 0 && nowTop < HOURS.length * HOUR_HEIGHT && (
         <div

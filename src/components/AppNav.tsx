@@ -61,6 +61,19 @@ export function AppNav() {
             <Repeat size={11} strokeWidth={1.5} />
             <span className="hidden sm:inline">{routinesEnabled ? 'ROUTINES' : 'ROUTINES OFF'}</span>
           </button>
+          <button
+            onClick={() => setPanelOpen(!panelOpen)}
+            className={`flex items-center gap-1 px-2 py-1.5 rounded-sm text-[9px] font-mono tracking-wider transition-colors ${
+              panelOpen
+                ? 'bg-primary/8 text-primary border border-primary/15'
+                : connected
+                  ? 'text-muted-foreground hover:text-foreground'
+                  : 'text-muted-foreground/40 hover:text-foreground'
+            }`}
+          >
+            <CalIcon size={11} strokeWidth={1.5} />
+            <span className="hidden sm:inline">CAL</span>
+          </button>
           <AddTaskModal />
         </div>
       </div>
