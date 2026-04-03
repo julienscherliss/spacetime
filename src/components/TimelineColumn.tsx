@@ -576,6 +576,7 @@ export function TimelineColumn({
     <div
       ref={colRef}
       data-timeline-column
+      data-column-date={date}
       className="relative select-none"
       style={{ height: HOURS.length * HOUR_HEIGHT, WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
       onDragOver={handleDragOver}
