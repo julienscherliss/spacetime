@@ -85,7 +85,7 @@ interface TaskState {
   moveOverdueToWaitingRoom: () => void;
 }
 
-const generateId = () => Math.random().toString(36).substring(2, 10);
+const generateId = () => crypto.randomUUID();
 
 function deriveType(recurrence?: RecurrencePattern): TaskType {
   return recurrence ? 'recurring' : 'one-time';
