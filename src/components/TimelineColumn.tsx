@@ -787,6 +787,26 @@ export function TimelineColumn({
           </div>
         </div>
       )}
+
+      {/* Scheduled task drag overlay — red dashed outline */}
+      {scheduledDragActive && scheduledDragMinutes !== null && (
+        <div
+          className="absolute right-1 z-[25] pointer-events-none"
+          style={{
+            top: ((scheduledDragMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT,
+            height: Math.max(((scheduledDragDuration || 30) / 60) * HOUR_HEIGHT, 22),
+            left: showTimeLabels ? '3.25rem' : '2px',
+          }}
+        >
+          <div className="h-full rounded-[2px] border-2 border-dashed border-destructive/60 bg-destructive/[0.04]">
+            <div className="px-2 py-1">
+              <span className="text-[10px] font-mono text-destructive/70">
+                {formatTime12h(minutesToTime(scheduledDragMinutes))} · {formatDuration(scheduledDragDuration || 30)}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
