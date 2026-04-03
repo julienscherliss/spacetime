@@ -542,24 +542,27 @@ export function TimelineColumn({
   const scheduledDragDuration = useScheduledDragStore((s) => s.duration);
   const scheduledDragTargetDate = useScheduledDragStore((s) => s.targetDate);
 
+  // Scheduled drag: single global drop handler — only the column matching targetDate processes it
   useEffect(() => {
     if (!scheduledDragActive) return;
     const handleUp = () => {
       const state = useScheduledDragStore.getState();
       if (!state.active || state.currentMinutes === null || !state.taskId) {
-        useScheduledDragStore.getState().cancel();
-        return;
+        return; // let another column or cancel handle it
       }
+      // Only the column that matches targetDate should process the drop
+      if (state.targetDate !== date) return;
+
       const newTime = minutesToTime(state.currentMinutes);
-      if (state.sourceDate && state.sourceDate !== date) {
-        const validation = canMoveTask(state.taskId, date);
+      if (state.sourceDate && state.sourceDate !== state.targetDate) {
+        const validation = canMoveTask(state.taskId, state.targetDate);
         if (!validation.allowed) {
           setDragMsg('reason' in validation ? validation.reason : 'Cannot move');
           setTimeout(() => setDragMsg(''), 2000);
           useScheduledDragStore.getState().cancel();
           return;
         }
-        moveTask(state.taskId, date, newTime);
+        moveTask(state.taskId, state.targetDate, newTime);
       } else {
         reorderTask(state.taskId, newTime);
       }
