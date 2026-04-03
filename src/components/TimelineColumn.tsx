@@ -447,7 +447,8 @@ export function TimelineColumn({
         touch.clientY >= rect.top &&
         touch.clientY <= rect.bottom
       ) {
-        const y = touch.clientY - rect.top;
+        // Use dragOffset to place task at its top edge, not finger position
+        const y = touch.clientY - rect.top - dragOffsetRef.current;
         const mins = START_HOUR * 60 + (y / HOUR_HEIGHT) * 60;
         const snapped = snapTo15(mins);
         const newTime = minutesToTime(snapped);
