@@ -214,43 +214,47 @@ export function TimelineTaskBlock({
           </div>
         )}
 
-        <div className="flex items-start justify-between h-full px-2 py-1 overflow-hidden">
-          <div className="flex-1 min-w-0">
-            <div className={`text-[12px] font-mono leading-tight truncate ${isActive ? 'text-foreground font-medium' : 'text-foreground/75'}`}>
-              {task.title}
-            </div>
-            {height > 36 && task.time && showTimeLabels && (
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="text-[10px] font-mono text-muted-foreground/50">{formatTime12h(task.time)}</span>
-                {task.duration && (
-                  <span className="text-[10px] font-mono text-muted-foreground/35">{formatDuration(task.duration)}</span>
-                )}
-                {isActive && (
-                  <span className="text-[10px] font-mono text-primary/70">
-                    {formatDuration(Math.max(0, taskMinutes + (task.duration || 30) - nowMinutes))} left
-                  </span>
-                )}
+        <div className="flex flex-col justify-between h-full px-2 py-1 overflow-hidden">
+          <div className="flex items-start justify-between">
+            <div className="flex-1 min-w-0">
+              <div className={`text-[12px] font-mono leading-tight truncate ${isActive ? 'text-foreground font-medium' : 'text-foreground/75'}`}>
+                {task.title}
               </div>
-            )}
-          </div>
-          <div className="flex items-center gap-1 shrink-0 ml-1">
-            {task.type === 'recurring' && (
-              <span className={`p-0.5 ${task.linked ? 'text-primary/40' : 'text-muted-foreground/20'}`} title={task.linked ? 'Linked' : 'Unlinked'}>
-                {task.linked ? <Link size={9} /> : <Unlink size={9} />}
-              </span>
-            )}
-            <PriorityBadge priority={task.priority} />
+              {height > 36 && task.time && showTimeLabels && (
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="text-[10px] font-mono text-muted-foreground/50">{formatTime12h(task.time)}</span>
+                  {task.duration && (
+                    <span className="text-[10px] font-mono text-muted-foreground/35">{formatDuration(task.duration)}</span>
+                  )}
+                  {isActive && (
+                    <span className="text-[10px] font-mono text-primary/70">
+                      {formatDuration(Math.max(0, taskMinutes + (task.duration || 30) - nowMinutes))} left
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
             <button
               data-touch-ignore
               onClick={(e) => {
                 e.stopPropagation();
                 completeTask(task.id);
               }}
-              className="p-1 rounded-sm text-muted-foreground/20 hover:text-primary hover:bg-primary/5 transition-all opacity-0 group-hover:opacity-100"
+              className="p-1 rounded-sm text-muted-foreground/20 hover:text-primary hover:bg-primary/5 transition-all opacity-0 group-hover:opacity-100 shrink-0 ml-1"
             >
               <Check size={12} />
             </button>
           </div>
+          {height > 28 && (
+            <div className="flex items-center gap-1 mt-auto">
+              {task.type === 'recurring' && (
+                <span className={`p-0.5 ${task.linked ? 'text-primary/40' : 'text-muted-foreground/20'}`} title={task.linked ? 'Linked' : 'Unlinked'}>
+                  {task.linked ? <Link size={9} /> : <Unlink size={9} />}
+                </span>
+              )}
+              <PriorityBadge priority={task.priority} />
+            </div>
+          )}
         </div>
 
         {isResizingThis && resizePreview && (
