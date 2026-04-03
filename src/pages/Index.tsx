@@ -53,6 +53,7 @@ const Index = () => {
       <TaskEditPanel />
       <DailyCompletionModal />
       <CalendarPanel />
+      <LibraryPanel />
     </div>
   );
 };

@@ -65,9 +65,23 @@ export function AppNav() {
             <span className="hidden sm:inline">{routinesEnabled ? 'ROUTINES' : 'ROUTINES OFF'}</span>
           </button>
           <button
-            onClick={() => setPanelOpen(!panelOpen)}
+            onClick={() => setLibPanelOpen(!libPanelOpen)}
             className={`flex items-center gap-1 px-2 py-1.5 rounded-sm text-[9px] font-mono tracking-wider transition-colors ${
-              panelOpen
+              libPanelOpen
+                ? 'bg-primary/8 text-primary border border-primary/15'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Archive size={11} strokeWidth={1.5} />
+            <span className="hidden sm:inline">LIBRARY</span>
+            {libCount > 0 && (
+              <span className="text-[7px] font-mono text-muted-foreground/40 ml-0.5">{libCount}</span>
+            )}
+          </button>
+          <button
+            onClick={() => setCalPanelOpen(!calPanelOpen)}
+            className={`flex items-center gap-1 px-2 py-1.5 rounded-sm text-[9px] font-mono tracking-wider transition-colors ${
+              calPanelOpen
                 ? 'bg-primary/8 text-primary border border-primary/15'
                 : connected
                   ? 'text-muted-foreground hover:text-foreground'
