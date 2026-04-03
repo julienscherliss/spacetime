@@ -40,7 +40,7 @@ interface CalendarState {
   fetchEvents: (startDate: string, endDate: string) => Promise<void>;
   toggleCalendar: (calendarId: string, visible: boolean) => void;
   disconnect: () => Promise<void>;
-  getEventsForDate: (date: string) => CalendarEvent[];
+  
 }
 
 function getDeviceId(): string {
@@ -173,9 +173,6 @@ export const useCalendarStore = create<CalendarState>()(
         }
       },
 
-      getEventsForDate: (date) => {
-        return get().events.filter(e => e.date === date);
-      },
     }),
     {
       name: 'do-calendar-store',
