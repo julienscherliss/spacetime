@@ -535,9 +535,43 @@ export function TimelineColumn({
     return { top, height, time: minutesToTime(snapped), duration };
   })();
 
+  // Scheduled drag: handle drop when pointer is released
+  const scheduledDragActive = useScheduledDragStore((s) => s.active);
+  const scheduledDragTaskId = useScheduledDragStore((s) => s.taskId);
+  const scheduledDragMinutes = useScheduledDragStore((s) => s.currentMinutes);
+  const scheduledDragDuration = useScheduledDragStore((s) => s.duration);
+
+  useEffect(() => {
+    if (!scheduledDragActive) return;
+    const handleUp = () => {
+      const state = useScheduledDragStore.getState();
+      if (!state.active || state.currentMinutes === null || !state.taskId) {
+        useScheduledDragStore.getState().cancel();
+        return;
+      }
+      const newTime = minutesToTime(state.currentMinutes);
+      if (state.sourceDate && state.sourceDate !== date) {
+        const validation = canMoveTask(state.taskId, date);
+        if (!validation.allowed) {
+          setDragMsg('reason' in validation ? validation.reason : 'Cannot move');
+          setTimeout(() => setDragMsg(''), 2000);
+          useScheduledDragStore.getState().cancel();
+          return;
+        }
+        moveTask(state.taskId, date, newTime);
+      } else {
+        reorderTask(state.taskId, newTime);
+      }
+      useScheduledDragStore.getState().endDrag();
+    };
+    window.addEventListener('pointerup', handleUp);
+    return () => window.removeEventListener('pointerup', handleUp);
+  }, [scheduledDragActive, date, canMoveTask, moveTask, reorderTask]);
+
   return (
     <div
       ref={colRef}
+      data-timeline-column
       className="relative select-none"
       style={{ height: HOURS.length * HOUR_HEIGHT, WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
       onDragOver={handleDragOver}
