@@ -31,6 +31,7 @@ export interface Task {
   recurrence?: RecurrencePattern;
   recurrenceParentId?: string;
   isRecurrenceInstance?: boolean;
+  isRoutine?: boolean; // decoupled from type — user can override
 }
 
 export interface DailyStats {
