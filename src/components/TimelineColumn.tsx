@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback, useEffect, Fragment } from 'react';
 import { useTaskStore, Task } from '@/store/taskStore';
 import { useCalendarStore, CalendarEvent } from '@/store/calendarStore';
+import { useLibraryStore } from '@/store/libraryStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { timeToMinutes, minutesToTime, snapTo15 } from '@/hooks/useCurrentTime';
 import { Check, Calendar as CalIcon } from 'lucide-react';
@@ -154,12 +155,31 @@ export function TimelineColumn({
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     const taskId = e.dataTransfer.getData('taskId');
+    const libraryTaskId = e.dataTransfer.getData('libraryTaskId');
     const sourceDate = e.dataTransfer.getData('sourceDate');
-    if (!taskId) { setDragOverTime(null); return; }
 
     const mins = getMinutesFromY(e.clientY - dragOffsetRef.current);
     const snapped = snapTo15(mins);
     const newTime = minutesToTime(snapped);
+
+    // Library task drop → create scheduled task
+    if (libraryTaskId) {
+      const title = e.dataTransfer.getData('libraryTitle');
+      const duration = parseInt(e.dataTransfer.getData('libraryDuration') || '30', 10);
+      addTask({
+        title,
+        date,
+        time: newTime,
+        duration,
+        priority: 0,
+        type: 'one-time',
+      });
+      useLibraryStore.getState().removeItem(libraryTaskId);
+      setDragOverTime(null);
+      return;
+    }
+
+    if (!taskId) { setDragOverTime(null); return; }
 
     if (sourceDate && sourceDate !== date) {
       const validation = canMoveTask(taskId, date);
@@ -175,7 +195,7 @@ export function TimelineColumn({
       reorderTask(taskId, newTime);
     }
     setDragOverTime(null);
-  }, [date, getMinutesFromY, canMoveTask, moveTask, reorderTask]);
+  }, [date, getMinutesFromY, canMoveTask, moveTask, reorderTask, addTask]);
 
   // Resize — completely silent, no dialogs
   const handleResizeStart = useCallback((e: React.MouseEvent, task: Task, edge: 'top' | 'bottom') => {

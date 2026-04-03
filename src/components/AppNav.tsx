@@ -1,8 +1,9 @@
 import { motion } from 'framer-motion';
 import { useTaskStore, ViewMode } from '@/store/taskStore';
 import { useCalendarStore } from '@/store/calendarStore';
+import { useLibraryStore } from '@/store/libraryStore';
 import { AddTaskModal } from '@/components/AddTaskModal';
-import { Focus, List, CalendarDays, Grid3X3, Repeat, Calendar as CalIcon } from 'lucide-react';
+import { Focus, List, CalendarDays, Grid3X3, Repeat, Calendar as CalIcon, Archive } from 'lucide-react';
 
 const views: { mode: ViewMode; icon: typeof Focus; label: string }[] = [
   { mode: 'focus', icon: Focus, label: 'FOCUS' },
@@ -13,7 +14,9 @@ const views: { mode: ViewMode; icon: typeof Focus; label: string }[] = [
 
 export function AppNav() {
   const { viewMode, setViewMode, routinesEnabled, toggleRoutines } = useTaskStore();
-  const { panelOpen, setPanelOpen, connected } = useCalendarStore();
+  const { panelOpen: calPanelOpen, setPanelOpen: setCalPanelOpen, connected } = useCalendarStore();
+  const { panelOpen: libPanelOpen, setPanelOpen: setLibPanelOpen } = useLibraryStore();
+  const libCount = useLibraryStore((s) => s.items.length);
 
   return (
     <nav className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border/60">
@@ -62,9 +65,23 @@ export function AppNav() {
             <span className="hidden sm:inline">{routinesEnabled ? 'ROUTINES' : 'ROUTINES OFF'}</span>
           </button>
           <button
-            onClick={() => setPanelOpen(!panelOpen)}
+            onClick={() => setLibPanelOpen(!libPanelOpen)}
             className={`flex items-center gap-1 px-2 py-1.5 rounded-sm text-[9px] font-mono tracking-wider transition-colors ${
-              panelOpen
+              libPanelOpen
+                ? 'bg-primary/8 text-primary border border-primary/15'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Archive size={11} strokeWidth={1.5} />
+            <span className="hidden sm:inline">LIBRARY</span>
+            {libCount > 0 && (
+              <span className="text-[7px] font-mono text-muted-foreground/40 ml-0.5">{libCount}</span>
+            )}
+          </button>
+          <button
+            onClick={() => setCalPanelOpen(!calPanelOpen)}
+            className={`flex items-center gap-1 px-2 py-1.5 rounded-sm text-[9px] font-mono tracking-wider transition-colors ${
+              calPanelOpen
                 ? 'bg-primary/8 text-primary border border-primary/15'
                 : connected
                   ? 'text-muted-foreground hover:text-foreground'

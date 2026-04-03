@@ -7,6 +7,7 @@ import { CalendarView } from '@/components/CalendarView';
 import { TaskEditPanel } from '@/components/TaskEditPanel';
 import { DailyCompletionModal } from '@/components/DailyCompletionModal';
 import { CalendarPanel } from '@/components/CalendarPanel';
+import { LibraryPanel } from '@/components/LibraryPanel';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Index = () => {
@@ -52,6 +53,7 @@ const Index = () => {
       <TaskEditPanel />
       <DailyCompletionModal />
       <CalendarPanel />
+      <LibraryPanel />
     </div>
   );
 };

@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Priority, RecurrencePattern, CustomUnit } from '@/store/taskStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
-import { X, Play, Calendar, Clock, Trash2, Repeat, ChevronDown } from 'lucide-react';
+import { X, Play, Calendar, Clock, Trash2, Repeat, ChevronDown, Archive } from 'lucide-react';
+import { useLibraryStore } from '@/store/libraryStore';
 import { minutesToTime, timeToMinutes } from '@/hooks/useCurrentTime';
 
 const PRIORITY_LABELS = ['Flex', 'Semi', 'Fixed', 'Lock'] as const;
@@ -557,6 +558,18 @@ export function TaskEditPanel() {
                 >
                   <Play size={10} strokeWidth={1.5} />
                   FOCUS
+                </button>
+                <button
+                  onClick={() => {
+                    if (!task) return;
+                    useLibraryStore.getState().addFromSchedule(task.title, task.duration || 30);
+                    deleteTask(task.id);
+                    setEditingTask(null);
+                  }}
+                  className="p-2 rounded-sm border border-border text-muted-foreground hover:text-foreground hover:border-primary/20 transition-colors"
+                  title="Send to Library"
+                >
+                  <Archive size={12} strokeWidth={1.5} />
                 </button>
                 <button
                   onClick={() => {
