@@ -79,6 +79,11 @@ interface TaskState {
 
 const generateId = () => Math.random().toString(36).substring(2, 10);
 
+// ─── Derive type from recurrence (source of truth) ──────────
+function deriveType(recurrence?: RecurrencePattern): TaskType {
+  return recurrence ? 'recurring' : 'one-time';
+}
+
 // ─── Recurrence engine ────────────────────────────────────────
 
 function addDays(dateStr: string, n: number): string {
@@ -90,7 +95,6 @@ function addDays(dateStr: string, n: number): string {
 function addMonths(dateStr: string, n: number, dayOfMonth: number): string {
   const d = new Date(dateStr + 'T12:00:00');
   d.setMonth(d.getMonth() + n);
-  // Clamp to last day of target month
   const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
   d.setDate(Math.min(dayOfMonth, lastDay));
   return d.toISOString().split('T')[0];
@@ -139,7 +143,6 @@ function getAllOccurrences(
       break;
     }
     case 'weekly': {
-      // Every 1 week on specific days
       let cur = startDate;
       for (let i = 0; i < limit; i++) {
         if (cur > rangeEnd) break;
@@ -178,12 +181,9 @@ function getAllOccurrences(
           cur = addDays(cur, interval);
         }
       } else if (unit === 'weeks') {
-        // Every N weeks on specific days (or same weekday as start)
         const targetDays = customDays && customDays.length > 0 ? customDays : [getDayOfWeek(startDate)];
-        let weekStart = startDate;
-        // Rewind to start of week (Sunday)
-        const startDow = getDayOfWeek(weekStart);
-        let cur = addDays(weekStart, -startDow);
+        const startDow = getDayOfWeek(startDate);
+        let cur = addDays(startDate, -startDow);
         for (let w = 0; w < limit; w++) {
           for (const dow of targetDays) {
             const day = addDays(cur, dow);
@@ -194,7 +194,6 @@ function getAllOccurrences(
           cur = addDays(cur, 7 * interval);
           if (cur > rangeEnd) break;
         }
-        // Deduplicate and sort
         const unique = [...new Set(dates)].sort();
         dates.length = 0;
         dates.push(...unique);
@@ -319,8 +318,11 @@ export const useTaskStore = create<TaskState>()(
       toggleRoutines: () => set((s) => ({ routinesEnabled: !s.routinesEnabled })),
 
       addTask: (taskData) => {
+        // Enforce: type always derived from recurrence
+        const type = deriveType(taskData.recurrence);
         const task: Task = {
           ...taskData,
+          type,
           id: generateId(),
           originalPriority: taskData.priority,
           completed: false,
@@ -332,18 +334,29 @@ export const useTaskStore = create<TaskState>()(
 
       updateTask: (id, updates) =>
         set((s) => ({
-          tasks: s.tasks.map((t) => (t.id === id ? { ...t, ...updates } : t)),
+          tasks: s.tasks.map((t) => {
+            if (t.id !== id) return t;
+            const merged = { ...t, ...updates };
+            // Enforce: type derived from recurrence
+            if ('recurrence' in updates) {
+              merged.type = deriveType(merged.recurrence);
+            }
+            return merged;
+          }),
         })),
 
       updateFutureInstances: (parentId, updates) => {
         const today = new Date().toISOString().split('T')[0];
+        // Enforce type derivation
+        const resolvedUpdates = { ...updates };
+        if ('recurrence' in updates) {
+          resolvedUpdates.type = deriveType(updates.recurrence);
+        }
         set((s) => ({
           tasks: s.tasks.map((t) => {
-            // Update the parent itself
-            if (t.id === parentId) return { ...t, ...updates };
-            // Update future instances of this parent
+            if (t.id === parentId) return { ...t, ...resolvedUpdates };
             if (t.recurrenceParentId === parentId && t.date >= today && !t.completed) {
-              return { ...t, ...updates };
+              return { ...t, ...resolvedUpdates };
             }
             return t;
           }),
@@ -474,7 +487,8 @@ export const useTaskStore = create<TaskState>()(
       skipFocusTask: () => {
         const state = get();
         const todayTasks = state.tasks
-          .filter((t) => !t.completed && t.date === new Date().toISOString().split('T')[0])
+          .filter((t) => !t.completed && t.date === new Date().toISOString().split('T')[0] &&
+            !(! state.routinesEnabled && t.type === 'recurring'))
           .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
         const currentIdx = todayTasks.findIndex((t) => t.id === state.focusTaskId);
         const nextTask = todayTasks[currentIdx + 1] || todayTasks[0];
@@ -492,20 +506,24 @@ export const useTaskStore = create<TaskState>()(
 
       getCurrentFocusTask: () => {
         const state = get();
+        const isRoutineAllowed = (t: Task) => !(! state.routinesEnabled && t.type === 'recurring');
+
         if (state.focusTaskId) {
-          const task = state.tasks.find((t) => t.id === state.focusTaskId && !t.completed);
+          const task = state.tasks.find((t) => t.id === state.focusTaskId && !t.completed && isRoutineAllowed(t));
           if (task) return task;
         }
         const today = new Date().toISOString().split('T')[0];
         return state.tasks
-          .filter((t) => !t.completed && t.date === today)
+          .filter((t) => !t.completed && t.date === today && isRoutineAllowed(t))
           .sort((a, b) => (a.time || '').localeCompare(b.time || ''))[0];
       },
 
       getNextTask: (currentId) => {
+        const state = get();
         const today = new Date().toISOString().split('T')[0];
-        const todayTasks = get()
-          .tasks.filter((t) => !t.completed && t.date === today)
+        const todayTasks = state.tasks
+          .filter((t) => !t.completed && t.date === today &&
+            !(!state.routinesEnabled && t.type === 'recurring'))
           .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
         const idx = todayTasks.findIndex((t) => t.id === currentId);
         return todayTasks[idx + 1];
