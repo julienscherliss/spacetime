@@ -54,7 +54,7 @@ function ReflectionModal({ task, onConfirm, onCancel }: { task: Task; onConfirm:
   );
 }
 
-function WaitingRoomItem({ task, isMobile, onReflect }: { task: Task; isMobile: boolean; onReflect: () => void }) {
+function WaitingRoomItem({ task, isMobile, onReflect, onClosePanel }: { task: Task; isMobile: boolean; onReflect: () => void; onClosePanel: () => void }) {
   const touchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
 
