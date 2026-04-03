@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
 import { useCalendarStore } from '@/store/calendarStore';
+import { useTouchDragStore } from '@/store/touchDragStore';
 import { useCurrentTime, formatTime12h } from '@/hooks/useCurrentTime';
 import { TimelineColumn } from '@/components/TimelineColumn';
 import { BlockedModal } from '@/components/BlockedModal';
