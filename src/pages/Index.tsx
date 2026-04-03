@@ -73,6 +73,7 @@ const Index = () => {
       <CalendarPanel />
       <LibraryPanel />
       <WaitingRoom open={waitingOpen} onClose={() => setWaitingOpen(false)} />
+      <TouchDragGhost />
     </div>
   );
 };

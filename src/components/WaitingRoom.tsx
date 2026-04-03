@@ -124,23 +124,7 @@ export function WaitingRoom({ open, onClose }: { open: boolean; onClose: () => v
                 ) : (
                   <div className="space-y-px">
                     {waitingTasks.map((task) => (
-                      <div
-                        key={task.id}
-                        className="group flex items-center gap-2 rounded-sm hover:bg-muted/40 transition-colors cursor-pointer py-2 px-2"
-                        onClick={() => setReflectTask(task)}
-                      >
-                        <GripVertical size={11} className="text-muted-foreground/20 shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <div className="text-[11px] font-mono text-foreground/70 truncate">{task.title}</div>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <span className="text-[9px] font-mono text-muted-foreground/30">{task.date}</span>
-                            {(task.waitingRoomCount || 0) > 1 && (
-                              <span className="text-[8px] font-mono text-primary/50">{task.waitingRoomCount}× returned</span>
-                            )}
-                          </div>
-                        </div>
-                        <PriorityBadge priority={task.priority} />
-                      </div>
+                      <WaitingRoomItem key={task.id} task={task} isMobile={isMobile} onReflect={() => setReflectTask(task)} />
                     ))}
                   </div>
                 )}
