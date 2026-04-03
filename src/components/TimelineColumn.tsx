@@ -608,7 +608,26 @@ export function TimelineColumn({
         </div>
       )}
 
-      {/* Validation / lock message */}
+      {/* Touch drag drop preview */}
+      {touchDropPreview && (
+        <div
+          className="absolute right-1 z-20 pointer-events-none"
+          style={{
+            top: touchDropPreview.top,
+            height: touchDropPreview.height,
+            left: showTimeLabels ? '3.25rem' : '2px',
+          }}
+        >
+          <div className="h-full rounded-[2px] border border-dashed border-primary/40 bg-primary/[0.06]">
+            <div className="px-2 py-1">
+              <span className="text-[10px] font-mono text-primary/50">
+                {formatTime12h(touchDropPreview.time)} · {formatDuration(touchDropPreview.duration)}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {dragMsg && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 px-3 py-1.5 rounded-sm bg-card border border-destructive/20 shadow-sm">
           <span className="text-[10px] font-mono text-destructive tracking-wider">{dragMsg}</span>
