@@ -126,14 +126,14 @@ export function WeekView() {
         {!isMobile && (
           <button
             onClick={() => {
-              if (!stacked) {
+            if (!stacked) {
                 setWeek2Offset(weekOffset + 1);
-                // Save current scale and auto-fit both weeks
                 preStackScaleRef.current = hourHeight;
-                // Each week grid is 24 * hourHeight px; we want 2 grids + ~80px headers to fit in viewport
-                const available = window.innerHeight - 200; // header + padding
+                // Fit two 24h grids + headers (~120px) in viewport
+                const available = window.innerHeight - 120;
                 const fitScale = Math.floor(available / (24 * 2));
-                setScale(Math.max(fitScale, 28)); // clamp to min
+                // Allow going below normal SCALE_MIN for stacked mode
+                setScale(Math.max(fitScale, 10));
               } else {
                 // Restore previous scale
                 if (preStackScaleRef.current !== null) {
