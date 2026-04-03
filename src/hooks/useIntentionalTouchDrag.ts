@@ -55,6 +55,8 @@ export function useIntentionalTouchDrag<T extends HTMLElement>({
     const element = ref.current;
     if (!element || disabled) return;
 
+    const moveTarget = element.ownerDocument?.body ?? window;
+
     let activeTouchId: number | null = null;
     let startPoint: Point | null = null;
     let lastPoint: Point | null = null;
@@ -65,9 +67,9 @@ export function useIntentionalTouchDrag<T extends HTMLElement>({
       startPoint = null;
       lastPoint = null;
       dragActivated = false;
-      window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('touchend', handleTouchEnd);
-      window.removeEventListener('touchcancel', handleTouchCancel);
+      moveTarget.removeEventListener('touchmove', handleTouchMove);
+      moveTarget.removeEventListener('touchend', handleTouchEnd);
+      moveTarget.removeEventListener('touchcancel', handleTouchCancel);
     };
 
     const activateDrag = () => {
@@ -159,9 +161,9 @@ export function useIntentionalTouchDrag<T extends HTMLElement>({
 
       // Don't preventDefault here — let the browser scroll if the user swipes
 
-      window.addEventListener('touchmove', handleTouchMove, { passive: false });
-      window.addEventListener('touchend', handleTouchEnd, { passive: false });
-      window.addEventListener('touchcancel', handleTouchCancel, { passive: false });
+      moveTarget.addEventListener('touchmove', handleTouchMove, { passive: false });
+      moveTarget.addEventListener('touchend', handleTouchEnd, { passive: false });
+      moveTarget.addEventListener('touchcancel', handleTouchCancel, { passive: false });
     };
 
     element.addEventListener('touchstart', handleTouchStart, { passive: !preventScrollOnTouchStart });
