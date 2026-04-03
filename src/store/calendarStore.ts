@@ -173,9 +173,6 @@ export const useCalendarStore = create<CalendarState>()(
         }
       },
 
-      getEventsForDate: (date) => {
-        return get().events.filter(e => e.date === date);
-      },
     }),
     {
       name: 'do-calendar-store',

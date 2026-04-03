@@ -29,8 +29,9 @@ function formatDuration(mins: number): string {
 }
 
 function CalendarEventBlocks({ date, hourHeight, showTimeLabels }: { date: string; hourHeight: number; showTimeLabels: boolean }) {
-  const events = useCalendarStore((s) => s.getEventsForDate(date));
+  const allEvents = useCalendarStore((s) => s.events);
   const calendars = useCalendarStore((s) => s.calendars);
+  const events = allEvents.filter(e => e.date === date);
   const timeLabelsLeft = showTimeLabels ? '2.75rem' : '2px';
 
   if (events.length === 0) return null;
