@@ -118,7 +118,7 @@
 }
 
 .draggable-item {
-  touch-action: none;
+  touch-action: manipulation;
   -webkit-user-drag: none;
 }
 
