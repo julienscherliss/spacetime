@@ -56,10 +56,12 @@ function ReflectionModal({ task, onConfirm, onCancel }: { task: Task; onConfirm:
 
 function WaitingRoomItem({ task, isMobile, onReflect }: { task: Task; isMobile: boolean; onReflect: () => void }) {
   const touchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const touch = e.touches[0];
     const startPos = { x: touch.clientX, y: touch.clientY };
+    touchStartPosRef.current = startPos;
     touchTimerRef.current = setTimeout(() => {
       useTouchDragStore.getState().startDrag(
         { type: 'waitingRoom', id: task.id, title: task.title, duration: task.duration || 30 },
@@ -74,9 +76,14 @@ function WaitingRoomItem({ task, isMobile, onReflect }: { task: Task; isMobile: 
       e.preventDefault();
       const touch = e.touches[0];
       useTouchDragStore.getState().moveGhost({ x: touch.clientX, y: touch.clientY });
-    } else if (touchTimerRef.current) {
-      clearTimeout(touchTimerRef.current);
-      touchTimerRef.current = null;
+    } else if (touchTimerRef.current && touchStartPosRef.current) {
+      const touch = e.touches[0];
+      const dx = Math.abs(touch.clientX - touchStartPosRef.current.x);
+      const dy = Math.abs(touch.clientY - touchStartPosRef.current.y);
+      if (dx > 10 || dy > 10) {
+        clearTimeout(touchTimerRef.current);
+        touchTimerRef.current = null;
+      }
     }
   }, []);
 
@@ -89,7 +96,7 @@ function WaitingRoomItem({ task, isMobile, onReflect }: { task: Task; isMobile: 
 
   return (
     <div
-      className={`group flex items-center gap-2 rounded-sm hover:bg-muted/40 transition-colors cursor-pointer ${isMobile ? 'py-3 px-3' : 'py-2 px-2'}`}
+      className={`group flex items-center gap-2 rounded-sm hover:bg-muted/40 transition-colors cursor-pointer select-none ${isMobile ? 'py-3 px-3' : 'py-2 px-2'}`}
       onClick={onReflect}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}

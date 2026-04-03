@@ -33,6 +33,7 @@ function LibraryItem({ item, isMobile }: { item: LibraryTask; isMobile: boolean 
   const [showCat, setShowCat] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const touchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
 
   const handleSave = () => {
     if (title.trim()) updateItem(item.id, { title: title.trim() });
@@ -42,7 +43,7 @@ function LibraryItem({ item, isMobile }: { item: LibraryTask; isMobile: boolean 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const touch = e.touches[0];
     const startPos = { x: touch.clientX, y: touch.clientY };
-    // Long-press to start drag (300ms)
+    touchStartPosRef.current = startPos;
     touchTimerRef.current = setTimeout(() => {
       useTouchDragStore.getState().startDrag(
         { type: 'library', id: item.id, title: item.title, duration: item.defaultDuration },
@@ -57,10 +58,14 @@ function LibraryItem({ item, isMobile }: { item: LibraryTask; isMobile: boolean 
       e.preventDefault();
       const touch = e.touches[0];
       useTouchDragStore.getState().moveGhost({ x: touch.clientX, y: touch.clientY });
-    } else if (touchTimerRef.current) {
-      // Cancel long-press if finger moves before activation
-      clearTimeout(touchTimerRef.current);
-      touchTimerRef.current = null;
+    } else if (touchTimerRef.current && touchStartPosRef.current) {
+      const touch = e.touches[0];
+      const dx = Math.abs(touch.clientX - touchStartPosRef.current.x);
+      const dy = Math.abs(touch.clientY - touchStartPosRef.current.y);
+      if (dx > 10 || dy > 10) {
+        clearTimeout(touchTimerRef.current);
+        touchTimerRef.current = null;
+      }
     }
   }, []);
 
@@ -84,7 +89,7 @@ function LibraryItem({ item, isMobile }: { item: LibraryTask; isMobile: boolean 
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      className={`group flex items-center gap-2 rounded-sm hover:bg-muted/40 transition-colors cursor-grab active:cursor-grabbing ${
+      className={`group flex items-center gap-2 rounded-sm hover:bg-muted/40 transition-colors cursor-grab active:cursor-grabbing select-none ${
         isMobile ? 'py-3 px-3' : 'py-2 px-2'
       }`}
     >
