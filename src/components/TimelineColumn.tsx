@@ -43,6 +43,8 @@ export function TimelineColumn({
 
   // Track whether a drag/resize happened to suppress click
   const didDragRef = useRef(false);
+  // Offset from cursor to top of dragged block (for accurate drop)
+  const dragOffsetRef = useRef(0);
 
   const [resizing, setResizing] = useState<{
     id: string;
@@ -93,7 +95,7 @@ export function TimelineColumn({
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    const mins = getMinutesFromY(e.clientY);
+    const mins = getMinutesFromY(e.clientY - dragOffsetRef.current);
     const snapped = snapTo15(mins);
     setDragOverTime(minutesToTime(snapped));
     setDragValid(true);
@@ -105,7 +107,7 @@ export function TimelineColumn({
     const sourceDate = e.dataTransfer.getData('sourceDate');
     if (!taskId) { setDragOverTime(null); return; }
 
-    const mins = getMinutesFromY(e.clientY);
+    const mins = getMinutesFromY(e.clientY - dragOffsetRef.current);
     const snapped = snapTo15(mins);
     const newTime = minutesToTime(snapped);
 
@@ -378,6 +380,9 @@ export function TimelineColumn({
                 return;
               }
               didDragRef.current = true;
+              // Capture offset from cursor to top of the block
+              const blockRect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+              dragOffsetRef.current = e.clientY - blockRect.top;
               e.dataTransfer.setData('taskId', task.id);
               e.dataTransfer.setData('sourceDate', task.date);
               e.dataTransfer.effectAllowed = 'move';
