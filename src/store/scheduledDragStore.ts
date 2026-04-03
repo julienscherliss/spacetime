@@ -10,6 +10,8 @@ export interface ScheduledDragState {
   currentMinutes: number | null;
   /** Whether drag has been activated (past threshold) */
   active: boolean;
+  /** The date column the drag overlay should render in */
+  targetDate: string | null;
 }
 
 interface ScheduledDragActions {
@@ -34,6 +36,7 @@ const initial: ScheduledDragState = {
   grabOffsetY: 0,
   currentMinutes: null,
   active: false,
+  targetDate: null,
 };
 
 export const useScheduledDragStore = create<ScheduledDragState & ScheduledDragActions>((set, get) => ({
@@ -47,6 +50,7 @@ export const useScheduledDragStore = create<ScheduledDragState & ScheduledDragAc
       grabOffsetY: params.grabOffsetY,
       currentMinutes: null,
       active: false,
+      targetDate: params.sourceDate,
     }),
   activate: () => set({ active: true }),
   updatePosition: (minutes) => set({ currentMinutes: minutes }),

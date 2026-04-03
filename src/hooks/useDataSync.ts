@@ -25,6 +25,9 @@ function rowToTask(row: any): Task {
     isRecurrenceInstance: row.is_recurrence_instance ?? false,
     isRoutine: row.is_routine ?? undefined,
     linked: row.linked ?? false,
+    seriesId: row.series_id ?? undefined,
+    linkedGroupId: row.linked_group_id ?? undefined,
+    detachedFromSeries: row.detached_from_series ?? false,
     inWaitingRoom: row.in_waiting_room ?? false,
     waitingRoomCount: row.waiting_room_count ?? 0,
   };
@@ -51,6 +54,9 @@ function taskToRow(task: Task, userId: string) {
     is_recurrence_instance: task.isRecurrenceInstance ?? false,
     is_routine: task.isRoutine ?? null,
     linked: task.linked ?? false,
+    series_id: task.seriesId ?? null,
+    linked_group_id: task.linkedGroupId ?? null,
+    detached_from_series: task.detachedFromSeries ?? false,
     in_waiting_room: task.inWaitingRoom ?? false,
     waiting_room_count: task.waitingRoomCount ?? 0,
   };
