@@ -16,6 +16,7 @@ export function WeekView() {
   const [weekOffset, setWeekOffset] = useState(0);
   const [week2Offset, setWeek2Offset] = useState(1); // independent second week
   const [stacked, setStacked] = useState(false);
+  const preStackScaleRef = useRef<number | null>(null);
   const isMobile = useIsMobile();
 
   // Swipe state for mobile
