@@ -202,6 +202,11 @@ export function TimelineTaskBlock({
             )}
           </div>
           <div className="flex items-center gap-1 shrink-0 ml-1">
+            {task.type === 'recurring' && (
+              <span className={`p-0.5 ${task.linked ? 'text-primary/40' : 'text-muted-foreground/20'}`} title={task.linked ? 'Linked' : 'Unlinked'}>
+                {task.linked ? <Link size={9} /> : <Unlink size={9} />}
+              </span>
+            )}
             <PriorityBadge priority={task.priority} />
             <button
               data-touch-ignore
