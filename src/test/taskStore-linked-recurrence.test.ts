@@ -18,6 +18,9 @@ function makeTask(overrides: Partial<Task>): Task {
     moveCount: 0,
     recurrence,
     linked: false,
+    seriesId: 'series-1',
+    linkedGroupId: undefined,
+    detachedFromSeries: false,
     ...overrides,
   };
 }
@@ -42,8 +45,8 @@ describe('linked recurrence schedule propagation', () => {
   });
 
   it('moves only the active instance when the repeating task is unlinked', () => {
-    const parent = makeTask({ id: 'parent', linked: false, date: '2026-04-01' });
-    const instance = makeTask({ id: 'instance', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: false, date: '2026-04-02' });
+    const parent = makeTask({ id: 'parent', linked: false, seriesId: 'series-1', linkedGroupId: undefined, date: '2026-04-01' });
+    const instance = makeTask({ id: 'instance', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: false, seriesId: 'series-1', linkedGroupId: undefined, date: '2026-04-02' });
 
     resetStore([parent, instance]);
     useTaskStore.getState().reorderTask('instance', '14:00');
@@ -54,10 +57,10 @@ describe('linked recurrence schedule propagation', () => {
   });
 
   it('propagates time changes across truly linked instances in the same recurrence series', () => {
-    const parent = makeTask({ id: 'parent', linked: true, date: '2026-04-01' });
-    const linkedA = makeTask({ id: 'linked-a', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: true, date: '2026-04-02' });
-    const linkedB = makeTask({ id: 'linked-b', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: true, date: '2026-04-03' });
-    const detached = makeTask({ id: 'detached', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: false, date: '2026-04-04' });
+    const parent = makeTask({ id: 'parent', linked: true, seriesId: 'series-1', linkedGroupId: 'group-1', date: '2026-04-01' });
+    const linkedA = makeTask({ id: 'linked-a', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: true, seriesId: 'series-1', linkedGroupId: 'group-1', date: '2026-04-02' });
+    const linkedB = makeTask({ id: 'linked-b', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: true, seriesId: 'series-1', linkedGroupId: 'group-1', date: '2026-04-03' });
+    const detached = makeTask({ id: 'detached', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: false, seriesId: 'series-1', linkedGroupId: undefined, date: '2026-04-04' });
 
     resetStore([parent, linkedA, linkedB, detached]);
     useTaskStore.getState().reorderTask('linked-a', '14:00');
@@ -70,9 +73,9 @@ describe('linked recurrence schedule propagation', () => {
   });
 
   it('propagates duration and start-time changes only across linked instances', () => {
-    const parent = makeTask({ id: 'parent', linked: true, date: '2026-04-01' });
-    const linked = makeTask({ id: 'linked', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: true, date: '2026-04-02' });
-    const detached = makeTask({ id: 'detached', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: false, date: '2026-04-03' });
+    const parent = makeTask({ id: 'parent', linked: true, seriesId: 'series-1', linkedGroupId: 'group-1', date: '2026-04-01' });
+    const linked = makeTask({ id: 'linked', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: true, seriesId: 'series-1', linkedGroupId: 'group-1', date: '2026-04-02' });
+    const detached = makeTask({ id: 'detached', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: false, seriesId: 'series-1', linkedGroupId: undefined, date: '2026-04-03' });
 
     resetStore([parent, linked, detached]);
     useTaskStore.getState().resizeTask('linked', '15:00', 45);
