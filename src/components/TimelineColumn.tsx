@@ -262,6 +262,55 @@ export function TimelineColumn({
     setCreating({ startMin: snapped, currentMin: snapped });
   }, [getMinutesFromY, newTaskInput]);
 
+  // Drag-to-create: touch handlers
+  const createTouchRef = useRef<{ startMin: number; startY: number; startX: number; moved: boolean } | null>(null);
+
+  const handleCreateTouchStart = useCallback((e: React.TouchEvent) => {
+    if ((e.target as HTMLElement).closest('[data-task-block]')) return;
+    if (newTaskInput) return;
+    const touch = e.touches[0];
+    const mins = getMinutesFromY(touch.clientY);
+    const snapped = snapTo15(mins);
+    createTouchRef.current = { startMin: snapped, startY: touch.clientY, startX: touch.clientX, moved: false };
+  }, [getMinutesFromY, newTaskInput]);
+
+  const handleCreateTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!createTouchRef.current) return;
+    const touch = e.touches[0];
+    const dx = Math.abs(touch.clientX - createTouchRef.current.startX);
+    const dy = Math.abs(touch.clientY - createTouchRef.current.startY);
+    // Only vertical drag creates tasks; horizontal might be day-swipe
+    if (dx > dy && dx > 15) {
+      createTouchRef.current = null;
+      setCreating(null);
+      return;
+    }
+    if (dy > 10) {
+      createTouchRef.current.moved = true;
+      e.preventDefault();
+      const mins = getMinutesFromY(touch.clientY);
+      const snapped = snapTo15(mins);
+      setCreating({ startMin: createTouchRef.current.startMin, currentMin: snapped });
+    }
+  }, [getMinutesFromY]);
+
+  const handleCreateTouchEnd = useCallback(() => {
+    if (!createTouchRef.current) return;
+    if (creating) {
+      const startMin = Math.min(creating.startMin, creating.currentMin);
+      const endMin = Math.max(creating.startMin, creating.currentMin);
+      const duration = Math.max(15, endMin - startMin);
+      const time = minutesToTime(startMin);
+      const top = ((startMin - START_HOUR * 60) / 60) * HOUR_HEIGHT;
+      const height = (duration / 60) * HOUR_HEIGHT;
+      setCreating(null);
+      setNewTaskTitle('');
+      setNewTaskInput({ time, duration, top, height });
+      setTimeout(() => newTaskRef.current?.focus(), 50);
+    }
+    createTouchRef.current = null;
+  }, [creating, HOUR_HEIGHT]);
+
   useEffect(() => {
     if (!creating) return;
     const handleMouseMove = (e: MouseEvent) => {
