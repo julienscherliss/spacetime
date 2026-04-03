@@ -112,10 +112,17 @@ export function useDataSync(user: User | null) {
           const tasks = taskRows.map(rowToTask);
           useTaskStore.setState({ tasks });
         } else {
-          // First login — push local demo/existing tasks to DB
+          // First login — push local tasks to DB, re-ID any non-UUID tasks
           const currentTasks = useTaskStore.getState().tasks;
           if (currentTasks.length > 0) {
-            const rows = currentTasks.map(t => taskToRow(t, user.id));
+            const fixedTasks = currentTasks.map(t => {
+              if (!isValidUUID(t.id)) {
+                return { ...t, id: crypto.randomUUID() };
+              }
+              return t;
+            });
+            useTaskStore.setState({ tasks: fixedTasks });
+            const rows = fixedTasks.map(t => taskToRow(t, user.id));
             await supabase.from('tasks').upsert(rows as any);
           }
         }
