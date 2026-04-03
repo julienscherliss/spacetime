@@ -451,8 +451,8 @@ export function TimelineColumn({
   return (
     <div
       ref={colRef}
-      className="relative"
-      style={{ height: HOURS.length * HOUR_HEIGHT }}
+      className="relative select-none"
+      style={{ height: HOURS.length * HOUR_HEIGHT, WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
       onDragOver={handleDragOver}
       onDragLeave={() => setDragOverTime(null)}
       onDrop={handleDrop}
