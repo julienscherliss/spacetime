@@ -263,7 +263,10 @@ export function TimelineColumn({
   }, [getMinutesFromY, newTaskInput]);
 
   // Drag-to-create: touch handlers
-  const createTouchRef = useRef<{ startMin: number; startY: number; startX: number; moved: boolean } | null>(null);
+  // Strategy: require a 400ms hold before activating create mode.
+  // If the finger moves >8px before the timer fires, it's a scroll — cancel.
+  const createTouchRef = useRef<{ startMin: number; startY: number; startX: number; activated: boolean } | null>(null);
+  const createTouchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleCreateTouchStart = useCallback((e: React.TouchEvent) => {
     if ((e.target as HTMLElement).closest('[data-task-block]')) return;
@@ -271,7 +274,15 @@ export function TimelineColumn({
     const touch = e.touches[0];
     const mins = getMinutesFromY(touch.clientY);
     const snapped = snapTo15(mins);
-    createTouchRef.current = { startMin: snapped, startY: touch.clientY, startX: touch.clientX, moved: false };
+    createTouchRef.current = { startMin: snapped, startY: touch.clientY, startX: touch.clientX, activated: false };
+    // Start hold timer
+    createTouchTimer.current = setTimeout(() => {
+      if (createTouchRef.current) {
+        createTouchRef.current.activated = true;
+        // Provide subtle feedback — set creating state
+        setCreating({ startMin: createTouchRef.current.startMin, currentMin: createTouchRef.current.startMin });
+      }
+    }, 400);
   }, [getMinutesFromY, newTaskInput]);
 
   const handleCreateTouchMove = useCallback((e: React.TouchEvent) => {
@@ -279,24 +290,39 @@ export function TimelineColumn({
     const touch = e.touches[0];
     const dx = Math.abs(touch.clientX - createTouchRef.current.startX);
     const dy = Math.abs(touch.clientY - createTouchRef.current.startY);
-    // Only vertical drag creates tasks; horizontal might be day-swipe
+
+    if (!createTouchRef.current.activated) {
+      // Not yet activated — if finger moved, it's a scroll, cancel the timer
+      if (dx > 8 || dy > 8) {
+        if (createTouchTimer.current) clearTimeout(createTouchTimer.current);
+        createTouchTimer.current = null;
+        createTouchRef.current = null;
+        setCreating(null);
+      }
+      return; // Let scroll happen naturally
+    }
+
+    // Activated — horizontal means cancel
     if (dx > dy && dx > 15) {
       createTouchRef.current = null;
       setCreating(null);
       return;
     }
-    if (dy > 10) {
-      createTouchRef.current.moved = true;
-      e.preventDefault();
-      const mins = getMinutesFromY(touch.clientY);
-      const snapped = snapTo15(mins);
-      setCreating({ startMin: createTouchRef.current.startMin, currentMin: snapped });
-    }
+
+    // Prevent scroll, update create preview
+    e.preventDefault();
+    const mins = getMinutesFromY(touch.clientY);
+    const snapped = snapTo15(mins);
+    setCreating({ startMin: createTouchRef.current.startMin, currentMin: snapped });
   }, [getMinutesFromY]);
 
   const handleCreateTouchEnd = useCallback(() => {
+    if (createTouchTimer.current) {
+      clearTimeout(createTouchTimer.current);
+      createTouchTimer.current = null;
+    }
     if (!createTouchRef.current) return;
-    if (creating) {
+    if (createTouchRef.current.activated && creating) {
       const startMin = Math.min(creating.startMin, creating.currentMin);
       const endMin = Math.max(creating.startMin, creating.currentMin);
       const duration = Math.max(15, endMin - startMin);
@@ -307,6 +333,8 @@ export function TimelineColumn({
       setNewTaskTitle('');
       setNewTaskInput({ time, duration, top, height });
       setTimeout(() => newTaskRef.current?.focus(), 50);
+    } else {
+      setCreating(null);
     }
     createTouchRef.current = null;
   }, [creating, HOUR_HEIGHT]);
