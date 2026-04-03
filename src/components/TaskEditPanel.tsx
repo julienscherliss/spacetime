@@ -379,7 +379,12 @@ export function TaskEditPanel() {
                           key={opt.value}
                           onClick={() => {
                             setRecurrenceType(opt.value);
-                            // Close dropdown for all options except custom (needs more config)
+                            // Auto-set routine default
+                            if (opt.value === 'none') {
+                              setIsRoutine(false);
+                            } else if (recurrenceType === 'none') {
+                              setIsRoutine(true); // default ON when adding repeat
+                            }
                             if (opt.value !== 'custom') {
                               setShowRecurrence(false);
                             }
