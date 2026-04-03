@@ -380,6 +380,9 @@ export function TimelineColumn({
                 return;
               }
               didDragRef.current = true;
+              // Capture offset from cursor to top of the block
+              const blockRect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+              dragOffsetRef.current = e.clientY - blockRect.top;
               e.dataTransfer.setData('taskId', task.id);
               e.dataTransfer.setData('sourceDate', task.date);
               e.dataTransfer.effectAllowed = 'move';
