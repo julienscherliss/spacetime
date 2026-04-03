@@ -184,8 +184,10 @@ export function TaskEditPanel() {
       const hasRecurrenceChange = JSON.stringify(task.recurrence) !== JSON.stringify(updates.recurrence);
       const hasContentChange = task.title !== updates.title || task.time !== updates.time ||
         task.duration !== updates.duration || task.priority !== updates.priority;
+      // Linked toggle should only affect this instance — never show scope dialog for it
+      const onlyLinkedChanged = !hasRecurrenceChange && !hasContentChange && task.linked !== updates.linked;
 
-      if (hasRecurrenceChange || hasContentChange) {
+      if ((hasRecurrenceChange || hasContentChange) && !onlyLinkedChanged) {
         setPendingUpdates(updates);
         setShowEditScope(true);
         scopeTriggeredRef.current = true;
