@@ -97,7 +97,7 @@ export function WeekView() {
             {/* Day columns */}
             {weekDays.map((day) => {
               const dayTasks = tasks.filter((t) => t.date === day.date &&
-                !(!routinesEnabled && t.type === 'recurring'));
+                !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring'));
               return (
                 <div
                   key={day.date}

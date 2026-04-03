@@ -579,6 +579,7 @@ export const useTaskStore = create<TaskState>()(
               recurrenceParentId: parent.id,
               isRecurrenceInstance: true,
               recurrence: parent.recurrence,
+              isRoutine: parent.isRoutine,
             });
           }
         }
