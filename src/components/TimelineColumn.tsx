@@ -429,6 +429,9 @@ export function TimelineColumn({
       onDragLeave={() => setDragOverTime(null)}
       onDrop={handleDrop}
       onMouseDown={handleCreateMouseDown}
+      onTouchStart={handleCreateTouchStart}
+      onTouchMove={handleCreateTouchMove}
+      onTouchEnd={handleCreateTouchEnd}
     >
       {/* Hour grid lines */}
       {HOURS.map((hour, i) => (
