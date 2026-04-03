@@ -489,7 +489,7 @@ export const useTaskStore = create<TaskState>()(
         const state = get();
         const todayTasks = state.tasks
           .filter((t) => !t.completed && t.date === new Date().toISOString().split('T')[0] &&
-            !(! state.routinesEnabled && t.type === 'recurring'))
+            !(!state.routinesEnabled && t.isRoutine !== false && t.type === 'recurring'))
           .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
         const currentIdx = todayTasks.findIndex((t) => t.id === state.focusTaskId);
         const nextTask = todayTasks[currentIdx + 1] || todayTasks[0];
