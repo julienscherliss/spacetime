@@ -48,6 +48,7 @@ export function TimelineTaskBlock({
   const taskMinutes = task.time ? parseInt(task.time.split(':')[0], 10) * 60 + parseInt(task.time.split(':')[1], 10) : 0;
   const touchDragging = useTouchDragStore((s) => s.dragging);
   const isTouchDraggingThis = touchDragging?.type === 'task' && touchDragging.id === task.id;
+  const supportsTouch = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
 
   const borderLeftColor = {
     0: 'hsl(var(--priority-0) / 0.3)',
@@ -86,7 +87,7 @@ export function TimelineTaskBlock({
     <div
       ref={taskRef}
       data-task-block
-      draggable={!isResizingThis && !isLocked}
+      draggable={!supportsTouch && !isResizingThis && !isLocked}
       onTouchStartCapture={() => {
         didDragRef.current = false;
       }}
