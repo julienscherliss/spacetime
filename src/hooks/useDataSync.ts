@@ -182,9 +182,10 @@ export function useDataSync(user: User | null) {
             await supabase.from('tasks').delete().in('id', toDelete);
           }
 
-          // Upsert all current tasks
-          if (state.tasks.length > 0) {
-            const rows = state.tasks.map(t => taskToRow(t, userId));
+          // Upsert all current tasks, skipping any with invalid UUIDs
+          const validTasks = state.tasks.filter(t => isValidUUID(t.id));
+          if (validTasks.length > 0) {
+            const rows = validTasks.map(t => taskToRow(t, userId));
             await supabase.from('tasks').upsert(rows as any);
           }
         } catch (err) {
