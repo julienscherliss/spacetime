@@ -45,6 +45,8 @@ export function DayView() {
 
   // Lock scroll during active touch drag
   const isDragging = useTouchDragStore((s) => !!s.dragging);
+  const isScheduledDragging = useScheduledDragStore((s) => s.active);
+  const anyDragging = isDragging || isScheduledDragging;
 
   useEffect(() => {
     const el = scrollRef.current;
