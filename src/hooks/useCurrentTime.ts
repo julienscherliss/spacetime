@@ -25,6 +25,29 @@ export function minutesToTime(mins: number): string {
   return `${h}:${m}`;
 }
 
+/** Convert "HH:MM" or minutes to 12-hour format like "9:00 AM" */
+export function formatTime12h(time: string | number): string {
+  let totalMins: number;
+  if (typeof time === 'number') {
+    totalMins = Math.max(0, time);
+  } else {
+    const [h, m] = time.split(':').map(Number);
+    totalMins = h * 60 + m;
+  }
+  const h24 = Math.floor(totalMins / 60);
+  const m = totalMins % 60;
+  const period = h24 >= 12 ? 'PM' : 'AM';
+  const h12 = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24;
+  return `${h12}:${m.toString().padStart(2, '0')} ${period}`;
+}
+
+/** Format hour number (0-23) to 12h label like "9 AM" */
+export function formatHour12h(hour: number): string {
+  const period = hour >= 12 ? 'PM' : 'AM';
+  const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+  return `${h12} ${period}`;
+}
+
 export function snapTo15(mins: number): number {
   return Math.round(mins / 15) * 15;
 }
