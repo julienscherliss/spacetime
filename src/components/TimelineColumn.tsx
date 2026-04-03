@@ -269,76 +269,99 @@ export function TimelineColumn({
   const createTouchRef = useRef<{ startMin: number; startY: number; startX: number; activated: boolean } | null>(null);
   const createTouchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleCreateTouchStart = useCallback((e: React.TouchEvent) => {
-    if ((e.target as HTMLElement).closest('[data-task-block]')) return;
-    if (newTaskInput) return;
-    const touch = e.touches[0];
-    const mins = getMinutesFromY(touch.clientY);
-    const snapped = snapTo15(mins);
-    createTouchRef.current = { startMin: snapped, startY: touch.clientY, startX: touch.clientX, activated: false };
-    // Start hold timer
-    createTouchTimer.current = setTimeout(() => {
-      if (createTouchRef.current) {
-        createTouchRef.current.activated = true;
-        // Provide subtle feedback — set creating state
-        setCreating({ startMin: createTouchRef.current.startMin, currentMin: createTouchRef.current.startMin });
+  // Use native (non-passive) touch listeners for drag-to-create so we can
+  // call preventDefault() once the hold activates and stop the page from scrolling.
+  useEffect(() => {
+    const el = colRef.current;
+    if (!el) return;
+
+    // We read these from refs so the listeners don't need to be re-attached on every state change.
+    const getMinutes = getMinutesFromY;
+
+    const onTouchStart = (e: TouchEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('[data-task-block]') || target.closest('input') || target.closest('button')) return;
+      const touch = e.touches[0];
+      const mins = getMinutes(touch.clientY);
+      const snapped = snapTo15(mins);
+      createTouchRef.current = { startMin: snapped, startY: touch.clientY, startX: touch.clientX, activated: false };
+      createTouchTimer.current = setTimeout(() => {
+        if (createTouchRef.current) {
+          createTouchRef.current.activated = true;
+          setCreating({ startMin: createTouchRef.current.startMin, currentMin: createTouchRef.current.startMin });
+        }
+      }, 400);
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (!createTouchRef.current) return;
+      const touch = e.touches[0];
+      const dx = Math.abs(touch.clientX - createTouchRef.current.startX);
+      const dy = Math.abs(touch.clientY - createTouchRef.current.startY);
+
+      if (!createTouchRef.current.activated) {
+        if (dx > 8 || dy > 8) {
+          if (createTouchTimer.current) clearTimeout(createTouchTimer.current);
+          createTouchTimer.current = null;
+          createTouchRef.current = null;
+          setCreating(null);
+        }
+        return; // allow native scroll
       }
-    }, 400);
-  }, [getMinutesFromY, newTaskInput]);
 
-  const handleCreateTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!createTouchRef.current) return;
-    const touch = e.touches[0];
-    const dx = Math.abs(touch.clientX - createTouchRef.current.startX);
-    const dy = Math.abs(touch.clientY - createTouchRef.current.startY);
-
-    if (!createTouchRef.current.activated) {
-      // Not yet activated — if finger moved, it's a scroll, cancel the timer
-      if (dx > 8 || dy > 8) {
-        if (createTouchTimer.current) clearTimeout(createTouchTimer.current);
-        createTouchTimer.current = null;
+      // Activated — horizontal swipe cancels
+      if (dx > dy && dx > 15) {
         createTouchRef.current = null;
         setCreating(null);
+        return;
       }
-      return; // Let scroll happen naturally
-    }
 
-    // Activated — horizontal means cancel
-    if (dx > dy && dx > 15) {
+      // ** Block scrolling now that we're in create mode **
+      e.preventDefault();
+      const mins = getMinutes(touch.clientY);
+      const snapped = snapTo15(mins);
+      setCreating({ startMin: createTouchRef.current.startMin, currentMin: snapped });
+    };
+
+    const onTouchEnd = () => {
+      if (createTouchTimer.current) {
+        clearTimeout(createTouchTimer.current);
+        createTouchTimer.current = null;
+      }
+      if (!createTouchRef.current) return;
+      if (createTouchRef.current.activated) {
+        // We need the latest creating state — read from the DOM-schedule ref workaround:
+        // Since we can't read React state here reliably, compute from the ref.
+        const ref = createTouchRef.current;
+        // The creating state was set in onTouchMove; the last currentMin came from there.
+        // We'll use a small trick: store currentMin on the ref too.
+        const startMin = Math.min(ref.startMin, (ref as any).lastMin ?? ref.startMin);
+        const endMin = Math.max(ref.startMin, (ref as any).lastMin ?? ref.startMin);
+        const duration = Math.max(15, endMin - startMin);
+        const time = minutesToTime(startMin);
+        const top = ((startMin - START_HOUR * 60) / 60) * HOUR_HEIGHT;
+        const height = (duration / 60) * HOUR_HEIGHT;
+        setCreating(null);
+        setNewTaskTitle('');
+        setNewTaskInput({ time, duration, top, height });
+        setTimeout(() => newTaskRef.current?.focus(), 50);
+      } else {
+        setCreating(null);
+      }
       createTouchRef.current = null;
-      setCreating(null);
-      return;
-    }
+    };
 
-    // Prevent scroll, update create preview
-    e.preventDefault();
-    const mins = getMinutesFromY(touch.clientY);
-    const snapped = snapTo15(mins);
-    setCreating({ startMin: createTouchRef.current.startMin, currentMin: snapped });
-  }, [getMinutesFromY]);
+    // Attach with { passive: false } so preventDefault() works on touchmove
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    el.addEventListener('touchend', onTouchEnd, { passive: true });
 
-  const handleCreateTouchEnd = useCallback(() => {
-    if (createTouchTimer.current) {
-      clearTimeout(createTouchTimer.current);
-      createTouchTimer.current = null;
-    }
-    if (!createTouchRef.current) return;
-    if (createTouchRef.current.activated && creating) {
-      const startMin = Math.min(creating.startMin, creating.currentMin);
-      const endMin = Math.max(creating.startMin, creating.currentMin);
-      const duration = Math.max(15, endMin - startMin);
-      const time = minutesToTime(startMin);
-      const top = ((startMin - START_HOUR * 60) / 60) * HOUR_HEIGHT;
-      const height = (duration / 60) * HOUR_HEIGHT;
-      setCreating(null);
-      setNewTaskTitle('');
-      setNewTaskInput({ time, duration, top, height });
-      setTimeout(() => newTaskRef.current?.focus(), 50);
-    } else {
-      setCreating(null);
-    }
-    createTouchRef.current = null;
-  }, [creating, HOUR_HEIGHT]);
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [getMinutesFromY, HOUR_HEIGHT]);
 
   useEffect(() => {
     if (!creating) return;
@@ -474,9 +497,7 @@ export function TimelineColumn({
       onDragLeave={() => setDragOverTime(null)}
       onDrop={handleDrop}
       onMouseDown={handleCreateMouseDown}
-      onTouchStart={handleCreateTouchStart}
-      onTouchMove={handleCreateTouchMove}
-      onTouchEnd={handleCreateTouchEnd}
+      /* touch create handlers are native — see useEffect above */
     >
       {/* Hour grid lines */}
       {HOURS.map((hour, i) => (
