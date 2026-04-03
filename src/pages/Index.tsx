@@ -6,6 +6,7 @@ import { WeekView } from '@/components/WeekView';
 import { CalendarView } from '@/components/CalendarView';
 import { TaskEditPanel } from '@/components/TaskEditPanel';
 import { DailyCompletionModal } from '@/components/DailyCompletionModal';
+import { CalendarPanel } from '@/components/CalendarPanel';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Index = () => {
