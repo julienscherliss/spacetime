@@ -43,6 +43,8 @@ export function TimelineColumn({
 
   // Track whether a drag/resize happened to suppress click
   const didDragRef = useRef(false);
+  // Offset from cursor to top of dragged block (for accurate drop)
+  const dragOffsetRef = useRef(0);
 
   const [resizing, setResizing] = useState<{
     id: string;
