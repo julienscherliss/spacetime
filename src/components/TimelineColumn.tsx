@@ -385,7 +385,10 @@ export function TimelineColumn({
       setCreating(null);
       setNewTaskTitle('');
       setNewTaskInput({ time, duration, top, height });
-      setTimeout(() => newTaskRef.current?.focus(), 50);
+      setTimeout(() => {
+        newTaskRef.current?.focus();
+        newTaskRef.current?.click();
+      }, 100);
     };
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
