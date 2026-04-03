@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Priority, RecurrencePattern, CustomUnit } from '@/store/taskStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
-import { X, Play, Calendar, Clock, Trash2, Repeat, ChevronDown } from 'lucide-react';
+import { X, Play, Calendar, Clock, Trash2, Repeat, ChevronDown, Archive } from 'lucide-react';
+import { useLibraryStore } from '@/store/libraryStore';
 import { minutesToTime, timeToMinutes } from '@/hooks/useCurrentTime';
 
 const PRIORITY_LABELS = ['Flex', 'Semi', 'Fixed', 'Lock'] as const;
