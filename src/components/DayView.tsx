@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
+import { useCalendarStore } from '@/store/calendarStore';
 import { useCurrentTime } from '@/hooks/useCurrentTime';
 import { TimelineColumn } from '@/components/TimelineColumn';
 import { BlockedModal } from '@/components/BlockedModal';
