@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { getWeekBounds } from '@/hooks/useCurrentTime';
+import type { Subtask } from '@/components/SubtaskList';
 
 export type Priority = 0 | 1 | 2 | 3;
 export type TaskType = 'one-time' | 'recurring';
@@ -10,7 +11,7 @@ export type CustomUnit = 'days' | 'weeks' | 'months' | 'years';
 
 export type RecurrencePattern =
   | { type: 'daily' }
-  | { type: 'weekly'; days: number[] } // 0=Sun, 1=Mon...
+  | { type: 'weekly'; days: number[] }
   | { type: 'monthly'; dayOfMonth: number }
   | { type: 'yearly'; month: number; dayOfMonth: number }
   | { type: 'weekdays' }
@@ -19,6 +20,8 @@ export type RecurrencePattern =
 export interface Task {
   id: string;
   title: string;
+  description?: string;
+  subtasks?: Subtask[];
   type: TaskType;
   priority: Priority;
   originalPriority: Priority;
@@ -31,7 +34,10 @@ export interface Task {
   recurrence?: RecurrencePattern;
   recurrenceParentId?: string;
   isRecurrenceInstance?: boolean;
-  isRoutine?: boolean; // decoupled from type — user can override
+  isRoutine?: boolean;
+  linked?: boolean; // linked repeating tasks share edits
+  inWaitingRoom?: boolean;
+  waitingRoomCount?: number;
 }
 
 export interface DailyStats {
@@ -56,8 +62,8 @@ interface TaskState {
   setViewMode: (mode: ViewMode) => void;
   toggleRoutines: () => void;
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'completed' | 'moveCount' | 'originalPriority'> & { isRoutine?: boolean }) => void;
-  updateTask: (id: string, updates: Partial<Pick<Task, 'title' | 'date' | 'time' | 'duration' | 'priority' | 'recurrence' | 'type' | 'isRoutine'>>) => void;
-  updateFutureInstances: (parentId: string, updates: Partial<Pick<Task, 'title' | 'time' | 'duration' | 'priority' | 'recurrence' | 'type' | 'isRoutine'>>) => void;
+  updateTask: (id: string, updates: Partial<Task>) => void;
+  updateFutureInstances: (parentId: string, updates: Partial<Task>) => void;
   completeTask: (id: string) => void;
   deleteTask: (id: string) => void;
   deleteFutureInstances: (parentId: string, fromDate: string) => void;
@@ -76,11 +82,11 @@ interface TaskState {
   getDailyStats: () => DailyStats;
   dismissCompletionStats: () => void;
   generateRecurringInstances: (startDate: string, endDate: string) => void;
+  moveOverdueToWaitingRoom: () => void;
 }
 
 const generateId = () => Math.random().toString(36).substring(2, 10);
 
-// ─── Derive type from recurrence (source of truth) ──────────
 function deriveType(recurrence?: RecurrencePattern): TaskType {
   return recurrence ? 'recurring' : 'one-time';
 }
@@ -338,7 +344,6 @@ export const useTaskStore = create<TaskState>()(
           tasks: s.tasks.map((t) => {
             if (t.id !== id) return t;
             const merged = { ...t, ...updates };
-            // Enforce: type derived from recurrence
             if ('recurrence' in updates) {
               merged.type = deriveType(merged.recurrence);
             }
@@ -348,7 +353,6 @@ export const useTaskStore = create<TaskState>()(
 
       updateFutureInstances: (parentId, updates) => {
         const today = new Date().toISOString().split('T')[0];
-        // Enforce type derivation
         const resolvedUpdates = { ...updates };
         if ('recurrence' in updates) {
           resolvedUpdates.type = deriveType(updates.recurrence);
@@ -367,7 +371,7 @@ export const useTaskStore = create<TaskState>()(
       completeTask: (id) => {
         set((s) => ({
           tasks: s.tasks.map((t) =>
-            t.id === id ? { ...t, completed: true } : t
+            t.id === id ? { ...t, completed: true, inWaitingRoom: false } : t
           ),
           editingTaskId: s.editingTaskId === id ? null : s.editingTaskId,
         }));
@@ -459,6 +463,7 @@ export const useTaskStore = create<TaskState>()(
                   time: newTime ?? t.time,
                   priority: newPriority,
                   moveCount: crossDay ? t.moveCount + 1 : t.moveCount,
+                  inWaitingRoom: false,
                 }
               : t
           ),
@@ -488,7 +493,7 @@ export const useTaskStore = create<TaskState>()(
       skipFocusTask: () => {
         const state = get();
         const todayTasks = state.tasks
-          .filter((t) => !t.completed && t.date === new Date().toISOString().split('T')[0] &&
+          .filter((t) => !t.completed && !t.inWaitingRoom && t.date === new Date().toISOString().split('T')[0] &&
             !(!state.routinesEnabled && t.isRoutine !== false && t.type === 'recurring'))
           .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
         const currentIdx = todayTasks.findIndex((t) => t.id === state.focusTaskId);
@@ -501,7 +506,7 @@ export const useTaskStore = create<TaskState>()(
 
       getTasksForDate: (date) => {
         const state = get();
-        return state.tasks.filter((t) => t.date === date && !t.completed &&
+        return state.tasks.filter((t) => t.date === date && !t.completed && !t.inWaitingRoom &&
           !(!state.routinesEnabled && t.isRoutine !== false && t.type === 'recurring'));
       },
 
@@ -510,12 +515,12 @@ export const useTaskStore = create<TaskState>()(
         const isRoutineAllowed = (t: Task) => !(!state.routinesEnabled && t.isRoutine !== false && t.type === 'recurring');
 
         if (state.focusTaskId) {
-          const task = state.tasks.find((t) => t.id === state.focusTaskId && !t.completed && isRoutineAllowed(t));
+          const task = state.tasks.find((t) => t.id === state.focusTaskId && !t.completed && !t.inWaitingRoom && isRoutineAllowed(t));
           if (task) return task;
         }
         const today = new Date().toISOString().split('T')[0];
         return state.tasks
-          .filter((t) => !t.completed && t.date === today && isRoutineAllowed(t))
+          .filter((t) => !t.completed && !t.inWaitingRoom && t.date === today && isRoutineAllowed(t))
           .sort((a, b) => (a.time || '').localeCompare(b.time || ''))[0];
       },
 
@@ -523,7 +528,7 @@ export const useTaskStore = create<TaskState>()(
         const state = get();
         const today = new Date().toISOString().split('T')[0];
         const todayTasks = state.tasks
-          .filter((t) => !t.completed && t.date === today &&
+          .filter((t) => !t.completed && !t.inWaitingRoom && t.date === today &&
             !(!state.routinesEnabled && t.isRoutine !== false && t.type === 'recurring'))
           .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
         const idx = todayTasks.findIndex((t) => t.id === currentId);
@@ -541,6 +546,28 @@ export const useTaskStore = create<TaskState>()(
       },
 
       dismissCompletionStats: () => set({ showCompletionStats: false }),
+
+      moveOverdueToWaitingRoom: () => {
+        const now = new Date();
+        const today = now.toISOString().split('T')[0];
+        const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+        set((s) => ({
+          tasks: s.tasks.map((t) => {
+            if (t.completed || t.inWaitingRoom) return t;
+            if (!t.time) return t;
+            // Task is overdue if its date is before today, or same day but end time has passed
+            const taskEnd = (parseInt(t.time.split(':')[0]) * 60 + parseInt(t.time.split(':')[1])) + (t.duration || 30);
+            const isOverdue = t.date < today || (t.date === today && taskEnd < nowMinutes);
+            if (!isOverdue) return t;
+            return {
+              ...t,
+              inWaitingRoom: true,
+              waitingRoomCount: (t.waitingRoomCount || 0) + 1,
+            };
+          }),
+        }));
+      },
 
       generateRecurringInstances: (startDate, endDate) => {
         const state = get();
@@ -567,6 +594,8 @@ export const useTaskStore = create<TaskState>()(
             newTasks.push({
               id: generateId(),
               title: parent.title,
+              description: parent.description,
+              subtasks: parent.linked ? parent.subtasks : undefined,
               type: 'recurring',
               priority: parent.originalPriority,
               originalPriority: parent.originalPriority,
@@ -580,6 +609,7 @@ export const useTaskStore = create<TaskState>()(
               isRecurrenceInstance: true,
               recurrence: parent.recurrence,
               isRoutine: parent.isRoutine,
+              linked: parent.linked,
             });
           }
         }
