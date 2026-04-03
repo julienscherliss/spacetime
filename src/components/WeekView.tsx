@@ -175,8 +175,8 @@ export function WeekView() {
             />
           </div>
 
-          {/* Second week (stacked mode) — desktop only */}
-          {stacked && !isMobile && (
+          {/* Second week (stacked mode) */}
+          {stacked && (
             <div className="mt-4 pt-3 border-t border-border/30">
               <div className="flex items-center gap-2 mb-2 px-0.5">
                 <button
@@ -201,7 +201,8 @@ export function WeekView() {
                 nowMinutes={nowMinutes}
                 hourHeight={hourHeight}
                 routinesEnabled={routinesEnabled}
-                dayCount={7}
+                compact={isMobile}
+                dayCount={dayCount}
               />
             </div>
           )}
