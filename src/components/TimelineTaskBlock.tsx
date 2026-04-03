@@ -1,9 +1,10 @@
-import { MutableRefObject, useRef, useCallback } from 'react';
+import { MutableRefObject, useRef, useCallback, useEffect } from 'react';
 import { Check, Link, Unlink } from 'lucide-react';
 import { Task } from '@/store/taskStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { formatTime12h } from '@/hooks/useCurrentTime';
 import { useScheduledDragStore } from '@/store/scheduledDragStore';
+import { START_HOUR } from '@/components/TimelineColumn';
 
 interface TimelineTaskBlockProps {
   task: Task;
@@ -28,6 +29,18 @@ interface TimelineTaskBlockProps {
 }
 
 const DRAG_THRESHOLD = 8;
+
+function findColumnAtPoint(x: number, y: number): { date: string; element: HTMLElement } | null {
+  const cols = document.querySelectorAll<HTMLElement>('[data-timeline-column]');
+  for (const col of cols) {
+    const rect = col.getBoundingClientRect();
+    if (x >= rect.left && x <= rect.right && y >= rect.top - 50 && y <= rect.bottom + 50) {
+      const date = col.getAttribute('data-column-date');
+      if (date) return { date, element: col };
+    }
+  }
+  return null;
+}
 
 export function TimelineTaskBlock({
   task,
@@ -84,62 +97,81 @@ export function TimelineTaskBlock({
       grabOffsetY: grabOffset,
     });
 
-    elRef.current?.setPointerCapture(e.pointerId);
+    // Do NOT setPointerCapture — we need the pointer to cross columns
   }, [isLocked, isResizingThis, task.id, task.date, task.time, task.duration, dragOffsetRef]);
 
-  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+  // Global pointermove/pointerup when drag is pending or active
+  useEffect(() => {
     if (!pointerStartRef.current) return;
     const store = useScheduledDragStore.getState();
-    if (!store.taskId) return;
+    if (store.taskId !== task.id) return;
 
-    const dx = e.clientX - pointerStartRef.current.x;
-    const dy = e.clientY - pointerStartRef.current.y;
-    const distance = Math.hypot(dx, dy);
+    const handleMove = (e: PointerEvent) => {
+      if (!pointerStartRef.current) return;
+      const dx = e.clientX - pointerStartRef.current.x;
+      const dy = e.clientY - pointerStartRef.current.y;
+      const distance = Math.hypot(dx, dy);
 
-    if (!store.active) {
-      if (distance < DRAG_THRESHOLD) return;
-      useScheduledDragStore.getState().activate();
-      didDragRef.current = true;
-    }
+      const s = useScheduledDragStore.getState();
+      if (!s.active) {
+        if (distance < DRAG_THRESHOLD) return;
+        useScheduledDragStore.getState().activate();
+        didDragRef.current = true;
+      }
 
-    const col = elRef.current?.closest('[data-timeline-column]') as HTMLElement | null;
-    if (!col) return;
-    const colRect = col.getBoundingClientRect();
-    const yInCol = e.clientY - colRect.top - store.grabOffsetY;
-    const rawMinutes = startHour * 60 + (yInCol / hourHeight) * 60;
-    const snapped = snapTo15(rawMinutes);
-    useScheduledDragStore.getState().updatePosition(snapped);
-  }, [didDragRef, hourHeight, startHour]);
+      // Find which column the pointer is over
+      const col = findColumnAtPoint(e.clientX, e.clientY);
+      if (col) {
+        const colRect = col.element.getBoundingClientRect();
+        const yInCol = e.clientY - colRect.top - useScheduledDragStore.getState().grabOffsetY;
+        const rawMinutes = START_HOUR * 60 + (yInCol / hourHeight) * 60;
+        const snapped = snapTo15(rawMinutes);
+        useScheduledDragStore.getState().updatePosition(snapped);
+        useScheduledDragStore.getState().setTargetDate(col.date);
+      }
+    };
 
-  const handlePointerUp = useCallback((e: React.PointerEvent) => {
-    if (!pointerStartRef.current) return;
-    const store = useScheduledDragStore.getState();
+    const handleUp = (e: PointerEvent) => {
+      if (!pointerStartRef.current) return;
+      const s = useScheduledDragStore.getState();
+      if (!s.active) {
+        useScheduledDragStore.getState().cancel();
+        handleTaskClick(task.id);
+      }
+      // Drop is handled by the single global handler in TimelineColumn
+      pointerStartRef.current = null;
+      setTimeout(() => { didDragRef.current = false; }, 50);
+    };
 
-    if (!store.active) {
+    const handleCancel = () => {
       useScheduledDragStore.getState().cancel();
-      handleTaskClick(task.id);
+      pointerStartRef.current = null;
+      didDragRef.current = false;
+    };
+
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+    window.addEventListener('pointercancel', handleCancel);
+    return () => {
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+      window.removeEventListener('pointercancel', handleCancel);
+    };
+  });
+
+  // Clear ref when drag ends externally
+  const dragTaskId = useScheduledDragStore((s) => s.taskId);
+  useEffect(() => {
+    if (dragTaskId !== task.id) {
+      pointerStartRef.current = null;
     }
-
-    elRef.current?.releasePointerCapture(e.pointerId);
-    pointerStartRef.current = null;
-    setTimeout(() => { didDragRef.current = false; }, 50);
-  }, [handleTaskClick, task.id, didDragRef]);
-
-  const handlePointerCancel = useCallback((e: React.PointerEvent) => {
-    useScheduledDragStore.getState().cancel();
-    pointerStartRef.current = null;
-    elRef.current?.releasePointerCapture(e.pointerId);
-    didDragRef.current = false;
-  }, [didDragRef]);
+  }, [dragTaskId, task.id]);
 
   return (
     <div
       ref={elRef}
       data-task-block
       onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerCancel}
       onContextMenu={(e) => e.preventDefault()}
       className={`absolute right-1 group select-none transition-[opacity,box-shadow] duration-200 ${
         isLocked
