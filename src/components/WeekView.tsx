@@ -14,15 +14,16 @@ export function WeekView() {
   const { minutes: nowMinutes, dateStr: today } = useCurrentTime(15000);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [weekOffset, setWeekOffset] = useState(0);
-  const [week2Offset, setWeek2Offset] = useState(1); // independent second week
+  const [week2Offset, setWeek2Offset] = useState(1);
   const [stacked, setStacked] = useState(false);
   const preStackScaleRef = useRef<number | null>(null);
   const isMobile = useIsMobile();
 
-  // Swipe state for mobile
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [swiping, setSwiping] = useState(false);
+
+  const dayCount = isMobile ? 3 : 7;
 
   const {
     hourHeight, zoomIn, zoomOut, resetZoom, setScale,
@@ -30,8 +31,8 @@ export function WeekView() {
     zoomPercent, isMin, isMax, isDefault,
   } = useTimeScale('week');
 
-  const week1 = useWeekDays(weekOffset, today);
-  const week2 = useWeekDays(stacked ? week2Offset : weekOffset + 1, today);
+  const week1 = useWeekDays(weekOffset, today, dayCount);
+  const week2 = useWeekDays(stacked ? week2Offset : weekOffset + 1, today, dayCount);
 
   useEffect(() => {
     const start = week1[0]?.date;
@@ -56,7 +57,6 @@ export function WeekView() {
     return () => { cleanScroll?.(); cleanPinch?.(); };
   }, [bindScrollZoom, bindPinchZoom]);
 
-  // Mobile swipe for week navigation
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (e.touches.length !== 1) return;
     touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -93,7 +93,7 @@ export function WeekView() {
       <div className="mb-4 px-1 sm:px-2 flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2 sm:gap-3">
           <h2 className="text-base sm:text-lg font-display font-bold text-foreground tracking-tight">
-            Week
+            {isMobile ? '3-Day' : 'Week'}
           </h2>
 
           <div className="flex items-center gap-0.5">
@@ -126,16 +126,13 @@ export function WeekView() {
         {!isMobile && (
           <button
             onClick={() => {
-            if (!stacked) {
+              if (!stacked) {
                 setWeek2Offset(weekOffset + 1);
                 preStackScaleRef.current = hourHeight;
-                // Fit two 24h grids + headers (~120px) in viewport
                 const available = window.innerHeight - 120;
                 const fitScale = Math.floor(available / (24 * 2));
-                // Allow going below normal SCALE_MIN for stacked mode
                 setScale(Math.max(fitScale, 10));
               } else {
-                // Restore previous scale
                 if (preStackScaleRef.current !== null) {
                   setScale(preStackScaleRef.current);
                   preStackScaleRef.current = null;
@@ -177,10 +174,11 @@ export function WeekView() {
               hourHeight={hourHeight}
               routinesEnabled={routinesEnabled}
               compact={isMobile}
+              dayCount={dayCount}
             />
           </div>
 
-          {/* Second week (stacked mode) — with independent navigation */}
+          {/* Second week (stacked mode) — desktop only */}
           {stacked && !isMobile && (
             <div className="mt-4 pt-3 border-t border-border/30">
               <div className="flex items-center gap-2 mb-2 px-0.5">
@@ -206,6 +204,7 @@ export function WeekView() {
                 nowMinutes={nowMinutes}
                 hourHeight={hourHeight}
                 routinesEnabled={routinesEnabled}
+                dayCount={7}
               />
             </div>
           )}

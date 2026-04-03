@@ -2,8 +2,9 @@ import { motion } from 'framer-motion';
 import { useTaskStore, ViewMode } from '@/store/taskStore';
 import { useCalendarStore } from '@/store/calendarStore';
 import { useLibraryStore } from '@/store/libraryStore';
+import { useAuth } from '@/hooks/useAuth';
 import { AddTaskModal } from '@/components/AddTaskModal';
-import { Focus, List, CalendarDays, Grid3X3, Repeat, Calendar as CalIcon, Archive } from 'lucide-react';
+import { Focus, List, CalendarDays, Grid3X3, Repeat, Calendar as CalIcon, Archive, Clock, LogOut } from 'lucide-react';
 
 const views: { mode: ViewMode; icon: typeof Focus; label: string }[] = [
   { mode: 'focus', icon: Focus, label: 'FOCUS' },
@@ -13,10 +14,12 @@ const views: { mode: ViewMode; icon: typeof Focus; label: string }[] = [
 ];
 
 export function AppNav() {
-  const { viewMode, setViewMode, routinesEnabled, toggleRoutines } = useTaskStore();
+  const { viewMode, setViewMode, routinesEnabled, toggleRoutines, tasks } = useTaskStore();
   const { panelOpen: calPanelOpen, setPanelOpen: setCalPanelOpen, connected } = useCalendarStore();
   const { panelOpen: libPanelOpen, setPanelOpen: setLibPanelOpen } = useLibraryStore();
   const libCount = useLibraryStore((s) => s.items.length);
+  const { signOut } = useAuth();
+  const waitingCount = tasks.filter((t) => t.inWaitingRoom && !t.completed).length;
 
   return (
     <nav className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border/60">
@@ -79,6 +82,21 @@ export function AppNav() {
             )}
           </button>
           <button
+            onClick={() => {
+              // Dispatch a custom event for WaitingRoom toggle
+              window.dispatchEvent(new CustomEvent('toggle-waiting-room'));
+            }}
+            className="flex items-center gap-1 px-2 py-1.5 rounded-sm text-[10px] font-mono tracking-wider text-muted-foreground hover:text-foreground transition-colors relative"
+          >
+            <Clock size={12} strokeWidth={1.5} />
+            <span className="hidden sm:inline">WAITING</span>
+            {waitingCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] rounded-full bg-primary text-primary-foreground text-[8px] font-mono flex items-center justify-center">
+                {waitingCount}
+              </span>
+            )}
+          </button>
+          <button
             onClick={() => setCalPanelOpen(!calPanelOpen)}
             className={`flex items-center gap-1 px-2 py-1.5 rounded-sm text-[10px] font-mono tracking-wider transition-colors ${
               calPanelOpen
@@ -92,6 +110,13 @@ export function AppNav() {
             <span className="hidden sm:inline">CAL</span>
           </button>
           <AddTaskModal />
+          <button
+            onClick={signOut}
+            className="p-1.5 rounded-sm text-muted-foreground/40 hover:text-foreground transition-colors"
+            title="Sign out"
+          >
+            <LogOut size={12} strokeWidth={1.5} />
+          </button>
         </div>
       </div>
     </nav>

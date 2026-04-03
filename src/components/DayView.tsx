@@ -87,7 +87,7 @@ export function DayView() {
 
   const goToToday = () => setSelectedDate(today);
 
-  const dayTasks = tasks.filter((t) => t.date === selectedDate &&
+  const dayTasks = tasks.filter((t) => t.date === selectedDate && !t.inWaitingRoom &&
     !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring'));
   const completedCount = dayTasks.filter((t) => t.completed).length;
   const isToday = selectedDate === today;

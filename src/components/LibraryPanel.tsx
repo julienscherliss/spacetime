@@ -164,8 +164,6 @@ export function LibraryPanel() {
     setShowNewCat(false);
   };
 
-  const panelWidth = isMobile ? 'w-full sm:w-80' : 'w-80';
-
   return (
     <AnimatePresence>
       {panelOpen && (
@@ -179,13 +177,17 @@ export function LibraryPanel() {
             onClick={() => setPanelOpen(false)}
           />
 
-          {/* Panel */}
+          {/* Panel — bottom sheet on mobile, left sidebar on desktop */}
           <motion.div
-            initial={{ x: -320, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: -320, opacity: 0 }}
+            initial={isMobile ? { y: '100%' } : { x: -320, opacity: 0 }}
+            animate={isMobile ? { y: 0 } : { x: 0, opacity: 1 }}
+            exit={isMobile ? { y: '100%' } : { x: -320, opacity: 0 }}
             transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-            className={`fixed left-0 top-0 bottom-0 z-50 ${panelWidth} bg-card border-r border-border shadow-lg flex flex-col`}
+            className={`fixed z-50 bg-card shadow-lg flex flex-col ${
+              isMobile
+                ? 'left-0 right-0 bottom-0 top-[45%] border-t border-border rounded-t-lg'
+                : 'left-0 top-0 bottom-0 w-80 border-r border-border'
+            }`}
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
