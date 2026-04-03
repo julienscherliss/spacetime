@@ -1,15 +1,18 @@
-import { useMemo, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTaskStore } from '@/store/taskStore';
 import { useCurrentTime } from '@/hooks/useCurrentTime';
-import { TimelineColumn, HOURS } from '@/components/TimelineColumn';
+import { WeekGrid, useWeekDays } from '@/components/WeekGrid';
 import { BlockedModal } from '@/components/BlockedModal';
 import { ZoomControl } from '@/components/ZoomControl';
 import { useTimeScale } from '@/hooks/useTimeScale';
+import { ChevronLeft, ChevronRight, Layers, Square } from 'lucide-react';
 
 export function WeekView() {
-  const { tasks, routinesEnabled, generateRecurringInstances } = useTaskStore();
+  const { routinesEnabled, generateRecurringInstances } = useTaskStore();
   const { minutes: nowMinutes, dateStr: today } = useCurrentTime(15000);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [stacked, setStacked] = useState(false);
 
   const {
     hourHeight, zoomIn, zoomOut, resetZoom, setScale,
@@ -17,29 +20,17 @@ export function WeekView() {
     zoomPercent, isMin, isMax, isDefault,
   } = useTimeScale('week');
 
-  const weekDays = useMemo(() => {
-    const todayDate = new Date();
-    const monday = new Date(todayDate);
-    monday.setDate(todayDate.getDate() - ((todayDate.getDay() + 6) % 7));
-
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(monday);
-      d.setDate(monday.getDate() + i);
-      const dateStr = d.toISOString().split('T')[0];
-      return {
-        date: dateStr,
-        label: d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase(),
-        day: d.getDate(),
-        isToday: dateStr === today,
-      };
-    });
-  }, [today]);
+  // Generate recurring instances for visible range
+  const week1 = useWeekDays(weekOffset, today);
+  const week2 = useWeekDays(weekOffset + 1, today);
 
   useEffect(() => {
-    if (weekDays.length > 0) {
-      generateRecurringInstances(weekDays[0].date, weekDays[weekDays.length - 1].date);
+    const start = week1[0]?.date;
+    const end = stacked ? week2[week2.length - 1]?.date : week1[week1.length - 1]?.date;
+    if (start && end) {
+      generateRecurringInstances(start, end);
     }
-  }, [weekDays, generateRecurringInstances]);
+  }, [week1, week2, stacked, generateRecurringInstances]);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -49,72 +40,86 @@ export function WeekView() {
     return () => { cleanScroll?.(); cleanPinch?.(); };
   }, [bindScrollZoom, bindPinchZoom]);
 
+  const goToCurrentWeek = () => setWeekOffset(0);
+
   return (
     <div className="px-2 py-5 overflow-x-auto">
-      <div className="mb-4 px-2">
-        <h2 className="text-lg font-display font-bold text-foreground tracking-tight">
-          This Week
-        </h2>
+      {/* Header */}
+      <div className="mb-4 px-2 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-display font-bold text-foreground tracking-tight">
+            Week
+          </h2>
+
+          {/* Week navigation */}
+          <div className="flex items-center gap-0.5">
+            <button
+              onClick={() => setWeekOffset(o => o - 1)}
+              className="p-1 rounded-sm text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors"
+            >
+              <ChevronLeft size={14} strokeWidth={1.5} />
+            </button>
+            <button
+              onClick={goToCurrentWeek}
+              className={`px-2 py-0.5 rounded-sm text-[8px] font-mono tracking-widest transition-colors ${
+                weekOffset === 0
+                  ? 'text-primary bg-primary/5'
+                  : 'text-muted-foreground/50 hover:text-foreground hover:bg-muted/50'
+              }`}
+            >
+              TODAY
+            </button>
+            <button
+              onClick={() => setWeekOffset(o => o + 1)}
+              className="p-1 rounded-sm text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors"
+            >
+              <ChevronRight size={14} strokeWidth={1.5} />
+            </button>
+          </div>
+        </div>
+
+        {/* Stacked toggle */}
+        <button
+          onClick={() => setStacked(s => !s)}
+          className={`flex items-center gap-1.5 px-2 py-1 rounded-sm text-[8px] font-mono tracking-widest transition-colors border ${
+            stacked
+              ? 'text-primary border-primary/20 bg-primary/5'
+              : 'text-muted-foreground/40 border-border hover:text-foreground hover:border-border'
+          }`}
+          title={stacked ? 'Switch to single week' : 'Switch to stacked weeks'}
+        >
+          {stacked ? <Layers size={10} strokeWidth={1.5} /> : <Square size={10} strokeWidth={1.5} />}
+          {stacked ? '2 WEEKS' : '1 WEEK'}
+        </button>
       </div>
 
       <div className="flex gap-2">
-        <div className="flex-1 min-w-[860px]">
-          {/* Day headers */}
-          <div className="flex">
-            <div className="w-10 shrink-0" />
-            {weekDays.map((day) => (
-              <div
-                key={day.date}
-                className={`flex-1 text-center py-1.5 border-b ${
-                  day.isToday ? 'border-primary/20' : 'border-border/40'
-                }`}
-              >
-                <div className="text-[7px] font-mono tracking-[0.2em] text-muted-foreground/40">
-                  {day.label}
-                </div>
-                <div className={`text-xs font-display font-bold ${day.isToday ? 'text-primary' : 'text-foreground/50'}`}>
-                  {day.day}
-                </div>
-              </div>
-            ))}
-          </div>
+        <div
+          ref={scrollRef}
+          className="flex-1 min-w-[860px] overflow-y-auto"
+          style={{ maxHeight: 'calc(100vh - 160px)' }}
+        >
+          {/* First week */}
+          <WeekGrid
+            weekOffset={weekOffset}
+            today={today}
+            nowMinutes={nowMinutes}
+            hourHeight={hourHeight}
+            routinesEnabled={routinesEnabled}
+          />
 
-          {/* Timeline */}
-          <div ref={scrollRef} className="flex overflow-y-auto" style={{ maxHeight: 'calc(100vh - 160px)' }}>
-            {/* Shared time labels */}
-            <div className="w-10 shrink-0 relative" style={{ height: HOURS.length * hourHeight }}>
-              {HOURS.map((hour, i) => (
-                <div
-                  key={hour}
-                  className="absolute left-0 right-0 text-[8px] font-mono text-muted-foreground/50 font-medium text-right pr-1.5 -mt-1.5 select-none"
-                  style={{ top: i * hourHeight }}
-                >
-                  {hour.toString().padStart(2, '0')}
-                </div>
-              ))}
+          {/* Second week (stacked mode) */}
+          {stacked && (
+            <div className="mt-4 pt-3 border-t border-border/30">
+              <WeekGrid
+                weekOffset={weekOffset + 1}
+                today={today}
+                nowMinutes={nowMinutes}
+                hourHeight={hourHeight}
+                routinesEnabled={routinesEnabled}
+              />
             </div>
-
-            {/* Day columns */}
-            {weekDays.map((day) => {
-              const dayTasks = tasks.filter((t) => t.date === day.date &&
-                !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring'));
-              return (
-                <div
-                  key={day.date}
-                  className={`flex-1 border-l border-border/25 ${day.isToday ? 'bg-primary/[0.015]' : ''}`}
-                >
-                  <TimelineColumn
-                    date={day.date}
-                    tasks={dayTasks}
-                    nowMinutes={nowMinutes}
-                    isToday={day.isToday}
-                    showTimeLabels={false}
-                    hourHeight={hourHeight}
-                  />
-                </div>
-              );
-            })}
-          </div>
+          )}
         </div>
 
         {/* Zoom control */}
