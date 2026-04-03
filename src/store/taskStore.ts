@@ -57,7 +57,7 @@ interface TaskState {
   toggleRoutines: () => void;
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'completed' | 'moveCount' | 'originalPriority'> & { isRoutine?: boolean }) => void;
   updateTask: (id: string, updates: Partial<Pick<Task, 'title' | 'date' | 'time' | 'duration' | 'priority' | 'recurrence' | 'type' | 'isRoutine'>>) => void;
-  updateFutureInstances: (parentId: string, updates: Partial<Pick<Task, 'title' | 'time' | 'duration' | 'priority' | 'recurrence' | 'type'>>) => void;
+  updateFutureInstances: (parentId: string, updates: Partial<Pick<Task, 'title' | 'time' | 'duration' | 'priority' | 'recurrence' | 'type' | 'isRoutine'>>) => void;
   completeTask: (id: string) => void;
   deleteTask: (id: string) => void;
   deleteFutureInstances: (parentId: string, fromDate: string) => void;
