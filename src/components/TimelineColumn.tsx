@@ -107,7 +107,7 @@ export function TimelineColumn({
     const sourceDate = e.dataTransfer.getData('sourceDate');
     if (!taskId) { setDragOverTime(null); return; }
 
-    const mins = getMinutesFromY(e.clientY);
+    const mins = getMinutesFromY(e.clientY - dragOffsetRef.current);
     const snapped = snapTo15(mins);
     const newTime = minutesToTime(snapped);
 
