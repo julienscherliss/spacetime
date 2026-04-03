@@ -91,6 +91,30 @@ function deriveType(recurrence?: RecurrencePattern): TaskType {
   return recurrence ? 'recurring' : 'one-time';
 }
 
+function getRecurringSeriesId(task: Task): string | null {
+  if (task.recurrenceParentId) return task.recurrenceParentId;
+  if (task.recurrence || task.isRecurrenceInstance || task.type === 'recurring') return task.id;
+  return null;
+}
+
+function getLinkedScheduleTargetIds(tasks: Task[], activeTask: Task): Set<string> {
+  const targetIds = new Set<string>([activeTask.id]);
+  const seriesId = getRecurringSeriesId(activeTask);
+
+  if (!seriesId || activeTask.linked !== true) {
+    return targetIds;
+  }
+
+  tasks.forEach((candidate) => {
+    if (candidate.completed || candidate.linked !== true) return;
+    if (getRecurringSeriesId(candidate) === seriesId) {
+      targetIds.add(candidate.id);
+    }
+  });
+
+  return targetIds;
+}
+
 // ─── Recurrence engine ────────────────────────────────────────
 
 function addDays(dateStr: string, n: number): string {
@@ -280,8 +304,7 @@ export const useTaskStore = create<TaskState>()(
         set((s) => ({
           tasks: s.tasks.map((t) => {
             if (t.id === parentId) return { ...t, ...resolvedUpdates };
-            // Only propagate to instances that are still linked
-            if (t.recurrenceParentId === parentId && t.date >= today && !t.completed && t.linked !== false) {
+            if (t.recurrenceParentId === parentId && t.date >= today && !t.completed && t.linked === true) {
               return { ...t, ...resolvedUpdates };
             }
             return t;
@@ -374,28 +397,45 @@ export const useTaskStore = create<TaskState>()(
         const newPriority = crossDay
           ? Math.min(3, task.priority + 1) as Priority
           : task.priority;
+        const targetIds = getLinkedScheduleTargetIds(get().tasks, task);
 
         set((s) => ({
-          tasks: s.tasks.map((t) =>
-            t.id === id
-              ? {
-                  ...t,
-                  date: newDate,
-                  time: newTime ?? t.time,
-                  priority: newPriority,
-                  moveCount: crossDay ? t.moveCount + 1 : t.moveCount,
-                  inWaitingRoom: false,
-                }
-              : t
-          ),
+          tasks: s.tasks.map((t) => {
+            if (t.id === id) {
+              return {
+                ...t,
+                date: newDate,
+                time: newTime ?? t.time,
+                priority: newPriority,
+                moveCount: crossDay ? t.moveCount + 1 : t.moveCount,
+                inWaitingRoom: false,
+              };
+            }
+
+            if (targetIds.has(t.id)) {
+              return {
+                ...t,
+                time: newTime ?? t.time,
+              };
+            }
+
+            return t;
+          }),
         }));
         return { blocked: false };
       },
 
       resizeTask: (id, newTime, newDuration) => {
+        const task = get().tasks.find((t) => t.id === id);
+        if (!task) return;
+
+        const targetIds = getLinkedScheduleTargetIds(get().tasks, task);
+
         set((s) => ({
           tasks: s.tasks.map((t) =>
-            t.id === id ? { ...t, time: newTime, duration: Math.max(15, newDuration) } : t
+            targetIds.has(t.id)
+              ? { ...t, time: newTime, duration: Math.max(15, newDuration) }
+              : t
           ),
         }));
       },
@@ -404,9 +444,11 @@ export const useTaskStore = create<TaskState>()(
         const task = get().tasks.find((t) => t.id === id);
         if (!task) return;
         if (task.priority >= 3) return;
+        const targetIds = getLinkedScheduleTargetIds(get().tasks, task);
+
         set((s) => ({
           tasks: s.tasks.map((t) =>
-            t.id === id ? { ...t, time: newTime } : t
+            targetIds.has(t.id) ? { ...t, time: newTime } : t
           ),
         }));
       },
