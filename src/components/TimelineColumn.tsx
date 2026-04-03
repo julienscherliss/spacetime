@@ -2,6 +2,7 @@ import { useRef, useState, useCallback, useEffect, Fragment } from 'react';
 import { useTaskStore, Task } from '@/store/taskStore';
 import { useCalendarStore, CalendarEvent } from '@/store/calendarStore';
 import { useLibraryStore } from '@/store/libraryStore';
+import { useTouchDragStore } from '@/store/touchDragStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { timeToMinutes, minutesToTime, snapTo15, formatTime12h, formatHour12h } from '@/hooks/useCurrentTime';
 import { Check, Calendar as CalIcon } from 'lucide-react';
