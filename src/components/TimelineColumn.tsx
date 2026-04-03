@@ -571,19 +571,23 @@ export function TimelineColumn({
         </div>
       )}
 
-      {/* Drop target indicator */}
+      {/* Drop target indicator — shows a preview block */}
       {dragOverTime && (
         <div
-          className="absolute right-0 z-20 pointer-events-none"
+          className="absolute right-1 z-20 pointer-events-none"
           style={{
             top: ((timeToMinutes(dragOverTime) - START_HOUR * 60) / 60) * HOUR_HEIGHT,
-            left: timeLabelsWidth,
+            height: Math.max((dragOverDuration / 60) * HOUR_HEIGHT, 22),
+            left: showTimeLabels ? '3.25rem' : '2px',
           }}
         >
-          <div className={`h-px ${dragValid ? 'bg-primary/30' : 'bg-destructive/40'}`} />
-          <span className={`absolute -top-4 right-0 text-[10px] font-mono tracking-wider ${dragValid ? 'text-primary/50' : 'text-destructive/60'}`}>
-            {formatTime12h(dragOverTime)}
-          </span>
+          <div className={`h-full rounded-[2px] border border-dashed ${dragValid ? 'border-primary/40 bg-primary/[0.06]' : 'border-destructive/40 bg-destructive/[0.04]'}`}>
+            <div className="px-2 py-1">
+              <span className={`text-[10px] font-mono tracking-wider ${dragValid ? 'text-primary/50' : 'text-destructive/60'}`}>
+                {formatTime12h(dragOverTime)} · {formatDuration(dragOverDuration)}
+              </span>
+            </div>
+          </div>
         </div>
       )}
 
