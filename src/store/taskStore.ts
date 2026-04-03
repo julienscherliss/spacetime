@@ -319,11 +319,11 @@ export const useTaskStore = create<TaskState>()(
       toggleRoutines: () => set((s) => ({ routinesEnabled: !s.routinesEnabled })),
 
       addTask: (taskData) => {
-        // Enforce: type always derived from recurrence
         const type = deriveType(taskData.recurrence);
         const task: Task = {
           ...taskData,
           type,
+          isRoutine: taskData.isRoutine ?? (type === 'recurring'),
           id: generateId(),
           originalPriority: taskData.priority,
           completed: false,
