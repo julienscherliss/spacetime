@@ -219,7 +219,7 @@ export function TimelineTaskBlock({
             <div className={`text-[12px] font-mono leading-tight truncate ${isActive ? 'text-foreground font-medium' : 'text-foreground/75'}`}>
               {task.title}
             </div>
-            {height > 36 && task.time && (
+            {height > 36 && task.time && showTimeLabels && (
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className="text-[10px] font-mono text-muted-foreground/50">{formatTime12h(task.time)}</span>
                 {task.duration && (
