@@ -31,6 +31,7 @@ export interface Task {
   recurrence?: RecurrencePattern;
   recurrenceParentId?: string;
   isRecurrenceInstance?: boolean;
+  isRoutine?: boolean; // decoupled from type — user can override
 }
 
 export interface DailyStats {
@@ -54,9 +55,9 @@ interface TaskState {
 
   setViewMode: (mode: ViewMode) => void;
   toggleRoutines: () => void;
-  addTask: (task: Omit<Task, 'id' | 'createdAt' | 'completed' | 'moveCount' | 'originalPriority'>) => void;
-  updateTask: (id: string, updates: Partial<Pick<Task, 'title' | 'date' | 'time' | 'duration' | 'priority' | 'recurrence' | 'type'>>) => void;
-  updateFutureInstances: (parentId: string, updates: Partial<Pick<Task, 'title' | 'time' | 'duration' | 'priority' | 'recurrence' | 'type'>>) => void;
+  addTask: (task: Omit<Task, 'id' | 'createdAt' | 'completed' | 'moveCount' | 'originalPriority'> & { isRoutine?: boolean }) => void;
+  updateTask: (id: string, updates: Partial<Pick<Task, 'title' | 'date' | 'time' | 'duration' | 'priority' | 'recurrence' | 'type' | 'isRoutine'>>) => void;
+  updateFutureInstances: (parentId: string, updates: Partial<Pick<Task, 'title' | 'time' | 'duration' | 'priority' | 'recurrence' | 'type' | 'isRoutine'>>) => void;
   completeTask: (id: string) => void;
   deleteTask: (id: string) => void;
   deleteFutureInstances: (parentId: string, fromDate: string) => void;
@@ -318,11 +319,11 @@ export const useTaskStore = create<TaskState>()(
       toggleRoutines: () => set((s) => ({ routinesEnabled: !s.routinesEnabled })),
 
       addTask: (taskData) => {
-        // Enforce: type always derived from recurrence
         const type = deriveType(taskData.recurrence);
         const task: Task = {
           ...taskData,
           type,
+          isRoutine: taskData.isRoutine ?? (type === 'recurring'),
           id: generateId(),
           originalPriority: taskData.priority,
           completed: false,
@@ -488,7 +489,7 @@ export const useTaskStore = create<TaskState>()(
         const state = get();
         const todayTasks = state.tasks
           .filter((t) => !t.completed && t.date === new Date().toISOString().split('T')[0] &&
-            !(! state.routinesEnabled && t.type === 'recurring'))
+            !(!state.routinesEnabled && t.isRoutine !== false && t.type === 'recurring'))
           .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
         const currentIdx = todayTasks.findIndex((t) => t.id === state.focusTaskId);
         const nextTask = todayTasks[currentIdx + 1] || todayTasks[0];
@@ -501,12 +502,12 @@ export const useTaskStore = create<TaskState>()(
       getTasksForDate: (date) => {
         const state = get();
         return state.tasks.filter((t) => t.date === date && !t.completed &&
-          !(!state.routinesEnabled && t.type === 'recurring'));
+          !(!state.routinesEnabled && t.isRoutine !== false && t.type === 'recurring'));
       },
 
       getCurrentFocusTask: () => {
         const state = get();
-        const isRoutineAllowed = (t: Task) => !(! state.routinesEnabled && t.type === 'recurring');
+        const isRoutineAllowed = (t: Task) => !(!state.routinesEnabled && t.isRoutine !== false && t.type === 'recurring');
 
         if (state.focusTaskId) {
           const task = state.tasks.find((t) => t.id === state.focusTaskId && !t.completed && isRoutineAllowed(t));
@@ -523,7 +524,7 @@ export const useTaskStore = create<TaskState>()(
         const today = new Date().toISOString().split('T')[0];
         const todayTasks = state.tasks
           .filter((t) => !t.completed && t.date === today &&
-            !(!state.routinesEnabled && t.type === 'recurring'))
+            !(!state.routinesEnabled && t.isRoutine !== false && t.type === 'recurring'))
           .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
         const idx = todayTasks.findIndex((t) => t.id === currentId);
         return todayTasks[idx + 1];
@@ -578,6 +579,7 @@ export const useTaskStore = create<TaskState>()(
               recurrenceParentId: parent.id,
               isRecurrenceInstance: true,
               recurrence: parent.recurrence,
+              isRoutine: parent.isRoutine,
             });
           }
         }

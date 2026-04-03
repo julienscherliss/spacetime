@@ -10,7 +10,7 @@ export function FocusView() {
 
   const todayTasks = tasks
     .filter((t) => !t.completed && t.date === today && t.time &&
-      !(!routinesEnabled && t.type === 'recurring'))
+      !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring'))
     .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
 
   const activeTask = todayTasks.find((t) => {

@@ -79,6 +79,7 @@ export function TaskEditPanel() {
   const [customUnit, setCustomUnit] = useState<CustomUnit>(
     task?.recurrence?.type === 'custom' ? task.recurrence.unit : 'weeks'
   );
+  const [isRoutine, setIsRoutine] = useState(task?.isRoutine !== false && task?.type === 'recurring');
   const [showRecurrence, setShowRecurrence] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showEditScope, setShowEditScope] = useState(false);
@@ -96,6 +97,7 @@ export function TaskEditPanel() {
       setDuration(task.duration || 30);
       setDate(task.date);
       setPriority(task.priority);
+      setIsRoutine(task.isRoutine !== false && task.type === 'recurring');
       setRecurrenceType(recurrenceToType(task.recurrence));
       setWeeklyDays(
         task.recurrence?.type === 'weekly' ? task.recurrence.days :
@@ -147,6 +149,7 @@ export function TaskEditPanel() {
       priority,
       recurrence,
       type: recurrence ? 'recurring' as const : 'one-time' as const,
+      isRoutine: recurrence ? isRoutine : false,
     };
   };
 
@@ -278,7 +281,7 @@ export function TaskEditPanel() {
                 />
                 <div className="mt-1.5 flex items-center gap-2">
                   <PriorityBadge priority={priority} />
-                  {(isRecurring || recurrenceType !== 'none') && (
+                  {(isRoutine || (recurrenceType !== 'none' && isRoutine)) && (
                     <span className="text-[7px] font-mono text-muted-foreground/40 tracking-widest">
                       <Repeat size={8} className="inline mr-0.5" />
                       ROUTINE
@@ -376,7 +379,12 @@ export function TaskEditPanel() {
                           key={opt.value}
                           onClick={() => {
                             setRecurrenceType(opt.value);
-                            // Close dropdown for all options except custom (needs more config)
+                            // Auto-set routine default
+                            if (opt.value === 'none') {
+                              setIsRoutine(false);
+                            } else if (recurrenceType === 'none') {
+                              setIsRoutine(true); // default ON when adding repeat
+                            }
                             if (opt.value !== 'custom') {
                               setShowRecurrence(false);
                             }
@@ -490,6 +498,27 @@ export function TaskEditPanel() {
                 )}
               </AnimatePresence>
             </div>
+
+            {/* Routine toggle — only shown for recurring tasks */}
+            {recurrenceType !== 'none' && (
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-[9px] font-mono tracking-wider text-muted-foreground/60">
+                  ROUTINE
+                </span>
+                <button
+                  onClick={() => setIsRoutine(!isRoutine)}
+                  className={`relative w-7 h-4 rounded-full transition-colors ${
+                    isRoutine ? 'bg-primary/30' : 'bg-muted'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 w-3 h-3 rounded-full transition-all ${
+                      isRoutine ? 'left-3.5 bg-primary' : 'left-0.5 bg-muted-foreground/40'
+                    }`}
+                  />
+                </button>
+              </div>
+            )}
 
             {/* Move info */}
             {task.moveCount > 0 && (
