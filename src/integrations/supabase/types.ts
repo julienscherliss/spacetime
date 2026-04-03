@@ -145,17 +145,20 @@ export type Database = {
           created_at: string
           date: string
           description: string | null
+          detached_from_series: boolean
           duration: number | null
           id: string
           in_waiting_room: boolean | null
           is_recurrence_instance: boolean | null
           is_routine: boolean | null
           linked: boolean | null
+          linked_group_id: string | null
           move_count: number
           original_priority: number
           priority: number
           recurrence: Json | null
           recurrence_parent_id: string | null
+          series_id: string | null
           subtasks: Json | null
           time: string | null
           title: string
@@ -169,17 +172,20 @@ export type Database = {
           created_at?: string
           date: string
           description?: string | null
+          detached_from_series?: boolean
           duration?: number | null
           id?: string
           in_waiting_room?: boolean | null
           is_recurrence_instance?: boolean | null
           is_routine?: boolean | null
           linked?: boolean | null
+          linked_group_id?: string | null
           move_count?: number
           original_priority?: number
           priority?: number
           recurrence?: Json | null
           recurrence_parent_id?: string | null
+          series_id?: string | null
           subtasks?: Json | null
           time?: string | null
           title: string
@@ -193,17 +199,20 @@ export type Database = {
           created_at?: string
           date?: string
           description?: string | null
+          detached_from_series?: boolean
           duration?: number | null
           id?: string
           in_waiting_room?: boolean | null
           is_recurrence_instance?: boolean | null
           is_routine?: boolean | null
           linked?: boolean | null
+          linked_group_id?: string | null
           move_count?: number
           original_priority?: number
           priority?: number
           recurrence?: Json | null
           recurrence_parent_id?: string | null
+          series_id?: string | null
           subtasks?: Json | null
           time?: string | null
           title?: string
