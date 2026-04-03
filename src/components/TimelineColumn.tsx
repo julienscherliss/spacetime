@@ -694,7 +694,7 @@ export function TimelineColumn({
         const isActive = task.id === activeTaskId;
         const isResizingThis = resizing?.id === task.id;
         const isLocked = task.priority >= 3;
-        const isRoutine = task.isRoutine !== false && task.type === 'recurring';
+        const showUnlinkedOutline = task.type === 'recurring' && task.linked === false;
 
         return (
           <TimelineTaskBlock
@@ -704,7 +704,7 @@ export function TimelineColumn({
             height={height}
             isActive={isActive}
             isLocked={isLocked}
-            isRoutine={isRoutine}
+            showUnlinkedOutline={showUnlinkedOutline}
             isResizingThis={isResizingThis}
             showTimeLabels={showTimeLabels}
             nowMinutes={nowMinutes}

@@ -11,7 +11,7 @@ interface TimelineTaskBlockProps {
   height: number;
   isActive: boolean;
   isLocked: boolean;
-  isRoutine: boolean;
+  showUnlinkedOutline: boolean;
   isResizingThis: boolean;
   showTimeLabels: boolean;
   nowMinutes: number;
@@ -35,7 +35,7 @@ export function TimelineTaskBlock({
   height,
   isActive,
   isLocked,
-  isRoutine,
+  showUnlinkedOutline,
   isResizingThis,
   showTimeLabels,
   nowMinutes,
@@ -67,15 +67,14 @@ export function TimelineTaskBlock({
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (isLocked || isResizingThis) return;
-    // Ignore buttons, inputs, resize handles
     const target = e.target as HTMLElement;
     if (target.closest('button, input, textarea, [data-touch-ignore]')) return;
 
     pointerStartRef.current = { x: e.clientX, y: e.clientY, pointerId: e.pointerId };
 
-    // Capture grab offset relative to the task block top
     const blockRect = elRef.current?.getBoundingClientRect();
     const grabOffset = blockRect ? e.clientY - blockRect.top : 0;
+    dragOffsetRef.current = grabOffset;
 
     useScheduledDragStore.getState().startDrag({
       taskId: task.id,
@@ -85,9 +84,8 @@ export function TimelineTaskBlock({
       grabOffsetY: grabOffset,
     });
 
-    // Set pointer capture on the element for reliable tracking
     elRef.current?.setPointerCapture(e.pointerId);
-  }, [isLocked, isResizingThis, task.id, task.date, task.time, task.duration]);
+  }, [isLocked, isResizingThis, task.id, task.date, task.time, task.duration, dragOffsetRef]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!pointerStartRef.current) return;
@@ -104,8 +102,6 @@ export function TimelineTaskBlock({
       didDragRef.current = true;
     }
 
-    // Compute minutes from the column. We need the column's rect.
-    // The task block is inside the column, so we go up to find it.
     const col = elRef.current?.closest('[data-timeline-column]') as HTMLElement | null;
     if (!col) return;
     const colRect = col.getBoundingClientRect();
@@ -118,13 +114,8 @@ export function TimelineTaskBlock({
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
     if (!pointerStartRef.current) return;
     const store = useScheduledDragStore.getState();
-    
-    if (store.active) {
-      // Drop is handled by TimelineColumn listening to the store
-      // Just end the drag - TimelineColumn will read the final position
-      // We don't end here - let the column handle it via a useEffect
-    } else {
-      // It was a tap
+
+    if (!store.active) {
       useScheduledDragStore.getState().cancel();
       handleTaskClick(task.id);
     }
@@ -171,7 +162,7 @@ export function TimelineTaskBlock({
         className={`h-full rounded-[2px] transition-all duration-200 ${
           isActive
             ? 'bg-card border border-primary/20 shadow-sm'
-            : isRoutine
+            : showUnlinkedOutline
               ? 'bg-card border border-border/60 border-dashed hover:border-[hsl(var(--task-hover))] hover:shadow-sm'
               : 'bg-card border border-[hsl(var(--task-border))] hover:border-[hsl(var(--task-hover))] hover:shadow-sm'
         }`}
