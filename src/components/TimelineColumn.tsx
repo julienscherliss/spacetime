@@ -92,6 +92,7 @@ export function TimelineColumn({
   const { setEditingTask, reorderTask, moveTask, resizeTask, completeTask, canMoveTask, addTask } = useTaskStore();
   const colRef = useRef<HTMLDivElement>(null);
   const [dragOverTime, setDragOverTime] = useState<string | null>(null);
+  const [dragOverDuration, setDragOverDuration] = useState<number>(30);
   const [dragValid, setDragValid] = useState(true);
   const [dragMsg, setDragMsg] = useState('');
 
@@ -124,6 +125,22 @@ export function TimelineColumn({
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const newTaskRef = useRef<HTMLInputElement>(null);
 
+  // Auto-focus new task input when it appears
+  useEffect(() => {
+    if (newTaskInput && newTaskRef.current) {
+      // Use multiple attempts to force iOS keyboard
+      const focus = () => {
+        newTaskRef.current?.focus();
+      };
+      requestAnimationFrame(() => {
+        focus();
+        setTimeout(focus, 50);
+        setTimeout(focus, 150);
+        setTimeout(focus, 300);
+      });
+    }
+  }, [newTaskInput]);
+
   const activeTasks = tasks.filter((t) => !t.completed && t.time);
   const nowTop = ((nowMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT;
 
@@ -148,12 +165,15 @@ export function TimelineColumn({
     const mins = getMinutesFromY(e.clientY - dragOffsetRef.current);
     const snapped = snapTo15(mins);
     setDragOverTime(minutesToTime(snapped));
+    // Try to get duration from the dragged task
+    const taskId = e.dataTransfer.types.includes('taskid') ? 'pending' : null;
     setDragValid(true);
   }, [getMinutesFromY]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     const taskId = e.dataTransfer.getData('taskId');
+    const taskDuration = parseInt(e.dataTransfer.getData('taskDuration') || '30', 10);
     const libraryTaskId = e.dataTransfer.getData('libraryTaskId');
     const sourceDate = e.dataTransfer.getData('sourceDate');
 
@@ -497,6 +517,23 @@ export function TimelineColumn({
     return () => window.removeEventListener('touchend', handleGlobalTouchEnd);
   }, [date, HOUR_HEIGHT, addTask, canMoveTask, moveTask, reorderTask]);
 
+  // Track touch drag ghost position over this column for live drop preview
+  const touchDragging = useTouchDragStore((s) => s.dragging);
+  const touchGhostPos = useTouchDragStore((s) => s.ghostPos);
+
+  const touchDropPreview = (() => {
+    if (!touchDragging || !touchGhostPos || !colRef.current) return null;
+    const rect = colRef.current.getBoundingClientRect();
+    if (touchGhostPos.x < rect.left || touchGhostPos.x > rect.right) return null;
+    const y = touchGhostPos.y - rect.top - dragOffsetRef.current;
+    const mins = START_HOUR * 60 + (y / HOUR_HEIGHT) * 60;
+    const snapped = snapTo15(mins);
+    const duration = touchDragging.duration || 30;
+    const top = ((snapped - START_HOUR * 60) / 60) * HOUR_HEIGHT;
+    const height = Math.max((duration / 60) * HOUR_HEIGHT, 22);
+    return { top, height, time: minutesToTime(snapped), duration };
+  })();
+
   return (
     <div
       ref={colRef}
@@ -567,23 +604,46 @@ export function TimelineColumn({
         </div>
       )}
 
-      {/* Drop target indicator */}
+      {/* Drop target indicator — shows a preview block */}
       {dragOverTime && (
         <div
-          className="absolute right-0 z-20 pointer-events-none"
+          className="absolute right-1 z-20 pointer-events-none"
           style={{
             top: ((timeToMinutes(dragOverTime) - START_HOUR * 60) / 60) * HOUR_HEIGHT,
-            left: timeLabelsWidth,
+            height: Math.max((dragOverDuration / 60) * HOUR_HEIGHT, 22),
+            left: showTimeLabels ? '3.25rem' : '2px',
           }}
         >
-          <div className={`h-px ${dragValid ? 'bg-primary/30' : 'bg-destructive/40'}`} />
-          <span className={`absolute -top-4 right-0 text-[10px] font-mono tracking-wider ${dragValid ? 'text-primary/50' : 'text-destructive/60'}`}>
-            {formatTime12h(dragOverTime)}
-          </span>
+          <div className={`h-full rounded-[2px] border border-dashed ${dragValid ? 'border-primary/40 bg-primary/[0.06]' : 'border-destructive/40 bg-destructive/[0.04]'}`}>
+            <div className="px-2 py-1">
+              <span className={`text-[10px] font-mono tracking-wider ${dragValid ? 'text-primary/50' : 'text-destructive/60'}`}>
+                {formatTime12h(dragOverTime)} · {formatDuration(dragOverDuration)}
+              </span>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Validation / lock message */}
+      {/* Touch drag drop preview */}
+      {touchDropPreview && (
+        <div
+          className="absolute right-1 z-20 pointer-events-none"
+          style={{
+            top: touchDropPreview.top,
+            height: touchDropPreview.height,
+            left: showTimeLabels ? '3.25rem' : '2px',
+          }}
+        >
+          <div className="h-full rounded-[2px] border border-dashed border-primary/40 bg-primary/[0.06]">
+            <div className="px-2 py-1">
+              <span className="text-[10px] font-mono text-primary/50">
+                {formatTime12h(touchDropPreview.time)} · {formatDuration(touchDropPreview.duration)}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {dragMsg && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 px-3 py-1.5 rounded-sm bg-card border border-destructive/20 shadow-sm">
           <span className="text-[10px] font-mono text-destructive tracking-wider">{dragMsg}</span>

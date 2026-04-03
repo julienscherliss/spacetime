@@ -91,6 +91,7 @@ export function TimelineTaskBlock({
         const blockRect = (e.currentTarget as HTMLElement).getBoundingClientRect();
         dragOffsetRef.current = e.clientY - blockRect.top;
         e.dataTransfer.setData('taskId', task.id);
+        e.dataTransfer.setData('taskDuration', String(task.duration || 30));
         e.dataTransfer.setData('sourceDate', task.date);
         e.dataTransfer.effectAllowed = 'move';
       }}

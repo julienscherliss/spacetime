@@ -122,34 +122,31 @@ export function WeekView() {
           </div>
         </div>
 
-        {/* Stacked toggle — desktop only */}
-        {!isMobile && (
-          <button
-            onClick={() => {
-              if (!stacked) {
-                setWeek2Offset(weekOffset + 1);
-                preStackScaleRef.current = hourHeight;
-                const available = window.innerHeight - 120;
-                const fitScale = Math.floor(available / (24 * 2));
-                setScale(Math.max(fitScale, 10));
-              } else {
-                if (preStackScaleRef.current !== null) {
-                  setScale(preStackScaleRef.current);
-                  preStackScaleRef.current = null;
-                }
+        <button
+          onClick={() => {
+            if (!stacked) {
+              setWeek2Offset(weekOffset + 1);
+              preStackScaleRef.current = hourHeight;
+              const available = window.innerHeight - 120;
+              const fitScale = Math.floor(available / (24 * 2));
+              setScale(Math.max(fitScale, 10));
+            } else {
+              if (preStackScaleRef.current !== null) {
+                setScale(preStackScaleRef.current);
+                preStackScaleRef.current = null;
               }
-              setStacked(s => !s);
-            }}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm text-[10px] font-mono tracking-widest transition-colors border ${
-              stacked
-                ? 'text-primary border-primary/20 bg-primary/5'
-                : 'text-muted-foreground/40 border-border hover:text-foreground hover:border-border'
-            }`}
-          >
-            {stacked ? <Layers size={12} strokeWidth={1.5} /> : <Square size={12} strokeWidth={1.5} />}
-            {stacked ? '2 WEEKS' : '1 WEEK'}
-          </button>
-        )}
+            }
+            setStacked(s => !s);
+          }}
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm text-[10px] font-mono tracking-widest transition-colors border ${
+            stacked
+              ? 'text-primary border-primary/20 bg-primary/5'
+              : 'text-muted-foreground/40 border-border hover:text-foreground hover:border-border'
+          }`}
+        >
+          {stacked ? <Layers size={12} strokeWidth={1.5} /> : <Square size={12} strokeWidth={1.5} />}
+          {stacked ? '2×' : '1×'}
+        </button>
       </div>
 
       <div className="flex gap-2">
@@ -178,8 +175,8 @@ export function WeekView() {
             />
           </div>
 
-          {/* Second week (stacked mode) — desktop only */}
-          {stacked && !isMobile && (
+          {/* Second week (stacked mode) */}
+          {stacked && (
             <div className="mt-4 pt-3 border-t border-border/30">
               <div className="flex items-center gap-2 mb-2 px-0.5">
                 <button
@@ -204,7 +201,8 @@ export function WeekView() {
                 nowMinutes={nowMinutes}
                 hourHeight={hourHeight}
                 routinesEnabled={routinesEnabled}
-                dayCount={7}
+                compact={isMobile}
+                dayCount={dayCount}
               />
             </div>
           )}

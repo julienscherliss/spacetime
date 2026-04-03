@@ -85,7 +85,7 @@ interface TaskState {
   moveOverdueToWaitingRoom: () => void;
 }
 
-const generateId = () => Math.random().toString(36).substring(2, 10);
+const generateId = () => crypto.randomUUID();
 
 function deriveType(recurrence?: RecurrencePattern): TaskType {
   return recurrence ? 'recurring' : 'one-time';
@@ -233,87 +233,7 @@ function getAllOccurrences(
 export const useTaskStore = create<TaskState>()(
   persist(
     (set, get) => ({
-      tasks: [
-        {
-          id: 'demo-1',
-          title: 'Review quarterly goals',
-          type: 'one-time' as TaskType,
-          priority: 1 as Priority,
-          originalPriority: 0 as Priority,
-          date: new Date().toISOString().split('T')[0],
-          time: '09:00',
-          duration: 30,
-          completed: false,
-          createdAt: new Date().toISOString(),
-          moveCount: 1,
-        },
-        {
-          id: 'demo-2',
-          title: 'Ship feature update',
-          type: 'one-time' as TaskType,
-          priority: 2 as Priority,
-          originalPriority: 1 as Priority,
-          date: new Date().toISOString().split('T')[0],
-          time: '11:00',
-          duration: 60,
-          completed: false,
-          createdAt: new Date().toISOString(),
-          moveCount: 1,
-        },
-        {
-          id: 'demo-3',
-          title: 'Write documentation',
-          type: 'one-time' as TaskType,
-          priority: 0 as Priority,
-          originalPriority: 0 as Priority,
-          date: new Date().toISOString().split('T')[0],
-          time: '14:00',
-          duration: 45,
-          completed: false,
-          createdAt: new Date().toISOString(),
-          moveCount: 0,
-        },
-        {
-          id: 'demo-4',
-          title: 'Morning standup',
-          type: 'recurring' as TaskType,
-          priority: 3 as Priority,
-          originalPriority: 3 as Priority,
-          date: new Date().toISOString().split('T')[0],
-          time: '08:30',
-          duration: 15,
-          completed: false,
-          createdAt: new Date().toISOString(),
-          moveCount: 0,
-          recurrence: { type: 'weekdays' },
-        },
-        {
-          id: 'demo-5',
-          title: 'Team retrospective',
-          type: 'one-time' as TaskType,
-          priority: 1 as Priority,
-          originalPriority: 0 as Priority,
-          date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-          time: '15:00',
-          duration: 60,
-          completed: false,
-          createdAt: new Date().toISOString(),
-          moveCount: 1,
-        },
-        {
-          id: 'demo-6',
-          title: 'Code review',
-          type: 'one-time' as TaskType,
-          priority: 0 as Priority,
-          originalPriority: 0 as Priority,
-          date: new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0],
-          time: '10:00',
-          duration: 30,
-          completed: false,
-          createdAt: new Date().toISOString(),
-          moveCount: 0,
-        },
-      ],
+      tasks: [],
       viewMode: 'day',
       routinesEnabled: true,
       focusTaskId: null,
@@ -618,6 +538,33 @@ export const useTaskStore = create<TaskState>()(
         }
       },
     }),
-    { name: 'do-task-store' }
+    {
+      name: 'do-task-store',
+      onRehydrateStorage: () => (state) => {
+        // Migrate any non-UUID task IDs (e.g. old "demo-1" format)
+        if (state?.tasks) {
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          const needsMigration = state.tasks.some(t => !uuidRegex.test(t.id));
+          if (needsMigration) {
+            const idMap = new Map<string, string>();
+            state.tasks = state.tasks.map(t => {
+              if (!uuidRegex.test(t.id)) {
+                const newId = crypto.randomUUID();
+                idMap.set(t.id, newId);
+                return { ...t, id: newId };
+              }
+              return t;
+            });
+            // Fix recurrence parent references
+            state.tasks = state.tasks.map(t => {
+              if (t.recurrenceParentId && idMap.has(t.recurrenceParentId)) {
+                return { ...t, recurrenceParentId: idMap.get(t.recurrenceParentId) };
+              }
+              return t;
+            });
+          }
+        }
+      },
+    }
   )
 );

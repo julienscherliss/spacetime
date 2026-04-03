@@ -78,6 +78,11 @@ function libraryItemToRow(item: LibraryTask, userId: string) {
   };
 }
 
+// Validate if a string is a valid UUID
+function isValidUUID(id: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+}
+
 let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 let libSaveTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -107,10 +112,17 @@ export function useDataSync(user: User | null) {
           const tasks = taskRows.map(rowToTask);
           useTaskStore.setState({ tasks });
         } else {
-          // First login — push local demo/existing tasks to DB
+          // First login — push local tasks to DB, re-ID any non-UUID tasks
           const currentTasks = useTaskStore.getState().tasks;
           if (currentTasks.length > 0) {
-            const rows = currentTasks.map(t => taskToRow(t, user.id));
+            const fixedTasks = currentTasks.map(t => {
+              if (!isValidUUID(t.id)) {
+                return { ...t, id: crypto.randomUUID() };
+              }
+              return t;
+            });
+            useTaskStore.setState({ tasks: fixedTasks });
+            const rows = fixedTasks.map(t => taskToRow(t, user.id));
             await supabase.from('tasks').upsert(rows as any);
           }
         }
@@ -170,9 +182,10 @@ export function useDataSync(user: User | null) {
             await supabase.from('tasks').delete().in('id', toDelete);
           }
 
-          // Upsert all current tasks
-          if (state.tasks.length > 0) {
-            const rows = state.tasks.map(t => taskToRow(t, userId));
+          // Upsert all current tasks, skipping any with invalid UUIDs
+          const validTasks = state.tasks.filter(t => isValidUUID(t.id));
+          if (validTasks.length > 0) {
+            const rows = validTasks.map(t => taskToRow(t, userId));
             await supabase.from('tasks').upsert(rows as any);
           }
         } catch (err) {
