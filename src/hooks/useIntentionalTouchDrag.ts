@@ -71,7 +71,13 @@ export function useIntentionalTouchDrag<T extends HTMLElement>({
     const activateDrag = () => {
       if (!canDrag || dragActivated || !startPoint || !element) return;
       dragActivated = true;
-      useTouchDragStore.getState().startDrag(payload, startPoint);
+      const rect = element.getBoundingClientRect();
+      useTouchDragStore.getState().startDrag(payload, startPoint, {
+        width: rect.width,
+        height: rect.height,
+        offsetX: startPoint.x - rect.left,
+        offsetY: startPoint.y - rect.top,
+      });
       onDragStart?.({ point: startPoint, element });
       if (lastPoint) {
         useTouchDragStore.getState().moveGhost(lastPoint);

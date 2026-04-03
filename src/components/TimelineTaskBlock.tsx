@@ -4,6 +4,7 @@ import { Task } from '@/store/taskStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { formatTime12h } from '@/hooks/useCurrentTime';
 import { useIntentionalTouchDrag } from '@/hooks/useIntentionalTouchDrag';
+import { useTouchDragStore } from '@/store/touchDragStore';
 
 interface TimelineTaskBlockProps {
   task: Task;
@@ -45,6 +46,8 @@ export function TimelineTaskBlock({
   formatDuration,
 }: TimelineTaskBlockProps) {
   const taskMinutes = task.time ? parseInt(task.time.split(':')[0], 10) * 60 + parseInt(task.time.split(':')[1], 10) : 0;
+  const touchDragging = useTouchDragStore((s) => s.dragging);
+  const isTouchDraggingThis = touchDragging?.type === 'task' && touchDragging.id === task.id;
 
   const borderLeftColor = {
     0: 'hsl(var(--priority-0) / 0.3)',
@@ -73,6 +76,9 @@ export function TimelineTaskBlock({
         didDragRef.current = false;
       }, 50);
     },
+    onCancel: () => {
+      didDragRef.current = false;
+    },
   });
 
   return (
@@ -80,6 +86,9 @@ export function TimelineTaskBlock({
       ref={taskRef}
       data-task-block
       draggable={!isResizingThis && !isLocked}
+      onTouchStartCapture={() => {
+        didDragRef.current = false;
+      }}
       onDragStart={(e) => {
         if (isLocked) {
           e.preventDefault();
@@ -102,13 +111,13 @@ export function TimelineTaskBlock({
       }}
       onClick={() => handleTaskClick(task.id)}
       onContextMenu={(e) => e.preventDefault()}
-      className={`absolute right-1 group draggable-item select-none transition-shadow duration-200 ${
+      className={`absolute right-1 group draggable-item select-none transition-[opacity,box-shadow] duration-200 ${
         isLocked
           ? 'cursor-default'
           : isResizingThis
             ? 'cursor-ns-resize'
             : 'cursor-grab active:cursor-grabbing'
-      } ${isActive ? 'z-[15]' : 'z-10'}`}
+      } ${isActive ? 'z-[15]' : 'z-10'} ${isTouchDraggingThis ? 'opacity-20' : 'opacity-100'}`}
       style={{
         top,
         height,
