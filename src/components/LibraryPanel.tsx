@@ -49,6 +49,8 @@ function LibraryItem({ item, isMobile }: { item: LibraryTask; isMobile: boolean 
         { type: 'library', id: item.id, title: item.title, duration: item.defaultDuration },
         startPos,
       );
+      // Close the library panel so the schedule is visible for dropping
+      useLibraryStore.getState().setPanelOpen(false);
     }, 300);
   }, [item]);
 

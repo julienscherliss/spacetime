@@ -54,7 +54,7 @@ function ReflectionModal({ task, onConfirm, onCancel }: { task: Task; onConfirm:
   );
 }
 
-function WaitingRoomItem({ task, isMobile, onReflect }: { task: Task; isMobile: boolean; onReflect: () => void }) {
+function WaitingRoomItem({ task, isMobile, onReflect, onClosePanel }: { task: Task; isMobile: boolean; onReflect: () => void; onClosePanel: () => void }) {
   const touchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
 
@@ -67,6 +67,7 @@ function WaitingRoomItem({ task, isMobile, onReflect }: { task: Task; isMobile: 
         { type: 'waitingRoom', id: task.id, title: task.title, duration: task.duration || 30 },
         startPos,
       );
+      onClosePanel();
     }, 300);
   }, [task]);
 
@@ -187,7 +188,7 @@ export function WaitingRoom({ open, onClose }: { open: boolean; onClose: () => v
                 ) : (
                   <div className="space-y-px">
                     {waitingTasks.map((task) => (
-                      <WaitingRoomItem key={task.id} task={task} isMobile={isMobile} onReflect={() => setReflectTask(task)} />
+                      <WaitingRoomItem key={task.id} task={task} isMobile={isMobile} onReflect={() => setReflectTask(task)} onClosePanel={onClose} />
                     ))}
                   </div>
                 )}
