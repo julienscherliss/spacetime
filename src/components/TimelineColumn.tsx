@@ -506,7 +506,7 @@ export function TimelineColumn({
               setTimeout(() => { didDragRef.current = false; }, 50);
             }}
             onClick={() => handleTaskClick(task.id)}
-            className={`absolute right-1 group select-none transition-shadow duration-200 ${
+            className={`absolute right-1 group draggable-item select-none transition-shadow duration-200 ${
               isLocked
                 ? 'cursor-default'
                 : isResizingThis

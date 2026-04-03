@@ -97,7 +97,7 @@ function WaitingRoomItem({ task, isMobile, onReflect, onClosePanel }: { task: Ta
 
   return (
     <div
-      className={`group flex items-center gap-2 rounded-sm hover:bg-muted/40 transition-colors cursor-pointer select-none ${isMobile ? 'py-3 px-3' : 'py-2 px-2'}`}
+      className={`group flex items-center gap-2 rounded-sm hover:bg-muted/40 transition-colors cursor-pointer draggable-item select-none ${isMobile ? 'py-3 px-3' : 'py-2 px-2'}`}
       onClick={onReflect}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}

@@ -91,7 +91,7 @@ function LibraryItem({ item, isMobile }: { item: LibraryTask; isMobile: boolean 
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      className={`group flex items-center gap-2 rounded-sm hover:bg-muted/40 transition-colors cursor-grab active:cursor-grabbing select-none ${
+      className={`group flex items-center gap-2 rounded-sm hover:bg-muted/40 transition-colors cursor-grab active:cursor-grabbing draggable-item select-none ${
         isMobile ? 'py-3 px-3' : 'py-2 px-2'
       }`}
     >
