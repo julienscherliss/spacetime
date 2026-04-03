@@ -27,6 +27,55 @@ function formatDuration(mins: number): string {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
+function CalendarEventBlocks({ date, hourHeight, showTimeLabels }: { date: string; hourHeight: number; showTimeLabels: boolean }) {
+  const events = useCalendarStore((s) => s.getEventsForDate(date));
+  const calendars = useCalendarStore((s) => s.calendars);
+  const timeLabelsLeft = showTimeLabels ? '2.75rem' : '2px';
+
+  if (events.length === 0) return null;
+
+  return (
+    <>
+      {events.filter(e => e.time && !e.isAllDay).map((event) => {
+        const mins = timeToMinutes(event.time!);
+        const top = ((mins - START_HOUR * 60) / 60) * hourHeight;
+        const height = Math.max(((event.duration || 30) / 60) * hourHeight, 14);
+        const cal = calendars.find(c => c.google_calendar_id === event.calendarId);
+        const color = cal?.color || '#4285f4';
+
+        return (
+          <div
+            key={`gcal-${event.id}`}
+            className="absolute right-1 z-[5] pointer-events-none"
+            style={{ top, height, left: timeLabelsLeft }}
+          >
+            <div
+              className="h-full rounded-[2px] border border-border/30 bg-muted/30 overflow-hidden"
+              style={{ borderLeftWidth: '2px', borderLeftColor: color }}
+            >
+              <div className="flex items-start h-full px-2 py-0.5 overflow-hidden">
+                <div className="flex-1 min-w-0">
+                  <div className="text-[9px] font-mono leading-tight truncate text-muted-foreground/60">
+                    {event.title}
+                  </div>
+                  {height > 24 && (
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <span className="text-[7px] font-mono text-muted-foreground/35">
+                        {event.time}
+                      </span>
+                      <CalIcon size={7} className="text-muted-foreground/25" />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
 export function TimelineColumn({
   date,
   tasks,
