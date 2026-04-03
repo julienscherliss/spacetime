@@ -499,6 +499,27 @@ export function TaskEditPanel() {
               </AnimatePresence>
             </div>
 
+            {/* Routine toggle — only shown for recurring tasks */}
+            {recurrenceType !== 'none' && (
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-[9px] font-mono tracking-wider text-muted-foreground/60">
+                  ROUTINE
+                </span>
+                <button
+                  onClick={() => setIsRoutine(!isRoutine)}
+                  className={`relative w-7 h-4 rounded-full transition-colors ${
+                    isRoutine ? 'bg-primary/30' : 'bg-muted'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 w-3 h-3 rounded-full transition-all ${
+                      isRoutine ? 'left-3.5 bg-primary' : 'left-0.5 bg-muted-foreground/40'
+                    }`}
+                  />
+                </button>
+              </div>
+            )}
+
             {/* Move info */}
             {task.moveCount > 0 && (
               <div className="text-[8px] font-mono text-muted-foreground/40 tracking-widest mb-3">
