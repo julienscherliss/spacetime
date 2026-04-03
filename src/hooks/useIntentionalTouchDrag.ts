@@ -87,13 +87,13 @@ export function useIntentionalTouchDrag<T extends HTMLElement>({
       lastPoint = { x: touch.clientX, y: touch.clientY };
       const distance = Math.hypot(lastPoint.x - startPoint.x, lastPoint.y - startPoint.y);
 
-      event.preventDefault();
-
       if (!dragActivated && distance >= threshold) {
+        // Commit to drag — prevent scroll from here on
         activateDrag();
       }
 
       if (dragActivated) {
+        event.preventDefault();
         useTouchDragStore.getState().moveGhost(lastPoint);
         onDragMove?.(lastPoint);
       }
@@ -105,13 +105,17 @@ export function useIntentionalTouchDrag<T extends HTMLElement>({
       if (!touch) return;
 
       lastPoint = { x: touch.clientX, y: touch.clientY };
-      event.preventDefault();
 
       if (dragActivated && lastPoint) {
+        event.preventDefault();
         useTouchDragStore.getState().moveGhost(lastPoint);
         onDragEnd?.(lastPoint);
       } else {
-        onTap?.();
+        // Only fire tap if finger barely moved
+        const distance = Math.hypot(lastPoint.x - startPoint!.x, lastPoint.y - startPoint!.y);
+        if (distance < threshold) {
+          onTap?.();
+        }
       }
 
       clearGesture();
@@ -119,7 +123,6 @@ export function useIntentionalTouchDrag<T extends HTMLElement>({
 
     const handleTouchCancel = (event: TouchEvent) => {
       if (activeTouchId === null) return;
-      event.preventDefault();
 
       const { dragging } = useTouchDragStore.getState();
       if (dragActivated && dragging?.id === payload.id && dragging.type === payload.type) {
@@ -142,14 +145,14 @@ export function useIntentionalTouchDrag<T extends HTMLElement>({
       lastPoint = startPoint;
       dragActivated = false;
 
-      event.preventDefault();
+      // Don't preventDefault here — let the browser scroll if the user swipes
 
       window.addEventListener('touchmove', handleTouchMove, { passive: false });
       window.addEventListener('touchend', handleTouchEnd, { passive: false });
       window.addEventListener('touchcancel', handleTouchCancel, { passive: false });
     };
 
-    element.addEventListener('touchstart', handleTouchStart, { passive: false });
+    element.addEventListener('touchstart', handleTouchStart, { passive: true });
 
     return () => {
       element.removeEventListener('touchstart', handleTouchStart);
