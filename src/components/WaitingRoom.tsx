@@ -67,6 +67,7 @@ function WaitingRoomItem({ task, isMobile, onReflect, onClosePanel }: { task: Ta
         { type: 'waitingRoom', id: task.id, title: task.title, duration: task.duration || 30 },
         startPos,
       );
+      onClosePanel();
     }, 300);
   }, [task]);
 
