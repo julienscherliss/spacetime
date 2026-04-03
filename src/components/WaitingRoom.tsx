@@ -56,10 +56,12 @@ function ReflectionModal({ task, onConfirm, onCancel }: { task: Task; onConfirm:
 
 function WaitingRoomItem({ task, isMobile, onReflect }: { task: Task; isMobile: boolean; onReflect: () => void }) {
   const touchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const touch = e.touches[0];
     const startPos = { x: touch.clientX, y: touch.clientY };
+    touchStartPosRef.current = startPos;
     touchTimerRef.current = setTimeout(() => {
       useTouchDragStore.getState().startDrag(
         { type: 'waitingRoom', id: task.id, title: task.title, duration: task.duration || 30 },
@@ -74,16 +76,13 @@ function WaitingRoomItem({ task, isMobile, onReflect }: { task: Task; isMobile: 
       e.preventDefault();
       const touch = e.touches[0];
       useTouchDragStore.getState().moveGhost({ x: touch.clientX, y: touch.clientY });
-    } else if (touchTimerRef.current) {
+    } else if (touchTimerRef.current && touchStartPosRef.current) {
       const touch = e.touches[0];
-      const startPos = useTouchDragStore.getState().ghostPos;
-      if (startPos) {
-        const dx = Math.abs(touch.clientX - startPos.x);
-        const dy = Math.abs(touch.clientY - startPos.y);
-        if (dx > 10 || dy > 10) {
-          clearTimeout(touchTimerRef.current);
-          touchTimerRef.current = null;
-        }
+      const dx = Math.abs(touch.clientX - touchStartPosRef.current.x);
+      const dy = Math.abs(touch.clientY - touchStartPosRef.current.y);
+      if (dx > 10 || dy > 10) {
+        clearTimeout(touchTimerRef.current);
+        touchTimerRef.current = null;
       }
     }
   }, []);
