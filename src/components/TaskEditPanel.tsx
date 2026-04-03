@@ -281,7 +281,7 @@ export function TaskEditPanel() {
                 />
                 <div className="mt-1.5 flex items-center gap-2">
                   <PriorityBadge priority={priority} />
-                  {(isRecurring || recurrenceType !== 'none') && (
+                  {(isRoutine || (recurrenceType !== 'none' && isRoutine)) && (
                     <span className="text-[7px] font-mono text-muted-foreground/40 tracking-widest">
                       <Repeat size={8} className="inline mr-0.5" />
                       ROUTINE
