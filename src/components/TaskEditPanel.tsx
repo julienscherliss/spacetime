@@ -561,6 +561,18 @@ export function TaskEditPanel() {
                 </button>
                 <button
                   onClick={() => {
+                    if (!task) return;
+                    useLibraryStore.getState().addFromSchedule(task.title, task.duration || 30);
+                    deleteTask(task.id);
+                    setEditingTask(null);
+                  }}
+                  className="p-2 rounded-sm border border-border text-muted-foreground hover:text-foreground hover:border-primary/20 transition-colors"
+                  title="Send to Library"
+                >
+                  <Archive size={12} strokeWidth={1.5} />
+                </button>
+                <button
+                  onClick={() => {
                     if (isRecurring) {
                       setShowDeleteConfirm(true);
                     } else {
