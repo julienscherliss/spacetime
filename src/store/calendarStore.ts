@@ -40,7 +40,7 @@ interface CalendarState {
   fetchEvents: (startDate: string, endDate: string) => Promise<void>;
   toggleCalendar: (calendarId: string, visible: boolean) => void;
   disconnect: () => Promise<void>;
-  getEventsForDate: (date: string) => CalendarEvent[];
+  
 }
 
 function getDeviceId(): string {
