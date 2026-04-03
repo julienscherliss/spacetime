@@ -24,6 +24,7 @@ interface ScheduledDragActions {
   }) => void;
   activate: () => void;
   updatePosition: (minutes: number) => void;
+  setTargetDate: (date: string) => void;
   endDrag: () => ScheduledDragState;
   cancel: () => void;
 }
