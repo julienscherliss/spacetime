@@ -297,7 +297,7 @@ export function TaskEditPanel() {
                       ROUTINE
                     </span>
                   )}
-                  {isLinked && recurrenceType !== 'none' && (
+                  {isLinked && isRecurring && (
                     <span className="text-[7px] font-mono text-primary/40 tracking-widest">
                       <Link size={8} className="inline mr-0.5" />
                       LINKED
