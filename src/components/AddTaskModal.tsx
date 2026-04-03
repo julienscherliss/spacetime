@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useTaskStore, Priority, TaskType } from '@/store/taskStore';
+import { useTaskStore, Priority } from '@/store/taskStore';
 import { Plus, X } from 'lucide-react';
 
 export function AddTaskModal() {
@@ -11,17 +11,16 @@ export function AddTaskModal() {
   const [time, setTime] = useState('09:00');
   const [duration, setDuration] = useState(30);
   const [priority, setPriority] = useState<Priority>(0);
-  const [type, setType] = useState<TaskType>('one-time');
 
   const handleSubmit = () => {
     if (!title.trim()) return;
-    addTask({ title: title.trim(), date, time, duration, priority, type });
+    // Type is always derived from recurrence in addTask — no recurrence here = one-time
+    addTask({ title: title.trim(), date, time, duration, priority, type: 'one-time' });
     setTitle('');
     setDate(new Date().toISOString().split('T')[0]);
     setTime('09:00');
     setDuration(30);
     setPriority(0);
-    setType('one-time');
     setOpen(false);
   };
 
@@ -131,24 +130,9 @@ export function AddTaskModal() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-[8px] font-mono tracking-widest text-muted-foreground/50 mb-1.5">TYPE</label>
-                  <div className="flex gap-1.5">
-                    {(['one-time', 'recurring'] as TaskType[]).map((t) => (
-                      <button
-                        key={t}
-                        onClick={() => setType(t)}
-                        className={`flex-1 py-1.5 rounded-sm text-[9px] font-mono tracking-wider border transition-colors ${
-                          type === t
-                            ? 'border-primary/20 text-primary bg-primary/5'
-                            : 'border-border text-muted-foreground/50'
-                        }`}
-                      >
-                        {t === 'one-time' ? 'One-time' : 'Recurring'}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <p className="text-[8px] font-mono text-muted-foreground/35 tracking-wider">
+                  To set repeat/routine, edit the task after creation.
+                </p>
 
                 <button
                   onClick={handleSubmit}

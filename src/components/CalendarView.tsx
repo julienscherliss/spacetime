@@ -1,11 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 export function CalendarView() {
-  const { tasks, routinesEnabled, setEditingTask } = useTaskStore();
+  const { tasks, routinesEnabled, setEditingTask, generateRecurringInstances } = useTaskStore();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
@@ -37,6 +37,15 @@ export function CalendarView() {
     return days;
   }, [currentMonth]);
 
+  // Generate recurring instances for the visible month range
+  useEffect(() => {
+    if (calendarData.length > 0) {
+      const rangeStart = calendarData[0].date;
+      const rangeEnd = calendarData[calendarData.length - 1].date;
+      generateRecurringInstances(rangeStart, rangeEnd);
+    }
+  }, [calendarData, generateRecurringInstances]);
+
   const filteredTasks = useMemo(() => {
     if (routinesEnabled) return tasks;
     return tasks.filter((t) => t.type !== 'recurring');
@@ -57,7 +66,6 @@ export function CalendarView() {
     ? filteredTasks.filter((t) => t.date === selectedDate).sort((a, b) => (a.time || '').localeCompare(b.time || ''))
     : [];
 
-  // Heat: neutral greys → warm hint
   const getHeatBg = (count: number): string => {
     if (count === 0) return '';
     const intensity = count / maxTasks;

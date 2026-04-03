@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Priority, RecurrencePattern, CustomUnit } from '@/store/taskStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
@@ -84,7 +84,10 @@ export function TaskEditPanel() {
   const [showEditScope, setShowEditScope] = useState(false);
   const [pendingUpdates, setPendingUpdates] = useState<Partial<Pick<typeof task, 'title' | 'time' | 'duration' | 'priority' | 'recurrence' | 'type'>> | null>(null);
 
-  const isRecurring = task?.recurrence || task?.isRecurrenceInstance;
+  // Track whether scope prompt was triggered to prevent close
+  const scopeTriggeredRef = useRef(false);
+
+  const isRecurring = !!(task?.recurrence || task?.isRecurrenceInstance);
 
   useEffect(() => {
     if (task) {
@@ -104,6 +107,7 @@ export function TaskEditPanel() {
       setShowDeleteConfirm(false);
       setShowEditScope(false);
       setPendingUpdates(null);
+      scopeTriggeredRef.current = false;
     }
   }, [task?.id]);
 
@@ -146,6 +150,19 @@ export function TaskEditPanel() {
     };
   };
 
+  const regenerateInstances = (parentId: string) => {
+    removeInstances(parentId);
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + 60);
+    // Use microtask to ensure removeInstances has settled
+    setTimeout(() => {
+      generateRecurringInstances(
+        new Date().toISOString().split('T')[0],
+        endDate.toISOString().split('T')[0]
+      );
+    }, 50);
+  };
+
   const handleSave = () => {
     if (!task) return;
     const updates = getUpdates();
@@ -159,31 +176,25 @@ export function TaskEditPanel() {
       if (hasRecurrenceChange || hasContentChange) {
         setPendingUpdates(updates);
         setShowEditScope(true);
+        scopeTriggeredRef.current = true;
         return;
       }
     }
 
+    const parentId = task.recurrenceParentId || task.id;
+    const hadRecurrence = !!task.recurrence;
+    const hasRecurrence = !!updates.recurrence;
+
     updateTask(task.id, updates);
 
-    // If removing recurrence ("No repeat"), clean up future instances
-    if (!updates.recurrence && task.recurrence) {
-      const parentId = task.recurrenceParentId || task.id;
+    // Removing recurrence → clean up instances
+    if (!hasRecurrence && hadRecurrence) {
       removeInstances(parentId);
     }
 
-    // Regenerate instances after saving recurrence changes
-    if (updates.recurrence) {
-      // First remove old instances, then regenerate
-      const parentId = task.recurrenceParentId || task.id;
-      removeInstances(parentId);
-      const endDate = new Date();
-      endDate.setDate(endDate.getDate() + 60);
-      setTimeout(() => {
-        generateRecurringInstances(
-          new Date().toISOString().split('T')[0],
-          endDate.toISOString().split('T')[0]
-        );
-      }, 50);
+    // Adding or changing recurrence → regenerate
+    if (hasRecurrence) {
+      regenerateInstances(parentId);
     }
   };
 
@@ -192,40 +203,45 @@ export function TaskEditPanel() {
     updateTask(task.id, { ...pendingUpdates, date });
     setShowEditScope(false);
     setPendingUpdates(null);
+    scopeTriggeredRef.current = false;
     setEditingTask(null);
   };
 
   const handleSaveAllFuture = () => {
     if (!task || !pendingUpdates) return;
     const parentId = task.recurrenceParentId || task.id;
-    updateFutureInstances(parentId, pendingUpdates);
-    // Regenerate instances
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + 60);
-    setTimeout(() => {
-      generateRecurringInstances(
-        new Date().toISOString().split('T')[0],
-        endDate.toISOString().split('T')[0]
-      );
-    }, 50);
+
+    // If removing recurrence for all future
+    if (!pendingUpdates.recurrence && task.recurrence) {
+      updateFutureInstances(parentId, pendingUpdates);
+      removeInstances(parentId);
+    } else {
+      updateFutureInstances(parentId, pendingUpdates);
+      regenerateInstances(parentId);
+    }
+
     setShowEditScope(false);
     setPendingUpdates(null);
+    scopeTriggeredRef.current = false;
     setEditingTask(null);
   };
 
   const handleClose = () => {
-    if (!showEditScope) {
-      handleSave();
-      if (!showEditScope) {
-        setEditingTask(null);
-      }
+    if (showEditScope) return; // Don't close while scope prompt is showing
+    scopeTriggeredRef.current = false;
+    handleSave();
+    // Check if scope was triggered by handleSave
+    if (!scopeTriggeredRef.current) {
+      setEditingTask(null);
     }
   };
 
   const handleFocus = () => {
     if (!task) return;
-    if (!showEditScope) handleSave();
     if (showEditScope) return;
+    scopeTriggeredRef.current = false;
+    handleSave();
+    if (scopeTriggeredRef.current) return;
     setFocusTask(task.id);
     setEditingTask(null);
     setViewMode('focus');
@@ -262,7 +278,7 @@ export function TaskEditPanel() {
                 />
                 <div className="mt-1.5 flex items-center gap-2">
                   <PriorityBadge priority={priority} />
-                  {isRecurring && (
+                  {(isRecurring || recurrenceType !== 'none') && (
                     <span className="text-[7px] font-mono text-muted-foreground/40 tracking-widest">
                       <Repeat size={8} className="inline mr-0.5" />
                       ROUTINE
