@@ -65,6 +65,7 @@ export function TimelineTaskBlock({
       sourceDate: task.date,
     },
     canDrag: !isLocked && !isResizingThis,
+    preventScrollOnTouchStart: !isLocked && !isResizingThis,
     onTap: () => handleTaskClick(task.id),
     onDragStart: ({ point, element }) => {
       didDragRef.current = true;
