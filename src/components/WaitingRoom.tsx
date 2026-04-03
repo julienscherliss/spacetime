@@ -75,8 +75,16 @@ function WaitingRoomItem({ task, isMobile, onReflect }: { task: Task; isMobile: 
       const touch = e.touches[0];
       useTouchDragStore.getState().moveGhost({ x: touch.clientX, y: touch.clientY });
     } else if (touchTimerRef.current) {
-      clearTimeout(touchTimerRef.current);
-      touchTimerRef.current = null;
+      const touch = e.touches[0];
+      const startPos = useTouchDragStore.getState().ghostPos;
+      if (startPos) {
+        const dx = Math.abs(touch.clientX - startPos.x);
+        const dy = Math.abs(touch.clientY - startPos.y);
+        if (dx > 10 || dy > 10) {
+          clearTimeout(touchTimerRef.current);
+          touchTimerRef.current = null;
+        }
+      }
     }
   }, []);
 
