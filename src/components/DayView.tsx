@@ -59,11 +59,11 @@ export function DayView() {
   // Prevent scroll container from scrolling while dragging a task
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el || !isDragging) return;
+    if (!el || !anyDragging) return;
     const prevent = (e: TouchEvent) => { e.preventDefault(); };
     el.addEventListener('touchmove', prevent, { passive: false });
     return () => el.removeEventListener('touchmove', prevent);
-  }, [isDragging]);
+  }, [anyDragging]);
 
   // Swipe gesture handlers
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
