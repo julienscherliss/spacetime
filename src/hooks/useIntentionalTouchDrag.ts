@@ -8,6 +8,7 @@ interface UseIntentionalTouchDragOptions<T extends HTMLElement> {
   canDrag?: boolean;
   disabled?: boolean;
   threshold?: number;
+  preventScrollOnTouchStart?: boolean;
   ignoreSelector?: string;
   onTap?: () => void;
   onDragStart?: (context: { point: Point; element: T }) => void;
@@ -40,6 +41,7 @@ export function useIntentionalTouchDrag<T extends HTMLElement>({
   canDrag = true,
   disabled = false,
   threshold = 8,
+  preventScrollOnTouchStart = false,
   ignoreSelector = DEFAULT_IGNORE_SELECTOR,
   onTap,
   onDragStart,
@@ -145,6 +147,10 @@ export function useIntentionalTouchDrag<T extends HTMLElement>({
       const target = event.target as HTMLElement | null;
       if (target?.closest(ignoreSelector)) return;
 
+      if (preventScrollOnTouchStart) {
+        event.preventDefault();
+      }
+
       const touch = event.touches[0];
       activeTouchId = touch.identifier;
       startPoint = { x: touch.clientX, y: touch.clientY };
@@ -158,7 +164,7 @@ export function useIntentionalTouchDrag<T extends HTMLElement>({
       window.addEventListener('touchcancel', handleTouchCancel, { passive: false });
     };
 
-    element.addEventListener('touchstart', handleTouchStart, { passive: true });
+    element.addEventListener('touchstart', handleTouchStart, { passive: !preventScrollOnTouchStart });
 
     return () => {
       element.removeEventListener('touchstart', handleTouchStart);
@@ -178,6 +184,7 @@ export function useIntentionalTouchDrag<T extends HTMLElement>({
     payload.sourceDate,
     payload.title,
     payload.type,
+    preventScrollOnTouchStart,
     threshold,
   ]);
 
