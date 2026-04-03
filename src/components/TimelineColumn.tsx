@@ -95,7 +95,7 @@ export function TimelineColumn({
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    const mins = getMinutesFromY(e.clientY);
+    const mins = getMinutesFromY(e.clientY - dragOffsetRef.current);
     const snapped = snapTo15(mins);
     setDragOverTime(minutesToTime(snapped));
     setDragValid(true);
