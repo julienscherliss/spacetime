@@ -149,6 +149,8 @@ export function TimelineColumn({
     const mins = getMinutesFromY(e.clientY - dragOffsetRef.current);
     const snapped = snapTo15(mins);
     setDragOverTime(minutesToTime(snapped));
+    // Try to get duration from the dragged task
+    const taskId = e.dataTransfer.types.includes('taskid') ? 'pending' : null;
     setDragValid(true);
   }, [getMinutesFromY]);
 
