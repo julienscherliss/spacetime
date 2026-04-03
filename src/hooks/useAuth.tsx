@@ -8,23 +8,34 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let resolved = false;
+    const resolve = (s: Session | null) => {
+      if (resolved) return;
+      resolved = true;
+      setSession(s);
+      setUser(s?.user ?? null);
+      setLoading(false);
+    };
+
     // Set up listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
+      resolve(session);
     });
 
     // Then check current session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
+      resolve(session);
     }).catch(() => {
-      setLoading(false);
+      resolve(null);
     });
 
-    return () => subscription.unsubscribe();
+    // Safety timeout — never stay loading forever
+    const timeout = setTimeout(() => resolve(null), 5000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   const signOut = async () => {
