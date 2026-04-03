@@ -682,6 +682,8 @@ export function TimelineColumn({
             handleResizeStart={handleResizeStart}
             setDragMsg={setDragMsg}
             formatDuration={formatDuration}
+            hourHeight={HOUR_HEIGHT}
+            startHour={START_HOUR}
           />
         );
       })}
