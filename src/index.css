@@ -108,6 +108,19 @@
   border-radius: 2px;
 }
 
+/* Draggable elements — prevent iOS text selection & callout */
+.draggable-item,
+.draggable-item * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.draggable-item {
+  touch-action: manipulation;
+}
+
 /* Skip button micro-friction */
 .skip-btn {
   transition: opacity 0.6s ease 0.4s;
