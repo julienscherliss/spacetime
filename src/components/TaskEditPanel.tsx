@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Priority, RecurrencePattern, CustomUnit } from '@/store/taskStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
-import { X, Play, Calendar, Clock, Trash2, Repeat, ChevronDown, Archive } from 'lucide-react';
+import { SubtaskList, Subtask } from '@/components/SubtaskList';
+import { X, Play, Calendar, Clock, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, FileText } from 'lucide-react';
 import { useLibraryStore } from '@/store/libraryStore';
 import { minutesToTime, timeToMinutes, formatTime12h } from '@/hooks/useCurrentTime';
 
@@ -64,6 +65,8 @@ export function TaskEditPanel() {
   const task = tasks.find((t) => t.id === editingTaskId);
 
   const [title, setTitle] = useState(task?.title || '');
+  const [description, setDescription] = useState(task?.description || '');
+  const [subtasks, setSubtasks] = useState<Subtask[]>(task?.subtasks || []);
   const [time, setTime] = useState(task?.time || '');
   const [duration, setDuration] = useState(task?.duration || 30);
   const [date, setDate] = useState(task?.date || '');
@@ -81,12 +84,12 @@ export function TaskEditPanel() {
     task?.recurrence?.type === 'custom' ? task.recurrence.unit : 'weeks'
   );
   const [isRoutine, setIsRoutine] = useState(task?.isRoutine !== false && task?.type === 'recurring');
+  const [isLinked, setIsLinked] = useState(task?.linked || false);
   const [showRecurrence, setShowRecurrence] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showEditScope, setShowEditScope] = useState(false);
-  const [pendingUpdates, setPendingUpdates] = useState<Partial<Pick<typeof task, 'title' | 'time' | 'duration' | 'priority' | 'recurrence' | 'type'>> | null>(null);
-
-  // Track whether scope prompt was triggered to prevent close
+  const [showDescription, setShowDescription] = useState(false);
+  const [pendingUpdates, setPendingUpdates] = useState<any>(null);
   const scopeTriggeredRef = useRef(false);
 
   const isRecurring = !!(task?.recurrence || task?.isRecurrenceInstance);
@@ -94,11 +97,14 @@ export function TaskEditPanel() {
   useEffect(() => {
     if (task) {
       setTitle(task.title);
+      setDescription(task.description || '');
+      setSubtasks(task.subtasks || []);
       setTime(task.time || '');
       setDuration(task.duration || 30);
       setDate(task.date);
       setPriority(task.priority);
       setIsRoutine(task.isRoutine !== false && task.type === 'recurring');
+      setIsLinked(task.linked || false);
       setRecurrenceType(recurrenceToType(task.recurrence));
       setWeeklyDays(
         task.recurrence?.type === 'weekly' ? task.recurrence.days :
@@ -109,6 +115,7 @@ export function TaskEditPanel() {
       setCustomUnit(task.recurrence?.type === 'custom' ? task.recurrence.unit : 'weeks');
       setShowDeleteConfirm(false);
       setShowEditScope(false);
+      setShowDescription(!!(task.description || (task.subtasks && task.subtasks.length > 0)));
       setPendingUpdates(null);
       scopeTriggeredRef.current = false;
     }
@@ -144,6 +151,8 @@ export function TaskEditPanel() {
     const recurrence = buildRecurrence();
     return {
       title,
+      description: description || undefined,
+      subtasks: subtasks.length > 0 ? subtasks : undefined,
       time,
       duration,
       date,
@@ -151,6 +160,7 @@ export function TaskEditPanel() {
       recurrence,
       type: recurrence ? 'recurring' as const : 'one-time' as const,
       isRoutine: recurrence ? isRoutine : false,
+      linked: recurrence ? isLinked : false,
     };
   };
 
@@ -158,7 +168,6 @@ export function TaskEditPanel() {
     removeInstances(parentId);
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + 60);
-    // Use microtask to ensure removeInstances has settled
     setTimeout(() => {
       generateRecurringInstances(
         new Date().toISOString().split('T')[0],
@@ -171,7 +180,6 @@ export function TaskEditPanel() {
     if (!task) return;
     const updates = getUpdates();
 
-    // If this is a recurring task and user changed something meaningful, ask scope
     if (isRecurring && !showEditScope) {
       const hasRecurrenceChange = JSON.stringify(task.recurrence) !== JSON.stringify(updates.recurrence);
       const hasContentChange = task.title !== updates.title || task.time !== updates.time ||
@@ -191,12 +199,9 @@ export function TaskEditPanel() {
 
     updateTask(task.id, updates);
 
-    // Removing recurrence → clean up instances
     if (!hasRecurrence && hadRecurrence) {
       removeInstances(parentId);
     }
-
-    // Adding or changing recurrence → regenerate
     if (hasRecurrence) {
       regenerateInstances(parentId);
     }
@@ -215,7 +220,6 @@ export function TaskEditPanel() {
     if (!task || !pendingUpdates) return;
     const parentId = task.recurrenceParentId || task.id;
 
-    // If removing recurrence for all future
     if (!pendingUpdates.recurrence && task.recurrence) {
       updateFutureInstances(parentId, pendingUpdates);
       removeInstances(parentId);
@@ -231,10 +235,9 @@ export function TaskEditPanel() {
   };
 
   const handleClose = () => {
-    if (showEditScope) return; // Don't close while scope prompt is showing
+    if (showEditScope) return;
     scopeTriggeredRef.current = false;
     handleSave();
-    // Check if scope was triggered by handleSave
     if (!scopeTriggeredRef.current) {
       setEditingTask(null);
     }
@@ -288,6 +291,12 @@ export function TaskEditPanel() {
                       ROUTINE
                     </span>
                   )}
+                  {isLinked && recurrenceType !== 'none' && (
+                    <span className="text-[7px] font-mono text-primary/40 tracking-widest">
+                      <Link size={8} className="inline mr-0.5" />
+                      LINKED
+                    </span>
+                  )}
                 </div>
               </div>
               <button
@@ -297,6 +306,44 @@ export function TaskEditPanel() {
                 <X size={14} strokeWidth={1.5} />
               </button>
             </div>
+
+            {/* Description & Subtasks toggle */}
+            <button
+              onClick={() => setShowDescription(!showDescription)}
+              className="flex items-center gap-1.5 text-[9px] font-mono tracking-wider text-muted-foreground/40 hover:text-foreground transition-colors mb-2 w-full"
+            >
+              <FileText size={10} strokeWidth={1.5} />
+              <span className="flex-1 text-left">
+                {description || subtasks.length > 0 ? 'DETAILS' : 'ADD DETAILS'}
+              </span>
+              <ChevronDown size={9} className={`transition-transform ${showDescription ? 'rotate-180' : ''}`} />
+            </button>
+
+            <AnimatePresence>
+              {showDescription && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="overflow-hidden mb-3"
+                >
+                  <div className="space-y-2 pl-3 border-l border-border/30">
+                    <textarea
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="Add a description..."
+                      rows={2}
+                      className="w-full bg-transparent text-[10px] font-mono text-foreground/70 placeholder:text-muted-foreground/20 focus:outline-none resize-none"
+                    />
+                    <div>
+                      <label className="block text-[7px] font-mono tracking-widest text-muted-foreground/40 mb-1">SUBTASKS</label>
+                      <SubtaskList subtasks={subtasks} onChange={setSubtasks} />
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Fields */}
             <div className="space-y-2 mb-3">
@@ -380,11 +427,11 @@ export function TaskEditPanel() {
                           key={opt.value}
                           onClick={() => {
                             setRecurrenceType(opt.value);
-                            // Auto-set routine default
                             if (opt.value === 'none') {
                               setIsRoutine(false);
+                              setIsLinked(false);
                             } else if (recurrenceType === 'none') {
-                              setIsRoutine(true); // default ON when adding repeat
+                              setIsRoutine(true);
                             }
                             if (opt.value !== 'custom') {
                               setShowRecurrence(false);
@@ -432,7 +479,6 @@ export function TaskEditPanel() {
                       {recurrenceType === 'custom' && (
                         <div className="pt-2 space-y-2.5">
                           <label className="block text-[7px] font-mono tracking-widest text-muted-foreground/40">REPEAT EVERY</label>
-
                           <div className="flex items-center gap-2">
                             <input
                               type="number"
@@ -458,7 +504,6 @@ export function TaskEditPanel() {
                             </div>
                           </div>
 
-                          {/* Day picker for custom weeks */}
                           {customUnit === 'weeks' && (
                             <div>
                               <label className="block text-[7px] font-mono tracking-widest text-muted-foreground/40 mb-1.5">ON THESE DAYS</label>
@@ -486,7 +531,6 @@ export function TaskEditPanel() {
                             </div>
                           )}
 
-                          {/* Monthly info */}
                           {customUnit === 'months' && (
                             <p className="text-[8px] font-mono text-muted-foreground/40">
                               On day {new Date(date + 'T12:00:00').getDate()} of each month
@@ -500,7 +544,7 @@ export function TaskEditPanel() {
               </AnimatePresence>
             </div>
 
-            {/* Routine toggle — only shown for recurring tasks */}
+            {/* Routine toggle */}
             {recurrenceType !== 'none' && (
               <div className="mb-3 flex items-center justify-between">
                 <span className="text-[9px] font-mono tracking-wider text-muted-foreground/60">
@@ -521,10 +565,48 @@ export function TaskEditPanel() {
               </div>
             )}
 
+            {/* Link/Unlink toggle */}
+            {recurrenceType !== 'none' && (
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  {isLinked ? <Link size={10} className="text-primary/50" /> : <Unlink size={10} className="text-muted-foreground/30" />}
+                  <span className="text-[9px] font-mono tracking-wider text-muted-foreground/60">
+                    {isLinked ? 'LINKED' : 'UNLINKED'}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setIsLinked(!isLinked)}
+                  className={`relative w-7 h-4 rounded-full transition-colors ${
+                    isLinked ? 'bg-primary/30' : 'bg-muted'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 w-3 h-3 rounded-full transition-all ${
+                      isLinked ? 'left-3.5 bg-primary' : 'left-0.5 bg-muted-foreground/40'
+                    }`}
+                  />
+                </button>
+              </div>
+            )}
+
+            {/* Linked info */}
+            {isLinked && recurrenceType !== 'none' && (
+              <p className="text-[8px] font-mono text-muted-foreground/30 mb-3 pl-1">
+                Changes to time, duration, or notes will apply to all future instances.
+              </p>
+            )}
+
             {/* Move info */}
             {task.moveCount > 0 && (
               <div className="text-[8px] font-mono text-muted-foreground/40 tracking-widest mb-3">
                 MOVED {task.moveCount}× · ORIGINALLY {PRIORITY_LABELS[task.originalPriority].toUpperCase()}
+              </div>
+            )}
+
+            {/* Waiting room info */}
+            {(task.waitingRoomCount || 0) > 0 && (
+              <div className="text-[8px] font-mono text-primary/40 tracking-widest mb-3">
+                ENTERED WAITING ROOM {task.waitingRoomCount}×
               </div>
             )}
 

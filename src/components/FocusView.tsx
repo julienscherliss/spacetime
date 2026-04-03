@@ -2,14 +2,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
 import { useCurrentTime, timeToMinutes, minutesToTime, formatTime12h } from '@/hooks/useCurrentTime';
 import { PriorityBadge } from '@/components/PriorityBadge';
+import { SubtaskList } from '@/components/SubtaskList';
 import { ChevronRight } from 'lucide-react';
 
 export function FocusView() {
-  const { tasks, routinesEnabled, getNextTask } = useTaskStore();
+  const { tasks, routinesEnabled, getNextTask, updateTask } = useTaskStore();
   const { minutes: nowMinutes, dateStr: today } = useCurrentTime(5000);
 
   const todayTasks = tasks
-    .filter((t) => !t.completed && t.date === today && t.time &&
+    .filter((t) => !t.completed && !t.inWaitingRoom && t.date === today && t.time &&
       !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring'))
     .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
 
@@ -60,9 +61,27 @@ export function FocusView() {
             <PriorityBadge priority={activeTask.priority} />
           </div>
 
-          <h1 className="text-xl sm:text-2xl md:text-4xl font-display font-bold tracking-tight text-foreground mb-6 leading-tight">
+          <h1 className="text-xl sm:text-2xl md:text-4xl font-display font-bold tracking-tight text-foreground mb-4 leading-tight">
             {activeTask.title}
           </h1>
+
+          {/* Description */}
+          {activeTask.description && (
+            <p className="text-[11px] font-mono text-muted-foreground/50 mb-4 max-w-sm mx-auto leading-relaxed">
+              {activeTask.description}
+            </p>
+          )}
+
+          {/* Subtasks checklist */}
+          {activeTask.subtasks && activeTask.subtasks.length > 0 && (
+            <div className="mb-6 text-left max-w-xs mx-auto bg-card/50 rounded-sm p-3 border border-border/30">
+              <SubtaskList
+                subtasks={activeTask.subtasks}
+                onChange={(newSubtasks) => updateTask(activeTask.id, { subtasks: newSubtasks })}
+                compact
+              />
+            </div>
+          )}
 
           {/* Progress ring */}
           <div className="relative inline-flex items-center justify-center mb-6">
