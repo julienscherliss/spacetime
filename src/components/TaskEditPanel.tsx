@@ -149,6 +149,8 @@ export function TaskEditPanel() {
 
   const getUpdates = () => {
     const recurrence = buildRecurrence();
+    const parentId = task?.recurrenceParentId || task?.id;
+    const seriesId = task?.seriesId || parentId;
     return {
       title,
       description: description || undefined,
@@ -161,6 +163,8 @@ export function TaskEditPanel() {
       type: recurrence ? 'recurring' as const : 'one-time' as const,
       isRoutine: recurrence ? isRoutine : false,
       linked: recurrence ? isLinked : false,
+      linkedGroupId: (recurrence && isLinked) ? (task?.linkedGroupId || seriesId) : undefined,
+      detachedFromSeries: (recurrence && !isLinked && task?.recurrenceParentId) ? true : false,
     };
   };
 

@@ -540,6 +540,7 @@ export function TimelineColumn({
   const scheduledDragTaskId = useScheduledDragStore((s) => s.taskId);
   const scheduledDragMinutes = useScheduledDragStore((s) => s.currentMinutes);
   const scheduledDragDuration = useScheduledDragStore((s) => s.duration);
+  const scheduledDragTargetDate = useScheduledDragStore((s) => s.targetDate);
 
   useEffect(() => {
     if (!scheduledDragActive) return;
@@ -789,7 +790,7 @@ export function TimelineColumn({
       )}
 
       {/* Scheduled task drag overlay — red dashed outline */}
-      {scheduledDragActive && scheduledDragMinutes !== null && useScheduledDragStore.getState().targetDate === date && (
+      {scheduledDragActive && scheduledDragMinutes !== null && scheduledDragTargetDate === date && (
         <div
           className="absolute right-1 z-[25] pointer-events-none"
           style={{
