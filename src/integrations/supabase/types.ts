@@ -85,6 +85,36 @@ export type Database = {
         }
         Relationships: []
       }
+      library_items: {
+        Row: {
+          category: string | null
+          created_at: string
+          default_duration: number | null
+          id: string
+          note: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          default_duration?: number | null
+          id?: string
+          note?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          default_duration?: number | null
+          id?: string
+          note?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -106,6 +136,81 @@ export type Database = {
           display_name?: string | null
           id?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          completed: boolean
+          created_at: string
+          date: string
+          description: string | null
+          duration: number | null
+          id: string
+          in_waiting_room: boolean | null
+          is_recurrence_instance: boolean | null
+          is_routine: boolean | null
+          linked: boolean | null
+          move_count: number
+          original_priority: number
+          priority: number
+          recurrence: Json | null
+          recurrence_parent_id: string | null
+          subtasks: Json | null
+          time: string | null
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+          waiting_room_count: number | null
+        }
+        Insert: {
+          completed?: boolean
+          created_at?: string
+          date: string
+          description?: string | null
+          duration?: number | null
+          id?: string
+          in_waiting_room?: boolean | null
+          is_recurrence_instance?: boolean | null
+          is_routine?: boolean | null
+          linked?: boolean | null
+          move_count?: number
+          original_priority?: number
+          priority?: number
+          recurrence?: Json | null
+          recurrence_parent_id?: string | null
+          subtasks?: Json | null
+          time?: string | null
+          title: string
+          type?: string
+          updated_at?: string
+          user_id: string
+          waiting_room_count?: number | null
+        }
+        Update: {
+          completed?: boolean
+          created_at?: string
+          date?: string
+          description?: string | null
+          duration?: number | null
+          id?: string
+          in_waiting_room?: boolean | null
+          is_recurrence_instance?: boolean | null
+          is_routine?: boolean | null
+          linked?: boolean | null
+          move_count?: number
+          original_priority?: number
+          priority?: number
+          recurrence?: Json | null
+          recurrence_parent_id?: string | null
+          subtasks?: Json | null
+          time?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+          waiting_room_count?: number | null
         }
         Relationships: []
       }
