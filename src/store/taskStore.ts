@@ -507,7 +507,7 @@ export const useTaskStore = create<TaskState>()(
 
       getCurrentFocusTask: () => {
         const state = get();
-        const isRoutineAllowed = (t: Task) => !(! state.routinesEnabled && t.type === 'recurring');
+        const isRoutineAllowed = (t: Task) => !(!state.routinesEnabled && t.isRoutine !== false && t.type === 'recurring');
 
         if (state.focusTaskId) {
           const task = state.tasks.find((t) => t.id === state.focusTaskId && !t.completed && isRoutineAllowed(t));
