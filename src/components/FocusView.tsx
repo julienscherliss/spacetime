@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
-import { useCurrentTime, timeToMinutes, minutesToTime } from '@/hooks/useCurrentTime';
+import { useCurrentTime, timeToMinutes, minutesToTime, formatTime12h } from '@/hooks/useCurrentTime';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { ChevronRight } from 'lucide-react';
 
@@ -27,18 +27,18 @@ export function FocusView() {
 
   if (!activeTask) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[80vh] bg-grid-fade">
+      <div className="flex flex-col items-center justify-center min-h-[80vh] bg-grid-fade px-4">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           className="text-center"
         >
-          <div className="text-3xl md:text-4xl font-display font-bold tracking-tight text-foreground/60 mb-2">
+          <div className="text-2xl sm:text-4xl font-display font-bold tracking-tight text-foreground/60 mb-2">
             FREE TIME
           </div>
-          <p className="text-muted-foreground/35 font-mono text-[10px] tracking-widest">
-            {nextTask ? `NEXT — ${nextTask.title} AT ${nextTask.time}` : 'NO MORE TASKS TODAY'}
+          <p className="text-muted-foreground/35 font-mono text-[11px] tracking-widest">
+            {nextTask ? `NEXT — ${nextTask.title} AT ${formatTime12h(nextTask.time!)}` : 'NO MORE TASKS TODAY'}
           </p>
         </motion.div>
       </div>
@@ -46,7 +46,7 @@ export function FocusView() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[80vh] bg-grid-fade relative">
+    <div className="flex flex-col items-center justify-center min-h-[80vh] bg-grid-fade relative px-4">
       <AnimatePresence mode="wait">
         <motion.div
           key={activeTask.id}
@@ -54,25 +54,20 @@ export function FocusView() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-          className="text-center relative z-10 max-w-lg px-6"
+          className="text-center relative z-10 max-w-lg px-4 sm:px-6"
         >
           <div className="mb-3">
             <PriorityBadge priority={activeTask.priority} />
           </div>
 
-          <h1 className="text-2xl md:text-4xl font-display font-bold tracking-tight text-foreground mb-6 leading-tight">
+          <h1 className="text-xl sm:text-2xl md:text-4xl font-display font-bold tracking-tight text-foreground mb-6 leading-tight">
             {activeTask.title}
           </h1>
 
-          {/* Progress ring — thin, precise */}
+          {/* Progress ring */}
           <div className="relative inline-flex items-center justify-center mb-6">
             <svg width="120" height="120" className="rotate-[-90deg]">
-              <circle
-                cx="60" cy="60" r="54"
-                stroke="hsl(var(--border))"
-                strokeWidth="1.5"
-                fill="none"
-              />
+              <circle cx="60" cy="60" r="54" stroke="hsl(var(--border))" strokeWidth="1.5" fill="none" />
               <motion.circle
                 cx="60" cy="60" r="54"
                 stroke="hsl(var(--primary))"
@@ -88,15 +83,15 @@ export function FocusView() {
               <div className="font-mono text-lg text-foreground tabular-nums tracking-widest">
                 {minutesToTime(remaining)}
               </div>
-              <div className="text-[7px] font-mono text-muted-foreground/35 tracking-widest mt-px">
+              <div className="text-[9px] font-mono text-muted-foreground/35 tracking-widest mt-px">
                 REMAINING
               </div>
             </div>
           </div>
 
           {/* Time info */}
-          <div className="flex items-center justify-center gap-3 text-[8px] font-mono text-muted-foreground/35 tracking-widest">
-            <span>{activeTask.time} — {minutesToTime(timeToMinutes(activeTask.time) + (activeTask.duration || 30))}</span>
+          <div className="flex items-center justify-center gap-3 text-[10px] font-mono text-muted-foreground/35 tracking-widest flex-wrap">
+            <span>{formatTime12h(activeTask.time!)} — {formatTime12h(timeToMinutes(activeTask.time!) + (activeTask.duration || 30))}</span>
             <span>·</span>
             <span>{elapsed}M ELAPSED</span>
           </div>
@@ -108,9 +103,9 @@ export function FocusView() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="absolute bottom-6 flex items-center gap-1 text-[8px] font-mono text-muted-foreground/20 tracking-widest"
+          className="absolute bottom-6 flex items-center gap-1 text-[10px] font-mono text-muted-foreground/20 tracking-widest"
         >
-          NEXT <ChevronRight size={8} /> {nextTask.title} · {nextTask.time}
+          NEXT <ChevronRight size={10} /> {nextTask.title} · {formatTime12h(nextTask.time!)}
         </motion.div>
       )}
     </div>

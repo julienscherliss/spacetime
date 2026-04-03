@@ -1,9 +1,14 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type LibraryCategory = 'uncategorized' | 'personal' | 'work' | 'admin' | 'errands' | 'ideas';
+export type LibraryCategory = string;
 
-export const LIBRARY_CATEGORIES: { value: LibraryCategory; label: string }[] = [
+export interface CategoryDef {
+  value: string;
+  label: string;
+}
+
+export const DEFAULT_CATEGORIES: CategoryDef[] = [
   { value: 'uncategorized', label: 'Uncategorized' },
   { value: 'personal', label: 'Personal' },
   { value: 'work', label: 'Work' },
@@ -11,6 +16,9 @@ export const LIBRARY_CATEGORIES: { value: LibraryCategory; label: string }[] = [
   { value: 'errands', label: 'Errands' },
   { value: 'ideas', label: 'Ideas' },
 ];
+
+// Keep backward compat
+export const LIBRARY_CATEGORIES = DEFAULT_CATEGORIES;
 
 export interface LibraryTask {
   id: string;
@@ -22,10 +30,11 @@ export interface LibraryTask {
 }
 
 type SortMode = 'recent' | 'alpha' | 'category';
-type FilterCategory = LibraryCategory | 'all';
+type FilterCategory = string | 'all';
 
 interface LibraryState {
   items: LibraryTask[];
+  categories: CategoryDef[];
   panelOpen: boolean;
   sortMode: SortMode;
   filterCategory: FilterCategory;
@@ -36,9 +45,12 @@ interface LibraryState {
   addItem: (title: string, category?: LibraryCategory) => void;
   updateItem: (id: string, updates: Partial<Pick<LibraryTask, 'title' | 'note' | 'category' | 'defaultDuration'>>) => void;
   deleteItem: (id: string) => void;
-  removeItem: (id: string) => void; // remove after scheduling
-  addFromSchedule: (title: string, duration?: number) => void; // unschedule → library
+  removeItem: (id: string) => void;
+  addFromSchedule: (title: string, duration?: number) => void;
   getFilteredItems: () => LibraryTask[];
+  addCategory: (name: string) => void;
+  removeCategory: (value: string) => void;
+  renameCategory: (value: string, newLabel: string) => void;
 }
 
 const generateId = () => Math.random().toString(36).substring(2, 10);
@@ -47,6 +59,7 @@ export const useLibraryStore = create<LibraryState>()(
   persist(
     (set, get) => ({
       items: [],
+      categories: [...DEFAULT_CATEGORIES],
       panelOpen: false,
       sortMode: 'recent',
       filterCategory: 'all',
@@ -113,12 +126,42 @@ export const useLibraryStore = create<LibraryState>()(
             break;
           case 'recent':
           default:
-            // already in order (newest first from addItem)
             break;
         }
         return filtered;
       },
+
+      addCategory: (name) => {
+        const value = name.toLowerCase().replace(/\s+/g, '-');
+        set((s) => {
+          if (s.categories.some(c => c.value === value)) return s;
+          return { categories: [...s.categories, { value, label: name }] };
+        });
+      },
+
+      removeCategory: (value) => {
+        set((s) => ({
+          categories: s.categories.filter(c => c.value !== value),
+          items: s.items.map(i => i.category === value ? { ...i, category: 'uncategorized' } : i),
+        }));
+      },
+
+      renameCategory: (value, newLabel) => {
+        set((s) => ({
+          categories: s.categories.map(c => c.value === value ? { ...c, label: newLabel } : c),
+        }));
+      },
     }),
-    { name: 'do-library-store' }
+    {
+      name: 'do-library-store',
+      // Migrate old data that doesn't have categories
+      merge: (persisted: any, current: any) => {
+        const merged = { ...current, ...persisted };
+        if (!merged.categories || merged.categories.length === 0) {
+          merged.categories = [...DEFAULT_CATEGORIES];
+        }
+        return merged;
+      },
+    }
   )
 );
