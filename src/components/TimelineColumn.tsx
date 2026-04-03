@@ -320,6 +320,7 @@ export function TimelineColumn({
       e.preventDefault();
       const mins = getMinutes(touch.clientY);
       const snapped = snapTo15(mins);
+      (createTouchRef.current as any).lastMin = snapped;
       setCreating({ startMin: createTouchRef.current.startMin, currentMin: snapped });
     };
 
