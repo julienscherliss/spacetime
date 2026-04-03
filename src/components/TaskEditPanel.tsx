@@ -4,7 +4,7 @@ import { useTaskStore, Priority, RecurrencePattern, CustomUnit } from '@/store/t
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { X, Play, Calendar, Clock, Trash2, Repeat, ChevronDown, Archive } from 'lucide-react';
 import { useLibraryStore } from '@/store/libraryStore';
-import { minutesToTime, timeToMinutes } from '@/hooks/useCurrentTime';
+import { minutesToTime, timeToMinutes, formatTime12h } from '@/hooks/useCurrentTime';
 
 const PRIORITY_LABELS = ['Flex', 'Semi', 'Fixed', 'Lock'] as const;
 const PRIORITY_COLORS = [
