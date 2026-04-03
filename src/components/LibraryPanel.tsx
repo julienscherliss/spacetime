@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   useLibraryStore,
@@ -11,6 +11,7 @@ import {
   ArrowDownAZ, Clock3, FolderOpen, Pencil, Tag,
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useTouchDragStore } from '@/store/touchDragStore';
 
 function CategoryDot({ category }: { category: string }) {
   const builtInColors: Record<string, string> = {
@@ -31,21 +32,58 @@ function LibraryItem({ item, isMobile }: { item: LibraryTask; isMobile: boolean 
   const [title, setTitle] = useState(item.title);
   const [showCat, setShowCat] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const touchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleSave = () => {
     if (title.trim()) updateItem(item.id, { title: title.trim() });
     setEditing(false);
   };
 
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    const startPos = { x: touch.clientX, y: touch.clientY };
+    // Long-press to start drag (300ms)
+    touchTimerRef.current = setTimeout(() => {
+      useTouchDragStore.getState().startDrag(
+        { type: 'library', id: item.id, title: item.title, duration: item.defaultDuration },
+        startPos,
+      );
+    }, 300);
+  }, [item]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    const { dragging } = useTouchDragStore.getState();
+    if (dragging) {
+      e.preventDefault();
+      const touch = e.touches[0];
+      useTouchDragStore.getState().moveGhost({ x: touch.clientX, y: touch.clientY });
+    } else if (touchTimerRef.current) {
+      // Cancel long-press if finger moves before activation
+      clearTimeout(touchTimerRef.current);
+      touchTimerRef.current = null;
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (touchTimerRef.current) {
+      clearTimeout(touchTimerRef.current);
+      touchTimerRef.current = null;
+    }
+    // Touch end on the ghost is handled by TimelineColumn
+  }, []);
+
   return (
     <div
-      draggable
+      draggable={!isMobile}
       onDragStart={(e) => {
         e.dataTransfer.setData('libraryTaskId', item.id);
         e.dataTransfer.setData('libraryTitle', item.title);
         e.dataTransfer.setData('libraryDuration', String(item.defaultDuration));
         e.dataTransfer.effectAllowed = 'move';
       }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
       className={`group flex items-center gap-2 rounded-sm hover:bg-muted/40 transition-colors cursor-grab active:cursor-grabbing ${
         isMobile ? 'py-3 px-3' : 'py-2 px-2'
       }`}

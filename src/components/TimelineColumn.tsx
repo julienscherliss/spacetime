@@ -2,6 +2,7 @@ import { useRef, useState, useCallback, useEffect, Fragment } from 'react';
 import { useTaskStore, Task } from '@/store/taskStore';
 import { useCalendarStore, CalendarEvent } from '@/store/calendarStore';
 import { useLibraryStore } from '@/store/libraryStore';
+import { useTouchDragStore } from '@/store/touchDragStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { timeToMinutes, minutesToTime, snapTo15, formatTime12h, formatHour12h } from '@/hooks/useCurrentTime';
 import { Check, Calendar as CalIcon } from 'lucide-react';
@@ -321,6 +322,54 @@ export function TimelineColumn({
     if (didDragRef.current) return;
     setEditingTask(taskId);
   }, [setEditingTask]);
+
+  // Touch drop handler — listens for touchend globally when a touch drag is active
+  useEffect(() => {
+    const handleGlobalTouchEnd = (e: TouchEvent) => {
+      const { dragging } = useTouchDragStore.getState();
+      if (!dragging || !colRef.current) return;
+
+      const touch = e.changedTouches[0];
+      const rect = colRef.current.getBoundingClientRect();
+
+      // Check if the finger ended over this column
+      if (
+        touch.clientX >= rect.left &&
+        touch.clientX <= rect.right &&
+        touch.clientY >= rect.top &&
+        touch.clientY <= rect.bottom
+      ) {
+        const y = touch.clientY - rect.top;
+        const mins = START_HOUR * 60 + (y / HOUR_HEIGHT) * 60;
+        const snapped = snapTo15(mins);
+        const newTime = minutesToTime(snapped);
+
+        if (dragging.type === 'library') {
+          addTask({
+            title: dragging.title,
+            date,
+            time: newTime,
+            duration: dragging.duration,
+            priority: 0,
+            type: 'one-time',
+          });
+          useLibraryStore.getState().removeItem(dragging.id);
+        } else if (dragging.type === 'waitingRoom') {
+          const { updateTask } = useTaskStore.getState();
+          updateTask(dragging.id, {
+            inWaitingRoom: false,
+            date,
+            time: newTime,
+          } as any);
+        }
+
+        useTouchDragStore.getState().endDrag();
+      }
+    };
+
+    window.addEventListener('touchend', handleGlobalTouchEnd);
+    return () => window.removeEventListener('touchend', handleGlobalTouchEnd);
+  }, [date, HOUR_HEIGHT, addTask]);
 
   return (
     <div

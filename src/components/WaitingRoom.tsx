@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Task } from '@/store/taskStore';
 import { X, Clock, GripVertical, AlertCircle } from 'lucide-react';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useTouchDragStore } from '@/store/touchDragStore';
 
 function ReflectionModal({ task, onConfirm, onCancel }: { task: Task; onConfirm: () => void; onCancel: () => void }) {
   const count = task.waitingRoomCount || 1;
@@ -50,6 +51,62 @@ function ReflectionModal({ task, onConfirm, onCancel }: { task: Task; onConfirm:
         </div>
       </motion.div>
     </motion.div>
+  );
+}
+
+function WaitingRoomItem({ task, isMobile, onReflect }: { task: Task; isMobile: boolean; onReflect: () => void }) {
+  const touchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    const startPos = { x: touch.clientX, y: touch.clientY };
+    touchTimerRef.current = setTimeout(() => {
+      useTouchDragStore.getState().startDrag(
+        { type: 'waitingRoom', id: task.id, title: task.title, duration: task.duration || 30 },
+        startPos,
+      );
+    }, 300);
+  }, [task]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    const { dragging } = useTouchDragStore.getState();
+    if (dragging) {
+      e.preventDefault();
+      const touch = e.touches[0];
+      useTouchDragStore.getState().moveGhost({ x: touch.clientX, y: touch.clientY });
+    } else if (touchTimerRef.current) {
+      clearTimeout(touchTimerRef.current);
+      touchTimerRef.current = null;
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (touchTimerRef.current) {
+      clearTimeout(touchTimerRef.current);
+      touchTimerRef.current = null;
+    }
+  }, []);
+
+  return (
+    <div
+      className={`group flex items-center gap-2 rounded-sm hover:bg-muted/40 transition-colors cursor-pointer ${isMobile ? 'py-3 px-3' : 'py-2 px-2'}`}
+      onClick={onReflect}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      <GripVertical size={isMobile ? 14 : 11} className="text-muted-foreground/20 shrink-0" />
+      <div className="flex-1 min-w-0">
+        <div className={`font-mono text-foreground/70 truncate ${isMobile ? 'text-[13px]' : 'text-[11px]'}`}>{task.title}</div>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <span className="text-[9px] font-mono text-muted-foreground/30">{task.date}</span>
+          {(task.waitingRoomCount || 0) > 1 && (
+            <span className="text-[8px] font-mono text-primary/50">{task.waitingRoomCount}× returned</span>
+          )}
+        </div>
+      </div>
+      <PriorityBadge priority={task.priority} />
+    </div>
   );
 }
 
@@ -123,23 +180,7 @@ export function WaitingRoom({ open, onClose }: { open: boolean; onClose: () => v
                 ) : (
                   <div className="space-y-px">
                     {waitingTasks.map((task) => (
-                      <div
-                        key={task.id}
-                        className="group flex items-center gap-2 rounded-sm hover:bg-muted/40 transition-colors cursor-pointer py-2 px-2"
-                        onClick={() => setReflectTask(task)}
-                      >
-                        <GripVertical size={11} className="text-muted-foreground/20 shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <div className="text-[11px] font-mono text-foreground/70 truncate">{task.title}</div>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <span className="text-[9px] font-mono text-muted-foreground/30">{task.date}</span>
-                            {(task.waitingRoomCount || 0) > 1 && (
-                              <span className="text-[8px] font-mono text-primary/50">{task.waitingRoomCount}× returned</span>
-                            )}
-                          </div>
-                        </div>
-                        <PriorityBadge priority={task.priority} />
-                      </div>
+                      <WaitingRoomItem key={task.id} task={task} isMobile={isMobile} onReflect={() => setReflectTask(task)} />
                     ))}
                   </div>
                 )}
