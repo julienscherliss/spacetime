@@ -1,8 +1,9 @@
 import { motion } from 'framer-motion';
 import { useTaskStore, ViewMode } from '@/store/taskStore';
 import { useCalendarStore } from '@/store/calendarStore';
+import { useLibraryStore } from '@/store/libraryStore';
 import { AddTaskModal } from '@/components/AddTaskModal';
-import { Focus, List, CalendarDays, Grid3X3, Repeat, Calendar as CalIcon } from 'lucide-react';
+import { Focus, List, CalendarDays, Grid3X3, Repeat, Calendar as CalIcon, Archive } from 'lucide-react';
 
 const views: { mode: ViewMode; icon: typeof Focus; label: string }[] = [
   { mode: 'focus', icon: Focus, label: 'FOCUS' },
