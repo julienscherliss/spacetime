@@ -224,6 +224,7 @@ export function TimelineTaskBlock({
       ref={elRef}
       data-task-block
       onPointerDown={handlePointerDown}
+      onClick={isLocked ? () => handleTaskClick(task.id) : undefined}
       onContextMenu={(e) => e.preventDefault()}
       className={`absolute right-1 group select-none transition-[opacity,box-shadow] duration-200 ${
         isLocked
