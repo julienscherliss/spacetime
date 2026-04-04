@@ -7,6 +7,7 @@ import { Plus, X } from 'lucide-react';
 export function AddTaskModal() {
   const [open, setOpen] = useState(false);
   const { addTask } = useTaskStore();
+  const isCarrying = useCarryStore((s) => !!s.carried);
   const [title, setTitle] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [time, setTime] = useState('09:00');
