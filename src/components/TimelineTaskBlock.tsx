@@ -243,7 +243,7 @@ export function TimelineTaskBlock({
             : showUnlinkedOutline
               ? `${task.isRoutine ? 'bg-[hsl(var(--routine-card))]' : 'bg-card'} border border-border/60 border-dashed hover:border-[hsl(var(--task-hover))] hover:shadow-sm`
               : `${task.isRoutine ? 'bg-[hsl(var(--routine-card))] border border-[hsl(var(--routine-border))]' : 'bg-card border border-[hsl(var(--task-border))]'} hover:border-[hsl(var(--task-hover))] hover:shadow-sm`
-        }`}
+        } ${isOverdue ? 'border-destructive/30' : ''}`}
         style={{
           borderLeftColor,
           borderLeftWidth: task.priority >= 2 ? '3px' : '2px',
