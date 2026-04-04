@@ -176,16 +176,6 @@ export function WaitingRoom({ open, onClose }: { open: boolean; onClose: () => v
           </>
         )}
       </AnimatePresence>
-
-      <AnimatePresence>
-        {reflectTask && (
-          <ReflectionModal
-            task={reflectTask}
-            onConfirm={() => handleReschedule(reflectTask)}
-            onCancel={() => setReflectTask(null)}
-          />
-        )}
-      </AnimatePresence>
     </>
   );
 }
