@@ -4,8 +4,10 @@ import { persist } from 'zustand/middleware';
 interface TimezoneState {
   timezone: string;
   routinesFixedTime: boolean;
+  autoDetect: boolean;
   setTimezone: (tz: string) => void;
   setRoutinesFixedTime: (v: boolean) => void;
+  setAutoDetect: (v: boolean) => void;
 }
 
 export const useTimezoneStore = create<TimezoneState>()(
@@ -13,8 +15,10 @@ export const useTimezoneStore = create<TimezoneState>()(
     (set) => ({
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       routinesFixedTime: true,
+      autoDetect: true,
       setTimezone: (tz: string) => set({ timezone: tz }),
       setRoutinesFixedTime: (v: boolean) => set({ routinesFixedTime: v }),
+      setAutoDetect: (v: boolean) => set({ autoDetect: v }),
     }),
     { name: 'do-timezone' }
   )

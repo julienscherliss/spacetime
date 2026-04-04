@@ -59,39 +59,39 @@ export function SubtaskList({ subtasks, onChange, compact = false }: SubtaskList
   }
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-1.5">
       {subtasks.map((s) => (
-        <div key={s.id} className="flex items-center gap-1.5 group">
-          <GripVertical size={9} className="text-muted-foreground/15 shrink-0" />
+        <div key={s.id} className="flex items-center gap-2 group min-h-[36px]">
+          <GripVertical size={10} className="text-muted-foreground/15 shrink-0" />
           <Checkbox
             checked={s.completed}
             onCheckedChange={() => handleToggle(s.id)}
-            className="h-3 w-3"
+            className="h-4 w-4"
           />
           <input
             value={s.title}
             onChange={(e) => handleTitleChange(s.id, e.target.value)}
-            className={`flex-1 bg-transparent text-[10px] font-mono focus:outline-none ${
+            className={`flex-1 bg-transparent text-[12px] font-mono focus:outline-none ${
               s.completed ? 'line-through text-muted-foreground/30' : 'text-foreground/70'
             }`}
           />
           <button
             onClick={() => handleDelete(s.id)}
-            className="p-0.5 text-muted-foreground/20 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+            className="p-1 text-muted-foreground/20 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
           >
-            <X size={9} />
+            <X size={11} />
           </button>
         </div>
       ))}
-      <div className="flex items-center gap-1.5">
-        <Plus size={9} className="text-muted-foreground/20 ml-[9px] shrink-0" />
+      <div className="flex items-center gap-2 min-h-[36px]">
+        <Plus size={10} className="text-muted-foreground/20 ml-[10px] shrink-0" />
         <input
           ref={inputRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
           placeholder="Add subtask..."
-          className="flex-1 bg-transparent text-[10px] font-mono text-foreground/50 placeholder:text-muted-foreground/20 focus:outline-none"
+          className="flex-1 bg-transparent text-[12px] font-mono text-foreground/50 placeholder:text-muted-foreground/20 focus:outline-none"
         />
       </div>
     </div>
