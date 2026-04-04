@@ -56,11 +56,49 @@ function ReflectionModal({ task, onConfirm, onCancel }: { task: Task; onConfirm:
 }
 
 function WaitingRoomItem({ task, isMobile, onReflect, onClosePanel }: { task: Task; isMobile: boolean; onReflect: () => void; onClosePanel: () => void }) {
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFired = useRef(false);
+
   const itemRef = useIntentionalTouchDrag<HTMLDivElement>({
     payload: { type: 'waitingRoom', id: task.id, title: task.title, duration: task.duration || 30 },
-    onTap: onReflect,
-    onDragStart: onClosePanel,
+    onTap: () => {
+      if (longPressFired.current) return;
+      if (useCarryStore.getState().carried) return;
+      onReflect();
+    },
+    onDragStart: () => {
+      if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+      onClosePanel();
+    },
   });
+
+  const handlePointerDown = useCallback(() => {
+    longPressFired.current = false;
+    longPressTimer.current = setTimeout(() => {
+      longPressFired.current = true;
+      useCarryStore.getState().pickup({
+        taskId: task.id,
+        title: task.title,
+        duration: task.duration || 30,
+        fromDate: task.date,
+        fromTime: task.time,
+        fromWaitingRoom: true,
+        pickedUpAt: Date.now(),
+      });
+      onClosePanel();
+    }, 250);
+  }, [task, onClosePanel]);
+
+  const handlePointerUp = useCallback(() => {
+    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+  }, []);
+
+  const handlePointerMove = useCallback(() => {
+    if (longPressTimer.current && !longPressFired.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }, []);
 
   return (
     <div
