@@ -4,7 +4,6 @@ import { useCalendarStore } from '@/store/calendarStore';
 import { useLibraryStore } from '@/store/libraryStore';
 import { useTimezoneStore, getTzAbbr } from '@/store/timezoneStore';
 import { useAuth } from '@/hooks/useAuth';
-import { AddTaskModal } from '@/components/AddTaskModal';
 import { Focus, List, CalendarDays, Grid3X3, Repeat, Calendar as CalIcon, Archive, Clock, LogOut, Settings } from 'lucide-react';
 
 const views: { mode: ViewMode; icon: typeof Focus; label: string }[] = [
@@ -110,7 +109,7 @@ export function AppNav() {
             <CalIcon size={12} strokeWidth={1.5} />
             <span className="hidden sm:inline">CAL</span>
           </button>
-          <AddTaskModal />
+          
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('toggle-settings'))}
             className="flex items-center gap-1 px-1.5 py-1.5 rounded-sm text-[10px] font-mono tracking-wider text-muted-foreground/40 hover:text-foreground transition-colors"

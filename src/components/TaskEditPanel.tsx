@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Priority, RecurrencePattern, CustomUnit } from '@/store/taskStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { SubtaskList, Subtask } from '@/components/SubtaskList';
-import { X, Play, Calendar, Clock, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, FileText } from 'lucide-react';
+import { X, Calendar, Clock, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, FileText } from 'lucide-react';
 import { useLibraryStore } from '@/store/libraryStore';
 import { minutesToTime, timeToMinutes, formatTime12h } from '@/hooks/useCurrentTime';
 
@@ -91,6 +91,7 @@ export function TaskEditPanel() {
   const [showDescription, setShowDescription] = useState(false);
   const [pendingUpdates, setPendingUpdates] = useState<any>(null);
   const scopeTriggeredRef = useRef(false);
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   const isRecurring = !!(task?.recurrence || task?.isRecurrenceInstance);
 
@@ -285,6 +286,8 @@ export function TaskEditPanel() {
             <div className="flex items-start justify-between mb-3">
               <div className="flex-1 mr-3">
                 <input
+                  ref={titleInputRef}
+                  autoFocus
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   className="w-full bg-transparent font-display font-bold text-foreground text-sm leading-tight focus:outline-none border-b border-transparent focus:border-border transition-colors"
@@ -640,13 +643,6 @@ export function TaskEditPanel() {
             {/* Actions */}
             {!showEditScope && (
               <div className="flex items-center gap-1.5">
-                <button
-                  onClick={handleFocus}
-                  className="flex-1 flex items-center justify-center gap-1 py-2 rounded-sm bg-primary text-primary-foreground font-mono text-[9px] tracking-widest hover:bg-primary/90 transition-colors"
-                >
-                  <Play size={10} strokeWidth={1.5} />
-                  FOCUS
-                </button>
                 <button
                   onClick={() => {
                     if (!task) return;
