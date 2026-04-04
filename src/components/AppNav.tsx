@@ -109,7 +109,7 @@ export function AppNav() {
             <CalIcon size={12} strokeWidth={1.5} />
             <span className="hidden sm:inline">CAL</span>
           </button>
-          <AddTaskModal />
+          
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('toggle-settings'))}
             className="flex items-center gap-1 px-1.5 py-1.5 rounded-sm text-[10px] font-mono tracking-wider text-muted-foreground/40 hover:text-foreground transition-colors"
