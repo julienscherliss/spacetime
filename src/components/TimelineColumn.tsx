@@ -272,6 +272,7 @@ export function TimelineColumn({
   const handleCreateMouseDown = useCallback((e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('[data-task-block]')) return;
     if (newTaskInput) return;
+    if (useCarryStore.getState().carried) return;
     const mins = getMinutesFromY(e.clientY);
     const snapped = snapTo15(mins);
     setCreating({ startMin: snapped, currentMin: snapped });
