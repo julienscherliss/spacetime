@@ -6,7 +6,7 @@ import { formatTime12h } from '@/hooks/useCurrentTime';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 export function CalendarView() {
-  const { tasks, routinesEnabled, setEditingTask, generateRecurringInstances } = useTaskStore();
+  const { tasks, routinesEnabled, setEditingTask, generateRecurringInstances, setViewMode, setNavigateToDate } = useTaskStore();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
