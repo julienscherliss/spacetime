@@ -41,6 +41,7 @@ export interface Task {
   detachedFromSeries?: boolean; // explicitly detached from series behaviour
   inWaitingRoom?: boolean;
   waitingRoomCount?: number;
+  dueDate?: string;
 }
 
 export interface DailyStats {

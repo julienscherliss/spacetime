@@ -60,6 +60,7 @@ function taskToRow(task: Task, userId: string) {
     detached_from_series: task.detachedFromSeries ?? false,
     in_waiting_room: task.inWaitingRoom ?? false,
     waiting_room_count: task.waitingRoomCount ?? 0,
+    due_date: task.dueDate ?? null,
   };
 }
 
