@@ -40,4 +40,4 @@ export function getTzAbbr(tz: string): string {
 }
 
 /** Common timezone list for the selector */
-export const TIMEZONES = Intl.supportedValuesOf('timeZone');
+export const TIMEZONES: string[] = (Intl as any).supportedValuesOf('timeZone');
