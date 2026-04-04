@@ -299,16 +299,36 @@ export function TaskEditPanel() {
             {dueDate ? (() => {
               const info = getDueDateText(dueDate);
               return (
-                <div className="px-4 pt-3 pb-2 border-b border-border/30">
-                  <div className={`flex items-center gap-1.5 text-[11px] font-mono font-bold ${info.isOverdue ? 'text-destructive' : 'text-foreground/70'}`}>
-                    <CalendarCheck size={11} strokeWidth={1.5} />
+                <div className="px-4 pt-4 pb-3 border-b border-border/30">
+                  <div className={`flex items-center gap-2 font-mono font-bold text-[15px] ${info.isOverdue ? 'text-destructive' : 'text-foreground/80'}`}>
+                    <CalendarCheck size={15} strokeWidth={1.5} />
                     <span>{info.relative}</span>
                   </div>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[9px] font-mono text-muted-foreground/40">Due {info.absolute}</span>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Popover open={showDuePicker} onOpenChange={setShowDuePicker}>
+                      <PopoverTrigger asChild>
+                        <button className="text-[11px] font-mono text-muted-foreground/50 hover:text-foreground transition-colors">
+                          Due {info.absolute}
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0 z-[70]" align="start" onClick={(e) => e.stopPropagation()}>
+                        <CalendarPicker
+                          mode="single"
+                          selected={dueDate ? new Date(dueDate + 'T12:00:00') : undefined}
+                          onSelect={(d) => {
+                            if (d) {
+                              setDueDate(d.toISOString().split('T')[0]);
+                            }
+                            setShowDuePicker(false);
+                          }}
+                          className="p-3 pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <span className="text-muted-foreground/20">·</span>
                     <button
                       onClick={() => { setDueDate(''); setShowDuePicker(false); }}
-                      className="text-[8px] font-mono text-muted-foreground/30 hover:text-destructive/60 transition-colors"
+                      className="text-[10px] font-mono text-muted-foreground/30 hover:text-destructive/60 transition-colors"
                     >
                       remove
                     </button>
@@ -316,30 +336,30 @@ export function TaskEditPanel() {
                 </div>
               );
             })() : (
-              <div className="px-4 pt-3 pb-2 border-b border-border/30">
-                {showDuePicker ? (
-                  <div className="flex items-center gap-2">
-                    <CalendarCheck size={10} strokeWidth={1.5} className="text-muted-foreground/40" />
-                    <input
-                      type="date"
-                      value={dueDate}
-                      onChange={(e) => { setDueDate(e.target.value); setShowDuePicker(false); }}
-                      autoFocus
-                      className="bg-muted/40 border border-border rounded-sm px-2 py-1.5 text-[10px] font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
-                    />
-                    <button onClick={() => setShowDuePicker(false)} className="text-[8px] font-mono text-muted-foreground/30 hover:text-foreground transition-colors">
-                      cancel
+              <div className="px-4 pt-3 pb-3 border-b border-border/30">
+                <Popover open={showDuePicker} onOpenChange={setShowDuePicker}>
+                  <PopoverTrigger asChild>
+                    <button
+                      className="flex items-center gap-1.5 text-[12px] font-mono text-muted-foreground/40 hover:text-foreground transition-colors py-1"
+                    >
+                      <CalendarCheck size={12} strokeWidth={1.5} />
+                      <span>Add due date</span>
                     </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setShowDuePicker(true)}
-                    className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground/40 hover:text-foreground transition-colors"
-                  >
-                    <CalendarCheck size={10} strokeWidth={1.5} />
-                    <span>Add due date</span>
-                  </button>
-                )}
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 z-[70]" align="start" onClick={(e) => e.stopPropagation()}>
+                    <CalendarPicker
+                      mode="single"
+                      selected={undefined}
+                      onSelect={(d) => {
+                        if (d) {
+                          setDueDate(d.toISOString().split('T')[0]);
+                        }
+                        setShowDuePicker(false);
+                      }}
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             )}
 
