@@ -106,7 +106,25 @@ export function TimelineTaskBlock({
     longPressFired.current = false;
 
     // Locked tasks: allow tap-to-edit but skip drag/carry setup
-    if (isLocked) return;
+    if (isLocked) {
+      // Attach a one-shot pointerup to trigger edit
+      const onUp = () => {
+        window.removeEventListener('pointerup', onUp);
+        window.removeEventListener('pointercancel', onCancel);
+        if (pointerStartRef.current) {
+          pointerStartRef.current = null;
+          handleTaskClick(task.id);
+        }
+      };
+      const onCancel = () => {
+        window.removeEventListener('pointerup', onUp);
+        window.removeEventListener('pointercancel', onCancel);
+        pointerStartRef.current = null;
+      };
+      window.addEventListener('pointerup', onUp);
+      window.addEventListener('pointercancel', onCancel);
+      return;
+    }
 
     const blockRect = elRef.current?.getBoundingClientRect();
     const grabOffset = blockRect ? e.clientY - blockRect.top : 0;
@@ -136,7 +154,7 @@ export function TimelineTaskBlock({
       duration: task.duration || 30,
       grabOffsetY: grabOffset,
     });
-  }, [isLocked, isResizingThis, task.id, task.date, task.time, task.duration, task.title, dragOffsetRef]);
+  }, [isLocked, isResizingThis, task.id, task.date, task.time, task.duration, task.title, dragOffsetRef, handleTaskClick]);
 
   // Global pointermove/pointerup when drag is pending or active
   useEffect(() => {
