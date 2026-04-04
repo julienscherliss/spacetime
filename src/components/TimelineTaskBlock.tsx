@@ -260,10 +260,24 @@ export function TimelineTaskBlock({
           </div>
         )}
 
-        <div className="flex flex-col justify-between h-full px-2 py-1 overflow-hidden">
+          <div className="flex flex-col justify-between h-full px-2 py-1 overflow-hidden">
           <div className="flex items-start justify-between">
+            <button
+              data-touch-ignore
+              onClick={(e) => {
+                e.stopPropagation();
+                completeTask(task.id);
+              }}
+              className={`p-1 rounded-sm hover:text-primary hover:bg-primary/5 transition-all shrink-0 mr-1.5 ${
+                task.completed ? 'text-primary' : 'text-muted-foreground/25'
+              }`}
+            >
+              <Check size={14} />
+            </button>
             <div className="flex-1 min-w-0">
-              <div className={`text-[12px] font-mono leading-tight truncate ${isActive ? 'text-foreground font-medium' : 'text-foreground/75'}`}>
+              <div className={`text-[12px] font-mono leading-tight truncate ${
+                task.completed ? 'line-through text-muted-foreground/40' : isActive ? 'text-foreground font-medium' : 'text-foreground/75'
+              }`}>
                 {task.title}
               </div>
               {height > 36 && task.time && showTimeLabels && (
@@ -280,16 +294,6 @@ export function TimelineTaskBlock({
                 </div>
               )}
             </div>
-            <button
-              data-touch-ignore
-              onClick={(e) => {
-                e.stopPropagation();
-                completeTask(task.id);
-              }}
-              className="p-1 rounded-sm text-muted-foreground/20 hover:text-primary hover:bg-primary/5 transition-all opacity-0 group-hover:opacity-100 shrink-0 ml-1"
-            >
-              <Check size={12} />
-            </button>
           </div>
           {height > 28 && (
             <div className="flex items-center gap-1 mt-auto">

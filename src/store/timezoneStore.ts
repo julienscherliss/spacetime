@@ -15,8 +15,10 @@ export const useTimezoneStore = create<TimezoneState>()(
     (set) => ({
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       routinesFixedTime: true,
+      autoDetect: true,
       setTimezone: (tz: string) => set({ timezone: tz }),
       setRoutinesFixedTime: (v: boolean) => set({ routinesFixedTime: v }),
+      setAutoDetect: (v: boolean) => set({ autoDetect: v }),
     }),
     { name: 'do-timezone' }
   )

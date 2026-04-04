@@ -3,16 +3,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   useLibraryStore,
   LibraryTask,
-  LibraryCategory,
-  LIBRARY_CATEGORIES,
 } from '@/store/libraryStore';
 import {
-  X, Plus, GripVertical, Trash2, ChevronDown,
-  ArrowDownAZ, Clock3, FolderOpen, Pencil, Tag,
+  X, Plus, Trash2, ChevronDown,
+  ArrowDownAZ, Clock3, FolderOpen, Tag, Inbox,
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { useIntentionalTouchDrag } from '@/hooks/useIntentionalTouchDrag';
 import { useCarryStore } from '@/store/carryStore';
+import { useTaskStore } from '@/store/taskStore';
+import { LibraryEditModal } from '@/components/LibraryEditModal';
 
 function CategoryDot({ category }: { category: string }) {
   const builtInColors: Record<string, string> = {
@@ -23,30 +22,15 @@ function CategoryDot({ category }: { category: string }) {
     errands: 'bg-[hsl(var(--primary)/0.4)]',
     ideas: 'bg-[hsl(210,60%,55%/0.5)]',
   };
-  return <div className={`w-2 h-2 rounded-full ${builtInColors[category] || 'bg-primary/40'}`} />;
+  return <div className={`w-2.5 h-2.5 rounded-full ${builtInColors[category] || 'bg-primary/40'}`} />;
 }
 
-function LibraryItem({ item, isMobile }: { item: LibraryTask; isMobile: boolean }) {
-  const { updateItem, deleteItem } = useLibraryStore();
-  const categories = useLibraryStore((s) => s.categories);
-  const [editing, setEditing] = useState(false);
-  const [title, setTitle] = useState(item.title);
-  const [showCat, setShowCat] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: boolean; onEdit: () => void }) {
+  const { deleteItem } = useLibraryStore();
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFired = useRef(false);
 
-  const itemRef = useIntentionalTouchDrag<HTMLDivElement>({
-    payload: { type: 'library', id: item.id, title: item.title, duration: item.defaultDuration },
-    disabled: editing,
-    onDragStart: () => {
-      if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
-      useLibraryStore.getState().setPanelOpen(false);
-    },
-  });
-
-  const handleLongPressDown = useCallback(() => {
-    if (editing) return;
+  const handlePointerDown = useCallback(() => {
     longPressFired.current = false;
     longPressTimer.current = setTimeout(() => {
       longPressFired.current = true;
@@ -61,120 +45,83 @@ function LibraryItem({ item, isMobile }: { item: LibraryTask; isMobile: boolean 
       });
       useLibraryStore.getState().setPanelOpen(false);
     }, 250);
-  }, [item, editing]);
+  }, [item]);
 
-  const handleLongPressUp = useCallback(() => {
+  const handlePointerUp = useCallback(() => {
     if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
-  }, []);
+    if (!longPressFired.current) {
+      onEdit();
+    }
+  }, [onEdit]);
 
-  const handleLongPressMove = useCallback(() => {
+  const handlePointerMove = useCallback(() => {
     if (longPressTimer.current && !longPressFired.current) {
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
     }
   }, []);
 
-  const handleSave = () => {
-    if (title.trim()) updateItem(item.id, { title: title.trim() });
-    setEditing(false);
-  };
+  const handleMoveToWaiting = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Create a task in waiting room from library item
+    useTaskStore.getState().addTask({
+      title: item.title,
+      description: item.note || undefined,
+      date: new Date().toISOString().split('T')[0],
+      priority: 0,
+      duration: item.defaultDuration,
+      inWaitingRoom: true,
+    });
+    deleteItem(item.id);
+  }, [item, deleteItem]);
 
   return (
     <div
-      ref={itemRef}
-      draggable={!isMobile}
-      onDragStart={(e) => {
-        e.dataTransfer.setData('libraryTaskId', item.id);
-        e.dataTransfer.setData('libraryTitle', item.title);
-        e.dataTransfer.setData('libraryDuration', String(item.defaultDuration));
-        e.dataTransfer.effectAllowed = 'move';
-      }}
       onContextMenu={(e) => e.preventDefault()}
-      onPointerDown={handleLongPressDown}
-      onPointerUp={handleLongPressUp}
-      onPointerMove={handleLongPressMove}
-      className={`group flex items-center gap-2 rounded-sm hover:bg-muted/40 transition-colors cursor-grab active:cursor-grabbing draggable-item select-none ${
-        isMobile ? 'py-3 px-3' : 'py-2 px-2'
-      }`}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerMove={handlePointerMove}
+      className={`group flex items-center gap-3 rounded-sm hover:bg-muted/40 transition-colors cursor-pointer select-none ${
+        isMobile ? 'py-3.5 px-3' : 'py-3 px-3'
+      } min-h-[48px]`}
     >
-      <GripVertical size={isMobile ? 14 : 11} className="text-muted-foreground/20 group-hover:text-muted-foreground/40 shrink-0 transition-colors" />
-
       <CategoryDot category={item.category} />
 
-      {editing ? (
-        <input
-          ref={inputRef}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') handleSave();
-            if (e.key === 'Escape') { setTitle(item.title); setEditing(false); }
-          }}
-          onBlur={handleSave}
-          className={`flex-1 bg-transparent font-mono text-foreground focus:outline-none border-b border-primary/30 ${
-            isMobile ? 'text-[13px]' : 'text-[11px]'
-          }`}
-          autoFocus
-        />
-      ) : (
-        <span className={`flex-1 font-mono text-foreground/70 truncate leading-tight ${
-          isMobile ? 'text-[13px]' : 'text-[11px]'
+      <div className="flex-1 min-w-0">
+        <div className={`font-mono text-foreground/80 truncate leading-tight ${
+          isMobile ? 'text-[14px]' : 'text-[13px]'
         }`}>
           {item.title}
-        </span>
-      )}
+        </div>
+        {item.note && (
+          <div className={`font-mono text-muted-foreground/40 truncate mt-0.5 ${
+            isMobile ? 'text-[11px]' : 'text-[10px]'
+          }`}>
+            {item.note}
+          </div>
+        )}
+      </div>
 
-      <span className={`font-mono text-muted-foreground/30 shrink-0 ${isMobile ? 'text-[10px]' : 'text-[9px]'}`}>
+      <span className={`font-mono text-muted-foreground/40 shrink-0 ${isMobile ? 'text-[11px]' : 'text-[10px]'}`}>
         {item.defaultDuration}m
       </span>
 
-      {/* Actions — always visible on mobile, hover on desktop */}
-      <div className={`flex items-center gap-1 ${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
+      {/* Actions */}
+      <div className={`flex items-center gap-1.5 ${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
         <button
-          onClick={(e) => { e.stopPropagation(); setEditing(true); }}
+          onClick={handleMoveToWaiting}
           data-touch-ignore
-          className="p-1 text-muted-foreground/30 hover:text-foreground transition-colors"
+          className="p-1.5 text-muted-foreground/30 hover:text-foreground transition-colors"
+          title="Move to Waiting Room"
         >
-          <Pencil size={isMobile ? 12 : 10} />
+          <Inbox size={isMobile ? 14 : 12} />
         </button>
-        <div className="relative">
-          <button
-            onClick={(e) => { e.stopPropagation(); setShowCat(!showCat); }}
-            data-touch-ignore
-            className="p-1 text-muted-foreground/30 hover:text-foreground transition-colors"
-          >
-            <FolderOpen size={isMobile ? 12 : 10} />
-          </button>
-          {showCat && (
-            <div className="absolute right-0 top-7 z-50 bg-card border border-border rounded-sm shadow-md py-1 w-28">
-              {categories.map((cat) => (
-                <button
-                  key={cat.value}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    updateItem(item.id, { category: cat.value });
-                    setShowCat(false);
-                  }}
-                  data-touch-ignore
-                  className={`w-full text-left px-2.5 py-1.5 text-[10px] font-mono tracking-wider transition-colors flex items-center gap-2 ${
-                    item.category === cat.value
-                      ? 'text-foreground bg-muted/50'
-                      : 'text-muted-foreground/50 hover:text-foreground hover:bg-muted/30'
-                  }`}
-                >
-                  <CategoryDot category={cat.value} />
-                  {cat.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
         <button
           onClick={(e) => { e.stopPropagation(); deleteItem(item.id); }}
           data-touch-ignore
-          className="p-1 text-muted-foreground/30 hover:text-destructive transition-colors"
+          className="p-1.5 text-muted-foreground/30 hover:text-destructive transition-colors"
         >
-          <Trash2 size={isMobile ? 12 : 10} />
+          <Trash2 size={isMobile ? 14 : 12} />
         </button>
       </div>
     </div>
@@ -195,6 +142,7 @@ export function LibraryPanel() {
   const [showFilter, setShowFilter] = useState(false);
   const [showNewCat, setShowNewCat] = useState(false);
   const [newCatName, setNewCatName] = useState('');
+  const [editingItem, setEditingItem] = useState<LibraryTask | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
 
@@ -216,178 +164,183 @@ export function LibraryPanel() {
   };
 
   return (
-    <AnimatePresence>
-      {panelOpen && (
-        <>
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-background/40 backdrop-blur-[2px]"
-            onClick={() => setPanelOpen(false)}
-          />
+    <>
+      <AnimatePresence>
+        {panelOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40 bg-background/40 backdrop-blur-[2px]"
+              onClick={() => setPanelOpen(false)}
+            />
 
-          {/* Panel — bottom sheet on mobile, left sidebar on desktop */}
-          <motion.div
-            initial={isMobile ? { y: '100%' } : { x: -320, opacity: 0 }}
-            animate={isMobile ? { y: 0 } : { x: 0, opacity: 1 }}
-            exit={isMobile ? { y: '100%' } : { x: -320, opacity: 0 }}
-            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-            className={`fixed z-50 bg-card shadow-lg flex flex-col ${
-              isMobile
-                ? 'left-0 right-0 bottom-0 top-[45%] border-t border-border rounded-t-lg'
-                : 'left-0 top-0 bottom-0 w-80 border-r border-border'
-            }`}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
-              <span className="text-[11px] font-mono tracking-[0.12em] text-foreground font-medium">
-                LIBRARY
-              </span>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-mono text-muted-foreground/30">{totalCount}</span>
-                <button
-                  onClick={() => setPanelOpen(false)}
-                  className="p-1 text-muted-foreground/40 hover:text-foreground transition-colors"
-                >
-                  <X size={14} strokeWidth={1.5} />
-                </button>
-              </div>
-            </div>
-
-            {/* Quick input */}
-            <div className="px-4 py-3 border-b border-border/30">
-              <div className="flex items-center gap-2">
-                <Plus size={14} className="text-muted-foreground/30 shrink-0" />
-                <input
-                  ref={inputRef}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
-                  placeholder="Add to library..."
-                  className={`flex-1 bg-transparent font-mono text-foreground placeholder:text-muted-foreground/25 focus:outline-none ${
-                    isMobile ? 'text-[14px]' : 'text-[12px]'
-                  }`}
-                />
-              </div>
-            </div>
-
-            {/* Sort / Filter bar */}
-            <div className="flex items-center gap-2 px-4 py-2 border-b border-border/20 flex-wrap">
-              {/* Sort */}
-              <div className="relative">
-                <button
-                  onClick={() => { setShowSort(!showSort); setShowFilter(false); }}
-                  className="flex items-center gap-1 text-[9px] font-mono tracking-widest text-muted-foreground/40 hover:text-foreground transition-colors px-1.5 py-1"
-                >
-                  <ArrowDownAZ size={11} />
-                  {sortMode === 'recent' ? 'RECENT' : sortMode === 'alpha' ? 'A–Z' : 'CATEGORY'}
-                  <ChevronDown size={9} className={showSort ? 'rotate-180' : ''} />
-                </button>
-                {showSort && (
-                  <div className="absolute left-0 top-7 z-50 bg-card border border-border rounded-sm shadow-md py-1 w-24">
-                    {(['recent', 'alpha', 'category'] as const).map((m) => (
-                      <button
-                        key={m}
-                        onClick={() => { setSortMode(m); setShowSort(false); }}
-                        className={`w-full text-left px-2.5 py-1.5 text-[10px] font-mono tracking-wider ${
-                          sortMode === m ? 'text-foreground bg-muted/50' : 'text-muted-foreground/50 hover:text-foreground'
-                        }`}
-                      >
-                        {m === 'recent' ? 'Recent' : m === 'alpha' ? 'A–Z' : 'Category'}
-                      </button>
-                    ))}
-                  </div>
-                )}
+            <motion.div
+              initial={isMobile ? { y: '100%' } : { x: -320, opacity: 0 }}
+              animate={isMobile ? { y: 0 } : { x: 0, opacity: 1 }}
+              exit={isMobile ? { y: '100%' } : { x: -320, opacity: 0 }}
+              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+              className={`fixed z-50 bg-card shadow-lg flex flex-col ${
+                isMobile
+                  ? 'left-0 right-0 bottom-0 top-[40%] border-t border-border rounded-t-lg'
+                  : 'left-0 top-0 bottom-0 w-80 border-r border-border'
+              }`}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+                <span className="text-[12px] font-mono tracking-[0.12em] text-foreground font-medium">
+                  LIBRARY
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-mono text-muted-foreground/40">{totalCount}</span>
+                  <button
+                    onClick={() => setPanelOpen(false)}
+                    className="p-1.5 text-muted-foreground/40 hover:text-foreground transition-colors"
+                  >
+                    <X size={16} strokeWidth={1.5} />
+                  </button>
+                </div>
               </div>
 
-              <div className="w-px h-4 bg-border/30" />
+              {/* Quick input */}
+              <div className="px-4 py-3 border-b border-border/30">
+                <div className="flex items-center gap-2.5">
+                  <Plus size={16} className="text-muted-foreground/30 shrink-0" />
+                  <input
+                    ref={inputRef}
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
+                    placeholder="Add to library..."
+                    className={`flex-1 bg-transparent font-mono text-foreground placeholder:text-muted-foreground/25 focus:outline-none min-h-[44px] ${
+                      isMobile ? 'text-[15px]' : 'text-[13px]'
+                    }`}
+                  />
+                </div>
+              </div>
 
-              {/* Filter */}
-              <div className="relative">
-                <button
-                  onClick={() => { setShowFilter(!showFilter); setShowSort(false); }}
-                  className="flex items-center gap-1 text-[9px] font-mono tracking-widest text-muted-foreground/40 hover:text-foreground transition-colors px-1.5 py-1"
-                >
-                  <FolderOpen size={11} />
-                  {filterCategory === 'all' ? 'ALL' : filterCategory.toUpperCase()}
-                  <ChevronDown size={9} className={showFilter ? 'rotate-180' : ''} />
-                </button>
-                {showFilter && (
-                  <div className="absolute left-0 top-7 z-50 bg-card border border-border rounded-sm shadow-md py-1 w-32">
-                    <button
-                      onClick={() => { setFilterCategory('all'); setShowFilter(false); }}
-                      className={`w-full text-left px-2.5 py-1.5 text-[10px] font-mono tracking-wider ${
-                        filterCategory === 'all' ? 'text-foreground bg-muted/50' : 'text-muted-foreground/50 hover:text-foreground'
-                      }`}
-                    >
-                      All
-                    </button>
-                    {categories.map((cat) => (
-                      <button
-                        key={cat.value}
-                        onClick={() => { setFilterCategory(cat.value); setShowFilter(false); }}
-                        className={`w-full text-left px-2.5 py-1.5 text-[10px] font-mono tracking-wider flex items-center gap-2 ${
-                          filterCategory === cat.value ? 'text-foreground bg-muted/50' : 'text-muted-foreground/50 hover:text-foreground'
-                        }`}
-                      >
-                        <CategoryDot category={cat.value} />
-                        {cat.label}
-                      </button>
-                    ))}
-                    {/* Add category */}
-                    <div className="border-t border-border/30 mt-1 pt-1">
-                      {showNewCat ? (
-                        <div className="px-2 py-1">
-                          <input
-                            value={newCatName}
-                            onChange={(e) => setNewCatName(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === 'Enter') handleAddCategory(); if (e.key === 'Escape') setShowNewCat(false); }}
-                            onBlur={handleAddCategory}
-                            placeholder="Category name..."
-                            className="w-full bg-transparent text-[10px] font-mono text-foreground placeholder:text-muted-foreground/30 focus:outline-none border-b border-primary/30"
-                            autoFocus
-                          />
-                        </div>
-                      ) : (
+              {/* Sort / Filter bar */}
+              <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border/20 flex-wrap">
+                <div className="relative">
+                  <button
+                    onClick={() => { setShowSort(!showSort); setShowFilter(false); }}
+                    className="flex items-center gap-1 text-[10px] font-mono tracking-widest text-muted-foreground/40 hover:text-foreground transition-colors px-2 py-1.5 min-h-[36px]"
+                  >
+                    <ArrowDownAZ size={12} />
+                    {sortMode === 'recent' ? 'RECENT' : sortMode === 'alpha' ? 'A–Z' : 'CATEGORY'}
+                    <ChevronDown size={10} className={showSort ? 'rotate-180' : ''} />
+                  </button>
+                  {showSort && (
+                    <div className="absolute left-0 top-9 z-50 bg-card border border-border rounded-sm shadow-md py-1 w-28">
+                      {(['recent', 'alpha', 'category'] as const).map((m) => (
                         <button
-                          onClick={() => setShowNewCat(true)}
-                          className="w-full text-left px-2.5 py-1.5 text-[10px] font-mono tracking-wider text-primary/60 hover:text-primary flex items-center gap-2"
+                          key={m}
+                          onClick={() => { setSortMode(m); setShowSort(false); }}
+                          className={`w-full text-left px-3 py-2 text-[11px] font-mono tracking-wider min-h-[40px] ${
+                            sortMode === m ? 'text-foreground bg-muted/50' : 'text-muted-foreground/50 hover:text-foreground'
+                          }`}
                         >
-                          <Tag size={9} />
-                          New category...
+                          {m === 'recent' ? 'Recent' : m === 'alpha' ? 'A–Z' : 'Category'}
                         </button>
-                      )}
+                      ))}
                     </div>
+                  )}
+                </div>
+
+                <div className="w-px h-4 bg-border/30" />
+
+                <div className="relative">
+                  <button
+                    onClick={() => { setShowFilter(!showFilter); setShowSort(false); }}
+                    className="flex items-center gap-1 text-[10px] font-mono tracking-widest text-muted-foreground/40 hover:text-foreground transition-colors px-2 py-1.5 min-h-[36px]"
+                  >
+                    <FolderOpen size={12} />
+                    {filterCategory === 'all' ? 'ALL' : filterCategory.toUpperCase()}
+                    <ChevronDown size={10} className={showFilter ? 'rotate-180' : ''} />
+                  </button>
+                  {showFilter && (
+                    <div className="absolute left-0 top-9 z-50 bg-card border border-border rounded-sm shadow-md py-1 w-36">
+                      <button
+                        onClick={() => { setFilterCategory('all'); setShowFilter(false); }}
+                        className={`w-full text-left px-3 py-2 text-[11px] font-mono tracking-wider min-h-[40px] ${
+                          filterCategory === 'all' ? 'text-foreground bg-muted/50' : 'text-muted-foreground/50 hover:text-foreground'
+                        }`}
+                      >
+                        All
+                      </button>
+                      {categories.map((cat) => (
+                        <button
+                          key={cat.value}
+                          onClick={() => { setFilterCategory(cat.value); setShowFilter(false); }}
+                          className={`w-full text-left px-3 py-2 text-[11px] font-mono tracking-wider flex items-center gap-2 min-h-[40px] ${
+                            filterCategory === cat.value ? 'text-foreground bg-muted/50' : 'text-muted-foreground/50 hover:text-foreground'
+                          }`}
+                        >
+                          <CategoryDot category={cat.value} />
+                          {cat.label}
+                        </button>
+                      ))}
+                      <div className="border-t border-border/30 mt-1 pt-1">
+                        {showNewCat ? (
+                          <div className="px-3 py-2">
+                            <input
+                              value={newCatName}
+                              onChange={(e) => setNewCatName(e.target.value)}
+                              onKeyDown={(e) => { if (e.key === 'Enter') handleAddCategory(); if (e.key === 'Escape') setShowNewCat(false); }}
+                              onBlur={handleAddCategory}
+                              placeholder="Category name..."
+                              className="w-full bg-transparent text-[11px] font-mono text-foreground placeholder:text-muted-foreground/30 focus:outline-none border-b border-primary/30"
+                              autoFocus
+                            />
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setShowNewCat(true)}
+                            className="w-full text-left px-3 py-2 text-[11px] font-mono tracking-wider text-primary/60 hover:text-primary flex items-center gap-2 min-h-[40px]"
+                          >
+                            <Tag size={10} />
+                            New category...
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Items list */}
+              <div className="flex-1 overflow-y-auto px-2 py-1" style={{ WebkitOverflowScrolling: 'touch' }}>
+                {items.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Clock3 size={24} className="mx-auto text-muted-foreground/15 mb-3" />
+                    <p className="text-[12px] font-mono text-muted-foreground/30 tracking-wider">
+                      {totalCount === 0 ? 'CAPTURE IDEAS HERE' : 'NO MATCHING ITEMS'}
+                    </p>
+                    <p className="text-[11px] font-mono text-muted-foreground/20 mt-1">
+                      long press to pick up · tap to edit
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-px">
+                    {items.map((item) => (
+                      <LibraryItem key={item.id} item={item} isMobile={isMobile} onEdit={() => setEditingItem(item)} />
+                    ))}
                   </div>
                 )}
               </div>
-            </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
-            {/* Items list */}
-            <div className="flex-1 overflow-y-auto px-2 py-1" style={{ WebkitOverflowScrolling: 'touch' }}>
-              {items.length === 0 ? (
-                <div className="text-center py-12">
-                  <Clock3 size={20} className="mx-auto text-muted-foreground/15 mb-2" />
-                  <p className="text-[10px] font-mono text-muted-foreground/25 tracking-wider">
-                    {totalCount === 0 ? 'CAPTURE IDEAS HERE' : 'NO MATCHING ITEMS'}
-                  </p>
-                  <p className="text-[9px] font-mono text-muted-foreground/15 mt-1">
-                    drag onto calendar to schedule
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-px">
-                  {items.map((item) => (
-                    <LibraryItem key={item.id} item={item} isMobile={isMobile} />
-                  ))}
-                </div>
-              )}
-            </div>
-          </motion.div>
-        </>
+      {/* Library item edit modal */}
+      {editingItem && (
+        <LibraryEditModal
+          item={editingItem}
+          onClose={() => setEditingItem(null)}
+        />
       )}
-    </AnimatePresence>
+    </>
   );
 }
