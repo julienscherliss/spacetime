@@ -67,6 +67,16 @@ export function TimelineTaskBlock({
 }: TimelineTaskBlockProps) {
   const taskMinutes = task.time ? parseInt(task.time.split(':')[0], 10) * 60 + parseInt(task.time.split(':')[1], 10) : 0;
   const isDraggingThis = useScheduledDragStore((s) => s.active && s.taskId === task.id);
+  const isCarried = useCarryStore((s) => s.carried?.taskId === task.id);
+
+  const borderLeftColor = {
+    0: 'hsl(var(--priority-0) / 0.3)',
+    1: 'hsl(var(--priority-1) / 0.5)',
+    2: 'hsl(var(--priority-2) / 0.6)',
+    3: 'hsl(var(--priority-3) / 0.7)',
+  }[task.priority];
+
+  const snapTo15 = (mins: number) => Math.round(mins / 15) * 15;
 
   const pointerStartRef = useRef<{ x: number; y: number; pointerId: number } | null>(null);
   const elRef = useRef<HTMLDivElement | null>(null);
