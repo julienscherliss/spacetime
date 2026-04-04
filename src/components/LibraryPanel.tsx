@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   useLibraryStore,
@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useIntentionalTouchDrag } from '@/hooks/useIntentionalTouchDrag';
+import { useCarryStore } from '@/store/carryStore';
 
 function CategoryDot({ category }: { category: string }) {
   const builtInColors: Record<string, string> = {
