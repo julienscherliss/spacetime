@@ -296,6 +296,7 @@ export function TimelineColumn({
     const onTouchStart = (e: TouchEvent) => {
       const target = e.target as HTMLElement;
       if (target.closest('[data-task-block]') || target.closest('input') || target.closest('button')) return;
+      if (useCarryStore.getState().carried) return;
       const touch = e.touches[0];
       // Offset touch point upward slightly — iOS reports contact below visual tap point
       const mins = getMinutes(touch.clientY - 8);
