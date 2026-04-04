@@ -270,8 +270,10 @@ export const useTaskStore = create<TaskState>()(
       editingTaskId: null,
       showCompletionStats: false,
       dailyStats: null,
+      navigateToDate: null,
 
       setViewMode: (mode) => set({ viewMode: mode }),
+      setNavigateToDate: (date) => set({ navigateToDate: date }),
       toggleRoutines: () => set((s) => ({ routinesEnabled: !s.routinesEnabled })),
 
       addTask: (taskData) => {
