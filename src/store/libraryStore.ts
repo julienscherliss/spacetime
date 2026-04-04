@@ -53,7 +53,7 @@ interface LibraryState {
   renameCategory: (value: string, newLabel: string) => void;
 }
 
-const generateId = () => Math.random().toString(36).substring(2, 10);
+const generateId = () => crypto.randomUUID();
 
 export const useLibraryStore = create<LibraryState>()(
   persist(
