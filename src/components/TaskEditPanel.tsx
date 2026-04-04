@@ -136,6 +136,8 @@ export function TaskEditPanel() {
       setShowDeleteConfirm(false);
       setShowEditScope(false);
       setPendingUpdates(null);
+      setDueDate(task.dueDate || '');
+      setShowDuePicker(false);
       scopeTriggeredRef.current = false;
     }
   }, [task?.id]);
