@@ -171,13 +171,19 @@ export function TimelineTaskBlock({
     };
 
     const handleUp = (e: PointerEvent) => {
+      clearLongPress();
       if (!pointerStartRef.current) return;
+      // If long press fired, we're in carry mode — don't do anything
+      if (longPressFired.current) {
+        pointerStartRef.current = null;
+        useScheduledDragStore.getState().cancel();
+        return;
+      }
       const s = useScheduledDragStore.getState();
       if (!s.active) {
         useScheduledDragStore.getState().cancel();
         handleTaskClick(task.id);
       }
-      // Drop is handled by the single global handler in TimelineColumn
       pointerStartRef.current = null;
       setTimeout(() => { didDragRef.current = false; }, 50);
     };
