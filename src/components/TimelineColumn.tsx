@@ -125,20 +125,12 @@ export function TimelineColumn({
   } | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const newTaskRef = useRef<HTMLInputElement>(null);
+  const proxyInputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-focus new task input when it appears
+  // When the real input mounts, steal focus from the proxy input
   useEffect(() => {
     if (newTaskInput && newTaskRef.current) {
-      // Use multiple attempts to force iOS keyboard
-      const focus = () => {
-        newTaskRef.current?.focus();
-      };
-      requestAnimationFrame(() => {
-        focus();
-        setTimeout(focus, 50);
-        setTimeout(focus, 150);
-        setTimeout(focus, 300);
-      });
+      newTaskRef.current.focus();
     }
   }, [newTaskInput]);
 
