@@ -19,9 +19,17 @@ function addDaysToDate(dateStr: string, days: number): string {
 }
 
 export function DayView() {
-  const { tasks, routinesEnabled, generateRecurringInstances } = useTaskStore();
+  const { tasks, routinesEnabled, generateRecurringInstances, navigateToDate, setNavigateToDate } = useTaskStore();
   const { minutes: nowMinutes, dateStr: today } = useCurrentTime(15000);
-  const [selectedDate, setSelectedDate] = useState(today);
+  const [selectedDate, setSelectedDate] = useState(navigateToDate || today);
+
+  // Handle navigation from calendar view
+  useEffect(() => {
+    if (navigateToDate) {
+      setSelectedDate(navigateToDate);
+      setNavigateToDate(null);
+    }
+  }, [navigateToDate, setNavigateToDate]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Swipe state
