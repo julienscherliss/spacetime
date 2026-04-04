@@ -1,61 +1,15 @@
 import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Task } from '@/store/taskStore';
-import { X, Clock, AlertCircle, Archive, Check } from 'lucide-react';
+import { X, Clock, Archive, Check } from 'lucide-react';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useCarryStore } from '@/store/carryStore';
 import { useLibraryStore } from '@/store/libraryStore';
 
-function ReflectionModal({ task, onConfirm, onCancel }: { task: Task; onConfirm: () => void; onCancel: () => void }) {
-  const count = task.waitingRoomCount || 1;
-  const messages = [
-    `This task has entered the Waiting Room ${count} time${count > 1 ? 's' : ''}. Is now a good time to commit to it?`,
-    `This task has been here ${count} time${count > 1 ? 's' : ''}. Would it help to break it into smaller steps?`,
-    `${count} visit${count > 1 ? 's' : ''} to the Waiting Room. Consider delegating this, or giving it a specific time.`,
-    `This keeps coming back (${count}×). Maybe it needs a different approach?`,
-  ];
-  const message = messages[Math.min(count - 1, messages.length - 1)];
 
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-background/60 backdrop-blur-[2px] p-4"
-      onClick={onCancel}
-    >
-      <motion.div
-        initial={{ opacity: 0, y: 12, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 12, scale: 0.98 }}
-        className="bg-card border border-border rounded-sm p-4 w-full max-w-xs shadow-lg"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start gap-2 mb-3">
-          <AlertCircle size={16} className="text-primary shrink-0 mt-0.5" />
-          <p className="text-[12px] font-mono text-foreground/80 leading-relaxed">{message}</p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={onCancel}
-            className="flex-1 py-2.5 rounded-sm border border-border text-[10px] font-mono tracking-wider text-muted-foreground hover:text-foreground transition-colors min-h-[44px]"
-          >
-            Keep in Waiting Room
-          </button>
-          <button
-            onClick={onConfirm}
-            className="flex-1 py-2.5 rounded-sm bg-primary text-primary-foreground text-[10px] font-mono tracking-widest hover:bg-primary/90 transition-colors min-h-[44px]"
-          >
-            Schedule it
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
 
-function WaitingRoomItem({ task, isMobile, onReflect, onClosePanel }: { task: Task; isMobile: boolean; onReflect: () => void; onClosePanel: () => void }) {
+function WaitingRoomItem({ task, isMobile, onClosePanel }: { task: Task; isMobile: boolean; onClosePanel: () => void }) {
   const { completeTask, updateTask, deleteTask } = useTaskStore();
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFired = useRef(false);
@@ -80,9 +34,19 @@ function WaitingRoomItem({ task, isMobile, onReflect, onClosePanel }: { task: Ta
   const handlePointerUp = useCallback(() => {
     if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
     if (!longPressFired.current) {
-      onReflect();
+      // Tap = pick up into carry mode (same as long press)
+      useCarryStore.getState().pickup({
+        taskId: task.id,
+        title: task.title,
+        duration: task.duration || 30,
+        fromDate: task.date,
+        fromTime: task.time,
+        fromWaitingRoom: true,
+        pickedUpAt: Date.now(),
+      });
+      onClosePanel();
     }
-  }, [onReflect]);
+  }, [task, onClosePanel]);
 
   const handlePointerMove = useCallback(() => {
     if (longPressTimer.current && !longPressFired.current) {
@@ -149,20 +113,10 @@ function WaitingRoomItem({ task, isMobile, onReflect, onClosePanel }: { task: Ta
 }
 
 export function WaitingRoom({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { tasks, updateTask } = useTaskStore();
+  const { tasks } = useTaskStore();
   const isMobile = useIsMobile();
-  const [reflectTask, setReflectTask] = useState<Task | null>(null);
 
   const waitingTasks = tasks.filter((t) => t.inWaitingRoom && !t.completed);
-
-  const handleReschedule = (task: Task) => {
-    updateTask(task.id, {
-      inWaitingRoom: false,
-      date: new Date().toISOString().split('T')[0],
-      time: '09:00',
-    } as any);
-    setReflectTask(null);
-  };
 
   return (
     <>
@@ -213,23 +167,13 @@ export function WaitingRoom({ open, onClose }: { open: boolean; onClose: () => v
                 ) : (
                   <div className="space-y-px">
                     {waitingTasks.map((task) => (
-                      <WaitingRoomItem key={task.id} task={task} isMobile={isMobile} onReflect={() => setReflectTask(task)} onClosePanel={onClose} />
+                      <WaitingRoomItem key={task.id} task={task} isMobile={isMobile} onClosePanel={onClose} />
                     ))}
                   </div>
                 )}
               </div>
             </motion.div>
           </>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {reflectTask && (
-          <ReflectionModal
-            task={reflectTask}
-            onConfirm={() => handleReschedule(reflectTask)}
-            onCancel={() => setReflectTask(null)}
-          />
         )}
       </AnimatePresence>
     </>
