@@ -65,6 +65,21 @@ function formatScheduleContext(date: string, time?: string, duration?: number): 
   return parts.join(' ');
 }
 
+function getDueDateText(dueDate: string): { relative: string; absolute: string; isOverdue: boolean } {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(dueDate + 'T12:00:00');
+  due.setHours(0, 0, 0, 0);
+  const diffMs = due.getTime() - today.getTime();
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+  const absolute = due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+  if (diffDays < 0) return { relative: `Overdue by ${Math.abs(diffDays)} day${Math.abs(diffDays) !== 1 ? 's' : ''}`, absolute, isOverdue: true };
+  if (diffDays === 0) return { relative: 'Due today', absolute, isOverdue: false };
+  if (diffDays === 1) return { relative: 'Due tomorrow', absolute, isOverdue: false };
+  return { relative: `Due in ${diffDays} days`, absolute, isOverdue: false };
+}
+
 export function TaskEditPanel() {
   const {
     tasks, editingTaskId, setEditingTask, updateTask, updateFutureInstances,
