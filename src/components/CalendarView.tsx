@@ -106,7 +106,12 @@ export function CalendarView() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto px-3 sm:px-4 py-4">
+    <div
+      className="max-w-2xl mx-auto px-3 sm:px-4 py-4"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-base sm:text-lg font-display font-bold text-foreground tracking-tight">
