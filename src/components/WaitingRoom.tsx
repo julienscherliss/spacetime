@@ -80,9 +80,19 @@ function WaitingRoomItem({ task, isMobile, onReflect, onClosePanel }: { task: Ta
   const handlePointerUp = useCallback(() => {
     if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
     if (!longPressFired.current) {
-      onReflect();
+      // Tap = pick up into carry mode (same as long press)
+      useCarryStore.getState().pickup({
+        taskId: task.id,
+        title: task.title,
+        duration: task.duration || 30,
+        fromDate: task.date,
+        fromTime: task.time,
+        fromWaitingRoom: true,
+        pickedUpAt: Date.now(),
+      });
+      onClosePanel();
     }
-  }, [onReflect]);
+  }, [task, onClosePanel]);
 
   const handlePointerMove = useCallback(() => {
     if (longPressTimer.current && !longPressFired.current) {
