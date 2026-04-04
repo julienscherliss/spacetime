@@ -33,6 +33,13 @@ const Index = () => {
     return () => window.removeEventListener('toggle-waiting-room', handler);
   }, []);
 
+  // Listen for settings toggle from nav
+  useEffect(() => {
+    const handler = () => setSettingsOpen((o) => !o);
+    window.addEventListener('toggle-settings', handler);
+    return () => window.removeEventListener('toggle-settings', handler);
+  }, []);
+
   return (
     <div className={`min-h-screen bg-background`}>
       <AppNav />
