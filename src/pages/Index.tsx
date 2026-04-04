@@ -84,6 +84,7 @@ const Index = () => {
       <LibraryPanel />
       <WaitingRoom open={waitingOpen} onClose={() => setWaitingOpen(false)} />
       <TouchDragGhost />
+      <CarryIndicator />
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
