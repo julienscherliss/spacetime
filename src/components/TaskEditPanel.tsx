@@ -190,6 +190,7 @@ export function TaskEditPanel() {
       linked: recurrence ? isLinked : false,
       linkedGroupId: (recurrence && isLinked) ? (task?.linkedGroupId || seriesId) : undefined,
       detachedFromSeries: (recurrence && !isLinked && task?.recurrenceParentId) ? true : false,
+      dueDate: dueDate || undefined,
     };
   };
 
