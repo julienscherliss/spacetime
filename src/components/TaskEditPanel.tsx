@@ -287,7 +287,6 @@ export function TaskEditPanel() {
               <div className="flex-1 mr-3">
                 <input
                   ref={titleInputRef}
-                  autoFocus
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   className="w-full bg-transparent font-display font-bold text-foreground text-sm leading-tight focus:outline-none border-b border-transparent focus:border-border transition-colors"
