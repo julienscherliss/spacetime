@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Task } from '@/store/taskStore';
 import { X, Clock, GripVertical, AlertCircle } from 'lucide-react';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useIntentionalTouchDrag } from '@/hooks/useIntentionalTouchDrag';
+import { useCarryStore } from '@/store/carryStore';
 
 function ReflectionModal({ task, onConfirm, onCancel }: { task: Task; onConfirm: () => void; onCancel: () => void }) {
   const count = task.waitingRoomCount || 1;
@@ -55,17 +56,58 @@ function ReflectionModal({ task, onConfirm, onCancel }: { task: Task; onConfirm:
 }
 
 function WaitingRoomItem({ task, isMobile, onReflect, onClosePanel }: { task: Task; isMobile: boolean; onReflect: () => void; onClosePanel: () => void }) {
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFired = useRef(false);
+
   const itemRef = useIntentionalTouchDrag<HTMLDivElement>({
     payload: { type: 'waitingRoom', id: task.id, title: task.title, duration: task.duration || 30 },
-    onTap: onReflect,
-    onDragStart: onClosePanel,
+    onTap: () => {
+      if (longPressFired.current) return;
+      if (useCarryStore.getState().carried) return;
+      onReflect();
+    },
+    onDragStart: () => {
+      if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+      onClosePanel();
+    },
   });
+
+  const handlePointerDown = useCallback(() => {
+    longPressFired.current = false;
+    longPressTimer.current = setTimeout(() => {
+      longPressFired.current = true;
+      useCarryStore.getState().pickup({
+        taskId: task.id,
+        title: task.title,
+        duration: task.duration || 30,
+        fromDate: task.date,
+        fromTime: task.time,
+        fromWaitingRoom: true,
+        pickedUpAt: Date.now(),
+      });
+      onClosePanel();
+    }, 250);
+  }, [task, onClosePanel]);
+
+  const handlePointerUp = useCallback(() => {
+    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+  }, []);
+
+  const handlePointerMove = useCallback(() => {
+    if (longPressTimer.current && !longPressFired.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }, []);
 
   return (
     <div
       ref={itemRef}
       className={`group flex items-center gap-2 rounded-sm hover:bg-muted/40 transition-colors cursor-pointer draggable-item select-none ${isMobile ? 'py-3 px-3' : 'py-2 px-2'}`}
-      onClick={onReflect}
+      onClick={() => { if (!longPressFired.current) onReflect(); }}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerMove={handlePointerMove}
       onContextMenu={(e) => e.preventDefault()}
     >
       <GripVertical size={isMobile ? 14 : 11} className="text-muted-foreground/20 shrink-0" />

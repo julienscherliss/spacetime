@@ -4,6 +4,7 @@ import { useCalendarStore, CalendarEvent } from '@/store/calendarStore';
 import { useLibraryStore } from '@/store/libraryStore';
 import { useTouchDragStore } from '@/store/touchDragStore';
 import { useScheduledDragStore } from '@/store/scheduledDragStore';
+import { useCarryStore, isInScrollCooldown } from '@/store/carryStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { TimelineTaskBlock } from '@/components/TimelineTaskBlock';
 import { timeToMinutes, minutesToTime, snapTo15, formatTime12h, formatHour12h } from '@/hooks/useCurrentTime';
@@ -437,8 +438,77 @@ export function TimelineColumn({
 
   const handleTaskClick = useCallback((taskId: string) => {
     if (didDragRef.current) return;
+    // Don't open edit panel if in carry mode
+    if (useCarryStore.getState().carried) return;
     setEditingTask(taskId);
   }, [setEditingTask]);
+
+  // --- Tap-to-drop for carry mode ---
+  const carryTapRef = useRef<{ x: number; y: number } | null>(null);
+
+  const handleCarryPointerDown = useCallback((e: React.PointerEvent) => {
+    if (!useCarryStore.getState().carried) return;
+    carryTapRef.current = { x: e.clientX, y: e.clientY };
+  }, []);
+
+  const handleCarryPointerUp = useCallback((e: React.PointerEvent) => {
+    const carried = useCarryStore.getState().carried;
+    if (!carried || !carryTapRef.current) {
+      carryTapRef.current = null;
+      return;
+    }
+
+    // Check it's a clean tap (not scroll)
+    const dx = Math.abs(e.clientX - carryTapRef.current.x);
+    const dy = Math.abs(e.clientY - carryTapRef.current.y);
+    carryTapRef.current = null;
+
+    if (dx > 10 || dy > 10) return; // finger moved too much
+    if (isInScrollCooldown()) return; // just finished scrolling
+
+    // Calculate target time from tap position
+    const mins = getMinutesFromY(e.clientY);
+    const snapped = snapTo15(mins);
+    const newTime = minutesToTime(snapped);
+
+    // Perform the drop
+    const dropped = useCarryStore.getState().drop();
+    if (!dropped) return;
+
+    if (dropped.fromLibrary && dropped.libraryItemId) {
+      addTask({
+        title: dropped.title,
+        date,
+        time: newTime,
+        duration: dropped.duration,
+        priority: 0,
+        type: 'one-time',
+      });
+      useLibraryStore.getState().removeItem(dropped.libraryItemId);
+    } else if (dropped.fromWaitingRoom) {
+      const { updateTask } = useTaskStore.getState();
+      updateTask(dropped.taskId, {
+        inWaitingRoom: false,
+        date,
+        time: newTime,
+      } as any);
+    } else {
+      // Regular scheduled task
+      if (dropped.fromDate !== date) {
+        const validation = canMoveTask(dropped.taskId, date);
+        if (!validation.allowed) {
+          setDragMsg('reason' in validation ? validation.reason : 'Cannot move');
+          setTimeout(() => setDragMsg(''), 2000);
+          // Re-pickup since drop failed
+          useCarryStore.getState().pickup(dropped);
+          return;
+        }
+        moveTask(dropped.taskId, date, newTime);
+      } else {
+        reorderTask(dropped.taskId, newTime);
+      }
+    }
+  }, [date, getMinutesFromY, addTask, canMoveTask, moveTask, reorderTask]);
 
   // Touch drop handler — listens for touchend globally when a touch drag is active
   useEffect(() => {
@@ -570,6 +640,8 @@ export function TimelineColumn({
       onDragLeave={() => setDragOverTime(null)}
       onDrop={handleDrop}
       onMouseDown={handleCreateMouseDown}
+      onPointerDown={handleCarryPointerDown}
+      onPointerUp={handleCarryPointerUp}
       /* touch create handlers are native — see useEffect above */
     >
       {/* Hour grid lines */}

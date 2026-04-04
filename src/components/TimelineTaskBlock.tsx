@@ -4,6 +4,7 @@ import { Task } from '@/store/taskStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { formatTime12h } from '@/hooks/useCurrentTime';
 import { useScheduledDragStore } from '@/store/scheduledDragStore';
+import { useCarryStore } from '@/store/carryStore';
 import { START_HOUR } from '@/components/TimelineColumn';
 
 interface TimelineTaskBlockProps {
@@ -29,6 +30,7 @@ interface TimelineTaskBlockProps {
 }
 
 const DRAG_THRESHOLD = 8;
+const LONG_PRESS_MS = 250;
 
 function findColumnAtPoint(x: number, y: number): { date: string; element: HTMLElement } | null {
   const cols = document.querySelectorAll<HTMLElement>('[data-timeline-column]');
@@ -65,9 +67,7 @@ export function TimelineTaskBlock({
 }: TimelineTaskBlockProps) {
   const taskMinutes = task.time ? parseInt(task.time.split(':')[0], 10) * 60 + parseInt(task.time.split(':')[1], 10) : 0;
   const isDraggingThis = useScheduledDragStore((s) => s.active && s.taskId === task.id);
-
-  const pointerStartRef = useRef<{ x: number; y: number; pointerId: number } | null>(null);
-  const elRef = useRef<HTMLDivElement | null>(null);
+  const isCarried = useCarryStore((s) => s.carried?.taskId === task.id);
 
   const borderLeftColor = {
     0: 'hsl(var(--priority-0) / 0.3)',
@@ -78,16 +78,50 @@ export function TimelineTaskBlock({
 
   const snapTo15 = (mins: number) => Math.round(mins / 15) * 15;
 
+  const pointerStartRef = useRef<{ x: number; y: number; pointerId: number } | null>(null);
+  const elRef = useRef<HTMLDivElement | null>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFired = useRef(false);
+
+  const clearLongPress = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (isLocked || isResizingThis) return;
     const target = e.target as HTMLElement;
     if (target.closest('button, input, textarea, [data-touch-ignore]')) return;
 
+    // If we're in carry mode and tapping a task, don't start drag — let the
+    // TimelineColumn tap-to-drop handler deal with it
+    if (useCarryStore.getState().carried) return;
+
     pointerStartRef.current = { x: e.clientX, y: e.clientY, pointerId: e.pointerId };
+    longPressFired.current = false;
 
     const blockRect = elRef.current?.getBoundingClientRect();
     const grabOffset = blockRect ? e.clientY - blockRect.top : 0;
     dragOffsetRef.current = grabOffset;
+
+    // Start long-press timer for carry mode
+    longPressTimer.current = setTimeout(() => {
+      longPressFired.current = true;
+      // Enter carry mode
+      useCarryStore.getState().pickup({
+        taskId: task.id,
+        title: task.title,
+        duration: task.duration || 30,
+        fromDate: task.date,
+        fromTime: task.time,
+        pickedUpAt: Date.now(),
+      });
+      // Cancel any pending drag
+      useScheduledDragStore.getState().cancel();
+      pointerStartRef.current = null;
+    }, LONG_PRESS_MS);
 
     useScheduledDragStore.getState().startDrag({
       taskId: task.id,
@@ -96,9 +130,7 @@ export function TimelineTaskBlock({
       duration: task.duration || 30,
       grabOffsetY: grabOffset,
     });
-
-    // Do NOT setPointerCapture — we need the pointer to cross columns
-  }, [isLocked, isResizingThis, task.id, task.date, task.time, task.duration, dragOffsetRef]);
+  }, [isLocked, isResizingThis, task.id, task.date, task.time, task.duration, task.title, dragOffsetRef]);
 
   // Global pointermove/pointerup when drag is pending or active
   useEffect(() => {
@@ -111,6 +143,13 @@ export function TimelineTaskBlock({
       const dx = e.clientX - pointerStartRef.current.x;
       const dy = e.clientY - pointerStartRef.current.y;
       const distance = Math.hypot(dx, dy);
+
+      // Cancel long press if finger moved
+      if (distance >= DRAG_THRESHOLD) {
+        clearLongPress();
+      }
+      // If long press already fired, don't do normal drag
+      if (longPressFired.current) return;
 
       const s = useScheduledDragStore.getState();
       if (!s.active) {
@@ -132,18 +171,25 @@ export function TimelineTaskBlock({
     };
 
     const handleUp = (e: PointerEvent) => {
+      clearLongPress();
       if (!pointerStartRef.current) return;
+      // If long press fired, we're in carry mode — don't do anything
+      if (longPressFired.current) {
+        pointerStartRef.current = null;
+        useScheduledDragStore.getState().cancel();
+        return;
+      }
       const s = useScheduledDragStore.getState();
       if (!s.active) {
         useScheduledDragStore.getState().cancel();
         handleTaskClick(task.id);
       }
-      // Drop is handled by the single global handler in TimelineColumn
       pointerStartRef.current = null;
       setTimeout(() => { didDragRef.current = false; }, 50);
     };
 
     const handleCancel = () => {
+      clearLongPress();
       useScheduledDragStore.getState().cancel();
       pointerStartRef.current = null;
       didDragRef.current = false;
@@ -179,7 +225,7 @@ export function TimelineTaskBlock({
           : isResizingThis
             ? 'cursor-ns-resize'
             : 'cursor-grab active:cursor-grabbing'
-      } ${isActive ? 'z-[15]' : 'z-10'} ${isDraggingThis ? 'opacity-0' : 'opacity-100'}`}
+      } ${isActive ? 'z-[15]' : 'z-10'} ${(isDraggingThis || isCarried) ? 'opacity-0' : 'opacity-100'}`}
       style={{
         top,
         height,

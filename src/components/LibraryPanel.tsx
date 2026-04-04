@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   useLibraryStore,
@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useIntentionalTouchDrag } from '@/hooks/useIntentionalTouchDrag';
+import { useCarryStore } from '@/store/carryStore';
 
 function CategoryDot({ category }: { category: string }) {
   const builtInColors: Record<string, string> = {
@@ -32,13 +33,46 @@ function LibraryItem({ item, isMobile }: { item: LibraryTask; isMobile: boolean 
   const [title, setTitle] = useState(item.title);
   const [showCat, setShowCat] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFired = useRef(false);
+
   const itemRef = useIntentionalTouchDrag<HTMLDivElement>({
     payload: { type: 'library', id: item.id, title: item.title, duration: item.defaultDuration },
     disabled: editing,
     onDragStart: () => {
+      if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
       useLibraryStore.getState().setPanelOpen(false);
     },
   });
+
+  const handleLongPressDown = useCallback(() => {
+    if (editing) return;
+    longPressFired.current = false;
+    longPressTimer.current = setTimeout(() => {
+      longPressFired.current = true;
+      useCarryStore.getState().pickup({
+        taskId: item.id,
+        title: item.title,
+        duration: item.defaultDuration,
+        fromDate: '',
+        fromLibrary: true,
+        libraryItemId: item.id,
+        pickedUpAt: Date.now(),
+      });
+      useLibraryStore.getState().setPanelOpen(false);
+    }, 250);
+  }, [item, editing]);
+
+  const handleLongPressUp = useCallback(() => {
+    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+  }, []);
+
+  const handleLongPressMove = useCallback(() => {
+    if (longPressTimer.current && !longPressFired.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }, []);
 
   const handleSave = () => {
     if (title.trim()) updateItem(item.id, { title: title.trim() });
@@ -56,6 +90,9 @@ function LibraryItem({ item, isMobile }: { item: LibraryTask; isMobile: boolean 
         e.dataTransfer.effectAllowed = 'move';
       }}
       onContextMenu={(e) => e.preventDefault()}
+      onPointerDown={handleLongPressDown}
+      onPointerUp={handleLongPressUp}
+      onPointerMove={handleLongPressMove}
       className={`group flex items-center gap-2 rounded-sm hover:bg-muted/40 transition-colors cursor-grab active:cursor-grabbing draggable-item select-none ${
         isMobile ? 'py-3 px-3' : 'py-2 px-2'
       }`}

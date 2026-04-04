@@ -4,6 +4,7 @@ import { useTaskStore } from '@/store/taskStore';
 import { useCalendarStore } from '@/store/calendarStore';
 import { useTouchDragStore } from '@/store/touchDragStore';
 import { useScheduledDragStore } from '@/store/scheduledDragStore';
+import { useCarryStore } from '@/store/carryStore';
 import { useCurrentTime, formatTime12h } from '@/hooks/useCurrentTime';
 import { TimelineColumn } from '@/components/TimelineColumn';
 import { BlockedModal } from '@/components/BlockedModal';
@@ -64,6 +65,21 @@ export function DayView() {
     el.addEventListener('touchmove', prevent, { passive: false });
     return () => el.removeEventListener('touchmove', prevent);
   }, [anyDragging]);
+
+  // Track scroll end for carry mode cooldown
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    let scrollTimer: ReturnType<typeof setTimeout> | null = null;
+    const onScroll = () => {
+      if (scrollTimer) clearTimeout(scrollTimer);
+      scrollTimer = setTimeout(() => {
+        useCarryStore.getState().markScrollEnd();
+      }, 50);
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
 
   // Swipe gesture handlers
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
