@@ -112,6 +112,14 @@ export function AppNav() {
           </button>
           <AddTaskModal />
           <button
+            onClick={() => window.dispatchEvent(new CustomEvent('toggle-settings'))}
+            className="flex items-center gap-1 px-1.5 py-1.5 rounded-sm text-[10px] font-mono tracking-wider text-muted-foreground/40 hover:text-foreground transition-colors"
+            title="Settings"
+          >
+            <Settings size={12} strokeWidth={1.5} />
+            <span className="hidden sm:inline text-[9px] text-muted-foreground/30">{getTzAbbr(useTimezoneStore.getState().timezone)}</span>
+          </button>
+          <button
             onClick={signOut}
             className="p-1.5 rounded-sm text-muted-foreground/40 hover:text-foreground transition-colors"
             title="Sign out"
