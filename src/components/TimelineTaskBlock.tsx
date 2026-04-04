@@ -144,6 +144,13 @@ export function TimelineTaskBlock({
       const dy = e.clientY - pointerStartRef.current.y;
       const distance = Math.hypot(dx, dy);
 
+      // Cancel long press if finger moved
+      if (distance >= DRAG_THRESHOLD) {
+        clearLongPress();
+      }
+      // If long press already fired, don't do normal drag
+      if (longPressFired.current) return;
+
       const s = useScheduledDragStore.getState();
       if (!s.active) {
         if (distance < DRAG_THRESHOLD) return;
