@@ -146,6 +146,7 @@ export type Database = {
           date: string
           description: string | null
           detached_from_series: boolean
+          due_date: string | null
           duration: number | null
           id: string
           in_waiting_room: boolean | null
@@ -173,6 +174,7 @@ export type Database = {
           date: string
           description?: string | null
           detached_from_series?: boolean
+          due_date?: string | null
           duration?: number | null
           id?: string
           in_waiting_room?: boolean | null
@@ -200,6 +202,7 @@ export type Database = {
           date?: string
           description?: string | null
           detached_from_series?: boolean
+          due_date?: string | null
           duration?: number | null
           id?: string
           in_waiting_room?: boolean | null

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Priority, RecurrencePattern, CustomUnit } from '@/store/taskStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { SubtaskList, Subtask } from '@/components/SubtaskList';
-import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar, Inbox } from 'lucide-react';
+import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar, Inbox, CalendarCheck, XCircle } from 'lucide-react';
 import { useLibraryStore } from '@/store/libraryStore';
 import { formatTime12h } from '@/hooks/useCurrentTime';
 
@@ -65,6 +65,21 @@ function formatScheduleContext(date: string, time?: string, duration?: number): 
   return parts.join(' ');
 }
 
+function getDueDateText(dueDate: string): { relative: string; absolute: string; isOverdue: boolean } {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(dueDate + 'T12:00:00');
+  due.setHours(0, 0, 0, 0);
+  const diffMs = due.getTime() - today.getTime();
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+  const absolute = due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+  if (diffDays < 0) return { relative: `Overdue by ${Math.abs(diffDays)} day${Math.abs(diffDays) !== 1 ? 's' : ''}`, absolute, isOverdue: true };
+  if (diffDays === 0) return { relative: 'Due today', absolute, isOverdue: false };
+  if (diffDays === 1) return { relative: 'Due tomorrow', absolute, isOverdue: false };
+  return { relative: `Due in ${diffDays} days`, absolute, isOverdue: false };
+}
+
 export function TaskEditPanel() {
   const {
     tasks, editingTaskId, setEditingTask, updateTask, updateFutureInstances,
@@ -95,6 +110,8 @@ export function TaskEditPanel() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showEditScope, setShowEditScope] = useState(false);
   const [pendingUpdates, setPendingUpdates] = useState<any>(null);
+  const [dueDate, setDueDate] = useState<string>(task?.dueDate || '');
+  const [showDuePicker, setShowDuePicker] = useState(false);
   const scopeTriggeredRef = useRef(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
@@ -119,6 +136,8 @@ export function TaskEditPanel() {
       setShowDeleteConfirm(false);
       setShowEditScope(false);
       setPendingUpdates(null);
+      setDueDate(task.dueDate || '');
+      setShowDuePicker(false);
       scopeTriggeredRef.current = false;
     }
   }, [task?.id]);
@@ -171,6 +190,7 @@ export function TaskEditPanel() {
       linked: recurrence ? isLinked : false,
       linkedGroupId: (recurrence && isLinked) ? (task?.linkedGroupId || seriesId) : undefined,
       detachedFromSeries: (recurrence && !isLinked && task?.recurrenceParentId) ? true : false,
+      dueDate: dueDate || undefined,
     };
   };
 
@@ -272,18 +292,53 @@ export function TaskEditPanel() {
             className="bg-card border border-border rounded-t-lg sm:rounded-sm w-full sm:max-w-sm shadow-lg max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* ─── Schedule context (read-only) ─── */}
-            <div className="px-4 pt-3 pb-2 border-b border-border/30 flex items-center gap-2 text-[10px] font-mono text-muted-foreground/50">
-              <Calendar size={10} strokeWidth={1.5} />
-              <span>{formatScheduleContext(task.date, task.time, task.duration)}</span>
-              {isRecurring && (
-                <>
-                  <span className="text-muted-foreground/20">·</span>
-                  <Repeat size={9} strokeWidth={1.5} />
-                  <span>{recurrenceLabel(task.recurrence)}</span>
-                </>
-              )}
-            </div>
+            {/* ─── Due date header ─── */}
+            {dueDate ? (() => {
+              const info = getDueDateText(dueDate);
+              return (
+                <div className="px-4 pt-3 pb-2 border-b border-border/30">
+                  <div className={`flex items-center gap-1.5 text-[11px] font-mono font-bold ${info.isOverdue ? 'text-destructive' : 'text-foreground/70'}`}>
+                    <CalendarCheck size={11} strokeWidth={1.5} />
+                    <span>{info.relative}</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[9px] font-mono text-muted-foreground/40">Due {info.absolute}</span>
+                    <button
+                      onClick={() => { setDueDate(''); setShowDuePicker(false); }}
+                      className="text-[8px] font-mono text-muted-foreground/30 hover:text-destructive/60 transition-colors"
+                    >
+                      remove
+                    </button>
+                  </div>
+                </div>
+              );
+            })() : (
+              <div className="px-4 pt-3 pb-2 border-b border-border/30">
+                {showDuePicker ? (
+                  <div className="flex items-center gap-2">
+                    <CalendarCheck size={10} strokeWidth={1.5} className="text-muted-foreground/40" />
+                    <input
+                      type="date"
+                      value={dueDate}
+                      onChange={(e) => { setDueDate(e.target.value); setShowDuePicker(false); }}
+                      autoFocus
+                      className="bg-muted/40 border border-border rounded-sm px-2 py-1.5 text-[10px] font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    />
+                    <button onClick={() => setShowDuePicker(false)} className="text-[8px] font-mono text-muted-foreground/30 hover:text-foreground transition-colors">
+                      cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowDuePicker(true)}
+                    className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground/40 hover:text-foreground transition-colors"
+                  >
+                    <CalendarCheck size={10} strokeWidth={1.5} />
+                    <span>Add due date</span>
+                  </button>
+                )}
+              </div>
+            )}
 
             <div className="p-4 space-y-4">
               {/* ─── 1. Title ─── */}
