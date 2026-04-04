@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Priority, RecurrencePattern, CustomUnit } from '@/store/taskStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { SubtaskList, Subtask } from '@/components/SubtaskList';
-import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar, Inbox } from 'lucide-react';
+import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar, Inbox, CalendarCheck, XCircle } from 'lucide-react';
 import { useLibraryStore } from '@/store/libraryStore';
 import { formatTime12h } from '@/hooks/useCurrentTime';
 
