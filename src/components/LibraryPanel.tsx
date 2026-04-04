@@ -68,6 +68,7 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
       title: item.title,
       description: item.note || undefined,
       date: new Date().toISOString().split('T')[0],
+      type: 'one-time',
       priority: 0,
       duration: item.defaultDuration,
       inWaitingRoom: true,
