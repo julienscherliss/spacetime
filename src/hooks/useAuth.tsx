@@ -34,6 +34,17 @@ export function useAuth() {
   }, []);
 
   const signOut = async () => {
+    // Clear user-scoped stores before sign-out to prevent stale data flash
+    const { useTaskStore } = await import('@/store/taskStore');
+    const { useLibraryStore } = await import('@/store/libraryStore');
+    const { useCarryStore } = await import('@/store/carryStore');
+    useTaskStore.setState({ tasks: [], editingTaskId: null, focusTaskId: null });
+    useLibraryStore.setState({ items: [] });
+    useCarryStore.setState({ carried: null });
+    try {
+      localStorage.removeItem('do-task-store');
+      localStorage.removeItem('do-library-store');
+    } catch (_) {}
     await supabase.auth.signOut();
   };
 
