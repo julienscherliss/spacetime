@@ -6,7 +6,7 @@ import { formatTime12h } from '@/hooks/useCurrentTime';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 export function CalendarView() {
-  const { tasks, routinesEnabled, setEditingTask, generateRecurringInstances } = useTaskStore();
+  const { tasks, routinesEnabled, setEditingTask, generateRecurringInstances, setViewMode, setNavigateToDate } = useTaskStore();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
@@ -158,7 +158,15 @@ export function CalendarView() {
           return (
             <button
               key={i}
-              onClick={() => setSelectedDate(isSelected ? null : day.date)}
+              onClick={() => {
+                if (isSelected) {
+                  // Second tap on selected date → navigate to day view
+                  setNavigateToDate(day.date);
+                  setViewMode('day');
+                } else {
+                  setSelectedDate(day.date);
+                }
+              }}
               className={`aspect-square flex flex-col items-center justify-center bg-card transition-all ${
                 !day.inMonth ? 'opacity-20' : ''
               } ${isSelected ? 'ring-1 ring-inset ring-primary/30' : ''} hover:bg-muted/30 ${getHeatBg(count)}`}

@@ -61,8 +61,11 @@ interface TaskState {
   editingTaskId: string | null;
   showCompletionStats: boolean;
   dailyStats: DailyStats | null;
+  /** When set, DayView should open to this date and then clear it */
+  navigateToDate: string | null;
 
   setViewMode: (mode: ViewMode) => void;
+  setNavigateToDate: (date: string | null) => void;
   toggleRoutines: () => void;
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'completed' | 'moveCount' | 'originalPriority'> & { isRoutine?: boolean }) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
@@ -267,8 +270,10 @@ export const useTaskStore = create<TaskState>()(
       editingTaskId: null,
       showCompletionStats: false,
       dailyStats: null,
+      navigateToDate: null,
 
       setViewMode: (mode) => set({ viewMode: mode }),
+      setNavigateToDate: (date) => set({ navigateToDate: date }),
       toggleRoutines: () => set((s) => ({ routinesEnabled: !s.routinesEnabled })),
 
       addTask: (taskData) => {
