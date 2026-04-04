@@ -90,6 +90,9 @@ function LibraryItem({ item, isMobile }: { item: LibraryTask; isMobile: boolean 
         e.dataTransfer.effectAllowed = 'move';
       }}
       onContextMenu={(e) => e.preventDefault()}
+      onPointerDown={handleLongPressDown}
+      onPointerUp={handleLongPressUp}
+      onPointerMove={handleLongPressMove}
       className={`group flex items-center gap-2 rounded-sm hover:bg-muted/40 transition-colors cursor-grab active:cursor-grabbing draggable-item select-none ${
         isMobile ? 'py-3 px-3' : 'py-2 px-2'
       }`}
