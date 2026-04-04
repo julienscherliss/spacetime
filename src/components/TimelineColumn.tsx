@@ -799,6 +799,21 @@ export function TimelineColumn({
           </div>
         </div>
       )}
+
+      {/* Hidden proxy input — focused synchronously on touchend to open mobile keyboard */}
+      <input
+        ref={proxyInputRef}
+        aria-hidden
+        tabIndex={-1}
+        className="absolute opacity-0 w-0 h-0 pointer-events-none"
+        style={{ top: 0, left: 0 }}
+        onInput={(e) => {
+          // Forward any typing that happens before real input mounts
+          const val = (e.target as HTMLInputElement).value;
+          setNewTaskTitle(val);
+          (e.target as HTMLInputElement).value = '';
+        }}
+      />
     </div>
   );
 }
