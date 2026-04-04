@@ -359,10 +359,8 @@ export function TimelineColumn({
         setCreating(null);
         setNewTaskTitle('');
         setNewTaskInput({ time, duration, top, height });
-        setTimeout(() => {
-          newTaskRef.current?.focus();
-          newTaskRef.current?.click(); // Helps trigger iOS keyboard
-        }, 100);
+        // Focus proxy input synchronously within touchend to open iOS keyboard
+        proxyInputRef.current?.focus();
       } else {
         setCreating(null);
       }
