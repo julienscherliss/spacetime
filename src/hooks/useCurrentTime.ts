@@ -71,8 +71,9 @@ export function getWeekBounds(dateStr: string) {
   monday.setDate(d.getDate() - ((day + 6) % 7));
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
+  const fmt = (dt: Date) => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
   return {
-    start: monday.toISOString().split('T')[0],
-    end: sunday.toISOString().split('T')[0],
+    start: fmt(monday),
+    end: fmt(sunday),
   };
 }
