@@ -4,6 +4,7 @@ import { useTaskStore } from '@/store/taskStore';
 import { useCalendarStore } from '@/store/calendarStore';
 import { useTouchDragStore } from '@/store/touchDragStore';
 import { useScheduledDragStore } from '@/store/scheduledDragStore';
+import { useCarryStore } from '@/store/carryStore';
 import { useCurrentTime, formatTime12h } from '@/hooks/useCurrentTime';
 import { TimelineColumn } from '@/components/TimelineColumn';
 import { BlockedModal } from '@/components/BlockedModal';
