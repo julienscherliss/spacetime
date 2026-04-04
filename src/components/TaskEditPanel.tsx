@@ -91,6 +91,7 @@ export function TaskEditPanel() {
   const [showDescription, setShowDescription] = useState(false);
   const [pendingUpdates, setPendingUpdates] = useState<any>(null);
   const scopeTriggeredRef = useRef(false);
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   const isRecurring = !!(task?.recurrence || task?.isRecurrenceInstance);
 
