@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useTimezoneStore, getTzAbbr, TIMEZONES } from '@/store/timezoneStore';
-import { X, Search, Globe } from 'lucide-react';
+import { X, Search, Globe, Repeat } from 'lucide-react';
 
 interface SettingsPanelProps {
   open: boolean;
