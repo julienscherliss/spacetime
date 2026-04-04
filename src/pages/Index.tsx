@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 const Index = () => {
   const { viewMode, routinesEnabled, moveOverdueToWaitingRoom } = useTaskStore();
   const [waitingOpen, setWaitingOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Move overdue tasks to waiting room periodically
   useEffect(() => {
