@@ -125,20 +125,12 @@ export function TimelineColumn({
   } | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const newTaskRef = useRef<HTMLInputElement>(null);
+  const proxyInputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-focus new task input when it appears
+  // When the real input mounts, steal focus from the proxy input
   useEffect(() => {
     if (newTaskInput && newTaskRef.current) {
-      // Use multiple attempts to force iOS keyboard
-      const focus = () => {
-        newTaskRef.current?.focus();
-      };
-      requestAnimationFrame(() => {
-        focus();
-        setTimeout(focus, 50);
-        setTimeout(focus, 150);
-        setTimeout(focus, 300);
-      });
+      newTaskRef.current.focus();
     }
   }, [newTaskInput]);
 
@@ -367,10 +359,8 @@ export function TimelineColumn({
         setCreating(null);
         setNewTaskTitle('');
         setNewTaskInput({ time, duration, top, height });
-        setTimeout(() => {
-          newTaskRef.current?.focus();
-          newTaskRef.current?.click(); // Helps trigger iOS keyboard
-        }, 100);
+        // Focus proxy input synchronously within touchend to open iOS keyboard
+        proxyInputRef.current?.focus();
       } else {
         setCreating(null);
       }
@@ -407,10 +397,7 @@ export function TimelineColumn({
       setCreating(null);
       setNewTaskTitle('');
       setNewTaskInput({ time, duration, top, height });
-      setTimeout(() => {
-        newTaskRef.current?.focus();
-        newTaskRef.current?.click();
-      }, 100);
+      proxyInputRef.current?.focus();
     };
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
@@ -812,6 +799,21 @@ export function TimelineColumn({
           </div>
         </div>
       )}
+
+      {/* Hidden proxy input — focused synchronously on touchend to open mobile keyboard */}
+      <input
+        ref={proxyInputRef}
+        aria-hidden
+        tabIndex={-1}
+        className="absolute opacity-0 w-0 h-0 pointer-events-none"
+        style={{ top: 0, left: 0 }}
+        onInput={(e) => {
+          // Forward any typing that happens before real input mounts
+          const val = (e.target as HTMLInputElement).value;
+          setNewTaskTitle(val);
+          (e.target as HTMLInputElement).value = '';
+        }}
+      />
     </div>
   );
 }
