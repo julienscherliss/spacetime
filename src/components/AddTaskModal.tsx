@@ -36,8 +36,9 @@ export function AddTaskModal() {
   return (
     <>
       <button
-        onClick={() => setOpen(true)}
-        className="p-2 rounded-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+        onClick={() => !isCarrying && setOpen(true)}
+        disabled={isCarrying}
+        className="p-2 rounded-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
       >
         <Plus size={16} strokeWidth={1.5} />
       </button>
