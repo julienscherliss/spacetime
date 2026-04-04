@@ -66,6 +66,21 @@ export function DayView() {
     return () => el.removeEventListener('touchmove', prevent);
   }, [anyDragging]);
 
+  // Track scroll end for carry mode cooldown
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    let scrollTimer: ReturnType<typeof setTimeout> | null = null;
+    const onScroll = () => {
+      if (scrollTimer) clearTimeout(scrollTimer);
+      scrollTimer = setTimeout(() => {
+        useCarryStore.getState().markScrollEnd();
+      }, 50);
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
+
   // Swipe gesture handlers
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (e.touches.length !== 1) return;
