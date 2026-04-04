@@ -66,6 +66,8 @@ export function TimelineTaskBlock({
   startHour,
 }: TimelineTaskBlockProps) {
   const taskMinutes = task.time ? parseInt(task.time.split(':')[0], 10) * 60 + parseInt(task.time.split(':')[1], 10) : 0;
+  const taskEndMinutes = taskMinutes + (task.duration || 30);
+  const isOverdue = !task.completed && !!task.time && taskEndMinutes < nowMinutes;
   const isDraggingThis = useScheduledDragStore((s) => s.active && s.taskId === task.id);
   const isCarried = useCarryStore((s) => s.carried?.taskId === task.id);
 
