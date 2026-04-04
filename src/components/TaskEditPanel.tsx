@@ -292,18 +292,53 @@ export function TaskEditPanel() {
             className="bg-card border border-border rounded-t-lg sm:rounded-sm w-full sm:max-w-sm shadow-lg max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* ─── Schedule context (read-only) ─── */}
-            <div className="px-4 pt-3 pb-2 border-b border-border/30 flex items-center gap-2 text-[10px] font-mono text-muted-foreground/50">
-              <Calendar size={10} strokeWidth={1.5} />
-              <span>{formatScheduleContext(task.date, task.time, task.duration)}</span>
-              {isRecurring && (
-                <>
-                  <span className="text-muted-foreground/20">·</span>
-                  <Repeat size={9} strokeWidth={1.5} />
-                  <span>{recurrenceLabel(task.recurrence)}</span>
-                </>
-              )}
-            </div>
+            {/* ─── Due date header ─── */}
+            {dueDate ? (() => {
+              const info = getDueDateText(dueDate);
+              return (
+                <div className="px-4 pt-3 pb-2 border-b border-border/30">
+                  <div className={`flex items-center gap-1.5 text-[11px] font-mono font-bold ${info.isOverdue ? 'text-destructive' : 'text-foreground/70'}`}>
+                    <CalendarCheck size={11} strokeWidth={1.5} />
+                    <span>{info.relative}</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[9px] font-mono text-muted-foreground/40">Due {info.absolute}</span>
+                    <button
+                      onClick={() => { setDueDate(''); setShowDuePicker(false); }}
+                      className="text-[8px] font-mono text-muted-foreground/30 hover:text-destructive/60 transition-colors"
+                    >
+                      remove
+                    </button>
+                  </div>
+                </div>
+              );
+            })() : (
+              <div className="px-4 pt-3 pb-2 border-b border-border/30">
+                {showDuePicker ? (
+                  <div className="flex items-center gap-2">
+                    <CalendarCheck size={10} strokeWidth={1.5} className="text-muted-foreground/40" />
+                    <input
+                      type="date"
+                      value={dueDate}
+                      onChange={(e) => { setDueDate(e.target.value); setShowDuePicker(false); }}
+                      autoFocus
+                      className="bg-muted/40 border border-border rounded-sm px-2 py-1.5 text-[10px] font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    />
+                    <button onClick={() => setShowDuePicker(false)} className="text-[8px] font-mono text-muted-foreground/30 hover:text-foreground transition-colors">
+                      cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowDuePicker(true)}
+                    className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground/40 hover:text-foreground transition-colors"
+                  >
+                    <CalendarCheck size={10} strokeWidth={1.5} />
+                    <span>Add due date</span>
+                  </button>
+                )}
+              </div>
+            )}
 
             <div className="p-4 space-y-4">
               {/* ─── 1. Title ─── */}
