@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useTimezoneStore, getTzAbbr, TIMEZONES } from '@/store/timezoneStore';
-import { X, Search, Globe } from 'lucide-react';
+import { X, Search, Globe, Repeat } from 'lucide-react';
 
 interface SettingsPanelProps {
   open: boolean;
@@ -8,7 +8,7 @@ interface SettingsPanelProps {
 }
 
 export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
-  const { timezone, setTimezone } = useTimezoneStore();
+  const { timezone, setTimezone, routinesFixedTime, setRoutinesFixedTime } = useTimezoneStore();
   const [search, setSearch] = useState('');
 
   const filtered = useMemo(() => {
@@ -76,6 +76,30 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Routines timezone behavior */}
+          <div className="border-t border-border/30 pt-4">
+            <div className="flex items-center gap-1.5 mb-2">
+              <Repeat size={12} strokeWidth={1.5} className="text-muted-foreground" />
+              <span className="text-[10px] font-mono tracking-[0.15em] text-muted-foreground">ROUTINES</span>
+            </div>
+            <button
+              onClick={() => setRoutinesFixedTime(!routinesFixedTime)}
+              className="w-full flex items-center justify-between bg-muted/30 border border-border/50 rounded-sm p-2.5"
+            >
+              <div className="text-left">
+                <div className="text-[11px] font-mono text-foreground">Keep routine times fixed</div>
+                <div className="text-[9px] font-mono text-muted-foreground/50 mt-0.5">
+                  Routines stay at the same clock time regardless of timezone
+                </div>
+              </div>
+              <div className={`w-8 h-[18px] rounded-full transition-colors flex items-center px-0.5 ${
+                routinesFixedTime ? 'bg-primary justify-end' : 'bg-border justify-start'
+              }`}>
+                <div className="w-3.5 h-3.5 rounded-full bg-white shadow-sm" />
+              </div>
+            </button>
           </div>
         </div>
       </div>
