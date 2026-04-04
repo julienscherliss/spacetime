@@ -8,7 +8,7 @@ interface SettingsPanelProps {
 }
 
 export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
-  const { timezone, setTimezone } = useTimezoneStore();
+  const { timezone, setTimezone, routinesFixedTime, setRoutinesFixedTime } = useTimezoneStore();
   const [search, setSearch] = useState('');
 
   const filtered = useMemo(() => {
