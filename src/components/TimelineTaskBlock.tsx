@@ -94,7 +94,7 @@ export function TimelineTaskBlock({
   };
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    if (isLocked || isResizingThis) return;
+    if (isResizingThis) return;
     const target = e.target as HTMLElement;
     if (target.closest('button, input, textarea, [data-touch-ignore]')) return;
 
@@ -104,6 +104,9 @@ export function TimelineTaskBlock({
 
     pointerStartRef.current = { x: e.clientX, y: e.clientY, pointerId: e.pointerId };
     longPressFired.current = false;
+
+    // Locked tasks: allow tap-to-edit but skip drag/carry setup
+    if (isLocked) return;
 
     const blockRect = elRef.current?.getBoundingClientRect();
     const grabOffset = blockRect ? e.clientY - blockRect.top : 0;
