@@ -189,6 +189,7 @@ export function TimelineTaskBlock({
     };
 
     const handleCancel = () => {
+      clearLongPress();
       useScheduledDragStore.getState().cancel();
       pointerStartRef.current = null;
       didDragRef.current = false;
