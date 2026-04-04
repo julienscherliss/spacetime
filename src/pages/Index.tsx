@@ -11,11 +11,13 @@ import { CalendarPanel } from '@/components/CalendarPanel';
 import { LibraryPanel } from '@/components/LibraryPanel';
 import { WaitingRoom } from '@/components/WaitingRoom';
 import { TouchDragGhost } from '@/components/TouchDragGhost';
+import { SettingsPanel } from '@/components/SettingsPanel';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Index = () => {
   const { viewMode, routinesEnabled, moveOverdueToWaitingRoom } = useTaskStore();
   const [waitingOpen, setWaitingOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Move overdue tasks to waiting room periodically
   useEffect(() => {
@@ -29,6 +31,13 @@ const Index = () => {
     const handler = () => setWaitingOpen((o) => !o);
     window.addEventListener('toggle-waiting-room', handler);
     return () => window.removeEventListener('toggle-waiting-room', handler);
+  }, []);
+
+  // Listen for settings toggle from nav
+  useEffect(() => {
+    const handler = () => setSettingsOpen((o) => !o);
+    window.addEventListener('toggle-settings', handler);
+    return () => window.removeEventListener('toggle-settings', handler);
   }, []);
 
   return (
@@ -74,6 +83,7 @@ const Index = () => {
       <LibraryPanel />
       <WaitingRoom open={waitingOpen} onClose={() => setWaitingOpen(false)} />
       <TouchDragGhost />
+      <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 };
