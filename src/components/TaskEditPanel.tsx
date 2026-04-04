@@ -3,9 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Priority, RecurrencePattern, CustomUnit } from '@/store/taskStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { SubtaskList, Subtask } from '@/components/SubtaskList';
-import { X, Calendar, Clock, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, FileText } from 'lucide-react';
+import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar, Inbox } from 'lucide-react';
 import { useLibraryStore } from '@/store/libraryStore';
-import { minutesToTime, timeToMinutes, formatTime12h } from '@/hooks/useCurrentTime';
+import { formatTime12h } from '@/hooks/useCurrentTime';
 
 const PRIORITY_LABELS = ['Flex', 'Semi', 'Fixed', 'Lock'] as const;
 const PRIORITY_COLORS = [
@@ -56,6 +56,15 @@ function recurrenceLabel(r?: RecurrencePattern): string {
   }
 }
 
+function formatScheduleContext(date: string, time?: string, duration?: number): string {
+  const d = new Date(date + 'T12:00:00');
+  const dayStr = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  const parts = [dayStr];
+  if (time) parts.push(`at ${formatTime12h(time)}`);
+  if (duration) parts.push(`· ${duration}m`);
+  return parts.join(' ');
+}
+
 export function TaskEditPanel() {
   const {
     tasks, editingTaskId, setEditingTask, updateTask, updateFutureInstances,
@@ -67,9 +76,6 @@ export function TaskEditPanel() {
   const [title, setTitle] = useState(task?.title || '');
   const [description, setDescription] = useState(task?.description || '');
   const [subtasks, setSubtasks] = useState<Subtask[]>(task?.subtasks || []);
-  const [time, setTime] = useState(task?.time || '');
-  const [duration, setDuration] = useState(task?.duration || 30);
-  const [date, setDate] = useState(task?.date || '');
   const [priority, setPriority] = useState<Priority>(task?.priority || 0);
   const [recurrenceType, setRecurrenceType] = useState(recurrenceToType(task?.recurrence));
   const [weeklyDays, setWeeklyDays] = useState<number[]>(
@@ -88,7 +94,6 @@ export function TaskEditPanel() {
   const [showRecurrence, setShowRecurrence] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showEditScope, setShowEditScope] = useState(false);
-  const [showDescription, setShowDescription] = useState(false);
   const [pendingUpdates, setPendingUpdates] = useState<any>(null);
   const scopeTriggeredRef = useRef(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -100,9 +105,6 @@ export function TaskEditPanel() {
       setTitle(task.title);
       setDescription(task.description || '');
       setSubtasks(task.subtasks || []);
-      setTime(task.time || '');
-      setDuration(task.duration || 30);
-      setDate(task.date);
       setPriority(task.priority);
       setIsRoutine(task.isRoutine !== false && task.type === 'recurring');
       setIsLinked(task.linked || false);
@@ -116,9 +118,15 @@ export function TaskEditPanel() {
       setCustomUnit(task.recurrence?.type === 'custom' ? task.recurrence.unit : 'weeks');
       setShowDeleteConfirm(false);
       setShowEditScope(false);
-      setShowDescription(!!(task.description || (task.subtasks && task.subtasks.length > 0)));
       setPendingUpdates(null);
       scopeTriggeredRef.current = false;
+    }
+  }, [task?.id]);
+
+  // Auto-focus title for new tasks
+  useEffect(() => {
+    if (task && titleInputRef.current) {
+      titleInputRef.current.focus();
     }
   }, [task?.id]);
 
@@ -128,9 +136,9 @@ export function TaskEditPanel() {
       case 'daily': return { type: 'daily' };
       case 'weekdays': return { type: 'weekdays' };
       case 'weekly': return { type: 'weekly', days: weeklyDays.length > 0 ? weeklyDays : [new Date().getDay()] };
-      case 'monthly': return { type: 'monthly', dayOfMonth: new Date(date + 'T12:00:00').getDate() };
+      case 'monthly': return { type: 'monthly', dayOfMonth: new Date((task?.date || '') + 'T12:00:00').getDate() };
       case 'yearly': {
-        const d = new Date(date + 'T12:00:00');
+        const d = new Date((task?.date || '') + 'T12:00:00');
         return { type: 'yearly', month: d.getMonth(), dayOfMonth: d.getDate() };
       }
       case 'custom': {
@@ -156,9 +164,6 @@ export function TaskEditPanel() {
       title,
       description: description || undefined,
       subtasks: subtasks.length > 0 ? subtasks : undefined,
-      time,
-      duration,
-      date,
       priority,
       recurrence,
       type: recurrence ? 'recurring' as const : 'one-time' as const,
@@ -187,9 +192,7 @@ export function TaskEditPanel() {
 
     if (isRecurring && !showEditScope) {
       const hasRecurrenceChange = JSON.stringify(task.recurrence) !== JSON.stringify(updates.recurrence);
-      const hasContentChange = task.title !== updates.title || task.time !== updates.time ||
-        task.duration !== updates.duration || task.priority !== updates.priority;
-      // Linked toggle should only affect this instance — never show scope dialog for it
+      const hasContentChange = task.title !== updates.title || task.priority !== updates.priority;
       const onlyLinkedChanged = !hasRecurrenceChange && !hasContentChange && task.linked !== updates.linked;
 
       if ((hasRecurrenceChange || hasContentChange) && !onlyLinkedChanged) {
@@ -216,7 +219,7 @@ export function TaskEditPanel() {
 
   const handleSaveThisOnly = () => {
     if (!task || !pendingUpdates) return;
-    updateTask(task.id, { ...pendingUpdates, date });
+    updateTask(task.id, { ...pendingUpdates, date: task.date });
     setShowEditScope(false);
     setPendingUpdates(null);
     scopeTriggeredRef.current = false;
@@ -250,19 +253,6 @@ export function TaskEditPanel() {
     }
   };
 
-  const handleFocus = () => {
-    if (!task) return;
-    if (showEditScope) return;
-    scopeTriggeredRef.current = false;
-    handleSave();
-    if (scopeTriggeredRef.current) return;
-    setFocusTask(task.id);
-    setEditingTask(null);
-    setViewMode('focus');
-  };
-
-  const endTime = time ? minutesToTime(timeToMinutes(time) + duration) : '';
-
   return (
     <AnimatePresence>
       {task && (
@@ -271,432 +261,373 @@ export function TaskEditPanel() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-[2px] p-4"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-background/60 backdrop-blur-[2px]"
           onClick={handleClose}
         >
           <motion.div
-            initial={{ opacity: 0, y: 12, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 12, scale: 0.98 }}
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 24 }}
             transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className="bg-card border border-border rounded-sm p-4 w-full max-w-xs shadow-lg max-h-[85vh] overflow-y-auto"
+            className="bg-card border border-border rounded-t-lg sm:rounded-sm w-full sm:max-w-sm shadow-lg max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header */}
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex-1 mr-3">
+            {/* ─── Schedule context (read-only) ─── */}
+            <div className="px-4 pt-3 pb-2 border-b border-border/30 flex items-center gap-2 text-[10px] font-mono text-muted-foreground/50">
+              <Calendar size={10} strokeWidth={1.5} />
+              <span>{formatScheduleContext(task.date, task.time, task.duration)}</span>
+              {isRecurring && (
+                <>
+                  <span className="text-muted-foreground/20">·</span>
+                  <Repeat size={9} strokeWidth={1.5} />
+                  <span>{recurrenceLabel(task.recurrence)}</span>
+                </>
+              )}
+            </div>
+
+            <div className="p-4 space-y-4">
+              {/* ─── 1. Title ─── */}
+              <div>
                 <input
                   ref={titleInputRef}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full bg-transparent font-display font-bold text-foreground text-sm leading-tight focus:outline-none border-b border-transparent focus:border-border transition-colors"
+                  placeholder="Task name..."
+                  className="w-full bg-transparent font-display font-bold text-foreground text-base leading-tight focus:outline-none placeholder:text-muted-foreground/20"
                 />
-                <div className="mt-1.5 flex items-center gap-2">
-                  <PriorityBadge priority={priority} />
-                  {(isRoutine || (recurrenceType !== 'none' && isRoutine)) && (
-                    <span className="text-[7px] font-mono text-muted-foreground/40 tracking-widest">
-                      <Repeat size={8} className="inline mr-0.5" />
-                      ROUTINE
+              </div>
+
+              {/* ─── 2. Priority ─── */}
+              <div>
+                <div className="flex gap-1.5">
+                  {([0, 1, 2, 3] as Priority[]).map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => setPriority(p)}
+                      className={`flex-1 py-2 rounded-sm text-[10px] font-mono tracking-wider border transition-colors ${
+                        priority === p
+                          ? `${PRIORITY_COLORS[p]} bg-muted/60`
+                          : 'border-border text-muted-foreground/40 hover:border-border hover:text-muted-foreground/60'
+                      }`}
+                    >
+                      {PRIORITY_LABELS[p]}
+                    </button>
+                  ))}
+                </div>
+                {/* Link/unlink for recurring */}
+                {isRecurring && (
+                  <div className="mt-2 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      {isLinked ? <Link size={10} className="text-primary/50" /> : <Unlink size={10} className="text-muted-foreground/30" />}
+                      <span className="text-[9px] font-mono tracking-wider text-muted-foreground/50">
+                        {isLinked ? 'LINKED' : 'UNLINKED'}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setIsLinked(!isLinked)}
+                      className={`relative w-7 h-4 rounded-full transition-colors ${
+                        isLinked ? 'bg-primary/30' : 'bg-muted'
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-0.5 w-3 h-3 rounded-full transition-all ${
+                          isLinked ? 'left-3.5 bg-primary' : 'left-0.5 bg-muted-foreground/40'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* ─── 3. Notes / description ─── */}
+              <div>
+                <label className="block text-[8px] font-mono tracking-widest text-muted-foreground/40 mb-1.5">NOTES</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Add details, context, links..."
+                  rows={3}
+                  className="w-full bg-muted/30 border border-border/50 rounded-sm px-3 py-2 text-[11px] font-mono text-foreground/70 placeholder:text-muted-foreground/20 focus:outline-none focus:border-primary/20 resize-none leading-relaxed"
+                />
+              </div>
+
+              {/* ─── 4. Subtasks ─── */}
+              <div>
+                <label className="block text-[8px] font-mono tracking-widest text-muted-foreground/40 mb-1.5">
+                  SUBTASKS {subtasks.length > 0 && (
+                    <span className="text-muted-foreground/25 ml-1">
+                      {subtasks.filter(s => s.completed).length}/{subtasks.length}
                     </span>
                   )}
-                  {isLinked && isRecurring && (
-                    <span className="text-[7px] font-mono text-primary/40 tracking-widest">
-                      <Link size={8} className="inline mr-0.5" />
-                      LINKED
-                    </span>
-                  )}
+                </label>
+                <div className="bg-muted/20 border border-border/30 rounded-sm p-2">
+                  <SubtaskList subtasks={subtasks} onChange={setSubtasks} />
                 </div>
               </div>
-              <button
-                onClick={handleClose}
-                className="p-0.5 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <X size={14} strokeWidth={1.5} />
-              </button>
-            </div>
 
-            {/* Description & Subtasks toggle */}
-            <button
-              onClick={() => setShowDescription(!showDescription)}
-              className="flex items-center gap-1.5 text-[9px] font-mono tracking-wider text-muted-foreground/40 hover:text-foreground transition-colors mb-2 w-full"
-            >
-              <FileText size={10} strokeWidth={1.5} />
-              <span className="flex-1 text-left">
-                {description || subtasks.length > 0 ? 'DETAILS' : 'ADD DETAILS'}
-              </span>
-              <ChevronDown size={9} className={`transition-transform ${showDescription ? 'rotate-180' : ''}`} />
-            </button>
-
-            <AnimatePresence>
-              {showDescription && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.15 }}
-                  className="overflow-hidden mb-3"
+              {/* ─── 5. Advanced (collapsed) ─── */}
+              <div className="border-t border-border/20 pt-3">
+                <button
+                  onClick={() => setShowRecurrence(!showRecurrence)}
+                  className="flex items-center gap-1.5 text-[9px] font-mono tracking-wider text-muted-foreground/40 hover:text-foreground transition-colors w-full"
                 >
-                  <div className="space-y-2 pl-3 border-l border-border/30">
-                    <textarea
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      placeholder="Add a description..."
-                      rows={2}
-                      className="w-full bg-transparent text-[10px] font-mono text-foreground/70 placeholder:text-muted-foreground/20 focus:outline-none resize-none"
-                    />
-                    <div>
-                      <label className="block text-[7px] font-mono tracking-widest text-muted-foreground/40 mb-1">SUBTASKS</label>
-                      <SubtaskList subtasks={subtasks} onChange={setSubtasks} />
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                  <Repeat size={10} strokeWidth={1.5} />
+                  <span className="flex-1 text-left">{recurrenceLabel(buildRecurrence())}</span>
+                  <ChevronDown size={9} className={`transition-transform ${showRecurrence ? 'rotate-180' : ''}`} />
+                </button>
 
-            {/* Fields */}
-            <div className="space-y-2 mb-3">
-              <div className="flex items-center gap-2">
-                <Calendar size={11} className="text-muted-foreground/50 shrink-0" strokeWidth={1.5} />
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="flex-1 bg-muted/50 border border-border rounded-sm px-2 py-1.5 text-[10px] font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <Clock size={11} className="text-muted-foreground/50 shrink-0" strokeWidth={1.5} />
-                <input
-                  type="time"
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                  className="flex-1 bg-muted/50 border border-border rounded-sm px-2 py-1.5 text-[10px] font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
-                />
-                <span className="text-[8px] font-mono text-muted-foreground/40">→</span>
-                <span className="text-[10px] font-mono text-muted-foreground/60">{endTime}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-mono text-muted-foreground/50 w-[11px] text-center">⏱</span>
-                <input
-                  type="number"
-                  value={duration}
-                  onChange={(e) => setDuration(Number(e.target.value))}
-                  min={5}
-                  step={5}
-                  className="flex-1 bg-muted/50 border border-border rounded-sm px-2 py-1.5 text-[10px] font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
-                />
-                <span className="text-[8px] font-mono text-muted-foreground/40">MIN</span>
-              </div>
-            </div>
+                <AnimatePresence>
+                  {showRecurrence && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="mt-2 space-y-1 pl-4 border-l border-border/50">
+                        {RECURRENCE_OPTIONS.map((opt) => (
+                          <button
+                            key={opt.value}
+                            onClick={() => {
+                              setRecurrenceType(opt.value);
+                              if (opt.value === 'none') {
+                                setIsRoutine(false);
+                                setIsLinked(false);
+                              } else if (recurrenceType === 'none') {
+                                setIsRoutine(true);
+                              }
+                              if (opt.value !== 'custom') {
+                                setShowRecurrence(false);
+                              }
+                            }}
+                            className={`block w-full text-left text-[9px] font-mono tracking-wider py-1.5 px-2 rounded-sm transition-colors ${
+                              recurrenceType === opt.value
+                                ? 'text-foreground bg-muted/60'
+                                : 'text-muted-foreground/50 hover:text-foreground hover:bg-muted/30'
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
 
-            {/* Priority selector */}
-            <div className="mb-3">
-              <label className="block text-[8px] font-mono tracking-widest text-muted-foreground/50 mb-1.5">PRIORITY</label>
-              <div className="flex gap-1.5">
-                {([0, 1, 2, 3] as Priority[]).map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => setPriority(p)}
-                    className={`flex-1 py-1.5 rounded-sm text-[9px] font-mono tracking-wider border transition-colors ${
-                      priority === p
-                        ? `${PRIORITY_COLORS[p]} bg-muted/60`
-                        : 'border-border text-muted-foreground/50 hover:border-border'
-                    }`}
-                  >
-                    {PRIORITY_LABELS[p]}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Recurrence */}
-            <div className="mb-3">
-              <button
-                onClick={() => setShowRecurrence(!showRecurrence)}
-                className="flex items-center gap-1.5 text-[9px] font-mono tracking-wider text-muted-foreground/60 hover:text-foreground transition-colors w-full"
-              >
-                <Repeat size={10} strokeWidth={1.5} />
-                <span className="flex-1 text-left">{recurrenceLabel(buildRecurrence())}</span>
-                <ChevronDown size={9} className={`transition-transform ${showRecurrence ? 'rotate-180' : ''}`} />
-              </button>
-
-              <AnimatePresence>
-                {showRecurrence && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.15 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="mt-2 space-y-1 pl-4 border-l border-border/50">
-                      {RECURRENCE_OPTIONS.map((opt) => (
-                        <button
-                          key={opt.value}
-                          onClick={() => {
-                            setRecurrenceType(opt.value);
-                            if (opt.value === 'none') {
-                              setIsRoutine(false);
-                              setIsLinked(false);
-                            } else if (recurrenceType === 'none') {
-                              setIsRoutine(true);
-                            }
-                            if (opt.value !== 'custom') {
-                              setShowRecurrence(false);
-                            }
-                          }}
-                          className={`block w-full text-left text-[9px] font-mono tracking-wider py-1 px-2 rounded-sm transition-colors ${
-                            recurrenceType === opt.value
-                              ? 'text-foreground bg-muted/60'
-                              : 'text-muted-foreground/50 hover:text-foreground hover:bg-muted/30'
-                          }`}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-
-                      {/* Weekly day picker */}
-                      {recurrenceType === 'weekly' && (
-                        <div className="pt-2">
-                          <label className="block text-[7px] font-mono tracking-widest text-muted-foreground/40 mb-1.5">REPEAT ON</label>
-                          <div className="flex gap-1">
-                            {DAY_LABELS.map((label, i) => (
-                              <button
-                                key={i}
-                                onClick={() => {
-                                  setWeeklyDays(prev =>
-                                    prev.includes(i)
-                                      ? prev.length > 1 ? prev.filter(d => d !== i) : prev
-                                      : [...prev, i]
-                                  );
-                                }}
-                                className={`w-7 h-7 rounded-sm text-[8px] font-mono transition-colors ${
-                                  weeklyDays.includes(i)
-                                    ? 'bg-primary/10 text-primary border border-primary/20'
-                                    : 'text-muted-foreground/40 border border-border hover:border-border'
-                                }`}
-                              >
-                                {label[0]}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Custom repeat builder */}
-                      {recurrenceType === 'custom' && (
-                        <div className="pt-2 space-y-2.5">
-                          <label className="block text-[7px] font-mono tracking-widest text-muted-foreground/40">REPEAT EVERY</label>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="number"
-                              value={customInterval}
-                              onChange={(e) => setCustomInterval(Math.max(1, Number(e.target.value)))}
-                              min={1}
-                              className="w-12 bg-muted/50 border border-border rounded-sm px-2 py-1.5 text-[10px] font-mono text-foreground text-center focus:outline-none focus:ring-1 focus:ring-primary/30"
-                            />
-                            <div className="flex gap-0.5">
-                              {UNIT_OPTIONS.map((u) => (
+                        {recurrenceType === 'weekly' && (
+                          <div className="pt-2">
+                            <label className="block text-[7px] font-mono tracking-widest text-muted-foreground/40 mb-1.5">REPEAT ON</label>
+                            <div className="flex gap-1">
+                              {DAY_LABELS.map((label, i) => (
                                 <button
-                                  key={u.value}
-                                  onClick={() => setCustomUnit(u.value)}
-                                  className={`px-2 py-1.5 rounded-sm text-[8px] font-mono tracking-wider border transition-colors ${
-                                    customUnit === u.value
-                                      ? 'text-foreground bg-muted/60 border-border'
-                                      : 'text-muted-foreground/40 border-transparent hover:text-foreground'
+                                  key={i}
+                                  onClick={() => {
+                                    setWeeklyDays(prev =>
+                                      prev.includes(i)
+                                        ? prev.length > 1 ? prev.filter(d => d !== i) : prev
+                                        : [...prev, i]
+                                    );
+                                  }}
+                                  className={`w-7 h-7 rounded-sm text-[8px] font-mono transition-colors ${
+                                    weeklyDays.includes(i)
+                                      ? 'bg-primary/10 text-primary border border-primary/20'
+                                      : 'text-muted-foreground/40 border border-border hover:border-border'
                                   }`}
                                 >
-                                  {u.label}
+                                  {label[0]}
                                 </button>
                               ))}
                             </div>
                           </div>
+                        )}
 
-                          {customUnit === 'weeks' && (
-                            <div>
-                              <label className="block text-[7px] font-mono tracking-widest text-muted-foreground/40 mb-1.5">ON THESE DAYS</label>
-                              <div className="flex gap-1">
-                                {DAY_LABELS.map((label, i) => (
+                        {recurrenceType === 'custom' && (
+                          <div className="pt-2 space-y-2.5">
+                            <label className="block text-[7px] font-mono tracking-widest text-muted-foreground/40">REPEAT EVERY</label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                value={customInterval}
+                                onChange={(e) => setCustomInterval(Math.max(1, Number(e.target.value)))}
+                                min={1}
+                                className="w-12 bg-muted/50 border border-border rounded-sm px-2 py-1.5 text-[10px] font-mono text-foreground text-center focus:outline-none focus:ring-1 focus:ring-primary/30"
+                              />
+                              <div className="flex gap-0.5">
+                                {UNIT_OPTIONS.map((u) => (
                                   <button
-                                    key={i}
-                                    onClick={() => {
-                                      setWeeklyDays(prev =>
-                                        prev.includes(i)
-                                          ? prev.length > 1 ? prev.filter(d => d !== i) : prev
-                                          : [...prev, i]
-                                      );
-                                    }}
-                                    className={`w-7 h-7 rounded-sm text-[8px] font-mono transition-colors ${
-                                      weeklyDays.includes(i)
-                                        ? 'bg-primary/10 text-primary border border-primary/20'
-                                        : 'text-muted-foreground/40 border border-border hover:border-border'
+                                    key={u.value}
+                                    onClick={() => setCustomUnit(u.value)}
+                                    className={`px-2 py-1.5 rounded-sm text-[8px] font-mono tracking-wider border transition-colors ${
+                                      customUnit === u.value
+                                        ? 'text-foreground bg-muted/60 border-border'
+                                        : 'text-muted-foreground/40 border-transparent hover:text-foreground'
                                     }`}
                                   >
-                                    {label[0]}
+                                    {u.label}
                                   </button>
                                 ))}
                               </div>
                             </div>
-                          )}
 
-                          {customUnit === 'months' && (
-                            <p className="text-[8px] font-mono text-muted-foreground/40">
-                              On day {new Date(date + 'T12:00:00').getDate()} of each month
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
+                            {customUnit === 'weeks' && (
+                              <div>
+                                <label className="block text-[7px] font-mono tracking-widest text-muted-foreground/40 mb-1.5">ON THESE DAYS</label>
+                                <div className="flex gap-1">
+                                  {DAY_LABELS.map((label, i) => (
+                                    <button
+                                      key={i}
+                                      onClick={() => {
+                                        setWeeklyDays(prev =>
+                                          prev.includes(i)
+                                            ? prev.length > 1 ? prev.filter(d => d !== i) : prev
+                                            : [...prev, i]
+                                        );
+                                      }}
+                                      className={`w-7 h-7 rounded-sm text-[8px] font-mono transition-colors ${
+                                        weeklyDays.includes(i)
+                                          ? 'bg-primary/10 text-primary border border-primary/20'
+                                          : 'text-muted-foreground/40 border border-border hover:border-border'
+                                      }`}
+                                    >
+                                      {label[0]}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {customUnit === 'months' && (
+                              <p className="text-[8px] font-mono text-muted-foreground/40">
+                                On day {new Date((task?.date || '') + 'T12:00:00').getDate()} of each month
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Routine toggle */}
+                {recurrenceType !== 'none' && (
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className="text-[9px] font-mono tracking-wider text-muted-foreground/50">
+                      ROUTINE
+                    </span>
+                    <button
+                      onClick={() => setIsRoutine(!isRoutine)}
+                      className={`relative w-7 h-4 rounded-full transition-colors ${
+                        isRoutine ? 'bg-primary/30' : 'bg-muted'
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-0.5 w-3 h-3 rounded-full transition-all ${
+                          isRoutine ? 'left-3.5 bg-primary' : 'left-0.5 bg-muted-foreground/40'
+                        }`}
+                      />
+                    </button>
+                  </div>
                 )}
-              </AnimatePresence>
-            </div>
-
-            {/* Routine toggle */}
-            {recurrenceType !== 'none' && (
-              <div className="mb-3 flex items-center justify-between">
-                <span className="text-[9px] font-mono tracking-wider text-muted-foreground/60">
-                  ROUTINE
-                </span>
-                <button
-                  onClick={() => setIsRoutine(!isRoutine)}
-                  className={`relative w-7 h-4 rounded-full transition-colors ${
-                    isRoutine ? 'bg-primary/30' : 'bg-muted'
-                  }`}
-                >
-                  <span
-                    className={`absolute top-0.5 w-3 h-3 rounded-full transition-all ${
-                      isRoutine ? 'left-3.5 bg-primary' : 'left-0.5 bg-muted-foreground/40'
-                    }`}
-                  />
-                </button>
               </div>
-            )}
 
-            {/* Link/Unlink toggle */}
-            {isRecurring && (
-              <div className="mb-3 flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  {isLinked ? <Link size={10} className="text-primary/50" /> : <Unlink size={10} className="text-muted-foreground/30" />}
-                  <span className="text-[9px] font-mono tracking-wider text-muted-foreground/60">
-                    {isLinked ? 'LINKED' : 'UNLINKED'}
-                  </span>
+              {/* Move info */}
+              {task.moveCount > 0 && (
+                <div className="text-[8px] font-mono text-muted-foreground/30 tracking-widest">
+                  MOVED {task.moveCount}× · ORIGINALLY {PRIORITY_LABELS[task.originalPriority].toUpperCase()}
                 </div>
-                <button
-                  onClick={() => setIsLinked(!isLinked)}
-                  className={`relative w-7 h-4 rounded-full transition-colors ${
-                    isLinked ? 'bg-primary/30' : 'bg-muted'
-                  }`}
-                >
-                  <span
-                    className={`absolute top-0.5 w-3 h-3 rounded-full transition-all ${
-                      isLinked ? 'left-3.5 bg-primary' : 'left-0.5 bg-muted-foreground/40'
-                    }`}
-                  />
-                </button>
-              </div>
-            )}
+              )}
 
-            {/* Linked info */}
-            {isLinked && isRecurring && (
-              <p className="text-[8px] font-mono text-muted-foreground/30 mb-3 pl-1">
-                Changes to time, duration, or notes will apply to all future instances.
-              </p>
-            )}
-
-            {/* Move info */}
-            {task.moveCount > 0 && (
-              <div className="text-[8px] font-mono text-muted-foreground/40 tracking-widest mb-3">
-                MOVED {task.moveCount}× · ORIGINALLY {PRIORITY_LABELS[task.originalPriority].toUpperCase()}
-              </div>
-            )}
-
-            {/* Waiting room info */}
-            {(task.waitingRoomCount || 0) > 0 && (
-              <div className="text-[8px] font-mono text-primary/40 tracking-widest mb-3">
-                ENTERED WAITING ROOM {task.waitingRoomCount}×
-              </div>
-            )}
-
-            {/* Edit scope prompt */}
-            {showEditScope && (
-              <div className="mb-3 p-2.5 border border-border rounded-sm bg-muted/30">
-                <p className="text-[9px] font-mono text-foreground/70 mb-2">Apply changes to:</p>
-                <div className="flex gap-1.5">
-                  <button
-                    onClick={handleSaveThisOnly}
-                    className="flex-1 py-1.5 rounded-sm border border-border text-[8px] font-mono tracking-wider text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    This only
-                  </button>
-                  <button
-                    onClick={handleSaveAllFuture}
-                    className="flex-1 py-1.5 rounded-sm border border-primary/20 text-[8px] font-mono tracking-wider text-primary hover:bg-primary/5 transition-colors"
-                  >
-                    All future
-                  </button>
+              {/* Edit scope prompt */}
+              {showEditScope && (
+                <div className="p-2.5 border border-border rounded-sm bg-muted/30">
+                  <p className="text-[9px] font-mono text-foreground/70 mb-2">Apply changes to:</p>
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={handleSaveThisOnly}
+                      className="flex-1 py-1.5 rounded-sm border border-border text-[8px] font-mono tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      This only
+                    </button>
+                    <button
+                      onClick={handleSaveAllFuture}
+                      className="flex-1 py-1.5 rounded-sm border border-primary/20 text-[8px] font-mono tracking-wider text-primary hover:bg-primary/5 transition-colors"
+                    >
+                      All future
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Actions */}
-            {!showEditScope && (
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => {
-                    if (!task) return;
-                    useLibraryStore.getState().addFromSchedule(task.title, task.duration || 30);
-                    deleteTask(task.id);
-                    setEditingTask(null);
-                  }}
-                  className="p-2 rounded-sm border border-border text-muted-foreground hover:text-foreground hover:border-primary/20 transition-colors"
-                  title="Send to Library"
-                >
-                  <Archive size={12} strokeWidth={1.5} />
-                </button>
-                <button
-                  onClick={() => {
-                    if (isRecurring) {
-                      setShowDeleteConfirm(true);
-                    } else {
-                      deleteTask(task.id);
+              {/* ─── 6. Actions ─── */}
+              {!showEditScope && (
+                <div className="flex items-center gap-1.5 pt-2 border-t border-border/20">
+                  <button
+                    onClick={() => {
+                      if (!task) return;
+                      updateTask(task.id, { inWaitingRoom: true, time: undefined });
                       setEditingTask(null);
-                    }
-                  }}
-                  className="p-2 rounded-sm border border-border text-muted-foreground hover:text-destructive hover:border-destructive/20 transition-colors"
-                >
-                  <Trash2 size={12} strokeWidth={1.5} />
-                </button>
-              </div>
-            )}
-
-            {/* Delete confirmation for recurring */}
-            {showDeleteConfirm && (
-              <div className="mt-3 p-2.5 border border-border rounded-sm bg-muted/30">
-                <p className="text-[9px] font-mono text-foreground/70 mb-2">Delete routine task?</p>
-                <div className="flex gap-1.5">
-                  <button
-                    onClick={() => { deleteTask(task.id); setEditingTask(null); }}
-                    className="flex-1 py-1.5 rounded-sm border border-border text-[8px] font-mono tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-sm border border-border text-[9px] font-mono tracking-wider text-muted-foreground/50 hover:text-foreground hover:border-primary/20 transition-colors"
+                    title="Move to Waiting Room"
                   >
-                    This only
+                    <Inbox size={11} strokeWidth={1.5} />
+                    WAITING
                   </button>
                   <button
                     onClick={() => {
-                      const parentId = task.recurrenceParentId || task.id;
-                      if (task.isRecurrenceInstance) {
-                        deleteFutureInstances(parentId, task.date);
+                      if (!task) return;
+                      useLibraryStore.getState().addFromSchedule(task.title, task.duration || 30);
+                      deleteTask(task.id);
+                      setEditingTask(null);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-sm border border-border text-[9px] font-mono tracking-wider text-muted-foreground/50 hover:text-foreground hover:border-primary/20 transition-colors"
+                    title="Send to Library"
+                  >
+                    <Archive size={11} strokeWidth={1.5} />
+                    LIBRARY
+                  </button>
+                  <div className="flex-1" />
+                  <button
+                    onClick={() => {
+                      if (isRecurring) {
+                        setShowDeleteConfirm(true);
                       } else {
-                        deleteRecurrenceSeries(parentId);
+                        deleteTask(task.id);
+                        setEditingTask(null);
                       }
                     }}
-                    className="flex-1 py-1.5 rounded-sm border border-destructive/20 text-[8px] font-mono tracking-wider text-destructive hover:bg-destructive/5 transition-colors"
+                    className="p-2 rounded-sm border border-border text-muted-foreground/40 hover:text-destructive hover:border-destructive/20 transition-colors"
                   >
-                    All future
+                    <Trash2 size={12} strokeWidth={1.5} />
                   </button>
                 </div>
-              </div>
-            )}
+              )}
+
+              {/* Delete confirmation for recurring */}
+              {showDeleteConfirm && (
+                <div className="p-2.5 border border-border rounded-sm bg-muted/30">
+                  <p className="text-[9px] font-mono text-foreground/70 mb-2">Delete routine task?</p>
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={() => { deleteTask(task.id); setEditingTask(null); }}
+                      className="flex-1 py-1.5 rounded-sm border border-border text-[8px] font-mono tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      This only
+                    </button>
+                    <button
+                      onClick={() => {
+                        const parentId = task.recurrenceParentId || task.id;
+                        if (task.isRecurrenceInstance) {
+                          deleteFutureInstances(parentId, task.date);
+                        } else {
+                          deleteRecurrenceSeries(parentId);
+                        }
+                      }}
+                      className="flex-1 py-1.5 rounded-sm border border-destructive/20 text-[8px] font-mono tracking-wider text-destructive hover:bg-destructive/5 transition-colors"
+                    >
+                      All future
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </motion.div>
         </motion.div>
       )}
