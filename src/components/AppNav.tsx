@@ -4,7 +4,6 @@ import { useCalendarStore } from '@/store/calendarStore';
 import { useLibraryStore } from '@/store/libraryStore';
 import { useTimezoneStore, getTzAbbr } from '@/store/timezoneStore';
 import { useAuth } from '@/hooks/useAuth';
-import { AddTaskModal } from '@/components/AddTaskModal';
 import { Focus, List, CalendarDays, Grid3X3, Repeat, Calendar as CalIcon, Archive, Clock, LogOut, Settings } from 'lucide-react';
 
 const views: { mode: ViewMode; icon: typeof Focus; label: string }[] = [

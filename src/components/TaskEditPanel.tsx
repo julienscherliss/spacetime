@@ -644,13 +644,6 @@ export function TaskEditPanel() {
             {!showEditScope && (
               <div className="flex items-center gap-1.5">
                 <button
-                  onClick={handleFocus}
-                  className="flex-1 flex items-center justify-center gap-1 py-2 rounded-sm bg-primary text-primary-foreground font-mono text-[9px] tracking-widest hover:bg-primary/90 transition-colors"
-                >
-                  <Play size={10} strokeWidth={1.5} />
-                  FOCUS
-                </button>
-                <button
                   onClick={() => {
                     if (!task) return;
                     useLibraryStore.getState().addFromSchedule(task.title, task.duration || 30);
