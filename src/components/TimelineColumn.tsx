@@ -640,6 +640,8 @@ export function TimelineColumn({
       onDragLeave={() => setDragOverTime(null)}
       onDrop={handleDrop}
       onMouseDown={handleCreateMouseDown}
+      onPointerDown={handleCarryPointerDown}
+      onPointerUp={handleCarryPointerUp}
       /* touch create handlers are native — see useEffect above */
     >
       {/* Hour grid lines */}
