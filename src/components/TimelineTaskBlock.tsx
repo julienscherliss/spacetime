@@ -225,7 +225,7 @@ export function TimelineTaskBlock({
           : isResizingThis
             ? 'cursor-ns-resize'
             : 'cursor-grab active:cursor-grabbing'
-      } ${isActive ? 'z-[15]' : 'z-10'} ${isDraggingThis ? 'opacity-0' : 'opacity-100'}`}
+      } ${isActive ? 'z-[15]' : 'z-10'} ${(isDraggingThis || isCarried) ? 'opacity-0' : 'opacity-100'}`}
       style={{
         top,
         height,
