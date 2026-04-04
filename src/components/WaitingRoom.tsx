@@ -159,20 +159,10 @@ function WaitingRoomItem({ task, isMobile, onClosePanel }: { task: Task; isMobil
 }
 
 export function WaitingRoom({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { tasks, updateTask } = useTaskStore();
+  const { tasks } = useTaskStore();
   const isMobile = useIsMobile();
-  const [reflectTask, setReflectTask] = useState<Task | null>(null);
 
   const waitingTasks = tasks.filter((t) => t.inWaitingRoom && !t.completed);
-
-  const handleReschedule = (task: Task) => {
-    updateTask(task.id, {
-      inWaitingRoom: false,
-      date: new Date().toISOString().split('T')[0],
-      time: '09:00',
-    } as any);
-    setReflectTask(null);
-  };
 
   return (
     <>
