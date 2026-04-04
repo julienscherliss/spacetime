@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Priority } from '@/store/taskStore';
+import { useCarryStore } from '@/store/carryStore';
 import { Plus, X } from 'lucide-react';
 
 export function AddTaskModal() {
   const [open, setOpen] = useState(false);
   const { addTask } = useTaskStore();
+  const isCarrying = useCarryStore((s) => !!s.carried);
   const [title, setTitle] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [time, setTime] = useState('09:00');
@@ -34,8 +36,9 @@ export function AddTaskModal() {
   return (
     <>
       <button
-        onClick={() => setOpen(true)}
-        className="p-2 rounded-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+        onClick={() => !isCarrying && setOpen(true)}
+        disabled={isCarrying}
+        className="p-2 rounded-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
       >
         <Plus size={16} strokeWidth={1.5} />
       </button>

@@ -272,6 +272,7 @@ export function TimelineColumn({
   const handleCreateMouseDown = useCallback((e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('[data-task-block]')) return;
     if (newTaskInput) return;
+    if (useCarryStore.getState().carried) return;
     const mins = getMinutesFromY(e.clientY);
     const snapped = snapTo15(mins);
     setCreating({ startMin: snapped, currentMin: snapped });
@@ -295,6 +296,7 @@ export function TimelineColumn({
     const onTouchStart = (e: TouchEvent) => {
       const target = e.target as HTMLElement;
       if (target.closest('[data-task-block]') || target.closest('input') || target.closest('button')) return;
+      if (useCarryStore.getState().carried) return;
       const touch = e.touches[0];
       // Offset touch point upward slightly — iOS reports contact below visual tap point
       const mins = getMinutes(touch.clientY - 8);
