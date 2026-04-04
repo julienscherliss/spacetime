@@ -33,13 +33,46 @@ function LibraryItem({ item, isMobile }: { item: LibraryTask; isMobile: boolean 
   const [title, setTitle] = useState(item.title);
   const [showCat, setShowCat] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFired = useRef(false);
+
   const itemRef = useIntentionalTouchDrag<HTMLDivElement>({
     payload: { type: 'library', id: item.id, title: item.title, duration: item.defaultDuration },
     disabled: editing,
     onDragStart: () => {
+      if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
       useLibraryStore.getState().setPanelOpen(false);
     },
   });
+
+  const handleLongPressDown = useCallback(() => {
+    if (editing) return;
+    longPressFired.current = false;
+    longPressTimer.current = setTimeout(() => {
+      longPressFired.current = true;
+      useCarryStore.getState().pickup({
+        taskId: item.id,
+        title: item.title,
+        duration: item.defaultDuration,
+        fromDate: '',
+        fromLibrary: true,
+        libraryItemId: item.id,
+        pickedUpAt: Date.now(),
+      });
+      useLibraryStore.getState().setPanelOpen(false);
+    }, 250);
+  }, [item, editing]);
+
+  const handleLongPressUp = useCallback(() => {
+    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+  }, []);
+
+  const handleLongPressMove = useCallback(() => {
+    if (longPressTimer.current && !longPressFired.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }, []);
 
   const handleSave = () => {
     if (title.trim()) updateItem(item.id, { title: title.trim() });
