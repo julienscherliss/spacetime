@@ -4,8 +4,10 @@ import { persist } from 'zustand/middleware';
 interface TimezoneState {
   timezone: string;
   routinesFixedTime: boolean;
+  autoDetect: boolean;
   setTimezone: (tz: string) => void;
   setRoutinesFixedTime: (v: boolean) => void;
+  setAutoDetect: (v: boolean) => void;
 }
 
 export const useTimezoneStore = create<TimezoneState>()(
