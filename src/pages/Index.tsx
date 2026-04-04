@@ -11,6 +11,7 @@ import { CalendarPanel } from '@/components/CalendarPanel';
 import { LibraryPanel } from '@/components/LibraryPanel';
 import { WaitingRoom } from '@/components/WaitingRoom';
 import { TouchDragGhost } from '@/components/TouchDragGhost';
+import { SettingsPanel } from '@/components/SettingsPanel';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Index = () => {
