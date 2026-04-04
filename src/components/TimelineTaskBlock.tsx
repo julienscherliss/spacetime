@@ -70,26 +70,48 @@ export function TimelineTaskBlock({
 
   const pointerStartRef = useRef<{ x: number; y: number; pointerId: number } | null>(null);
   const elRef = useRef<HTMLDivElement | null>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFired = useRef(false);
 
-  const borderLeftColor = {
-    0: 'hsl(var(--priority-0) / 0.3)',
-    1: 'hsl(var(--priority-1) / 0.5)',
-    2: 'hsl(var(--priority-2) / 0.6)',
-    3: 'hsl(var(--priority-3) / 0.7)',
-  }[task.priority];
-
-  const snapTo15 = (mins: number) => Math.round(mins / 15) * 15;
+  const clearLongPress = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (isLocked || isResizingThis) return;
     const target = e.target as HTMLElement;
     if (target.closest('button, input, textarea, [data-touch-ignore]')) return;
 
+    // If we're in carry mode and tapping a task, don't start drag — let the
+    // TimelineColumn tap-to-drop handler deal with it
+    if (useCarryStore.getState().carried) return;
+
     pointerStartRef.current = { x: e.clientX, y: e.clientY, pointerId: e.pointerId };
+    longPressFired.current = false;
 
     const blockRect = elRef.current?.getBoundingClientRect();
     const grabOffset = blockRect ? e.clientY - blockRect.top : 0;
     dragOffsetRef.current = grabOffset;
+
+    // Start long-press timer for carry mode
+    longPressTimer.current = setTimeout(() => {
+      longPressFired.current = true;
+      // Enter carry mode
+      useCarryStore.getState().pickup({
+        taskId: task.id,
+        title: task.title,
+        duration: task.duration || 30,
+        fromDate: task.date,
+        fromTime: task.time,
+        pickedUpAt: Date.now(),
+      });
+      // Cancel any pending drag
+      useScheduledDragStore.getState().cancel();
+      pointerStartRef.current = null;
+    }, LONG_PRESS_MS);
 
     useScheduledDragStore.getState().startDrag({
       taskId: task.id,
@@ -98,9 +120,7 @@ export function TimelineTaskBlock({
       duration: task.duration || 30,
       grabOffsetY: grabOffset,
     });
-
-    // Do NOT setPointerCapture — we need the pointer to cross columns
-  }, [isLocked, isResizingThis, task.id, task.date, task.time, task.duration, dragOffsetRef]);
+  }, [isLocked, isResizingThis, task.id, task.date, task.time, task.duration, task.title, dragOffsetRef]);
 
   // Global pointermove/pointerup when drag is pending or active
   useEffect(() => {
