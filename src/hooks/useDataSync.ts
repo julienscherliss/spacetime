@@ -30,6 +30,7 @@ function rowToTask(row: any): Task {
     detachedFromSeries: row.detached_from_series ?? false,
     inWaitingRoom: row.in_waiting_room ?? false,
     waitingRoomCount: row.waiting_room_count ?? 0,
+    dueDate: row.due_date ?? undefined,
   };
 }
 
