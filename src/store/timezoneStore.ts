@@ -3,14 +3,18 @@ import { persist } from 'zustand/middleware';
 
 interface TimezoneState {
   timezone: string;
+  routinesFixedTime: boolean;
   setTimezone: (tz: string) => void;
+  setRoutinesFixedTime: (v: boolean) => void;
 }
 
 export const useTimezoneStore = create<TimezoneState>()(
   persist(
     (set) => ({
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      routinesFixedTime: true,
       setTimezone: (tz: string) => set({ timezone: tz }),
+      setRoutinesFixedTime: (v: boolean) => set({ routinesFixedTime: v }),
     }),
     { name: 'do-timezone' }
   )
