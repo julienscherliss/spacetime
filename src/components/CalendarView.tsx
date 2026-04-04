@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
@@ -9,6 +9,39 @@ export function CalendarView() {
   const { tasks, routinesEnabled, setEditingTask, generateRecurringInstances } = useTaskStore();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  // Swipe state
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const [swiping, setSwiping] = useState(false);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!touchStartRef.current || e.touches.length !== 1) return;
+    const dx = e.touches[0].clientX - touchStartRef.current.x;
+    const dy = e.touches[0].clientY - touchStartRef.current.y;
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) {
+      setSwiping(true);
+      setSwipeOffset(dx);
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (Math.abs(swipeOffset) > 60) {
+      if (swipeOffset > 0) {
+        setCurrentMonth(m => new Date(m.getFullYear(), m.getMonth() - 1));
+      } else {
+        setCurrentMonth(m => new Date(m.getFullYear(), m.getMonth() + 1));
+      }
+    }
+    setSwipeOffset(0);
+    setSwiping(false);
+    touchStartRef.current = null;
+  }, [swipeOffset]);
 
   const calendarData = useMemo(() => {
     const year = currentMonth.getFullYear();
@@ -73,7 +106,12 @@ export function CalendarView() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto px-3 sm:px-4 py-4">
+    <div
+      className="max-w-2xl mx-auto px-3 sm:px-4 py-4"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-base sm:text-lg font-display font-bold text-foreground tracking-tight">

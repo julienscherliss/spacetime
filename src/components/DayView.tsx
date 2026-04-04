@@ -14,7 +14,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 function addDaysToDate(dateStr: string, days: number): string {
   const d = new Date(dateStr + 'T12:00:00');
   d.setDate(d.getDate() + days);
-  return d.toISOString().split('T')[0];
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 export function DayView() {
