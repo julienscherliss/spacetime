@@ -66,6 +66,8 @@ export function TimelineTaskBlock({
   startHour,
 }: TimelineTaskBlockProps) {
   const taskMinutes = task.time ? parseInt(task.time.split(':')[0], 10) * 60 + parseInt(task.time.split(':')[1], 10) : 0;
+  const taskEndMinutes = taskMinutes + (task.duration || 30);
+  const isOverdue = !task.completed && !!task.time && taskEndMinutes < nowMinutes;
   const isDraggingThis = useScheduledDragStore((s) => s.active && s.taskId === task.id);
   const isCarried = useCarryStore((s) => s.carried?.taskId === task.id);
 
@@ -243,7 +245,7 @@ export function TimelineTaskBlock({
             : showUnlinkedOutline
               ? `${task.isRoutine ? 'bg-[hsl(var(--routine-card))]' : 'bg-card'} border border-border/60 border-dashed hover:border-[hsl(var(--task-hover))] hover:shadow-sm`
               : `${task.isRoutine ? 'bg-[hsl(var(--routine-card))] border border-[hsl(var(--routine-border))]' : 'bg-card border border-[hsl(var(--task-border))]'} hover:border-[hsl(var(--task-hover))] hover:shadow-sm`
-        }`}
+        } ${isOverdue ? 'border-destructive/30' : ''}`}
         style={{
           borderLeftColor,
           borderLeftWidth: task.priority >= 2 ? '3px' : '2px',
@@ -264,7 +266,7 @@ export function TimelineTaskBlock({
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">
               <div className={`text-[12px] font-mono leading-tight truncate ${
-                task.completed ? 'line-through text-muted-foreground/40' : isActive ? 'text-foreground font-medium' : 'text-foreground/75'
+                task.completed ? 'line-through text-muted-foreground/40' : isOverdue ? 'text-destructive/70 font-medium' : isActive ? 'text-foreground font-medium' : 'text-foreground/75'
               }`}>
                 {task.title}
               </div>
