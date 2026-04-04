@@ -4,6 +4,7 @@ import { Task } from '@/store/taskStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { formatTime12h } from '@/hooks/useCurrentTime';
 import { useScheduledDragStore } from '@/store/scheduledDragStore';
+import { useCarryStore } from '@/store/carryStore';
 import { START_HOUR } from '@/components/TimelineColumn';
 
 interface TimelineTaskBlockProps {
