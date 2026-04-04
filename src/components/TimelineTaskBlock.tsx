@@ -266,7 +266,7 @@ export function TimelineTaskBlock({
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">
               <div className={`text-[12px] font-mono leading-tight truncate ${
-                task.completed ? 'line-through text-muted-foreground/40' : isActive ? 'text-foreground font-medium' : 'text-foreground/75'
+                task.completed ? 'line-through text-muted-foreground/40' : isOverdue ? 'text-destructive/70 font-medium' : isActive ? 'text-foreground font-medium' : 'text-foreground/75'
               }`}>
                 {task.title}
               </div>
