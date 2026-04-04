@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Priority } from '@/store/taskStore';
+import { useCarryStore } from '@/store/carryStore';
 import { Plus, X } from 'lucide-react';
 
 export function AddTaskModal() {
