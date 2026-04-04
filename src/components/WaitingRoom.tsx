@@ -223,7 +223,7 @@ export function WaitingRoom({ open, onClose }: { open: boolean; onClose: () => v
                 ) : (
                   <div className="space-y-px">
                     {waitingTasks.map((task) => (
-                      <WaitingRoomItem key={task.id} task={task} isMobile={isMobile} onReflect={() => setReflectTask(task)} onClosePanel={onClose} />
+                      <WaitingRoomItem key={task.id} task={task} isMobile={isMobile} onClosePanel={onClose} />
                     ))}
                   </div>
                 )}
