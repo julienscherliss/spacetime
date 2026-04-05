@@ -232,6 +232,10 @@ export function TimelineTaskBlock({
       const dx = e.clientX - pointerStartRef.current.x;
       const dy = e.clientY - pointerStartRef.current.y;
       const distance = Math.hypot(dx, dy);
+      const elapsed = Date.now() - pointerStartRef.current.time;
+
+      // Phase 1: 0–0.5s — lock in place, no movement allowed
+      if (elapsed < LOCK_MS) return;
 
       // If moved beyond stillness threshold, cancel pickup and activate drag
       if (distance >= STILLNESS_THRESHOLD && !dragActivated.current) {
@@ -241,7 +245,7 @@ export function TimelineTaskBlock({
 
       const s = useScheduledDragStore.getState();
       if (!s.active) {
-        // Activate drag immediately once movement exceeds threshold
+        // Activate drag once movement exceeds threshold (only after LOCK_MS)
         if (distance < DRAG_THRESHOLD) return;
         if (!dragActivated.current) {
           clearPickupHold();
