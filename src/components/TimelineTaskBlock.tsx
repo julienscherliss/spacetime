@@ -31,6 +31,7 @@ interface TimelineTaskBlockProps {
 
 const DRAG_THRESHOLD = 8;
 const LONG_PRESS_MS = 250;
+const DRAG_HOLD_MS = 150; // Hold before drag can activate
 
 function findColumnAtPoint(x: number, y: number): { date: string; element: HTMLElement } | null {
   const cols = document.querySelectorAll<HTMLElement>('[data-timeline-column]');
