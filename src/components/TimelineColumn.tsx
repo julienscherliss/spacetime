@@ -279,7 +279,7 @@ export function TimelineColumn({
   }, [getMinutesFromY, newTaskInput]);
 
   // Drag-to-create: touch handlers
-  // Strategy: require a 400ms hold before activating create mode.
+  // Strategy: require a 500ms hold before activating create mode.
   // If the finger moves >8px before the timer fires, it's a scroll — cancel.
   const createTouchRef = useRef<{ startMin: number; startY: number; startX: number; activated: boolean } | null>(null);
   const createTouchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -315,7 +315,7 @@ export function TimelineColumn({
           createTouchRef.current.activated = true;
           setCreating({ startMin: createTouchRef.current.startMin, currentMin: createTouchRef.current.startMin });
         }
-      }, 400);
+      }, 500);
     };
 
     const onTouchMove = (e: TouchEvent) => {
