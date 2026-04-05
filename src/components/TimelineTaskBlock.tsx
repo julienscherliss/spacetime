@@ -118,6 +118,12 @@ export function TimelineTaskBlock({
       clearTimeout(dragHoldTimer.current);
       dragHoldTimer.current = null;
     }
+    if (dragHoldRafRef.current) {
+      cancelAnimationFrame(dragHoldRafRef.current);
+      dragHoldRafRef.current = null;
+    }
+    dragHoldStartTime.current = null;
+    setDragHoldProgress(0);
   };
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
@@ -133,11 +139,25 @@ export function TimelineTaskBlock({
     longPressFired.current = false;
     dragHoldReady.current = false;
 
-    // Start drag hold timer — drag won't activate until this fires
+    // Start drag hold animation — drag won't activate until ring completes
     if (dragHoldTimer.current) clearTimeout(dragHoldTimer.current);
-    dragHoldTimer.current = setTimeout(() => {
-      dragHoldReady.current = true;
-    }, DRAG_HOLD_MS);
+    if (dragHoldRafRef.current) cancelAnimationFrame(dragHoldRafRef.current);
+    dragHoldStartTime.current = performance.now();
+    setDragHoldProgress(0);
+    const tickHold = () => {
+      if (!dragHoldStartTime.current) return;
+      const elapsed = performance.now() - dragHoldStartTime.current;
+      const progress = Math.min(1, elapsed / DRAG_HOLD_MS);
+      setDragHoldProgress(progress);
+      if (progress >= 1) {
+        dragHoldReady.current = true;
+        if (navigator.vibrate) navigator.vibrate(20);
+        dragHoldStartTime.current = null;
+        return;
+      }
+      dragHoldRafRef.current = requestAnimationFrame(tickHold);
+    };
+    dragHoldRafRef.current = requestAnimationFrame(tickHold);
 
     // Locked tasks: allow tap-to-edit but skip drag/carry setup
     if (isLocked) {
