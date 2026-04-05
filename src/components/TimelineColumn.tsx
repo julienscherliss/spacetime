@@ -903,7 +903,6 @@ export function TimelineColumn({
                   {scheduledDragUnlinkMode ? 'unlink this' : 'move linked'}
                 </span>
               )}
-              </span>
             </div>
           </div>
         </div>
