@@ -90,6 +90,8 @@ interface TaskState {
   dismissCompletionStats: () => void;
   generateRecurringInstances: (startDate: string, endDate: string) => void;
   moveOverdueToWaitingRoom: () => void;
+  /** Link or unlink all tasks in a series from a given date forward */
+  linkSeriesFromDate: (taskId: string, fromDate: string, linked: boolean) => void;
 }
 
 const generateId = () => crypto.randomUUID();
@@ -556,6 +558,32 @@ export const useTaskStore = create<TaskState>()(
         }));
       },
 
+      linkSeriesFromDate: (taskId, fromDate, linked) => {
+        const task = get().tasks.find((t) => t.id === taskId);
+        if (!task) return;
+        const seriesId = task.seriesId || task.recurrenceParentId || task.id;
+        const linkedGroupId = linked ? (task.linkedGroupId || seriesId) : undefined;
+
+        set((s) => ({
+          tasks: s.tasks.map((t) => {
+            // Match: same series, on or after the selected date
+            const belongsToSeries =
+              t.id === taskId ||
+              t.seriesId === seriesId ||
+              t.recurrenceParentId === seriesId ||
+              (t.seriesId && t.seriesId === task.seriesId);
+            if (!belongsToSeries) return t;
+            if (t.date < fromDate && t.id !== taskId) return t; // leave earlier tasks alone
+            return {
+              ...t,
+              linked,
+              linkedGroupId: linked ? linkedGroupId : undefined,
+              detachedFromSeries: !linked && !!t.recurrenceParentId,
+            };
+          }),
+        }));
+      },
+
       generateRecurringInstances: (startDate, endDate) => {
         const state = get();
         const recurringParents = state.tasks.filter(
@@ -570,19 +598,41 @@ export const useTaskStore = create<TaskState>()(
             existingInstanceDates.set(t.recurrenceParentId!, s);
           });
 
+        // Build a map of the earliest linked date per series so new instances
+        // after that date inherit linking
+        const seriesLinkStart = new Map<string, { date: string; groupId: string }>();
+        state.tasks.forEach((t) => {
+          if (!t.linked || !t.seriesId) return;
+          const existing = seriesLinkStart.get(t.seriesId);
+          if (!existing || t.date < existing.date) {
+            seriesLinkStart.set(t.seriesId, {
+              date: t.date,
+              groupId: t.linkedGroupId || t.seriesId,
+            });
+          }
+        });
+
         const newTasks: Task[] = [];
         for (const parent of recurringParents) {
           if (!parent.recurrence) continue;
           const occurrences = getAllOccurrences(parent.recurrence, parent.date, startDate, endDate);
           const existing = existingInstanceDates.get(parent.id) || new Set();
+          const sid = parent.seriesId || parent.id;
+          const linkInfo = seriesLinkStart.get(sid);
+
           for (const occ of occurrences) {
             if (occ === parent.date) continue;
             if (existing.has(occ)) continue;
+
+            // Determine if this instance should be linked based on series link start date
+            const shouldLink = linkInfo ? occ >= linkInfo.date : (parent.linked === true);
+            const groupId = shouldLink ? (linkInfo?.groupId || parent.linkedGroupId || sid) : undefined;
+
             newTasks.push({
               id: generateId(),
               title: parent.title,
               description: parent.description,
-              subtasks: parent.linked ? parent.subtasks : undefined,
+              subtasks: shouldLink ? parent.subtasks : undefined,
               type: 'recurring',
               priority: parent.originalPriority,
               originalPriority: parent.originalPriority,
@@ -596,10 +646,10 @@ export const useTaskStore = create<TaskState>()(
               isRecurrenceInstance: true,
               recurrence: parent.recurrence,
               isRoutine: parent.isRoutine,
-              linked: parent.linked,
-              seriesId: parent.seriesId || parent.id,
-              linkedGroupId: parent.linked ? (parent.linkedGroupId || parent.id) : undefined,
-              detachedFromSeries: false,
+              linked: shouldLink,
+              seriesId: sid,
+              linkedGroupId: groupId,
+              detachedFromSeries: !shouldLink && !!parent.id,
             });
           }
         }

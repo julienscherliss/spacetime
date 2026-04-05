@@ -87,7 +87,7 @@ export function TaskEditPanel() {
   const {
     tasks, editingTaskId, setEditingTask, updateTask, updateFutureInstances,
     deleteTask, deleteFutureInstances, deleteRecurrenceSeries, removeInstances,
-    setFocusTask, setViewMode, generateRecurringInstances,
+    setFocusTask, setViewMode, generateRecurringInstances, linkSeriesFromDate,
   } = useTaskStore();
   const task = tasks.find((t) => t.id === editingTaskId);
 
@@ -213,12 +213,16 @@ export function TaskEditPanel() {
     if (!task) return;
     const updates = getUpdates();
 
+    // Handle linked state change separately — apply from this date forward
+    if (isRecurring && task.linked !== isLinked) {
+      linkSeriesFromDate(task.id, task.date, isLinked);
+    }
+
     if (isRecurring && !showEditScope) {
       const hasRecurrenceChange = JSON.stringify(task.recurrence) !== JSON.stringify(updates.recurrence);
       const hasContentChange = task.title !== updates.title || task.priority !== updates.priority;
-      const onlyLinkedChanged = !hasRecurrenceChange && !hasContentChange && task.linked !== updates.linked;
 
-      if ((hasRecurrenceChange || hasContentChange) && !onlyLinkedChanged) {
+      if (hasRecurrenceChange || hasContentChange) {
         setPendingUpdates(updates);
         setShowEditScope(true);
         scopeTriggeredRef.current = true;
@@ -398,7 +402,7 @@ export function TaskEditPanel() {
                     <div className="flex items-center gap-1.5">
                       {isLinked ? <Link size={10} className="text-primary/50" /> : <Unlink size={10} className="text-muted-foreground/30" />}
                       <span className="text-[9px] font-mono tracking-wider text-muted-foreground/50">
-                        {isLinked ? 'LINKED' : 'UNLINKED'}
+                        {isLinked ? 'LINKED · THIS + FOLLOWING' : 'UNLINKED'}
                       </span>
                     </div>
                     <button
