@@ -368,9 +368,13 @@ export function TimelineTaskBlock({
             data-touch-ignore
             onMouseDown={(e) => handleResizeStart(e, task, 'top')}
             onTouchStart={(e) => handleResizeStart(e, task, 'top')}
-            className="absolute top-0 left-0 right-0 h-[8px] cursor-ns-resize z-20 opacity-0 group-hover:opacity-100 touch:opacity-100"
+            className="absolute top-0 right-0 w-[28px] h-[16px] cursor-ns-resize z-20 opacity-0 group-hover:opacity-100 touch:opacity-100 flex items-start justify-end pr-1 pt-[2px]"
+            style={{ touchAction: 'none' }}
           >
-            <div className="mx-auto mt-[1px] w-8 h-[2px] rounded-full bg-muted-foreground/20 transition-colors group-hover:bg-muted-foreground/40" />
+            <svg width="8" height="8" viewBox="0 0 8 8" className="text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors">
+              <line x1="1" y1="7" x2="7" y2="1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+              <line x1="4" y1="7" x2="7" y2="4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+            </svg>
           </div>
         )}
 
@@ -443,9 +447,13 @@ export function TimelineTaskBlock({
             data-touch-ignore
             onMouseDown={(e) => handleResizeStart(e, task, 'bottom')}
             onTouchStart={(e) => handleResizeStart(e, task, 'bottom')}
-            className="absolute bottom-0 left-0 right-0 h-[8px] cursor-ns-resize z-20 opacity-0 group-hover:opacity-100 touch:opacity-100"
+            className="absolute bottom-0 right-0 w-[28px] h-[16px] cursor-ns-resize z-20 opacity-0 group-hover:opacity-100 touch:opacity-100 flex items-end justify-end pr-1 pb-[2px]"
+            style={{ touchAction: 'none' }}
           >
-            <div className="mx-auto mb-[1px] w-8 h-[2px] rounded-full bg-muted-foreground/20 transition-colors group-hover:bg-muted-foreground/40" />
+            <svg width="8" height="8" viewBox="0 0 8 8" className="text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors">
+              <line x1="1" y1="1" x2="7" y2="7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+              <line x1="4" y1="1" x2="7" y2="4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+            </svg>
           </div>
         )}
       </div>
