@@ -145,9 +145,9 @@ export function TaskEditPanel() {
     }
   }, [task?.id]);
 
-  // Auto-focus title for new tasks
+  // Auto-focus title only for new/untitled tasks
   useEffect(() => {
-    if (task && titleInputRef.current) {
+    if (task && !task.title.trim() && titleInputRef.current) {
       titleInputRef.current.focus();
     }
   }, [task?.id]);
