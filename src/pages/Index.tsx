@@ -12,6 +12,7 @@ import { LibraryPanel } from '@/components/LibraryPanel';
 import { WaitingRoom } from '@/components/WaitingRoom';
 import { TouchDragGhost } from '@/components/TouchDragGhost';
 import { SettingsPanel } from '@/components/SettingsPanel';
+import { InventoryDropZones } from '@/components/InventoryDropZones';
 import { CarryIndicator } from '@/components/CarryIndicator';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -85,6 +86,7 @@ const Index = () => {
       <WaitingRoom open={waitingOpen} onClose={() => setWaitingOpen(false)} />
       <TouchDragGhost />
       <CarryIndicator />
+      <InventoryDropZones />
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );

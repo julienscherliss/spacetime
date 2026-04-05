@@ -31,6 +31,7 @@ interface TimelineTaskBlockProps {
 
 const DRAG_THRESHOLD = 8;
 const LONG_PRESS_MS = 250;
+const DRAG_HOLD_MS = 150; // Hold before drag can activate
 
 function findColumnAtPoint(x: number, y: number): { date: string; element: HTMLElement } | null {
   const cols = document.querySelectorAll<HTMLElement>('[data-timeline-column]');
@@ -81,10 +82,12 @@ export function TimelineTaskBlock({
 
   const snapTo15 = (mins: number) => Math.round(mins / 15) * 15;
 
-  const pointerStartRef = useRef<{ x: number; y: number; pointerId: number } | null>(null);
+  const pointerStartRef = useRef<{ x: number; y: number; pointerId: number; time: number } | null>(null);
   const elRef = useRef<HTMLDivElement | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFired = useRef(false);
+  const dragHoldReady = useRef(false); // true after DRAG_HOLD_MS elapsed
+  const dragHoldTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const unlinkHoldTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastMoveTime = useRef<number>(0);
   const stationaryStart = useRef<number>(0);
@@ -107,6 +110,13 @@ export function TimelineTaskBlock({
     }
   };
 
+  const clearDragHold = () => {
+    if (dragHoldTimer.current) {
+      clearTimeout(dragHoldTimer.current);
+      dragHoldTimer.current = null;
+    }
+  };
+
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (isResizingThis) return;
     const target = e.target as HTMLElement;
@@ -116,8 +126,15 @@ export function TimelineTaskBlock({
     // TimelineColumn tap-to-drop handler deal with it
     if (useCarryStore.getState().carried) return;
 
-    pointerStartRef.current = { x: e.clientX, y: e.clientY, pointerId: e.pointerId };
+    pointerStartRef.current = { x: e.clientX, y: e.clientY, pointerId: e.pointerId, time: Date.now() };
     longPressFired.current = false;
+    dragHoldReady.current = false;
+
+    // Start drag hold timer — drag won't activate until this fires
+    if (dragHoldTimer.current) clearTimeout(dragHoldTimer.current);
+    dragHoldTimer.current = setTimeout(() => {
+      dragHoldReady.current = true;
+    }, DRAG_HOLD_MS);
 
     // Locked tasks: allow tap-to-edit but skip drag/carry setup
     if (isLocked) {
@@ -196,7 +213,9 @@ export function TimelineTaskBlock({
 
       const s = useScheduledDragStore.getState();
       if (!s.active) {
-        if (distance < DRAG_THRESHOLD) return;
+        // Require both distance threshold AND hold delay
+        if (distance < DRAG_THRESHOLD || !dragHoldReady.current) return;
+        clearDragHold();
         useScheduledDragStore.getState().activate();
         didDragRef.current = true;
         // Reset stationary tracking when drag activates
@@ -250,6 +269,7 @@ export function TimelineTaskBlock({
     const handleUp = (e: PointerEvent) => {
       clearLongPress();
       clearUnlinkHold();
+      clearDragHold();
       if (!pointerStartRef.current) return;
       // If long press fired, we're in carry mode — don't do anything
       if (longPressFired.current) {
@@ -269,6 +289,7 @@ export function TimelineTaskBlock({
     const handleCancel = () => {
       clearLongPress();
       clearUnlinkHold();
+      clearDragHold();
       useScheduledDragStore.getState().cancel();
       pointerStartRef.current = null;
       didDragRef.current = false;
