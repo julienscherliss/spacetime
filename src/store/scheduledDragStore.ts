@@ -12,6 +12,10 @@ export interface ScheduledDragState {
   active: boolean;
   /** The date column the drag overlay should render in */
   targetDate: string | null;
+  /** Whether the task is a linked recurring task */
+  isLinkedTask: boolean;
+  /** When true, dropping will detach this single occurrence from its linked group */
+  unlinkMode: boolean;
 }
 
 interface ScheduledDragActions {
@@ -25,6 +29,7 @@ interface ScheduledDragActions {
   activate: () => void;
   updatePosition: (minutes: number) => void;
   setTargetDate: (date: string) => void;
+  setUnlinkMode: (unlink: boolean) => void;
   endDrag: () => ScheduledDragState;
   cancel: () => void;
 }
@@ -38,6 +43,8 @@ const initial: ScheduledDragState = {
   currentMinutes: null,
   active: false,
   targetDate: null,
+  isLinkedTask: false,
+  unlinkMode: false,
 };
 
 export const useScheduledDragStore = create<ScheduledDragState & ScheduledDragActions>((set, get) => ({
@@ -52,10 +59,13 @@ export const useScheduledDragStore = create<ScheduledDragState & ScheduledDragAc
       currentMinutes: null,
       active: false,
       targetDate: params.sourceDate,
+      isLinkedTask: false,
+      unlinkMode: false,
     }),
   activate: () => set({ active: true }),
   updatePosition: (minutes) => set({ currentMinutes: minutes }),
   setTargetDate: (date) => set({ targetDate: date }),
+  setUnlinkMode: (unlink) => set({ unlinkMode: unlink }),
   endDrag: () => {
     const state = { ...get() };
     set(initial);
