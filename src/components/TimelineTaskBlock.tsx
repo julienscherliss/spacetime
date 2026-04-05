@@ -320,8 +320,8 @@ export function TimelineTaskBlock({
           isActive
             ? 'bg-card border border-primary/20 shadow-sm'
             : showUnlinkedOutline
-              ? `${task.isRoutine ? 'bg-transparent' : 'bg-card'} border border-border/60 border-dashed hover:border-[hsl(var(--task-hover))] hover:shadow-sm`
-              : `${task.isRoutine ? 'bg-transparent border border-border/30' : 'bg-card border border-[hsl(var(--task-border))]'} hover:border-[hsl(var(--task-hover))] hover:shadow-sm`
+              ? `${task.isRoutine ? 'bg-background/60 backdrop-blur-sm' : 'bg-card'} border border-border/60 border-dashed hover:border-[hsl(var(--task-hover))] hover:shadow-sm`
+              : `${task.isRoutine ? 'bg-background/60 backdrop-blur-sm border border-border/20' : 'bg-card border border-[hsl(var(--task-border))]'} hover:border-[hsl(var(--task-hover))] hover:shadow-sm`
         } ${isOverdue ? 'border-destructive/30' : ''}`}
         style={{
           borderLeftColor,
