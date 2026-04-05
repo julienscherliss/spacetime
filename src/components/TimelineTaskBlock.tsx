@@ -269,6 +269,7 @@ export function TimelineTaskBlock({
     const handleUp = (e: PointerEvent) => {
       clearLongPress();
       clearUnlinkHold();
+      clearDragHold();
       if (!pointerStartRef.current) return;
       // If long press fired, we're in carry mode — don't do anything
       if (longPressFired.current) {
@@ -288,6 +289,7 @@ export function TimelineTaskBlock({
     const handleCancel = () => {
       clearLongPress();
       clearUnlinkHold();
+      clearDragHold();
       useScheduledDragStore.getState().cancel();
       pointerStartRef.current = null;
       didDragRef.current = false;
