@@ -31,8 +31,8 @@ interface TimelineTaskBlockProps {
 }
 
 const DRAG_THRESHOLD = 8;
-const LONG_PRESS_MS = 250;
-const DRAG_HOLD_MS = 900; // Hold before drag can activate
+const PICKUP_HOLD_MS = 2000; // Hold still 2s to pick up into carry mode
+const STILLNESS_THRESHOLD = 8; // px — movement under this counts as "still"
 
 function findColumnAtPoint(x: number, y: number): { date: string; element: HTMLElement } | null {
   const cols = document.querySelectorAll<HTMLElement>('[data-timeline-column]');
