@@ -2,6 +2,7 @@ import { MutableRefObject, useRef, useCallback, useEffect, useState } from 'reac
 import { Check, Link, Unlink } from 'lucide-react';
 import { Task } from '@/store/taskStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
+import { HoldToConfirmRing } from '@/components/HoldToConfirmRing';
 import { formatTime12h } from '@/hooks/useCurrentTime';
 import { useScheduledDragStore } from '@/store/scheduledDragStore';
 import { useCarryStore } from '@/store/carryStore';
