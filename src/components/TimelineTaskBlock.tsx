@@ -330,6 +330,7 @@ export function TimelineTaskBlock({
     const handleCancel = () => {
       clearUnlinkHold();
       clearPickupHold();
+      setDragReady(false);
       useScheduledDragStore.getState().cancel();
       pointerStartRef.current = null;
       didDragRef.current = false;
