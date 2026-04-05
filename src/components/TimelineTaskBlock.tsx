@@ -119,8 +119,15 @@ export function TimelineTaskBlock({
     // TimelineColumn tap-to-drop handler deal with it
     if (useCarryStore.getState().carried) return;
 
-    pointerStartRef.current = { x: e.clientX, y: e.clientY, pointerId: e.pointerId };
+    pointerStartRef.current = { x: e.clientX, y: e.clientY, pointerId: e.pointerId, time: Date.now() };
     longPressFired.current = false;
+    dragHoldReady.current = false;
+
+    // Start drag hold timer — drag won't activate until this fires
+    if (dragHoldTimer.current) clearTimeout(dragHoldTimer.current);
+    dragHoldTimer.current = setTimeout(() => {
+      dragHoldReady.current = true;
+    }, DRAG_HOLD_MS);
 
     // Locked tasks: allow tap-to-edit but skip drag/carry setup
     if (isLocked) {
