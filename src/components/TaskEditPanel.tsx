@@ -191,14 +191,13 @@ export function TaskEditPanel() {
       type: recurrence ? 'recurring' as const : 'one-time' as const,
       isRoutine: recurrence ? isRoutine : false,
       linked: recurrence ? isLinked : false,
-      linkedGroupId: (recurrence && isLinked) ? (task?.linkedGroupId || seriesId) : undefined,
+      linkedGroupId: (recurrence && isLinked) ? (task?.linkedGroupId || task?.id || seriesId) : undefined,
       detachedFromSeries: (recurrence && !isLinked && task?.recurrenceParentId) ? true : false,
       dueDate: dueDate || undefined,
     };
   };
 
-  const regenerateInstances = (parentId: string) => {
-    removeInstances(parentId);
+  const syncUpcomingInstances = () => {
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + 60);
     setTimeout(() => {
@@ -233,14 +232,20 @@ export function TaskEditPanel() {
     const parentId = task.recurrenceParentId || task.id;
     const hadRecurrence = !!task.recurrence;
     const hasRecurrence = !!updates.recurrence;
+    const hasRecurrenceChange = JSON.stringify(task.recurrence) !== JSON.stringify(updates.recurrence);
 
     updateTask(task.id, updates);
 
     if (!hasRecurrence && hadRecurrence) {
       removeInstances(parentId);
+      return;
     }
+
     if (hasRecurrence) {
-      regenerateInstances(parentId);
+      if (!task.isRecurrenceInstance && hasRecurrenceChange) {
+        removeInstances(parentId);
+      }
+      syncUpcomingInstances();
     }
   };
 
@@ -258,11 +263,11 @@ export function TaskEditPanel() {
     const parentId = task.recurrenceParentId || task.id;
 
     if (!pendingUpdates.recurrence && task.recurrence) {
-      updateFutureInstances(parentId, pendingUpdates);
+      updateFutureInstances(task.id, task.date, pendingUpdates);
       removeInstances(parentId);
     } else {
-      updateFutureInstances(parentId, pendingUpdates);
-      regenerateInstances(parentId);
+      updateFutureInstances(task.id, task.date, pendingUpdates);
+      syncUpcomingInstances();
     }
 
     setShowEditScope(false);
