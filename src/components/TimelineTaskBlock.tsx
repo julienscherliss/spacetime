@@ -90,8 +90,10 @@ export function TimelineTaskBlock({
   const pickupRafRef = useRef<number | null>(null);
   const pickupStartTime = useRef<number | null>(null);
   const [pickupProgress, setPickupProgress] = useState(0);
+  const [dragReady, setDragReady] = useState(false);
   const pickupCommitted = useRef(false);
   const dragActivated = useRef(false);
+  const dragReadyFired = useRef(false);
   const unlinkHoldTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastMoveTime = useRef<number>(0);
   const stationaryStart = useRef<number>(0);
@@ -123,6 +125,13 @@ export function TimelineTaskBlock({
     const tick = () => {
       if (!pickupStartTime.current || pickupCommitted.current || dragActivated.current) return;
       const elapsed = performance.now() - pickupStartTime.current;
+      
+      // At LOCK_MS, fire "drag ready" haptic + visual cue
+      if (elapsed >= LOCK_MS && !dragReadyFired.current) {
+        dragReadyFired.current = true;
+        setDragReady(true);
+        if (navigator.vibrate) navigator.vibrate(15);
+      }
       
       // Before PICKUP_START_MS, no ring — just waiting
       if (elapsed < PICKUP_START_MS) {
@@ -179,6 +188,8 @@ export function TimelineTaskBlock({
     pointerStartRef.current = { x: e.clientX, y: e.clientY, pointerId: e.pointerId, time: Date.now() };
     pickupCommitted.current = false;
     dragActivated.current = false;
+    dragReadyFired.current = false;
+    setDragReady(false);
 
     const blockRect = elRef.current?.getBoundingClientRect();
     const grabOffset = blockRect ? e.clientY - blockRect.top : 0;
@@ -241,6 +252,7 @@ export function TimelineTaskBlock({
       if (distance >= STILLNESS_THRESHOLD && !dragActivated.current) {
         clearPickupHold();
         dragActivated.current = true;
+        setDragReady(false);
       }
 
       const s = useScheduledDragStore.getState();
@@ -300,6 +312,7 @@ export function TimelineTaskBlock({
     const handleUp = (e: PointerEvent) => {
       clearUnlinkHold();
       clearPickupHold();
+      setDragReady(false);
       if (!pointerStartRef.current) return;
       if (pickupCommitted.current) {
         pointerStartRef.current = null;
@@ -318,6 +331,7 @@ export function TimelineTaskBlock({
     const handleCancel = () => {
       clearUnlinkHold();
       clearPickupHold();
+      setDragReady(false);
       useScheduledDragStore.getState().cancel();
       pointerStartRef.current = null;
       didDragRef.current = false;
@@ -365,6 +379,9 @@ export function TimelineTaskBlock({
         WebkitUserSelect: 'none',
         WebkitTouchCallout: 'none',
         userSelect: 'none',
+        transition: 'opacity 200ms, box-shadow 200ms, transform 150ms ease-out',
+        transform: dragReady && !dragActivated.current ? 'scale(1.02)' : undefined,
+        boxShadow: dragReady && !dragActivated.current ? '0 4px 12px hsl(var(--primary) / 0.12)' : undefined,
       } as React.CSSProperties}
     >
       <div
