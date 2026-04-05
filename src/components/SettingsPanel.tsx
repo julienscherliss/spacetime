@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useTimezoneStore, getTzAbbr, TIMEZONES } from '@/store/timezoneStore';
-import { X, Search, Globe, Repeat, MapPin } from 'lucide-react';
+import { useCalendarStore } from '@/store/calendarStore';
+import { X, Search, Globe, Repeat, MapPin, Calendar as CalIcon, RefreshCw, Unplug } from 'lucide-react';
 
 interface SettingsPanelProps {
   open: boolean;
@@ -9,7 +10,12 @@ interface SettingsPanelProps {
 
 export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const { timezone, setTimezone, routinesFixedTime, setRoutinesFixedTime, autoDetect, setAutoDetect } = useTimezoneStore();
+  const { connected, email, calendars, loading, checkStatus, startAuth, fetchCalendars, toggleCalendar, disconnect } = useCalendarStore();
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    if (open) checkStatus();
+  }, [open]);
 
   const filtered = useMemo(() => {
     if (!search) return TIMEZONES.slice(0, 50);
