@@ -126,6 +126,13 @@ export function TimelineTaskBlock({
       if (!pickupStartTime.current || pickupCommitted.current || dragActivated.current) return;
       const elapsed = performance.now() - pickupStartTime.current;
       
+      // At LOCK_MS, fire "drag ready" haptic + visual cue
+      if (elapsed >= LOCK_MS && !dragReadyFired.current) {
+        dragReadyFired.current = true;
+        setDragReady(true);
+        if (navigator.vibrate) navigator.vibrate(15);
+      }
+      
       // Before PICKUP_START_MS, no ring — just waiting
       if (elapsed < PICKUP_START_MS) {
         pickupRafRef.current = requestAnimationFrame(tick);
