@@ -340,6 +340,8 @@ export function TimelineTaskBlock({
     }
   }, [dragTaskId, task.id]);
 
+  const showHoldRing = dragHoldProgress > 0 && dragHoldProgress < 1 && !isLocked;
+
   return (
     <div
       ref={elRef}
