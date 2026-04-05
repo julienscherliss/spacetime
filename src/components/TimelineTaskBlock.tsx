@@ -117,13 +117,24 @@ export function TimelineTaskBlock({
   };
 
   const startPickupTimer = useCallback(() => {
+    // Pickup ring starts at PICKUP_START_MS and fills over PICKUP_FILL_MS
     pickupStartTime.current = performance.now();
     setPickupProgress(0);
     const tick = () => {
       if (!pickupStartTime.current || pickupCommitted.current || dragActivated.current) return;
       const elapsed = performance.now() - pickupStartTime.current;
-      const progress = Math.min(1, elapsed / PICKUP_HOLD_MS);
+      
+      // Before PICKUP_START_MS, no ring — just waiting
+      if (elapsed < PICKUP_START_MS) {
+        pickupRafRef.current = requestAnimationFrame(tick);
+        return;
+      }
+      
+      // Ring fills from PICKUP_START_MS to PICKUP_START_MS + PICKUP_FILL_MS
+      const ringElapsed = elapsed - PICKUP_START_MS;
+      const progress = Math.min(1, ringElapsed / PICKUP_FILL_MS);
       setPickupProgress(progress);
+      
       if (progress >= 1) {
         pickupCommitted.current = true;
         if (navigator.vibrate) navigator.vibrate(30);
