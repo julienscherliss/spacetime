@@ -90,8 +90,10 @@ export function TimelineTaskBlock({
   const pickupRafRef = useRef<number | null>(null);
   const pickupStartTime = useRef<number | null>(null);
   const [pickupProgress, setPickupProgress] = useState(0);
+  const [dragReady, setDragReady] = useState(false);
   const pickupCommitted = useRef(false);
   const dragActivated = useRef(false);
+  const dragReadyFired = useRef(false);
   const unlinkHoldTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastMoveTime = useRef<number>(0);
   const stationaryStart = useRef<number>(0);
