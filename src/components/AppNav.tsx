@@ -49,9 +49,9 @@ export function AppNav() {
         <nav className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border/60">
           <div className="flex items-center justify-between px-2 py-1.5">
             {/* Logo */}
-            <h1 className="flex flex-col leading-[0.85] font-display font-bold text-[11px] tracking-[0.12em] uppercase pl-1">
-              <span className="text-foreground">space</span>
-              <span className="text-muted-foreground/60">time</span>
+            <h1 className="flex flex-col leading-[0.85] font-display font-bold text-[11px] uppercase pl-1">
+              <span className="text-foreground tracking-[0.12em]">space</span>
+              <span className="text-muted-foreground/60 tracking-[0.35em]">time</span>
             </h1>
 
             {/* View tabs — primary action */}
@@ -155,9 +155,9 @@ export function AppNav() {
   return (
     <nav className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border/60">
       <div className="max-w-5xl mx-auto flex items-center justify-between px-3 sm:px-4 py-2">
-        <h1 className="flex flex-col leading-[0.85] font-display font-bold text-[10px] tracking-[0.12em] uppercase shrink-0">
-          <span className="text-foreground">space</span>
-          <span className="text-muted-foreground/60">time</span>
+        <h1 className="flex flex-col leading-[0.85] font-display font-bold text-[10px] uppercase shrink-0">
+          <span className="text-foreground tracking-[0.12em]">space</span>
+          <span className="text-muted-foreground/60 tracking-[0.35em]">time</span>
         </h1>
 
         <div className="flex items-center bg-muted/50 rounded-sm p-0.5 gap-px overflow-x-auto">
