@@ -378,6 +378,9 @@ export function TimelineTaskBlock({
         WebkitUserSelect: 'none',
         WebkitTouchCallout: 'none',
         userSelect: 'none',
+        transition: 'opacity 200ms, box-shadow 200ms, transform 150ms ease-out',
+        transform: dragReady && !dragActivated.current ? 'scale(1.02)' : undefined,
+        boxShadow: dragReady && !dragActivated.current ? '0 4px 12px hsl(var(--primary) / 0.12)' : undefined,
       } as React.CSSProperties}
     >
       <div
