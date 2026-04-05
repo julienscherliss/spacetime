@@ -70,9 +70,11 @@ function rowToLibraryItem(row: any): LibraryTask {
     id: row.id,
     title: row.title,
     note: row.note ?? '',
-    category: row.category ?? 'uncategorized',
+    category: row.category === 'uncategorized' ? '' : (row.category ?? ''),
     defaultDuration: row.default_duration ?? 30,
     createdAt: row.created_at,
+    urgency: 'none',
+    dueDate: null,
   };
 }
 
