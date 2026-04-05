@@ -98,4 +98,53 @@ describe('linked recurrence schedule propagation', () => {
     expect(tasks.find((task) => task.id === 'same-group')?.time).toBe('15:00');
     expect(tasks.find((task) => task.id === 'diff-group')?.time).toBe('13:00');
   });
+
+  it('links this and following when started from a later occurrence', () => {
+    const parent = makeTask({ id: 'parent', linked: false, seriesId: 'series-1', linkedGroupId: undefined, date: '2026-04-01' });
+    const tuesday = makeTask({ id: 'tuesday', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: false, seriesId: 'series-1', linkedGroupId: undefined, date: '2026-04-02' });
+    const wednesday = makeTask({ id: 'wednesday', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: false, seriesId: 'series-1', linkedGroupId: undefined, date: '2026-04-03' });
+    const thursday = makeTask({ id: 'thursday', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: false, seriesId: 'series-1', linkedGroupId: undefined, date: '2026-04-04' });
+
+    resetStore([parent, tuesday, wednesday, thursday]);
+    useTaskStore.getState().linkSeriesFromDate('wednesday', '2026-04-03', true);
+    useTaskStore.getState().reorderTask('wednesday', '16:00');
+
+    const tasks = useTaskStore.getState().tasks;
+    expect(tasks.find((task) => task.id === 'parent')).toMatchObject({ linked: false, time: '13:00' });
+    expect(tasks.find((task) => task.id === 'tuesday')).toMatchObject({ linked: false, time: '13:00' });
+    expect(tasks.find((task) => task.id === 'wednesday')).toMatchObject({ linked: true, linkedGroupId: 'wednesday', time: '16:00' });
+    expect(tasks.find((task) => task.id === 'thursday')).toMatchObject({ linked: true, linkedGroupId: 'wednesday', time: '16:00' });
+  });
+
+  it('keeps generated future instances linked after a mid-series link point', () => {
+    const parent = makeTask({ id: 'parent', linked: false, seriesId: 'series-1', linkedGroupId: undefined, date: '2026-04-01' });
+    const tuesday = makeTask({ id: 'tuesday', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: false, seriesId: 'series-1', linkedGroupId: undefined, date: '2026-04-02' });
+    const wednesday = makeTask({ id: 'wednesday', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: false, seriesId: 'series-1', linkedGroupId: undefined, date: '2026-04-03' });
+
+    resetStore([parent, tuesday, wednesday]);
+    useTaskStore.getState().linkSeriesFromDate('wednesday', '2026-04-03', true);
+    useTaskStore.getState().generateRecurringInstances('2026-04-04', '2026-04-05');
+
+    const tasks = useTaskStore.getState().tasks;
+    const thursday = tasks.find((task) => task.date === '2026-04-04');
+    const friday = tasks.find((task) => task.date === '2026-04-05');
+
+    expect(thursday).toMatchObject({ linked: true, linkedGroupId: 'wednesday', recurrenceParentId: 'parent' });
+    expect(friday).toMatchObject({ linked: true, linkedGroupId: 'wednesday', recurrenceParentId: 'parent' });
+    expect(tasks.find((task) => task.id === 'parent')).toMatchObject({ linked: false, linkedGroupId: undefined });
+  });
+
+  it('unlinks only the selected occurrence when turning linked off', () => {
+    const parent = makeTask({ id: 'parent', linked: true, seriesId: 'series-1', linkedGroupId: 'group-1', date: '2026-04-01' });
+    const linkedA = makeTask({ id: 'linked-a', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: true, seriesId: 'series-1', linkedGroupId: 'group-1', date: '2026-04-02' });
+    const linkedB = makeTask({ id: 'linked-b', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: true, seriesId: 'series-1', linkedGroupId: 'group-1', date: '2026-04-03' });
+
+    resetStore([parent, linkedA, linkedB]);
+    useTaskStore.getState().linkSeriesFromDate('linked-a', '2026-04-02', false);
+
+    const tasks = useTaskStore.getState().tasks;
+    expect(tasks.find((task) => task.id === 'parent')).toMatchObject({ linked: true, linkedGroupId: 'group-1' });
+    expect(tasks.find((task) => task.id === 'linked-a')).toMatchObject({ linked: false, linkedGroupId: undefined });
+    expect(tasks.find((task) => task.id === 'linked-b')).toMatchObject({ linked: true, linkedGroupId: 'group-1' });
+  });
 });
