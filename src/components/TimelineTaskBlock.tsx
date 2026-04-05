@@ -31,7 +31,9 @@ interface TimelineTaskBlockProps {
 }
 
 const DRAG_THRESHOLD = 8;
-const PICKUP_HOLD_MS = 1000; // Hold still 1s to pick up into carry mode
+const LOCK_MS = 500;        // 0–0.5s: no movement allowed
+const PICKUP_START_MS = 1000; // 1.0s after press: pickup ring begins
+const PICKUP_FILL_MS = 1000;  // ring fills over 1s (completes at 2.0s)
 const STILLNESS_THRESHOLD = 8; // px — movement under this counts as "still"
 
 function findColumnAtPoint(x: number, y: number): { date: string; element: HTMLElement } | null {
@@ -115,13 +117,24 @@ export function TimelineTaskBlock({
   };
 
   const startPickupTimer = useCallback(() => {
+    // Pickup ring starts at PICKUP_START_MS and fills over PICKUP_FILL_MS
     pickupStartTime.current = performance.now();
     setPickupProgress(0);
     const tick = () => {
       if (!pickupStartTime.current || pickupCommitted.current || dragActivated.current) return;
       const elapsed = performance.now() - pickupStartTime.current;
-      const progress = Math.min(1, elapsed / PICKUP_HOLD_MS);
+      
+      // Before PICKUP_START_MS, no ring — just waiting
+      if (elapsed < PICKUP_START_MS) {
+        pickupRafRef.current = requestAnimationFrame(tick);
+        return;
+      }
+      
+      // Ring fills from PICKUP_START_MS to PICKUP_START_MS + PICKUP_FILL_MS
+      const ringElapsed = elapsed - PICKUP_START_MS;
+      const progress = Math.min(1, ringElapsed / PICKUP_FILL_MS);
       setPickupProgress(progress);
+      
       if (progress >= 1) {
         pickupCommitted.current = true;
         if (navigator.vibrate) navigator.vibrate(30);
@@ -219,6 +232,10 @@ export function TimelineTaskBlock({
       const dx = e.clientX - pointerStartRef.current.x;
       const dy = e.clientY - pointerStartRef.current.y;
       const distance = Math.hypot(dx, dy);
+      const elapsed = Date.now() - pointerStartRef.current.time;
+
+      // Phase 1: 0–0.5s — lock in place, no movement allowed
+      if (elapsed < LOCK_MS) return;
 
       // If moved beyond stillness threshold, cancel pickup and activate drag
       if (distance >= STILLNESS_THRESHOLD && !dragActivated.current) {
@@ -228,7 +245,7 @@ export function TimelineTaskBlock({
 
       const s = useScheduledDragStore.getState();
       if (!s.active) {
-        // Activate drag immediately once movement exceeds threshold
+        // Activate drag once movement exceeds threshold (only after LOCK_MS)
         if (distance < DRAG_THRESHOLD) return;
         if (!dragActivated.current) {
           clearPickupHold();
