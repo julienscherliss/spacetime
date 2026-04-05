@@ -8,17 +8,12 @@ export interface CategoryDef {
   label: string;
 }
 
-export const DEFAULT_CATEGORIES: CategoryDef[] = [
-  { value: 'uncategorized', label: 'Uncategorized' },
-  { value: 'personal', label: 'Personal' },
-  { value: 'work', label: 'Work' },
-  { value: 'admin', label: 'Admin' },
-  { value: 'errands', label: 'Errands' },
-  { value: 'ideas', label: 'Ideas' },
-];
+// No default categories — users create their own
+export const DEFAULT_CATEGORIES: CategoryDef[] = [];
 
-// Keep backward compat
 export const LIBRARY_CATEGORIES = DEFAULT_CATEGORIES;
+
+export type TaskUrgency = 'none' | 'urgent' | 'important';
 
 export interface LibraryTask {
   id: string;
@@ -27,23 +22,35 @@ export interface LibraryTask {
   category: LibraryCategory;
   defaultDuration: number;
   createdAt: string;
+  urgency: TaskUrgency;
+  dueDate: string | null;
 }
 
-type SortMode = 'recent' | 'alpha' | 'category';
+type SortMode = 'recent' | 'alpha' | 'category' | 'due';
 type FilterCategory = string | 'all';
+
+interface FilterState {
+  category: FilterCategory;
+  urgency: TaskUrgency | 'all';
+  hasDueDate: boolean | null; // null = no filter
+}
 
 interface LibraryState {
   items: LibraryTask[];
   categories: CategoryDef[];
   panelOpen: boolean;
   sortMode: SortMode;
+  filters: FilterState;
+
+  // Legacy compat
   filterCategory: FilterCategory;
 
   setPanelOpen: (open: boolean) => void;
   setSortMode: (mode: SortMode) => void;
   setFilterCategory: (cat: FilterCategory) => void;
+  setFilter: (patch: Partial<FilterState>) => void;
   addItem: (title: string, category?: LibraryCategory) => void;
-  updateItem: (id: string, updates: Partial<Pick<LibraryTask, 'title' | 'note' | 'category' | 'defaultDuration'>>) => void;
+  updateItem: (id: string, updates: Partial<Pick<LibraryTask, 'title' | 'note' | 'category' | 'defaultDuration' | 'urgency' | 'dueDate'>>) => void;
   deleteItem: (id: string) => void;
   removeItem: (id: string) => void;
   addFromSchedule: (title: string, duration?: number) => void;
@@ -59,16 +66,28 @@ export const useLibraryStore = create<LibraryState>()(
   persist(
     (set, get) => ({
       items: [],
-      categories: [...DEFAULT_CATEGORIES],
+      categories: [],
       panelOpen: false,
       sortMode: 'recent',
       filterCategory: 'all',
+      filters: {
+        category: 'all',
+        urgency: 'all',
+        hasDueDate: null,
+      },
 
       setPanelOpen: (open) => set({ panelOpen: open }),
       setSortMode: (mode) => set({ sortMode: mode }),
-      setFilterCategory: (cat) => set({ filterCategory: cat }),
+      setFilterCategory: (cat) => set((s) => ({
+        filterCategory: cat,
+        filters: { ...s.filters, category: cat },
+      })),
+      setFilter: (patch) => set((s) => ({
+        filters: { ...s.filters, ...patch },
+        filterCategory: patch.category ?? s.filters.category,
+      })),
 
-      addItem: (title, category = 'uncategorized') => {
+      addItem: (title, category = '') => {
         set((s) => ({
           items: [
             {
@@ -78,6 +97,8 @@ export const useLibraryStore = create<LibraryState>()(
               category,
               defaultDuration: 30,
               createdAt: new Date().toISOString(),
+              urgency: 'none',
+              dueDate: null,
             },
             ...s.items,
           ],
@@ -102,9 +123,11 @@ export const useLibraryStore = create<LibraryState>()(
               id: generateId(),
               title,
               note: '',
-              category: 'uncategorized',
+              category: '',
               defaultDuration: duration,
               createdAt: new Date().toISOString(),
+              urgency: 'none',
+              dueDate: null,
             },
             ...s.items,
           ],
@@ -112,17 +135,40 @@ export const useLibraryStore = create<LibraryState>()(
       },
 
       getFilteredItems: () => {
-        const { items, sortMode, filterCategory } = get();
-        let filtered = filterCategory === 'all'
-          ? items
-          : items.filter((i) => i.category === filterCategory);
+        const { items, sortMode, filters } = get();
+        let filtered = items;
+
+        // Category filter
+        if (filters.category !== 'all') {
+          filtered = filtered.filter((i) => i.category === filters.category);
+        }
+
+        // Urgency filter
+        if (filters.urgency !== 'all') {
+          filtered = filtered.filter((i) => (i.urgency || 'none') === filters.urgency);
+        }
+
+        // Due date filter
+        if (filters.hasDueDate === true) {
+          filtered = filtered.filter((i) => i.dueDate);
+        } else if (filters.hasDueDate === false) {
+          filtered = filtered.filter((i) => !i.dueDate);
+        }
 
         switch (sortMode) {
           case 'alpha':
             filtered = [...filtered].sort((a, b) => a.title.localeCompare(b.title));
             break;
           case 'category':
-            filtered = [...filtered].sort((a, b) => a.category.localeCompare(b.category));
+            filtered = [...filtered].sort((a, b) => (a.category || '').localeCompare(b.category || ''));
+            break;
+          case 'due':
+            filtered = [...filtered].sort((a, b) => {
+              if (!a.dueDate && !b.dueDate) return 0;
+              if (!a.dueDate) return 1;
+              if (!b.dueDate) return -1;
+              return a.dueDate.localeCompare(b.dueDate);
+            });
             break;
           case 'recent':
           default:
@@ -142,7 +188,7 @@ export const useLibraryStore = create<LibraryState>()(
       removeCategory: (value) => {
         set((s) => ({
           categories: s.categories.filter(c => c.value !== value),
-          items: s.items.map(i => i.category === value ? { ...i, category: 'uncategorized' } : i),
+          items: s.items.map(i => i.category === value ? { ...i, category: '' } : i),
         }));
       },
 
@@ -154,12 +200,21 @@ export const useLibraryStore = create<LibraryState>()(
     }),
     {
       name: 'do-library-store',
-      // Migrate old data that doesn't have categories
       merge: (persisted: any, current: any) => {
         const merged = { ...current, ...persisted };
-        if (!merged.categories || merged.categories.length === 0) {
-          merged.categories = [...DEFAULT_CATEGORIES];
+        // Ensure new fields exist on old items
+        if (merged.items) {
+          merged.items = merged.items.map((i: any) => ({
+            urgency: 'none',
+            dueDate: null,
+            ...i,
+            category: i.category === 'uncategorized' ? '' : (i.category || ''),
+          }));
         }
+        if (!merged.filters) {
+          merged.filters = { category: merged.filterCategory || 'all', urgency: 'all', hasDueDate: null };
+        }
+        if (!merged.categories) merged.categories = [];
         return merged;
       },
     }

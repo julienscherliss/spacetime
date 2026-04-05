@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useLibraryStore, LibraryTask } from '@/store/libraryStore';
-import { SubtaskList, Subtask } from '@/components/SubtaskList';
-import { X, Trash2, Inbox, FolderOpen, Clock } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { useLibraryStore, LibraryTask, TaskUrgency } from '@/store/libraryStore';
+import { X, Trash2, Inbox, Clock, AlertTriangle, Tag, CalendarDays } from 'lucide-react';
 import { useTaskStore } from '@/store/taskStore';
 
 interface LibraryEditModalProps {
@@ -10,18 +9,48 @@ interface LibraryEditModalProps {
   onClose: () => void;
 }
 
+function UrgencyToggle({ value, onChange }: { value: TaskUrgency; onChange: (v: TaskUrgency) => void }) {
+  const opts: { key: TaskUrgency; icon: React.ReactNode; label: string }[] = [
+    { key: 'none', icon: null, label: 'None' },
+    { key: 'urgent', icon: <Clock size={13} strokeWidth={1.8} />, label: 'Urgent' },
+    { key: 'important', icon: <AlertTriangle size={13} strokeWidth={1.8} />, label: 'Important' },
+  ];
+  return (
+    <div className="flex items-center gap-1">
+      {opts.map((o) => (
+        <button
+          key={o.key}
+          onClick={() => onChange(o.key === value ? 'none' : o.key)}
+          className={`flex items-center gap-1.5 px-2.5 py-2 rounded-sm border text-[10px] font-mono tracking-wider transition-colors min-h-[40px] ${
+            value === o.key && o.key !== 'none'
+              ? o.key === 'urgent'
+                ? 'border-[hsl(var(--priority-1)/0.4)] bg-[hsl(var(--priority-1)/0.06)] text-[hsl(var(--priority-1))]'
+                : 'border-[hsl(var(--priority-2)/0.4)] bg-[hsl(var(--priority-2)/0.06)] text-[hsl(var(--priority-2))]'
+              : 'border-border text-muted-foreground/40 hover:text-foreground'
+          }`}
+        >
+          {o.icon}
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
-  const { updateItem, deleteItem, categories } = useLibraryStore();
+  const { updateItem, deleteItem, categories, addCategory } = useLibraryStore();
   const [title, setTitle] = useState(item.title);
   const [note, setNote] = useState(item.note || '');
   const [duration, setDuration] = useState(item.defaultDuration);
-  const [category, setCategory] = useState(item.category);
+  const [category, setCategory] = useState(item.category || '');
+  const [urgency, setUrgency] = useState<TaskUrgency>(item.urgency || 'none');
+  const [dueDate, setDueDate] = useState(item.dueDate || '');
   const [showCatPicker, setShowCatPicker] = useState(false);
+  const [newCatInline, setNewCatInline] = useState('');
+  const [showNewCatInput, setShowNewCatInput] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    titleRef.current?.focus();
-  }, []);
+  useEffect(() => { titleRef.current?.focus(); }, []);
 
   const handleSave = () => {
     updateItem(item.id, {
@@ -29,6 +58,8 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
       note,
       defaultDuration: duration,
       category,
+      urgency,
+      dueDate: dueDate || null,
     });
     onClose();
   };
@@ -52,7 +83,17 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
     onClose();
   };
 
-  const catLabel = categories.find(c => c.value === category)?.label || category;
+  const handleAddCatInline = () => {
+    if (!newCatInline.trim()) { setShowNewCatInput(false); return; }
+    addCategory(newCatInline.trim());
+    const val = newCatInline.trim().toLowerCase().replace(/\s+/g, '-');
+    setCategory(val);
+    setNewCatInline('');
+    setShowNewCatInput(false);
+    setShowCatPicker(false);
+  };
+
+  const catLabel = categories.find(c => c.value === category)?.label || (category ? category : 'No category');
 
   return (
     <motion.div
@@ -73,10 +114,7 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
       >
         {/* Header */}
         <div className="px-4 pt-3 pb-2 border-b border-border/30 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-[11px] font-mono text-muted-foreground/50">
-            <FolderOpen size={11} strokeWidth={1.5} />
-            <span>Library item</span>
-          </div>
+          <span className="text-[11px] font-mono text-muted-foreground/50">Edit item</span>
           <button onClick={handleSave} className="p-1 text-muted-foreground/40 hover:text-foreground transition-colors">
             <X size={16} strokeWidth={1.5} />
           </button>
@@ -88,33 +126,59 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
             ref={titleRef}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Item name..."
+            placeholder="Item name…"
             className="w-full bg-transparent font-display font-bold text-foreground text-base leading-tight focus:outline-none placeholder:text-muted-foreground/20"
           />
 
-          {/* Category & duration */}
-          <div className="flex items-center gap-3">
+          {/* Category & duration row */}
+          <div className="flex items-center gap-2 flex-wrap">
             <div className="relative">
               <button
                 onClick={() => setShowCatPicker(!showCatPicker)}
                 className="flex items-center gap-1.5 px-2.5 py-2 rounded-sm border border-border text-[11px] font-mono text-muted-foreground/60 hover:text-foreground transition-colors min-h-[40px]"
               >
-                <FolderOpen size={11} />
+                <Tag size={11} />
                 {catLabel}
               </button>
               {showCatPicker && (
-                <div className="absolute left-0 top-full mt-1 z-50 bg-card border border-border rounded-sm shadow-md py-1 w-32">
+                <div className="absolute left-0 top-full mt-1 z-50 bg-card border border-border rounded-sm shadow-md py-1 w-36">
+                  <button
+                    onClick={() => { setCategory(''); setShowCatPicker(false); }}
+                    className={`w-full text-left px-3 py-2 text-[11px] font-mono min-h-[40px] ${!category ? 'text-foreground bg-muted/50' : 'text-muted-foreground/50 hover:text-foreground'}`}
+                  >
+                    No category
+                  </button>
                   {categories.map((cat) => (
                     <button
                       key={cat.value}
                       onClick={() => { setCategory(cat.value); setShowCatPicker(false); }}
-                      className={`w-full text-left px-3 py-2 text-[11px] font-mono min-h-[40px] ${
-                        category === cat.value ? 'text-foreground bg-muted/50' : 'text-muted-foreground/50 hover:text-foreground'
-                      }`}
+                      className={`w-full text-left px-3 py-2 text-[11px] font-mono min-h-[40px] ${category === cat.value ? 'text-foreground bg-muted/50' : 'text-muted-foreground/50 hover:text-foreground'}`}
                     >
                       {cat.label}
                     </button>
                   ))}
+                  <div className="border-t border-border/30 mt-1 pt-1">
+                    {showNewCatInput ? (
+                      <div className="px-3 py-2">
+                        <input
+                          value={newCatInline}
+                          onChange={(e) => setNewCatInline(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') handleAddCatInline(); if (e.key === 'Escape') setShowNewCatInput(false); }}
+                          onBlur={handleAddCatInline}
+                          placeholder="Category name…"
+                          className="w-full bg-transparent text-[11px] font-mono text-foreground placeholder:text-muted-foreground/30 focus:outline-none border-b border-primary/30"
+                          autoFocus
+                        />
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setShowNewCatInput(true)}
+                        className="w-full text-left px-3 py-2 text-[11px] font-mono text-primary/60 hover:text-primary flex items-center gap-2 min-h-[40px]"
+                      >
+                        <Tag size={10} /> New…
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -133,13 +197,38 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
             </div>
           </div>
 
+          {/* Due date */}
+          <div className="flex items-center gap-2">
+            <CalendarDays size={12} className="text-muted-foreground/40 shrink-0" />
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="bg-transparent text-[11px] font-mono text-foreground/70 focus:outline-none border border-border rounded-sm px-2 py-2 min-h-[40px]"
+            />
+            {dueDate && (
+              <button
+                onClick={() => setDueDate('')}
+                className="text-[9px] font-mono text-muted-foreground/40 hover:text-foreground"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          {/* Urgency */}
+          <div>
+            <label className="block text-[9px] font-mono tracking-widest text-muted-foreground/40 mb-1.5">PRIORITY</label>
+            <UrgencyToggle value={urgency} onChange={setUrgency} />
+          </div>
+
           {/* Notes */}
           <div>
             <label className="block text-[9px] font-mono tracking-widest text-muted-foreground/40 mb-1.5">NOTES</label>
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Add details, context, links..."
+              placeholder="Add details, context, links…"
               rows={3}
               className="w-full bg-muted/30 border border-border/50 rounded-sm px-3 py-2.5 text-[12px] font-mono text-foreground/70 placeholder:text-muted-foreground/20 focus:outline-none focus:border-primary/20 resize-none leading-relaxed"
             />
