@@ -1,7 +1,8 @@
-import { MutableRefObject, useRef, useCallback, useEffect } from 'react';
+import { MutableRefObject, useRef, useCallback, useEffect, useState } from 'react';
 import { Check, Link, Unlink } from 'lucide-react';
 import { Task } from '@/store/taskStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
+import { HoldToConfirmRing } from '@/components/HoldToConfirmRing';
 import { formatTime12h } from '@/hooks/useCurrentTime';
 import { useScheduledDragStore } from '@/store/scheduledDragStore';
 import { useCarryStore } from '@/store/carryStore';
@@ -31,7 +32,7 @@ interface TimelineTaskBlockProps {
 
 const DRAG_THRESHOLD = 8;
 const LONG_PRESS_MS = 250;
-const DRAG_HOLD_MS = 150; // Hold before drag can activate
+const DRAG_HOLD_MS = 900; // Hold before drag can activate
 
 function findColumnAtPoint(x: number, y: number): { date: string; element: HTMLElement } | null {
   const cols = document.querySelectorAll<HTMLElement>('[data-timeline-column]');
@@ -88,6 +89,9 @@ export function TimelineTaskBlock({
   const longPressFired = useRef(false);
   const dragHoldReady = useRef(false); // true after DRAG_HOLD_MS elapsed
   const dragHoldTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dragHoldRafRef = useRef<number | null>(null);
+  const dragHoldStartTime = useRef<number | null>(null);
+  const [dragHoldProgress, setDragHoldProgress] = useState(0);
   const unlinkHoldTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastMoveTime = useRef<number>(0);
   const stationaryStart = useRef<number>(0);
@@ -115,6 +119,12 @@ export function TimelineTaskBlock({
       clearTimeout(dragHoldTimer.current);
       dragHoldTimer.current = null;
     }
+    if (dragHoldRafRef.current) {
+      cancelAnimationFrame(dragHoldRafRef.current);
+      dragHoldRafRef.current = null;
+    }
+    dragHoldStartTime.current = null;
+    setDragHoldProgress(0);
   };
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
@@ -130,11 +140,25 @@ export function TimelineTaskBlock({
     longPressFired.current = false;
     dragHoldReady.current = false;
 
-    // Start drag hold timer — drag won't activate until this fires
+    // Start drag hold animation — drag won't activate until ring completes
     if (dragHoldTimer.current) clearTimeout(dragHoldTimer.current);
-    dragHoldTimer.current = setTimeout(() => {
-      dragHoldReady.current = true;
-    }, DRAG_HOLD_MS);
+    if (dragHoldRafRef.current) cancelAnimationFrame(dragHoldRafRef.current);
+    dragHoldStartTime.current = performance.now();
+    setDragHoldProgress(0);
+    const tickHold = () => {
+      if (!dragHoldStartTime.current) return;
+      const elapsed = performance.now() - dragHoldStartTime.current;
+      const progress = Math.min(1, elapsed / DRAG_HOLD_MS);
+      setDragHoldProgress(progress);
+      if (progress >= 1) {
+        dragHoldReady.current = true;
+        if (navigator.vibrate) navigator.vibrate(20);
+        dragHoldStartTime.current = null;
+        return;
+      }
+      dragHoldRafRef.current = requestAnimationFrame(tickHold);
+    };
+    dragHoldRafRef.current = requestAnimationFrame(tickHold);
 
     // Locked tasks: allow tap-to-edit but skip drag/carry setup
     if (isLocked) {
@@ -204,9 +228,13 @@ export function TimelineTaskBlock({
       const dy = e.clientY - pointerStartRef.current.y;
       const distance = Math.hypot(dx, dy);
 
-      // Cancel long press if finger moved
+      // Cancel long press and drag hold ring if finger moved
       if (distance >= DRAG_THRESHOLD) {
         clearLongPress();
+        // Cancel hold ring if not yet ready
+        if (!dragHoldReady.current) {
+          clearDragHold();
+        }
       }
       // If long press already fired, don't do normal drag
       if (longPressFired.current) return;
@@ -312,6 +340,8 @@ export function TimelineTaskBlock({
       pointerStartRef.current = null;
     }
   }, [dragTaskId, task.id]);
+
+  const showHoldRing = dragHoldProgress > 0 && dragHoldProgress < 1 && !isLocked;
 
   return (
     <div
@@ -435,6 +465,14 @@ export function TimelineTaskBlock({
           </div>
         )}
       </div>
+      {showHoldRing && (
+        <div className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
+          <div className="bg-background/70 backdrop-blur-sm rounded-[2px] absolute inset-0" />
+          <div className="relative z-10">
+            <HoldToConfirmRing progress={dragHoldProgress} size={32} strokeWidth={2.5} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
