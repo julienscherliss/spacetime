@@ -7,7 +7,7 @@ import { WeekView } from '@/components/WeekView';
 import { CalendarView } from '@/components/CalendarView';
 import { TaskEditPanel } from '@/components/TaskEditPanel';
 import { DailyCompletionModal } from '@/components/DailyCompletionModal';
-import { CalendarPanel } from '@/components/CalendarPanel';
+
 import { LibraryPanel } from '@/components/LibraryPanel';
 import { WaitingRoom } from '@/components/WaitingRoom';
 import { TouchDragGhost } from '@/components/TouchDragGhost';
@@ -80,7 +80,7 @@ const Index = () => {
 
       <TaskEditPanel />
       <DailyCompletionModal />
-      <CalendarPanel />
+      
       <LibraryPanel />
       <WaitingRoom open={waitingOpen} onClose={() => setWaitingOpen(false)} />
       <TouchDragGhost />
