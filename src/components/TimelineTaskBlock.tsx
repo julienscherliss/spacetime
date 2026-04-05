@@ -464,6 +464,14 @@ export function TimelineTaskBlock({
           </div>
         )}
       </div>
+      {showHoldRing && (
+        <div className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
+          <div className="bg-background/70 backdrop-blur-sm rounded-[2px] absolute inset-0" />
+          <div className="relative z-10">
+            <HoldToConfirmRing progress={dragHoldProgress} size={32} strokeWidth={2.5} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
