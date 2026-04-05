@@ -85,27 +85,18 @@ export function TimelineTaskBlock({
 
   const pointerStartRef = useRef<{ x: number; y: number; pointerId: number; time: number } | null>(null);
   const elRef = useRef<HTMLDivElement | null>(null);
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const longPressFired = useRef(false);
-  const dragHoldReady = useRef(false); // true after DRAG_HOLD_MS elapsed
-  const dragHoldTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const dragHoldRafRef = useRef<number | null>(null);
-  const dragHoldStartTime = useRef<number | null>(null);
-  const [dragHoldProgress, setDragHoldProgress] = useState(0);
+  const pickupRafRef = useRef<number | null>(null);
+  const pickupStartTime = useRef<number | null>(null);
+  const [pickupProgress, setPickupProgress] = useState(0);
+  const pickupCommitted = useRef(false);
+  const dragActivated = useRef(false);
   const unlinkHoldTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastMoveTime = useRef<number>(0);
   const stationaryStart = useRef<number>(0);
   const lastPosition = useRef<{ x: number; y: number } | null>(null);
 
-  const UNLINK_HOLD_MS = 600; // hold stationary for 600ms to enter unlink mode
-  const STATIONARY_THRESHOLD = 6; // px — movement under this counts as stationary
-
-  const clearLongPress = () => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-  };
+  const UNLINK_HOLD_MS = 600;
+  const STATIONARY_THRESHOLD = 6;
 
   const clearUnlinkHold = () => {
     if (unlinkHoldTimer.current) {
@@ -114,55 +105,60 @@ export function TimelineTaskBlock({
     }
   };
 
-  const clearDragHold = () => {
-    if (dragHoldTimer.current) {
-      clearTimeout(dragHoldTimer.current);
-      dragHoldTimer.current = null;
+  const clearPickupHold = () => {
+    if (pickupRafRef.current) {
+      cancelAnimationFrame(pickupRafRef.current);
+      pickupRafRef.current = null;
     }
-    if (dragHoldRafRef.current) {
-      cancelAnimationFrame(dragHoldRafRef.current);
-      dragHoldRafRef.current = null;
-    }
-    dragHoldStartTime.current = null;
-    setDragHoldProgress(0);
+    pickupStartTime.current = null;
+    setPickupProgress(0);
   };
+
+  const startPickupTimer = useCallback(() => {
+    pickupStartTime.current = performance.now();
+    setPickupProgress(0);
+    const tick = () => {
+      if (!pickupStartTime.current || pickupCommitted.current || dragActivated.current) return;
+      const elapsed = performance.now() - pickupStartTime.current;
+      const progress = Math.min(1, elapsed / PICKUP_HOLD_MS);
+      setPickupProgress(progress);
+      if (progress >= 1) {
+        pickupCommitted.current = true;
+        if (navigator.vibrate) navigator.vibrate(30);
+        useCarryStore.getState().pickup({
+          taskId: task.id,
+          title: task.title,
+          duration: task.duration || 30,
+          fromDate: task.date,
+          fromTime: task.time,
+          pickedUpAt: Date.now(),
+        });
+        useScheduledDragStore.getState().cancel();
+        pointerStartRef.current = null;
+        setPickupProgress(0);
+        return;
+      }
+      pickupRafRef.current = requestAnimationFrame(tick);
+    };
+    pickupRafRef.current = requestAnimationFrame(tick);
+  }, [task.id, task.title, task.duration, task.date, task.time]);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (isResizingThis) return;
     const target = e.target as HTMLElement;
     if (target.closest('button, input, textarea, [data-touch-ignore]')) return;
-
-    // If we're in carry mode and tapping a task, don't start drag — let the
-    // TimelineColumn tap-to-drop handler deal with it
     if (useCarryStore.getState().carried) return;
 
     pointerStartRef.current = { x: e.clientX, y: e.clientY, pointerId: e.pointerId, time: Date.now() };
-    longPressFired.current = false;
-    dragHoldReady.current = false;
+    pickupCommitted.current = false;
+    dragActivated.current = false;
 
-    // Start drag hold animation — drag won't activate until ring completes
-    if (dragHoldTimer.current) clearTimeout(dragHoldTimer.current);
-    if (dragHoldRafRef.current) cancelAnimationFrame(dragHoldRafRef.current);
-    dragHoldStartTime.current = performance.now();
-    setDragHoldProgress(0);
-    const tickHold = () => {
-      if (!dragHoldStartTime.current) return;
-      const elapsed = performance.now() - dragHoldStartTime.current;
-      const progress = Math.min(1, elapsed / DRAG_HOLD_MS);
-      setDragHoldProgress(progress);
-      if (progress >= 1) {
-        dragHoldReady.current = true;
-        if (navigator.vibrate) navigator.vibrate(20);
-        dragHoldStartTime.current = null;
-        return;
-      }
-      dragHoldRafRef.current = requestAnimationFrame(tickHold);
-    };
-    dragHoldRafRef.current = requestAnimationFrame(tickHold);
+    const blockRect = elRef.current?.getBoundingClientRect();
+    const grabOffset = blockRect ? e.clientY - blockRect.top : 0;
+    dragOffsetRef.current = grabOffset;
 
-    // Locked tasks: allow tap-to-edit but skip drag/carry setup
+    // Locked tasks: tap-to-edit only
     if (isLocked) {
-      // Attach a one-shot pointerup to trigger edit
       const onUp = () => {
         window.removeEventListener('pointerup', onUp);
         window.removeEventListener('pointercancel', onCancel);
@@ -181,27 +177,7 @@ export function TimelineTaskBlock({
       return;
     }
 
-    const blockRect = elRef.current?.getBoundingClientRect();
-    const grabOffset = blockRect ? e.clientY - blockRect.top : 0;
-    dragOffsetRef.current = grabOffset;
-
-    // Start long-press timer for carry mode
-    longPressTimer.current = setTimeout(() => {
-      longPressFired.current = true;
-      // Enter carry mode
-      useCarryStore.getState().pickup({
-        taskId: task.id,
-        title: task.title,
-        duration: task.duration || 30,
-        fromDate: task.date,
-        fromTime: task.time,
-        pickedUpAt: Date.now(),
-      });
-      // Cancel any pending drag
-      useScheduledDragStore.getState().cancel();
-      pointerStartRef.current = null;
-    }, LONG_PRESS_MS);
-
+    // Prepare drag store (not yet active)
     useScheduledDragStore.getState().startDrag({
       taskId: task.id,
       sourceDate: task.date,
@@ -210,11 +186,13 @@ export function TimelineTaskBlock({
       grabOffsetY: grabOffset,
     });
 
-    // Mark if this is a linked task
     if (task.linked && task.linkedGroupId) {
       useScheduledDragStore.setState({ isLinkedTask: true });
     }
-  }, [isLocked, isResizingThis, task.id, task.date, task.time, task.duration, task.title, dragOffsetRef, handleTaskClick]);
+
+    // Start pickup hold timer (hold still = pick up into carry mode)
+    startPickupTimer();
+  }, [isLocked, isResizingThis, task.id, task.date, task.time, task.duration, task.title, task.linked, task.linkedGroupId, dragOffsetRef, handleTaskClick, startPickupTimer]);
 
   // Global pointermove/pointerup when drag is pending or active
   useEffect(() => {
@@ -223,30 +201,27 @@ export function TimelineTaskBlock({
     if (store.taskId !== task.id) return;
 
     const handleMove = (e: PointerEvent) => {
-      if (!pointerStartRef.current) return;
+      if (!pointerStartRef.current || pickupCommitted.current) return;
       const dx = e.clientX - pointerStartRef.current.x;
       const dy = e.clientY - pointerStartRef.current.y;
       const distance = Math.hypot(dx, dy);
 
-      // Cancel long press and drag hold ring if finger moved
-      if (distance >= DRAG_THRESHOLD) {
-        clearLongPress();
-        // Cancel hold ring if not yet ready
-        if (!dragHoldReady.current) {
-          clearDragHold();
-        }
+      // If moved beyond stillness threshold, cancel pickup and activate drag
+      if (distance >= STILLNESS_THRESHOLD && !dragActivated.current) {
+        clearPickupHold();
+        dragActivated.current = true;
       }
-      // If long press already fired, don't do normal drag
-      if (longPressFired.current) return;
 
       const s = useScheduledDragStore.getState();
       if (!s.active) {
-        // Require both distance threshold AND hold delay
-        if (distance < DRAG_THRESHOLD || !dragHoldReady.current) return;
-        clearDragHold();
+        // Activate drag immediately once movement exceeds threshold
+        if (distance < DRAG_THRESHOLD) return;
+        if (!dragActivated.current) {
+          clearPickupHold();
+          dragActivated.current = true;
+        }
         useScheduledDragStore.getState().activate();
         didDragRef.current = true;
-        // Reset stationary tracking when drag activates
         lastPosition.current = { x: e.clientX, y: e.clientY };
         stationaryStart.current = Date.now();
       }
@@ -272,17 +247,14 @@ export function TimelineTaskBlock({
             e.clientY - lastPosition.current.y
           );
           if (moveDist > STATIONARY_THRESHOLD) {
-            // Moved significantly — reset stationary timer
             lastPosition.current = { x: e.clientX, y: e.clientY };
             stationaryStart.current = now;
             clearUnlinkHold();
           } else if (!unlinkHoldTimer.current) {
-            // Start unlink hold timer
             unlinkHoldTimer.current = setTimeout(() => {
               const s2 = useScheduledDragStore.getState();
               if (s2.active && s2.isLinkedTask && !s2.unlinkMode) {
                 useScheduledDragStore.getState().setUnlinkMode(true);
-                // Haptic feedback if available
                 if (navigator.vibrate) navigator.vibrate(30);
               }
             }, UNLINK_HOLD_MS);
@@ -295,12 +267,10 @@ export function TimelineTaskBlock({
     };
 
     const handleUp = (e: PointerEvent) => {
-      clearLongPress();
       clearUnlinkHold();
-      clearDragHold();
+      clearPickupHold();
       if (!pointerStartRef.current) return;
-      // If long press fired, we're in carry mode — don't do anything
-      if (longPressFired.current) {
+      if (pickupCommitted.current) {
         pointerStartRef.current = null;
         useScheduledDragStore.getState().cancel();
         return;
@@ -315,9 +285,8 @@ export function TimelineTaskBlock({
     };
 
     const handleCancel = () => {
-      clearLongPress();
       clearUnlinkHold();
-      clearDragHold();
+      clearPickupHold();
       useScheduledDragStore.getState().cancel();
       pointerStartRef.current = null;
       didDragRef.current = false;
@@ -341,7 +310,7 @@ export function TimelineTaskBlock({
     }
   }, [dragTaskId, task.id]);
 
-  const showHoldRing = dragHoldProgress > 0 && dragHoldProgress < 1 && !isLocked;
+  const showHoldRing = pickupProgress > 0 && !dragActivated.current && !isLocked;
 
   return (
     <div
