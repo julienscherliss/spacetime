@@ -35,7 +35,7 @@ export function HoldToConfirmRing({ progress, size = 48, strokeWidth = 3, label 
             strokeDasharray={circumference}
             strokeDashoffset={offset}
             strokeLinecap="round"
-            className="transition-[stroke-dashoffset] duration-75"
+            style={{ transition: 'none' }}
           />
         </svg>
         {/* Center icon pulse on complete */}
