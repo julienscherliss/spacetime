@@ -1,4 +1,4 @@
-import { MutableRefObject, useRef, useCallback, useEffect } from 'react';
+import { MutableRefObject, useRef, useCallback, useEffect, useState } from 'react';
 import { Check, Link, Unlink } from 'lucide-react';
 import { Task } from '@/store/taskStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
