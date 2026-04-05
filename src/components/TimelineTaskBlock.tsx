@@ -31,7 +31,7 @@ interface TimelineTaskBlockProps {
 }
 
 const DRAG_THRESHOLD = 8;
-const PICKUP_HOLD_MS = 1500; // Hold still 1.5s to pick up into carry mode
+const PICKUP_HOLD_MS = 1000; // Hold still 1s to pick up into carry mode
 const STILLNESS_THRESHOLD = 8; // px — movement under this counts as "still"
 
 function findColumnAtPoint(x: number, y: number): { date: string; element: HTMLElement } | null {
@@ -142,6 +142,20 @@ export function TimelineTaskBlock({
     };
     pickupRafRef.current = requestAnimationFrame(tick);
   }, [task.id, task.title, task.duration, task.date, task.time]);
+
+  // Cancel everything on multi-touch (pinch zoom)
+  const handleTouchStartMulti = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length > 1) {
+      // Multi-touch detected (pinch) — cancel any pending pickup/drag
+      clearPickupHold();
+      if (pointerStartRef.current) {
+        pointerStartRef.current = null;
+        useScheduledDragStore.getState().cancel();
+        dragActivated.current = false;
+        pickupCommitted.current = false;
+      }
+    }
+  }, []);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (isResizingThis) return;
