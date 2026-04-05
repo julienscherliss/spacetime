@@ -31,7 +31,9 @@ interface TimelineTaskBlockProps {
 }
 
 const DRAG_THRESHOLD = 8;
-const PICKUP_HOLD_MS = 1000; // Hold still 1s to pick up into carry mode
+const LOCK_MS = 500;        // 0–0.5s: no movement allowed
+const PICKUP_START_MS = 1000; // 1.0s after press: pickup ring begins
+const PICKUP_FILL_MS = 1000;  // ring fills over 1s (completes at 2.0s)
 const STILLNESS_THRESHOLD = 8; // px — movement under this counts as "still"
 
 function findColumnAtPoint(x: number, y: number): { date: string; element: HTMLElement } | null {
