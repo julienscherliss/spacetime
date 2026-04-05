@@ -82,10 +82,12 @@ export function TimelineTaskBlock({
 
   const snapTo15 = (mins: number) => Math.round(mins / 15) * 15;
 
-  const pointerStartRef = useRef<{ x: number; y: number; pointerId: number } | null>(null);
+  const pointerStartRef = useRef<{ x: number; y: number; pointerId: number; time: number } | null>(null);
   const elRef = useRef<HTMLDivElement | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFired = useRef(false);
+  const dragHoldReady = useRef(false); // true after DRAG_HOLD_MS elapsed
+  const dragHoldTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const unlinkHoldTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastMoveTime = useRef<number>(0);
   const stationaryStart = useRef<number>(0);
