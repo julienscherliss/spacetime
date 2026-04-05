@@ -294,6 +294,14 @@ export function TimelineColumn({
     const getMinutes = getMinutesFromY;
 
     const onTouchStart = (e: TouchEvent) => {
+      // Ignore multi-touch (pinch zoom)
+      if (e.touches.length > 1) {
+        if (createTouchTimer.current) clearTimeout(createTouchTimer.current);
+        createTouchTimer.current = null;
+        createTouchRef.current = null;
+        setCreating(null);
+        return;
+      }
       const target = e.target as HTMLElement;
       if (target.closest('[data-task-block]') || target.closest('input') || target.closest('button')) return;
       if (useCarryStore.getState().carried) return;
@@ -311,6 +319,14 @@ export function TimelineColumn({
     };
 
     const onTouchMove = (e: TouchEvent) => {
+      // Cancel on multi-touch (pinch zoom)
+      if (e.touches.length > 1) {
+        if (createTouchTimer.current) clearTimeout(createTouchTimer.current);
+        createTouchTimer.current = null;
+        createTouchRef.current = null;
+        setCreating(null);
+        return;
+      }
       if (!createTouchRef.current) return;
       const touch = e.touches[0];
       const dx = Math.abs(touch.clientX - createTouchRef.current.startX);
