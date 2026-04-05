@@ -1,14 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, ViewMode } from '@/store/taskStore';
-import { useCalendarStore } from '@/store/calendarStore';
 import { useLibraryStore } from '@/store/libraryStore';
 import { useTimezoneStore, getTzAbbr } from '@/store/timezoneStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Focus, List, CalendarDays, Grid3X3, Repeat,
-  Calendar as CalIcon, Archive, Clock, LogOut, Settings, MoreHorizontal, X
+  Archive, Clock, LogOut, Settings, MoreHorizontal, X
 } from 'lucide-react';
 
 const views: { mode: ViewMode; icon: typeof Focus; label: string }[] = [
@@ -20,7 +19,6 @@ const views: { mode: ViewMode; icon: typeof Focus; label: string }[] = [
 
 export function AppNav() {
   const { viewMode, setViewMode, routinesEnabled, toggleRoutines, tasks } = useTaskStore();
-  const { panelOpen: calPanelOpen, setPanelOpen: setCalPanelOpen, connected } = useCalendarStore();
   const { panelOpen: libPanelOpen, setPanelOpen: setLibPanelOpen } = useLibraryStore();
   const libCount = useLibraryStore((s) => s.items.length);
   const { signOut } = useAuth();
@@ -126,12 +124,6 @@ export function AppNav() {
                         badge={waitingCount > 0 ? String(waitingCount) : undefined}
                         onClick={() => { window.dispatchEvent(new CustomEvent('toggle-waiting-room')); setMoreOpen(false); }}
                       />
-                      <OverflowItem
-                        icon={<CalIcon size={18} strokeWidth={1.5} />}
-                        label="Calendar"
-                        active={calPanelOpen}
-                        onClick={() => { setCalPanelOpen(!calPanelOpen); setMoreOpen(false); }}
-                      />
 
                       <div className="border-t border-border/40 my-1" />
 
@@ -226,19 +218,6 @@ export function AppNav() {
                 {waitingCount}
               </span>
             )}
-          </button>
-          <button
-            onClick={() => setCalPanelOpen(!calPanelOpen)}
-            className={`flex items-center gap-1 px-2 py-1.5 rounded-sm text-[10px] font-mono tracking-wider transition-colors ${
-              calPanelOpen
-                ? 'bg-primary/8 text-primary border border-primary/15'
-                : connected
-                  ? 'text-muted-foreground hover:text-foreground'
-                  : 'text-muted-foreground/40 hover:text-foreground'
-            }`}
-          >
-            <CalIcon size={12} strokeWidth={1.5} />
-            <span>CAL</span>
           </button>
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('toggle-settings'))}

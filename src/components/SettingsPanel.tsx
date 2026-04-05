@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useTimezoneStore, getTzAbbr, TIMEZONES } from '@/store/timezoneStore';
-import { X, Search, Globe, Repeat, MapPin } from 'lucide-react';
+import { useCalendarStore } from '@/store/calendarStore';
+import { X, Search, Globe, Repeat, MapPin, Calendar as CalIcon, RefreshCw, Unplug } from 'lucide-react';
 
 interface SettingsPanelProps {
   open: boolean;
@@ -9,7 +10,12 @@ interface SettingsPanelProps {
 
 export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const { timezone, setTimezone, routinesFixedTime, setRoutinesFixedTime, autoDetect, setAutoDetect } = useTimezoneStore();
+  const { connected, email, calendars, loading, checkStatus, startAuth, fetchCalendars, toggleCalendar, disconnect } = useCalendarStore();
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    if (open) checkStatus();
+  }, [open]);
 
   const filtered = useMemo(() => {
     if (!search) return TIMEZONES.slice(0, 50);
@@ -141,6 +147,78 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 <div className="w-4 h-4 rounded-full bg-white shadow-sm" />
               </div>
             </button>
+          </div>
+
+          {/* Google Calendar */}
+          <div className="border-t border-border/30 pt-4">
+            <div className="flex items-center gap-1.5 mb-2">
+              <CalIcon size={12} strokeWidth={1.5} className="text-muted-foreground" />
+              <span className="text-[11px] font-mono tracking-[0.12em] text-muted-foreground">GOOGLE CALENDAR</span>
+            </div>
+
+            {!connected ? (
+              <button
+                onClick={startAuth}
+                disabled={loading}
+                className="w-full flex items-center justify-center bg-muted/30 border border-border/50 rounded-sm p-3 min-h-[48px] text-[12px] font-mono tracking-wider text-primary hover:bg-primary/5 transition-colors disabled:opacity-50"
+              >
+                {loading ? 'CONNECTING...' : 'CONNECT GOOGLE CALENDAR'}
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between bg-muted/30 border border-border/50 rounded-sm p-3 min-h-[48px]">
+                  <div>
+                    <div className="text-[12px] font-mono text-foreground">Connected</div>
+                    <div className="text-[10px] font-mono text-muted-foreground/50 mt-0.5 truncate max-w-[180px]">
+                      {email || 'Google account'}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={fetchCalendars}
+                      className="p-2 text-muted-foreground/40 hover:text-foreground transition-colors rounded-sm hover:bg-muted/40"
+                      title="Refresh calendars"
+                    >
+                      <RefreshCw size={14} strokeWidth={1.5} />
+                    </button>
+                    <button
+                      onClick={disconnect}
+                      className="p-2 text-muted-foreground/40 hover:text-destructive transition-colors rounded-sm hover:bg-destructive/5"
+                      title="Disconnect"
+                    >
+                      <Unplug size={14} strokeWidth={1.5} />
+                    </button>
+                  </div>
+                </div>
+
+                {calendars.length > 0 && (
+                  <div className="border border-border/30 rounded-sm overflow-hidden">
+                    {calendars.map((cal) => (
+                      <label
+                        key={cal.id}
+                        className="flex items-center gap-2.5 cursor-pointer hover:bg-muted/30 transition-colors py-2.5 px-3"
+                      >
+                        <div className="relative flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={cal.visible}
+                            onChange={(e) => toggleCalendar(cal.id, e.target.checked)}
+                            className="sr-only"
+                          />
+                          <div
+                            className={`w-4 h-4 rounded-[3px] border transition-colors ${
+                              cal.visible ? 'border-transparent' : 'border-border bg-transparent'
+                            }`}
+                            style={{ backgroundColor: cal.visible ? (cal.color || 'hsl(var(--primary))') : undefined }}
+                          />
+                        </div>
+                        <span className="text-[11px] font-mono text-foreground/70 truncate flex-1">{cal.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
