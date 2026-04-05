@@ -227,9 +227,13 @@ export function TimelineTaskBlock({
       const dy = e.clientY - pointerStartRef.current.y;
       const distance = Math.hypot(dx, dy);
 
-      // Cancel long press if finger moved
+      // Cancel long press and drag hold ring if finger moved
       if (distance >= DRAG_THRESHOLD) {
         clearLongPress();
+        // Cancel hold ring if not yet ready
+        if (!dragHoldReady.current) {
+          clearDragHold();
+        }
       }
       // If long press already fired, don't do normal drag
       if (longPressFired.current) return;
