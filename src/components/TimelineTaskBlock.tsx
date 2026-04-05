@@ -311,6 +311,7 @@ export function TimelineTaskBlock({
     const handleUp = (e: PointerEvent) => {
       clearUnlinkHold();
       clearPickupHold();
+      setDragReady(false);
       if (!pointerStartRef.current) return;
       if (pickupCommitted.current) {
         pointerStartRef.current = null;
