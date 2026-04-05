@@ -1,14 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, ViewMode } from '@/store/taskStore';
-import { useCalendarStore } from '@/store/calendarStore';
 import { useLibraryStore } from '@/store/libraryStore';
 import { useTimezoneStore, getTzAbbr } from '@/store/timezoneStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Focus, List, CalendarDays, Grid3X3, Repeat,
-  Calendar as CalIcon, Archive, Clock, LogOut, Settings, MoreHorizontal, X
+  Archive, Clock, LogOut, Settings, MoreHorizontal, X
 } from 'lucide-react';
 
 const views: { mode: ViewMode; icon: typeof Focus; label: string }[] = [
