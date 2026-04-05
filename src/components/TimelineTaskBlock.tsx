@@ -110,6 +110,13 @@ export function TimelineTaskBlock({
     }
   };
 
+  const clearDragHold = () => {
+    if (dragHoldTimer.current) {
+      clearTimeout(dragHoldTimer.current);
+      dragHoldTimer.current = null;
+    }
+  };
+
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (isResizingThis) return;
     const target = e.target as HTMLElement;
