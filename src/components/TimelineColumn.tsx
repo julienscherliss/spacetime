@@ -600,6 +600,8 @@ export function TimelineColumn({
   const scheduledDragMinutes = useScheduledDragStore((s) => s.currentMinutes);
   const scheduledDragDuration = useScheduledDragStore((s) => s.duration);
   const scheduledDragTargetDate = useScheduledDragStore((s) => s.targetDate);
+  const scheduledDragUnlinkMode = useScheduledDragStore((s) => s.unlinkMode);
+  const scheduledDragIsLinked = useScheduledDragStore((s) => s.isLinkedTask);
 
   // Scheduled drag: single global drop handler — only the column matching targetDate processes it
   useEffect(() => {
@@ -613,6 +615,17 @@ export function TimelineColumn({
       if (state.targetDate !== date) return;
 
       const newTime = minutesToTime(state.currentMinutes);
+
+      // If unlink mode is active, detach this single occurrence before moving
+      if (state.unlinkMode) {
+        const { updateTask } = useTaskStore.getState();
+        updateTask(state.taskId, {
+          linked: false,
+          linkedGroupId: undefined,
+          detachedFromSeries: true,
+        });
+      }
+
       if (state.sourceDate && state.sourceDate !== state.targetDate) {
         const validation = canMoveTask(state.taskId, state.targetDate);
         if (!validation.allowed) {
@@ -854,7 +867,7 @@ export function TimelineColumn({
         </div>
       )}
 
-      {/* Scheduled task drag overlay — red dashed outline */}
+      {/* Scheduled task drag overlay — blue=linked, red=unlink */}
       {scheduledDragActive && scheduledDragMinutes !== null && scheduledDragTargetDate === date && (
         <div
           className="absolute right-1 z-[25] pointer-events-none"
@@ -864,11 +877,32 @@ export function TimelineColumn({
             left: showTimeLabels ? '3.25rem' : '2px',
           }}
         >
-          <div className="h-full rounded-[2px] border-2 border-dashed border-destructive/60 bg-destructive/[0.04]">
-            <div className="px-2 py-1">
-              <span className="text-[10px] font-mono text-destructive/70">
-                {formatTime12h(minutesToTime(scheduledDragMinutes))} · {formatDuration(scheduledDragDuration || 30)}
+          <div className={`h-full rounded-[2px] border-2 border-dashed transition-colors duration-200 ${
+            scheduledDragUnlinkMode
+              ? 'border-destructive/60 bg-destructive/[0.04]'
+              : scheduledDragIsLinked
+                ? 'border-primary/50 bg-primary/[0.06]'
+                : 'border-muted-foreground/30 bg-muted/[0.06]'
+          }`}>
+            <div className="px-2 py-1 flex items-center gap-1.5">
+              <span className={`text-[10px] font-mono transition-colors duration-200 ${
+                scheduledDragUnlinkMode
+                  ? 'text-destructive/70'
+                  : scheduledDragIsLinked
+                    ? 'text-primary/60'
+                    : 'text-muted-foreground/50'
+              }`}>
+                {formatTime12h(minutesToTime(scheduledDragMinutes))}
               </span>
+              {scheduledDragIsLinked && (
+                <span className={`text-[8px] font-mono tracking-wider uppercase transition-colors duration-200 ${
+                  scheduledDragUnlinkMode
+                    ? 'text-destructive/50'
+                    : 'text-primary/40'
+                }`}>
+                  {scheduledDragUnlinkMode ? 'unlink this' : 'move linked'}
+                </span>
+              )}
             </div>
           </div>
         </div>

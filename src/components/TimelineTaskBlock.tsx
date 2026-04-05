@@ -85,11 +85,25 @@ export function TimelineTaskBlock({
   const elRef = useRef<HTMLDivElement | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFired = useRef(false);
+  const unlinkHoldTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastMoveTime = useRef<number>(0);
+  const stationaryStart = useRef<number>(0);
+  const lastPosition = useRef<{ x: number; y: number } | null>(null);
+
+  const UNLINK_HOLD_MS = 600; // hold stationary for 600ms to enter unlink mode
+  const STATIONARY_THRESHOLD = 6; // px — movement under this counts as stationary
 
   const clearLongPress = () => {
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
+    }
+  };
+
+  const clearUnlinkHold = () => {
+    if (unlinkHoldTimer.current) {
+      clearTimeout(unlinkHoldTimer.current);
+      unlinkHoldTimer.current = null;
     }
   };
 
@@ -154,6 +168,11 @@ export function TimelineTaskBlock({
       duration: task.duration || 30,
       grabOffsetY: grabOffset,
     });
+
+    // Mark if this is a linked task
+    if (task.linked && task.linkedGroupId) {
+      useScheduledDragStore.setState({ isLinkedTask: true });
+    }
   }, [isLocked, isResizingThis, task.id, task.date, task.time, task.duration, task.title, dragOffsetRef, handleTaskClick]);
 
   // Global pointermove/pointerup when drag is pending or active
@@ -180,6 +199,9 @@ export function TimelineTaskBlock({
         if (distance < DRAG_THRESHOLD) return;
         useScheduledDragStore.getState().activate();
         didDragRef.current = true;
+        // Reset stationary tracking when drag activates
+        lastPosition.current = { x: e.clientX, y: e.clientY };
+        stationaryStart.current = Date.now();
       }
 
       // Find which column the pointer is over
@@ -192,10 +214,42 @@ export function TimelineTaskBlock({
         useScheduledDragStore.getState().updatePosition(snapped);
         useScheduledDragStore.getState().setTargetDate(col.date);
       }
+
+      // Track stationary hold for unlink gesture (only for linked tasks)
+      const currentState = useScheduledDragStore.getState();
+      if (currentState.active && currentState.isLinkedTask && !currentState.unlinkMode) {
+        const now = Date.now();
+        if (lastPosition.current) {
+          const moveDist = Math.hypot(
+            e.clientX - lastPosition.current.x,
+            e.clientY - lastPosition.current.y
+          );
+          if (moveDist > STATIONARY_THRESHOLD) {
+            // Moved significantly — reset stationary timer
+            lastPosition.current = { x: e.clientX, y: e.clientY };
+            stationaryStart.current = now;
+            clearUnlinkHold();
+          } else if (!unlinkHoldTimer.current) {
+            // Start unlink hold timer
+            unlinkHoldTimer.current = setTimeout(() => {
+              const s2 = useScheduledDragStore.getState();
+              if (s2.active && s2.isLinkedTask && !s2.unlinkMode) {
+                useScheduledDragStore.getState().setUnlinkMode(true);
+                // Haptic feedback if available
+                if (navigator.vibrate) navigator.vibrate(30);
+              }
+            }, UNLINK_HOLD_MS);
+          }
+        } else {
+          lastPosition.current = { x: e.clientX, y: e.clientY };
+          stationaryStart.current = now;
+        }
+      }
     };
 
     const handleUp = (e: PointerEvent) => {
       clearLongPress();
+      clearUnlinkHold();
       if (!pointerStartRef.current) return;
       // If long press fired, we're in carry mode — don't do anything
       if (longPressFired.current) {
@@ -214,6 +268,7 @@ export function TimelineTaskBlock({
 
     const handleCancel = () => {
       clearLongPress();
+      clearUnlinkHold();
       useScheduledDragStore.getState().cancel();
       pointerStartRef.current = null;
       didDragRef.current = false;
