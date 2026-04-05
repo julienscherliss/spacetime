@@ -213,7 +213,9 @@ export function TimelineTaskBlock({
 
       const s = useScheduledDragStore.getState();
       if (!s.active) {
-        if (distance < DRAG_THRESHOLD) return;
+        // Require both distance threshold AND hold delay
+        if (distance < DRAG_THRESHOLD || !dragHoldReady.current) return;
+        clearDragHold();
         useScheduledDragStore.getState().activate();
         didDragRef.current = true;
         // Reset stationary tracking when drag activates
