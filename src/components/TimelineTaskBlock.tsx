@@ -252,6 +252,7 @@ export function TimelineTaskBlock({
       if (distance >= STILLNESS_THRESHOLD && !dragActivated.current) {
         clearPickupHold();
         dragActivated.current = true;
+        setDragReady(false);
       }
 
       const s = useScheduledDragStore.getState();
