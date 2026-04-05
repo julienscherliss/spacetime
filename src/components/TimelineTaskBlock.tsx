@@ -188,6 +188,8 @@ export function TimelineTaskBlock({
     pointerStartRef.current = { x: e.clientX, y: e.clientY, pointerId: e.pointerId, time: Date.now() };
     pickupCommitted.current = false;
     dragActivated.current = false;
+    dragReadyFired.current = false;
+    setDragReady(false);
 
     const blockRect = elRef.current?.getBoundingClientRect();
     const grabOffset = blockRect ? e.clientY - blockRect.top : 0;
