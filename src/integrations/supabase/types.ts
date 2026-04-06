@@ -117,8 +117,12 @@ export type Database = {
           category: string | null
           created_at: string
           default_duration: number | null
+          due_date: string | null
           id: string
+          is_important: boolean
+          is_urgent: boolean
           note: string | null
+          subtasks: Json
           title: string
           user_id: string
         }
@@ -126,8 +130,12 @@ export type Database = {
           category?: string | null
           created_at?: string
           default_duration?: number | null
+          due_date?: string | null
           id?: string
+          is_important?: boolean
+          is_urgent?: boolean
           note?: string | null
+          subtasks?: Json
           title: string
           user_id: string
         }
@@ -135,8 +143,12 @@ export type Database = {
           category?: string | null
           created_at?: string
           default_duration?: number | null
+          due_date?: string | null
           id?: string
+          is_important?: boolean
+          is_urgent?: boolean
           note?: string | null
+          subtasks?: Json
           title?: string
           user_id?: string
         }
@@ -170,6 +182,7 @@ export type Database = {
         Row: {
           archive_reason: string | null
           archived_at: string | null
+          category: string | null
           completed: boolean
           created_at: string
           date: string
@@ -200,6 +213,7 @@ export type Database = {
         Insert: {
           archive_reason?: string | null
           archived_at?: string | null
+          category?: string | null
           completed?: boolean
           created_at?: string
           date: string
@@ -230,6 +244,7 @@ export type Database = {
         Update: {
           archive_reason?: string | null
           archived_at?: string | null
+          category?: string | null
           completed?: boolean
           created_at?: string
           date?: string
