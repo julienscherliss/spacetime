@@ -219,8 +219,10 @@ export const useLibraryStore = create<LibraryState>()(
         // Ensure new fields exist on old items
         if (merged.items) {
           merged.items = merged.items.map((i: any) => ({
-            urgency: 'none',
-            dueDate: null,
+            isUrgent: i.isUrgent ?? (i.urgency === 'urgent'),
+            isImportant: i.isImportant ?? (i.urgency === 'important'),
+            dueDate: i.dueDate ?? null,
+            subtasks: i.subtasks ?? [],
             ...i,
             category: i.category === 'uncategorized' ? '' : (i.category || ''),
           }));

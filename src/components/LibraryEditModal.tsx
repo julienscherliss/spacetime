@@ -1,38 +1,58 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { useLibraryStore, LibraryTask, TaskUrgency } from '@/store/libraryStore';
-import { X, Trash2, Inbox, Clock, AlertTriangle, Tag, CalendarDays } from 'lucide-react';
-import { useTaskStore } from '@/store/taskStore';
+import { useLibraryStore, LibraryTask, LibrarySubtask } from '@/store/libraryStore';
+import { X, Trash2, Clock, AlertTriangle, Tag, CalendarDays, Plus, GripVertical } from 'lucide-react';
+import { DurationPicker } from '@/components/ScrollWheelPicker';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface LibraryEditModalProps {
   item: LibraryTask;
   onClose: () => void;
 }
 
-function UrgencyToggle({ value, onChange }: { value: TaskUrgency; onChange: (v: TaskUrgency) => void }) {
-  const opts: { key: TaskUrgency; icon: React.ReactNode; label: string }[] = [
-    { key: 'none', icon: null, label: 'None' },
-    { key: 'urgent', icon: <Clock size={13} strokeWidth={1.8} />, label: 'Urgent' },
-    { key: 'important', icon: <AlertTriangle size={13} strokeWidth={1.8} />, label: 'Important' },
-  ];
+function PriorityToggle({ active, icon, label, onClick }: { active: boolean; icon: React.ReactNode; label: string; onClick: () => void }) {
   return (
-    <div className="flex items-center gap-1">
-      {opts.map((o) => (
-        <button
-          key={o.key}
-          onClick={() => onChange(o.key === value ? 'none' : o.key)}
-          className={`flex items-center gap-1.5 px-2.5 py-2 rounded-sm border text-[10px] font-mono tracking-wider transition-colors min-h-[40px] ${
-            value === o.key && o.key !== 'none'
-              ? o.key === 'urgent'
-                ? 'border-[hsl(var(--priority-1)/0.4)] bg-[hsl(var(--priority-1)/0.06)] text-[hsl(var(--priority-1))]'
-                : 'border-[hsl(var(--priority-2)/0.4)] bg-[hsl(var(--priority-2)/0.06)] text-[hsl(var(--priority-2))]'
-              : 'border-border text-muted-foreground/40 hover:text-foreground'
-          }`}
-        >
-          {o.icon}
-          {o.label}
-        </button>
-      ))}
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-1.5 px-3 py-2.5 rounded-sm border text-[10px] font-mono tracking-wider transition-all min-h-[40px] ${
+        active
+          ? 'border-foreground/20 bg-foreground/[0.04] text-foreground'
+          : 'border-border text-muted-foreground/40 hover:text-foreground hover:border-border'
+      }`}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
+
+function SubtaskRow({ subtask, onToggle, onDelete, onChange }: {
+  subtask: LibrarySubtask;
+  onToggle: () => void;
+  onDelete: () => void;
+  onChange: (title: string) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2 group py-1">
+      <Checkbox
+        checked={subtask.completed}
+        onCheckedChange={onToggle}
+        className="h-3.5 w-3.5 border-muted-foreground/30 data-[state=checked]:bg-primary/60 data-[state=checked]:border-primary/40"
+      />
+      <input
+        value={subtask.title}
+        onChange={(e) => onChange(e.target.value)}
+        className={`flex-1 bg-transparent text-[12px] font-mono focus:outline-none placeholder:text-muted-foreground/20 ${
+          subtask.completed ? 'text-muted-foreground/30 line-through' : 'text-foreground/70'
+        }`}
+        placeholder="Subtask…"
+      />
+      <button
+        onClick={onDelete}
+        className="p-1 text-muted-foreground/15 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        <X size={11} />
+      </button>
     </div>
   );
 }
@@ -43,12 +63,16 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
   const [note, setNote] = useState(item.note || '');
   const [duration, setDuration] = useState(item.defaultDuration);
   const [category, setCategory] = useState(item.category || '');
-  const [urgency, setUrgency] = useState<TaskUrgency>(item.urgency || 'none');
+  const [isUrgent, setIsUrgent] = useState(item.isUrgent ?? false);
+  const [isImportant, setIsImportant] = useState(item.isImportant ?? false);
   const [dueDate, setDueDate] = useState(item.dueDate || '');
+  const [subtasks, setSubtasks] = useState<LibrarySubtask[]>(item.subtasks || []);
   const [showCatPicker, setShowCatPicker] = useState(false);
   const [newCatInline, setNewCatInline] = useState('');
   const [showNewCatInput, setShowNewCatInput] = useState(false);
+  const [newSubtaskText, setNewSubtaskText] = useState('');
   const titleRef = useRef<HTMLInputElement>(null);
+  const newSubtaskRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { titleRef.current?.focus(); }, []);
 
@@ -58,23 +82,11 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
       note,
       defaultDuration: duration,
       category,
-      urgency,
+      isUrgent,
+      isImportant,
       dueDate: dueDate || null,
+      subtasks,
     });
-    onClose();
-  };
-
-  const handleMoveToWaiting = () => {
-    useTaskStore.getState().addTask({
-      title: item.title,
-      description: item.note || undefined,
-      date: new Date().toISOString().split('T')[0],
-      type: 'one-time',
-      priority: 0,
-      duration: item.defaultDuration,
-      inWaitingRoom: true,
-    });
-    deleteItem(item.id);
     onClose();
   };
 
@@ -91,6 +103,25 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
     setNewCatInline('');
     setShowNewCatInput(false);
     setShowCatPicker(false);
+  };
+
+  const addSubtask = () => {
+    if (!newSubtaskText.trim()) return;
+    setSubtasks([...subtasks, { id: crypto.randomUUID(), title: newSubtaskText.trim(), completed: false }]);
+    setNewSubtaskText('');
+    newSubtaskRef.current?.focus();
+  };
+
+  const toggleSubtask = (id: string) => {
+    setSubtasks(subtasks.map(s => s.id === id ? { ...s, completed: !s.completed } : s));
+  };
+
+  const deleteSubtask = (id: string) => {
+    setSubtasks(subtasks.filter(s => s.id !== id));
+  };
+
+  const updateSubtaskTitle = (id: string, title: string) => {
+    setSubtasks(subtasks.map(s => s.id === id ? { ...s, title } : s));
   };
 
   const catLabel = categories.find(c => c.value === category)?.label || (category ? category : 'No category');
@@ -130,7 +161,7 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
             className="w-full bg-transparent font-display font-bold text-foreground text-base leading-tight focus:outline-none placeholder:text-muted-foreground/20"
           />
 
-          {/* Category & duration row */}
+          {/* Category */}
           <div className="flex items-center gap-2 flex-wrap">
             <div className="relative">
               <button
@@ -182,19 +213,12 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
                 </div>
               )}
             </div>
+          </div>
 
-            <div className="flex items-center gap-1.5 px-2.5 py-2 rounded-sm border border-border min-h-[40px]">
-              <Clock size={11} className="text-muted-foreground/40" />
-              <input
-                type="number"
-                value={duration}
-                onChange={(e) => setDuration(Math.max(5, Number(e.target.value)))}
-                min={5}
-                step={5}
-                className="w-12 bg-transparent text-[11px] font-mono text-foreground text-center focus:outline-none"
-              />
-              <span className="text-[10px] font-mono text-muted-foreground/40">min</span>
-            </div>
+          {/* Duration picker */}
+          <div>
+            <label className="block text-[9px] font-mono tracking-widest text-muted-foreground/40 mb-2">DURATION</label>
+            <DurationPicker duration={duration} onChange={setDuration} />
           </div>
 
           {/* Due date */}
@@ -216,10 +240,23 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
             )}
           </div>
 
-          {/* Urgency */}
+          {/* Priority toggles - independent */}
           <div>
             <label className="block text-[9px] font-mono tracking-widest text-muted-foreground/40 mb-1.5">PRIORITY</label>
-            <UrgencyToggle value={urgency} onChange={setUrgency} />
+            <div className="flex items-center gap-1.5">
+              <PriorityToggle
+                active={isUrgent}
+                icon={<Clock size={13} strokeWidth={1.8} />}
+                label="Urgent"
+                onClick={() => setIsUrgent(!isUrgent)}
+              />
+              <PriorityToggle
+                active={isImportant}
+                icon={<AlertTriangle size={13} strokeWidth={1.8} />}
+                label="Important"
+                onClick={() => setIsImportant(!isImportant)}
+              />
+            </div>
           </div>
 
           {/* Notes */}
@@ -234,15 +271,35 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
             />
           </div>
 
-          {/* Actions */}
-          <div className="flex items-center gap-1.5 pt-2 border-t border-border/20">
-            <button
-              onClick={handleMoveToWaiting}
-              className="flex items-center gap-1.5 px-3 py-2.5 rounded-sm border border-border text-[10px] font-mono tracking-wider text-muted-foreground/50 hover:text-foreground hover:border-primary/20 transition-colors min-h-[44px]"
-            >
-              <Inbox size={12} strokeWidth={1.5} />
-              WAITING ROOM
-            </button>
+          {/* Subtasks */}
+          <div>
+            <label className="block text-[9px] font-mono tracking-widest text-muted-foreground/40 mb-1.5">SUBTASKS</label>
+            <div className="space-y-0.5">
+              {subtasks.map((st) => (
+                <SubtaskRow
+                  key={st.id}
+                  subtask={st}
+                  onToggle={() => toggleSubtask(st.id)}
+                  onDelete={() => deleteSubtask(st.id)}
+                  onChange={(t) => updateSubtaskTitle(st.id, t)}
+                />
+              ))}
+            </div>
+            <div className="flex items-center gap-2 mt-1.5">
+              <Plus size={12} className="text-muted-foreground/25 shrink-0" />
+              <input
+                ref={newSubtaskRef}
+                value={newSubtaskText}
+                onChange={(e) => setNewSubtaskText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') addSubtask(); }}
+                placeholder="Add subtask…"
+                className="flex-1 bg-transparent text-[12px] font-mono text-foreground/70 placeholder:text-muted-foreground/20 focus:outline-none py-1.5"
+              />
+            </div>
+          </div>
+
+          {/* Delete */}
+          <div className="flex items-center pt-2 border-t border-border/20">
             <div className="flex-1" />
             <button
               onClick={handleDelete}
