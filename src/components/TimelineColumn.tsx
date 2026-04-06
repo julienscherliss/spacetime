@@ -207,7 +207,8 @@ export function TimelineColumn({
         priority: 0,
         type: 'one-time',
       });
-      // Library is a permanent repository — do NOT remove the source item
+      // Remove from library after scheduling
+      useLibraryStore.getState().removeItem(libraryTaskId);
       setDragOverTime(null);
       return;
     }
@@ -647,7 +648,8 @@ export function TimelineColumn({
             priority: 0,
             type: 'one-time',
           });
-          // Library is a permanent repository — do NOT remove the source item
+          // Remove from library after scheduling
+          if (dragging.id) useLibraryStore.getState().removeItem(dragging.id);
         } else if (dragging.type === 'waitingRoom') {
           const { updateTask } = useTaskStore.getState();
           updateTask(dragging.id, {
