@@ -184,7 +184,7 @@ export function LibraryPanel() {
             {/* ── Add input ── */}
             <div className="px-4 py-3 border-b border-border/30">
               <div className="flex items-center gap-2.5">
-                <Plus size={16} className="text-muted-foreground/25 shrink-0" />
+                <button onClick={handleAdd} className="p-1 text-muted-foreground/25 hover:text-foreground transition-colors shrink-0"><Plus size={16} /></button>
                 <input
                   ref={inputRef}
                   value={input}
