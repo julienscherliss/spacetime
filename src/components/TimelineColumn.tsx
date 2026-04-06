@@ -9,6 +9,7 @@ import { PriorityBadge } from '@/components/PriorityBadge';
 import { TimelineTaskBlock } from '@/components/TimelineTaskBlock';
 import { timeToMinutes, minutesToTime, snapTo15, formatTime12h, formatHour12h } from '@/hooks/useCurrentTime';
 import { Calendar as CalIcon } from 'lucide-react';
+import { getOccupiedSlots, findValidPosition, clampResize, wouldOverlap } from '@/utils/collisionDetection';
 
 export const DEFAULT_HOUR_HEIGHT = 56;
 export const HOUR_HEIGHT = DEFAULT_HOUR_HEIGHT;
@@ -158,11 +159,14 @@ export function TimelineColumn({
     e.preventDefault();
     const mins = getMinutesFromY(e.clientY - dragOffsetRef.current);
     const snapped = snapTo15(mins);
+    const taskDurationStr = e.dataTransfer.types.includes('taskduration') ? '30' : '30';
+    const duration = parseInt(taskDurationStr, 10);
+    const allTasks = useTaskStore.getState().tasks;
+    const occupiedSlots = getOccupiedSlots(allTasks, date);
+    const overlap = wouldOverlap(snapped, duration, occupiedSlots);
     setDragOverTime(minutesToTime(snapped));
-    // Try to get duration from the dragged task
-    const taskId = e.dataTransfer.types.includes('taskid') ? 'pending' : null;
-    setDragValid(true);
-  }, [getMinutesFromY]);
+    setDragValid(!overlap);
+  }, [getMinutesFromY, date]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -173,11 +177,28 @@ export function TimelineColumn({
 
     const mins = getMinutesFromY(e.clientY - dragOffsetRef.current);
     const snapped = snapTo15(mins);
-    const newTime = minutesToTime(snapped);
+
+    // Collision check
+    const allTasks = useTaskStore.getState().tasks;
+    const excludeId = taskId || undefined;
+    const occupiedSlots = getOccupiedSlots(allTasks, date, excludeId);
+    const duration = libraryTaskId
+      ? parseInt(e.dataTransfer.getData('libraryDuration') || '30', 10)
+      : taskDuration;
+    const { startMin, blocked } = findValidPosition(snapped, duration, occupiedSlots);
+
+    if (blocked) {
+      setDragMsg('No space available');
+      setDragValid(false);
+      setTimeout(() => { setDragMsg(''); setDragValid(true); }, 2000);
+      setDragOverTime(null);
+      return;
+    }
+
+    const newTime = minutesToTime(startMin);
 
     if (libraryTaskId) {
       const title = e.dataTransfer.getData('libraryTitle');
-      const duration = parseInt(e.dataTransfer.getData('libraryDuration') || '30', 10);
       addTask({
         title,
         date,
@@ -234,18 +255,32 @@ export function TimelineColumn({
     const handleMove = (clientY: number) => {
       const deltaY = clientY - resizing.startY;
       const deltaMinutes = (deltaY / HOUR_HEIGHT) * 60;
+
+      // Get collision bounds
+      const allTasks = useTaskStore.getState().tasks;
+      const occupiedSlots = getOccupiedSlots(allTasks, date, resizing.id);
+      const origStartMin = timeToMinutes(resizing.origTime);
+      const origEndMin = origStartMin + resizing.origDuration;
+      const bounds = clampResize(resizing.id, resizing.edge, origStartMin, origEndMin, occupiedSlots);
+
       if (resizing.edge === 'bottom') {
         const newDuration = snapTo15(resizing.origDuration + deltaMinutes);
         const clamped = Math.max(15, newDuration);
-        resizeTask(resizing.id, resizing.origTime, clamped);
-        setResizePreview({ time: resizing.origTime, duration: clamped });
+        // Clamp end to not exceed next task
+        const newEnd = origStartMin + clamped;
+        const clampedEnd = Math.min(newEnd, bounds.maxEnd);
+        const finalDuration = Math.max(15, clampedEnd - origStartMin);
+        resizeTask(resizing.id, resizing.origTime, finalDuration);
+        setResizePreview({ time: resizing.origTime, duration: finalDuration });
       } else {
         const origStart = timeToMinutes(resizing.origTime);
         const newStart = snapTo15(origStart + deltaMinutes);
-        const newDuration = resizing.origDuration + (origStart - newStart);
+        // Clamp start to not go past previous task
+        const clampedStart = Math.max(newStart, bounds.minStart);
+        const newDuration = resizing.origDuration + (origStart - clampedStart);
         if (newDuration >= 15) {
-          resizeTask(resizing.id, minutesToTime(newStart), newDuration);
-          setResizePreview({ time: minutesToTime(newStart), duration: newDuration });
+          resizeTask(resizing.id, minutesToTime(clampedStart), newDuration);
+          setResizePreview({ time: minutesToTime(clampedStart), duration: newDuration });
         }
       }
     };
@@ -266,7 +301,7 @@ export function TimelineColumn({
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchend', handleUp);
     };
-  }, [resizing, resizeTask, HOUR_HEIGHT]);
+  }, [resizing, resizeTask, HOUR_HEIGHT, date]);
 
   // Drag-to-create: mouse handlers
   const handleCreateMouseDown = useCallback((e: React.MouseEvent) => {
@@ -431,14 +466,38 @@ export function TimelineColumn({
       setNewTaskInput(null);
       return;
     }
-    addTask({
-      title: newTaskTitle.trim(),
-      date,
-      time: newTaskInput.time,
-      duration: newTaskInput.duration,
-      priority: 0,
-      type: 'one-time',
-    });
+
+    // Collision check before creating
+    const allTasks = useTaskStore.getState().tasks;
+    const occupiedSlots = getOccupiedSlots(allTasks, date);
+    const startMin = timeToMinutes(newTaskInput.time);
+    if (wouldOverlap(startMin, newTaskInput.duration, occupiedSlots)) {
+      const { startMin: validStart, blocked } = findValidPosition(startMin, newTaskInput.duration, occupiedSlots);
+      if (blocked) {
+        setDragMsg('No space available');
+        setTimeout(() => setDragMsg(''), 2000);
+        setNewTaskInput(null);
+        return;
+      }
+      // Use the clamped position
+      addTask({
+        title: newTaskTitle.trim(),
+        date,
+        time: minutesToTime(validStart),
+        duration: newTaskInput.duration,
+        priority: 0,
+        type: 'one-time',
+      });
+    } else {
+      addTask({
+        title: newTaskTitle.trim(),
+        date,
+        time: newTaskInput.time,
+        duration: newTaskInput.duration,
+        priority: 0,
+        type: 'one-time',
+      });
+    }
     setNewTaskInput(null);
     setNewTaskTitle('');
   }, [newTaskInput, newTaskTitle, date, addTask]);
@@ -487,7 +546,20 @@ export function TimelineColumn({
     // Calculate target time from tap position
     const mins = getMinutesFromY(e.clientY);
     const snapped = snapTo15(mins);
-    const newTime = minutesToTime(snapped);
+
+    // Collision check for carry drop
+    const allTasks = useTaskStore.getState().tasks;
+    const excludeId = carried.fromLibrary ? undefined : carried.taskId;
+    const occupiedSlots = getOccupiedSlots(allTasks, date, excludeId);
+    const { startMin, blocked } = findValidPosition(snapped, carried.duration, occupiedSlots);
+
+    if (blocked) {
+      setDragMsg('No space available');
+      setTimeout(() => setDragMsg(''), 2000);
+      return;
+    }
+
+    const newTime = minutesToTime(startMin);
 
     // Perform the drop
     const dropped = useCarryStore.getState().drop();
@@ -548,7 +620,23 @@ export function TimelineColumn({
         const y = touch.clientY - rect.top - dragOffsetRef.current;
         const mins = START_HOUR * 60 + (y / HOUR_HEIGHT) * 60;
         const snapped = snapTo15(mins);
-        const newTime = minutesToTime(snapped);
+
+        // Collision check for touch drop
+        const allTasks = useTaskStore.getState().tasks;
+        const excludeId = dragging.type === 'task' ? dragging.id : undefined;
+        const duration = dragging.duration || 30;
+        const occupiedSlots = getOccupiedSlots(allTasks, date, excludeId);
+        const { startMin, blocked } = findValidPosition(snapped, duration, occupiedSlots);
+
+        if (blocked) {
+          setDragMsg('No space available');
+          setDragValid(false);
+          setTimeout(() => { setDragMsg(''); setDragValid(true); }, 2000);
+          useTouchDragStore.getState().endDrag();
+          return;
+        }
+
+        const newTime = minutesToTime(startMin);
 
         if (dragging.type === 'library') {
           addTask({
@@ -618,6 +706,7 @@ export function TimelineColumn({
   const scheduledDragTargetDate = useScheduledDragStore((s) => s.targetDate);
   const scheduledDragUnlinkMode = useScheduledDragStore((s) => s.unlinkMode);
   const scheduledDragIsLinked = useScheduledDragStore((s) => s.isLinkedTask);
+  const scheduledDragBlocked = useScheduledDragStore((s) => s.blocked);
 
   // Scheduled drag: single global drop handler — only the column matching targetDate processes it
   useEffect(() => {
@@ -629,6 +718,14 @@ export function TimelineColumn({
       }
       // Only the column that matches targetDate should process the drop
       if (state.targetDate !== date) return;
+
+      // Block drop if collision detected
+      if (state.blocked) {
+        setDragMsg('No space available');
+        setTimeout(() => setDragMsg(''), 2000);
+        useScheduledDragStore.getState().cancel();
+        return;
+      }
 
       const newTime = minutesToTime(state.currentMinutes);
 
@@ -894,23 +991,27 @@ export function TimelineColumn({
           }}
         >
           <div className={`h-full rounded-[2px] border-2 border-dashed transition-colors duration-200 ${
-            scheduledDragUnlinkMode
-              ? 'border-destructive/60 bg-destructive/[0.04]'
-              : scheduledDragIsLinked
-                ? 'border-primary/50 bg-primary/[0.06]'
-                : 'border-muted-foreground/30 bg-muted/[0.06]'
+            scheduledDragBlocked
+              ? 'border-destructive/50 bg-destructive/[0.06]'
+              : scheduledDragUnlinkMode
+                ? 'border-destructive/60 bg-destructive/[0.04]'
+                : scheduledDragIsLinked
+                  ? 'border-primary/50 bg-primary/[0.06]'
+                  : 'border-muted-foreground/30 bg-muted/[0.06]'
           }`}>
             <div className="px-2 py-1 flex items-center gap-1.5">
               <span className={`text-[10px] font-mono transition-colors duration-200 ${
-                scheduledDragUnlinkMode
+                scheduledDragBlocked
                   ? 'text-destructive/70'
-                  : scheduledDragIsLinked
-                    ? 'text-primary/60'
-                    : 'text-muted-foreground/50'
+                  : scheduledDragUnlinkMode
+                    ? 'text-destructive/70'
+                    : scheduledDragIsLinked
+                      ? 'text-primary/60'
+                      : 'text-muted-foreground/50'
               }`}>
-                {formatTime12h(minutesToTime(scheduledDragMinutes))}
+                {scheduledDragBlocked ? 'BLOCKED' : formatTime12h(minutesToTime(scheduledDragMinutes))}
               </span>
-              {scheduledDragIsLinked && (
+              {!scheduledDragBlocked && scheduledDragIsLinked && (
                 <span className={`text-[8px] font-mono tracking-wider uppercase transition-colors duration-200 ${
                   scheduledDragUnlinkMode
                     ? 'text-destructive/50'

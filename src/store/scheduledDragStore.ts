@@ -16,6 +16,8 @@ export interface ScheduledDragState {
   isLinkedTask: boolean;
   /** When true, dropping will detach this single occurrence from its linked group */
   unlinkMode: boolean;
+  /** Whether the current drag position is blocked by collision */
+  blocked: boolean;
 }
 
 interface ScheduledDragActions {
@@ -30,6 +32,7 @@ interface ScheduledDragActions {
   updatePosition: (minutes: number) => void;
   setTargetDate: (date: string) => void;
   setUnlinkMode: (unlink: boolean) => void;
+  setBlocked: (blocked: boolean) => void;
   endDrag: () => ScheduledDragState;
   cancel: () => void;
 }
@@ -45,6 +48,7 @@ const initial: ScheduledDragState = {
   targetDate: null,
   isLinkedTask: false,
   unlinkMode: false,
+  blocked: false,
 };
 
 export const useScheduledDragStore = create<ScheduledDragState & ScheduledDragActions>((set, get) => ({
@@ -66,6 +70,7 @@ export const useScheduledDragStore = create<ScheduledDragState & ScheduledDragAc
   updatePosition: (minutes) => set({ currentMinutes: minutes }),
   setTargetDate: (date) => set({ targetDate: date }),
   setUnlinkMode: (unlink) => set({ unlinkMode: unlink }),
+  setBlocked: (blocked) => set({ blocked }),
   endDrag: () => {
     const state = { ...get() };
     set(initial);

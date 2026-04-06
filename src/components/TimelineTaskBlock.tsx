@@ -1,13 +1,14 @@
 import { MutableRefObject, useRef, useCallback, useEffect, useState } from 'react';
 import { Check, Link, Unlink } from 'lucide-react';
 import { useTimezoneStore, getTodayInTz } from '@/store/timezoneStore';
-import { Task } from '@/store/taskStore';
+import { Task, useTaskStore } from '@/store/taskStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { HoldToConfirmRing } from '@/components/HoldToConfirmRing';
 import { formatTime12h } from '@/hooks/useCurrentTime';
 import { useScheduledDragStore } from '@/store/scheduledDragStore';
 import { useCarryStore } from '@/store/carryStore';
 import { START_HOUR } from '@/components/TimelineColumn';
+import { getOccupiedSlots, findValidPosition } from '@/utils/collisionDetection';
 
 interface TimelineTaskBlockProps {
   task: Task;
@@ -280,8 +281,16 @@ export function TimelineTaskBlock({
         const yInCol = e.clientY - colRect.top - useScheduledDragStore.getState().grabOffsetY;
         const rawMinutes = START_HOUR * 60 + (yInCol / hourHeight) * 60;
         const snapped = snapTo15(rawMinutes);
-        useScheduledDragStore.getState().updatePosition(snapped);
+
+        // Collision detection — clamp to nearest valid position
+        const taskDuration = task.duration || 30;
+        const allTasks = useTaskStore.getState().tasks;
+        const occupiedSlots = getOccupiedSlots(allTasks, col.date, task.id);
+        const { startMin: clampedMin, blocked } = findValidPosition(snapped, taskDuration, occupiedSlots);
+
+        useScheduledDragStore.getState().updatePosition(clampedMin);
         useScheduledDragStore.getState().setTargetDate(col.date);
+        useScheduledDragStore.getState().setBlocked(blocked);
       }
 
       // Track stationary hold for unlink gesture (only for linked tasks)
