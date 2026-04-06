@@ -60,7 +60,7 @@ interface LibraryState {
   setFilterCategory: (cat: FilterCategory) => void;
   setFilter: (patch: Partial<FilterState>) => void;
   addItem: (title: string, category?: LibraryCategory) => void;
-  updateItem: (id: string, updates: Partial<Pick<LibraryTask, 'title' | 'note' | 'category' | 'defaultDuration' | 'urgency' | 'dueDate'>>) => void;
+  updateItem: (id: string, updates: Partial<Pick<LibraryTask, 'title' | 'note' | 'category' | 'defaultDuration' | 'isUrgent' | 'isImportant' | 'dueDate' | 'subtasks'>>) => void;
   deleteItem: (id: string) => void;
   removeItem: (id: string) => void;
   addFromSchedule: (title: string, duration?: number) => void;
