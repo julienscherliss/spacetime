@@ -466,14 +466,38 @@ export function TimelineColumn({
       setNewTaskInput(null);
       return;
     }
-    addTask({
-      title: newTaskTitle.trim(),
-      date,
-      time: newTaskInput.time,
-      duration: newTaskInput.duration,
-      priority: 0,
-      type: 'one-time',
-    });
+
+    // Collision check before creating
+    const allTasks = useTaskStore.getState().tasks;
+    const occupiedSlots = getOccupiedSlots(allTasks, date);
+    const startMin = timeToMinutes(newTaskInput.time);
+    if (wouldOverlap(startMin, newTaskInput.duration, occupiedSlots)) {
+      const { startMin: validStart, blocked } = findValidPosition(startMin, newTaskInput.duration, occupiedSlots);
+      if (blocked) {
+        setDragMsg('No space available');
+        setTimeout(() => setDragMsg(''), 2000);
+        setNewTaskInput(null);
+        return;
+      }
+      // Use the clamped position
+      addTask({
+        title: newTaskTitle.trim(),
+        date,
+        time: minutesToTime(validStart),
+        duration: newTaskInput.duration,
+        priority: 0,
+        type: 'one-time',
+      });
+    } else {
+      addTask({
+        title: newTaskTitle.trim(),
+        date,
+        time: newTaskInput.time,
+        duration: newTaskInput.duration,
+        priority: 0,
+        type: 'one-time',
+      });
+    }
     setNewTaskInput(null);
     setNewTaskTitle('');
   }, [newTaskInput, newTaskTitle, date, addTask]);
