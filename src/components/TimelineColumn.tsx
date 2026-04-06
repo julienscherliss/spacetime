@@ -207,7 +207,7 @@ export function TimelineColumn({
         priority: 0,
         type: 'one-time',
       });
-      useLibraryStore.getState().removeItem(libraryTaskId);
+      // Library is a permanent repository — do NOT remove the source item
       setDragOverTime(null);
       return;
     }
@@ -574,7 +574,7 @@ export function TimelineColumn({
         priority: 0,
         type: 'one-time',
       });
-      useLibraryStore.getState().removeItem(dropped.libraryItemId);
+      // Library is a permanent repository — do NOT remove the source item
     } else if (dropped.fromWaitingRoom) {
       const { updateTask } = useTaskStore.getState();
       updateTask(dropped.taskId, {
@@ -647,7 +647,7 @@ export function TimelineColumn({
             priority: 0,
             type: 'one-time',
           });
-          useLibraryStore.getState().removeItem(dragging.id);
+          // Library is a permanent repository — do NOT remove the source item
         } else if (dragging.type === 'waitingRoom') {
           const { updateTask } = useTaskStore.getState();
           updateTask(dragging.id, {

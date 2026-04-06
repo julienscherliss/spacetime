@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTaskStore, Task, Priority, TaskType } from '@/store/taskStore';
-import { useLibraryStore, LibraryTask } from '@/store/libraryStore';
+import { useLibraryStore, LibraryTask, CategoryDef } from '@/store/libraryStore';
 import { toast } from 'sonner';
 import type { User } from '@supabase/supabase-js';
 
@@ -11,6 +11,7 @@ function rowToTask(row: any): Task {
   return {
     id: row.id,
     title: row.title,
+    category: row.category ?? undefined,
     description: row.description ?? undefined,
     subtasks: row.subtasks ?? undefined,
     type: (row.type || 'one-time') as TaskType,
@@ -43,6 +44,7 @@ function taskToRow(task: Task, userId: string) {
     id: task.id,
     user_id: userId,
     title: task.title,
+    category: task.category ?? null,
     description: task.description ?? null,
     subtasks: task.subtasks ?? [],
     type: task.type,
@@ -77,10 +79,10 @@ function rowToLibraryItem(row: any): LibraryTask {
     category: row.category === 'uncategorized' ? '' : (row.category ?? ''),
     defaultDuration: row.default_duration ?? 30,
     createdAt: row.created_at,
-    isUrgent: false,
-    isImportant: false,
-    dueDate: null,
-    subtasks: [],
+    isUrgent: row.is_urgent ?? false,
+    isImportant: row.is_important ?? false,
+    dueDate: row.due_date ?? null,
+    subtasks: row.subtasks ?? [],
   };
 }
 
@@ -92,7 +94,19 @@ function libraryItemToRow(item: LibraryTask, userId: string) {
     note: item.note || '',
     category: item.category,
     default_duration: item.defaultDuration,
+    is_urgent: item.isUrgent ?? false,
+    is_important: item.isImportant ?? false,
+    due_date: item.dueDate ?? null,
+    subtasks: item.subtasks ?? [],
   };
+}
+
+function rowToCategory(row: any): CategoryDef {
+  return { value: row.value, label: row.label };
+}
+
+function categoryToRow(cat: CategoryDef, userId: string) {
+  return { user_id: userId, value: cat.value, label: cat.label };
 }
 
 // ─── Validation ────────────────────────────────────────
@@ -107,6 +121,7 @@ function isValidUUID(id: string): boolean {
 
 let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 let libSaveTimeout: ReturnType<typeof setTimeout> | null = null;
+let catSaveTimeout: ReturnType<typeof setTimeout> | null = null;
 
 // ─── Clear all user-scoped state ───────────────────────
 
@@ -126,6 +141,7 @@ function clearAllUserState() {
   // Kill any pending saves
   if (saveTimeout) { clearTimeout(saveTimeout); saveTimeout = null; }
   if (libSaveTimeout) { clearTimeout(libSaveTimeout); libSaveTimeout = null; }
+  if (catSaveTimeout) { clearTimeout(catSaveTimeout); catSaveTimeout = null; }
 }
 
 // ─── Hook ──────────────────────────────────────────────
@@ -232,6 +248,27 @@ export function useDataSync(user: User | null) {
             }
           } else {
             useLibraryStore.setState({ items: [] });
+          }
+        }
+
+        // Load library categories
+        const { data: catRows, error: catError } = await supabase
+          .from('library_categories')
+          .select('*')
+          .eq('user_id', user.id);
+
+        if (catError) {
+          console.error('[DataSync] Failed to load library categories:', catError);
+        } else if (catRows && catRows.length > 0) {
+          const categories = catRows.map(rowToCategory);
+          useLibraryStore.setState({ categories });
+        } else {
+          // Push local categories to DB if any
+          const currentCats = useLibraryStore.getState().categories;
+          if (currentCats.length > 0) {
+            const rows = currentCats.map(c => categoryToRow(c, user.id));
+            const { error: catUpsertErr } = await supabase.from('library_categories').upsert(rows as any, { onConflict: 'user_id,value' });
+            if (catUpsertErr) console.error('[DataSync] Failed to push initial categories:', catUpsertErr);
           }
         }
 
@@ -374,6 +411,59 @@ export function useDataSync(user: User | null) {
     return () => {
       unsub();
       if (libSaveTimeout) { clearTimeout(libSaveTimeout); libSaveTimeout = null; }
+    };
+  }, [user?.id]);
+  // Subscribe to library categories → save to DB (debounced)
+  useEffect(() => {
+    if (!user) return;
+
+    const unsub = useLibraryStore.subscribe(
+      (state) => {
+        if (!initialLoadDone.current || !userIdRef.current) return;
+        if (userIdRef.current !== user.id) return;
+
+        if (catSaveTimeout) clearTimeout(catSaveTimeout);
+        catSaveTimeout = setTimeout(async () => {
+          const userId = userIdRef.current;
+          if (!userId || userId !== user.id) return;
+
+          try {
+            const { data: dbCats, error: fetchErr } = await supabase
+              .from('library_categories')
+              .select('value')
+              .eq('user_id', userId);
+
+            if (fetchErr) {
+              console.error('[DataSync] Failed to fetch category values for sync:', fetchErr);
+              return;
+            }
+
+            if (userIdRef.current !== userId) return;
+
+            const currentCats = useLibraryStore.getState().categories;
+            const dbValues = new Set((dbCats || []).map((c: any) => c.value));
+            const localValues = new Set(currentCats.map(c => c.value));
+
+            const toDelete = [...dbValues].filter(v => !localValues.has(v));
+            if (toDelete.length > 0) {
+              await supabase.from('library_categories').delete().eq('user_id', userId).in('value', toDelete);
+            }
+
+            if (currentCats.length > 0) {
+              const rows = currentCats.map(c => categoryToRow(c, userId));
+              const { error: upsertErr } = await supabase.from('library_categories').upsert(rows as any, { onConflict: 'user_id,value' });
+              if (upsertErr) console.error('[DataSync] Failed to save categories:', upsertErr);
+            }
+          } catch (err) {
+            console.error('[DataSync] Category save error:', err);
+          }
+        }, 1000);
+      }
+    );
+
+    return () => {
+      unsub();
+      if (catSaveTimeout) { clearTimeout(catSaveTimeout); catSaveTimeout = null; }
     };
   }, [user?.id]);
 }
