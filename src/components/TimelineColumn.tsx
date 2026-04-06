@@ -169,7 +169,7 @@ export function TimelineColumn({
     const taskDurationStr = e.dataTransfer.types.includes('taskduration') ? '30' : '30';
     const duration = parseInt(taskDurationStr, 10);
     const allTasks = useTaskStore.getState().tasks;
-    const occupiedSlots = getOccupiedSlots(allTasks, date);
+    const occupiedSlots = getOccupiedSlots(allTasks, date, undefined, routinesEnabled);
     const overlap = wouldOverlap(snapped, duration, occupiedSlots);
     setDragOverTime(minutesToTime(snapped));
     setDragValid(!overlap);
@@ -188,7 +188,7 @@ export function TimelineColumn({
     // Collision check
     const allTasks = useTaskStore.getState().tasks;
     const excludeId = taskId || undefined;
-    const occupiedSlots = getOccupiedSlots(allTasks, date, excludeId);
+    const occupiedSlots = getOccupiedSlots(allTasks, date, excludeId, routinesEnabled);
     const duration = libraryTaskId
       ? parseInt(e.dataTransfer.getData('libraryDuration') || '30', 10)
       : taskDuration;
@@ -266,7 +266,7 @@ export function TimelineColumn({
 
       // Get collision bounds
       const allTasks = useTaskStore.getState().tasks;
-      const occupiedSlots = getOccupiedSlots(allTasks, date, resizing.id);
+      const occupiedSlots = getOccupiedSlots(allTasks, date, resizing.id, routinesEnabled);
       const origStartMin = timeToMinutes(resizing.origTime);
       const origEndMin = origStartMin + resizing.origDuration;
       const bounds = clampResize(resizing.id, resizing.edge, origStartMin, origEndMin, occupiedSlots);
@@ -477,7 +477,7 @@ export function TimelineColumn({
 
     // Collision check before creating
     const allTasks = useTaskStore.getState().tasks;
-    const occupiedSlots = getOccupiedSlots(allTasks, date);
+    const occupiedSlots = getOccupiedSlots(allTasks, date, undefined, routinesEnabled);
     const startMin = timeToMinutes(newTaskInput.time);
     if (wouldOverlap(startMin, newTaskInput.duration, occupiedSlots)) {
       const { startMin: validStart, blocked } = findValidPosition(startMin, newTaskInput.duration, occupiedSlots);
@@ -558,7 +558,7 @@ export function TimelineColumn({
     // Collision check for carry drop
     const allTasks = useTaskStore.getState().tasks;
     const excludeId = carried.fromLibrary ? undefined : carried.taskId;
-    const occupiedSlots = getOccupiedSlots(allTasks, date, excludeId);
+    const occupiedSlots = getOccupiedSlots(allTasks, date, excludeId, routinesEnabled);
     const { startMin, blocked } = findValidPosition(snapped, carried.duration, occupiedSlots);
 
     if (blocked) {
@@ -633,7 +633,7 @@ export function TimelineColumn({
         const allTasks = useTaskStore.getState().tasks;
         const excludeId = dragging.type === 'task' ? dragging.id : undefined;
         const duration = dragging.duration || 30;
-        const occupiedSlots = getOccupiedSlots(allTasks, date, excludeId);
+        const occupiedSlots = getOccupiedSlots(allTasks, date, excludeId, routinesEnabled);
         const { startMin, blocked } = findValidPosition(snapped, duration, occupiedSlots);
 
         if (blocked) {
