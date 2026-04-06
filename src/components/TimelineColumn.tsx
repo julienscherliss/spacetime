@@ -967,23 +967,27 @@ export function TimelineColumn({
           }}
         >
           <div className={`h-full rounded-[2px] border-2 border-dashed transition-colors duration-200 ${
-            scheduledDragUnlinkMode
-              ? 'border-destructive/60 bg-destructive/[0.04]'
-              : scheduledDragIsLinked
-                ? 'border-primary/50 bg-primary/[0.06]'
-                : 'border-muted-foreground/30 bg-muted/[0.06]'
+            scheduledDragBlocked
+              ? 'border-destructive/50 bg-destructive/[0.06]'
+              : scheduledDragUnlinkMode
+                ? 'border-destructive/60 bg-destructive/[0.04]'
+                : scheduledDragIsLinked
+                  ? 'border-primary/50 bg-primary/[0.06]'
+                  : 'border-muted-foreground/30 bg-muted/[0.06]'
           }`}>
             <div className="px-2 py-1 flex items-center gap-1.5">
               <span className={`text-[10px] font-mono transition-colors duration-200 ${
-                scheduledDragUnlinkMode
+                scheduledDragBlocked
                   ? 'text-destructive/70'
-                  : scheduledDragIsLinked
-                    ? 'text-primary/60'
-                    : 'text-muted-foreground/50'
+                  : scheduledDragUnlinkMode
+                    ? 'text-destructive/70'
+                    : scheduledDragIsLinked
+                      ? 'text-primary/60'
+                      : 'text-muted-foreground/50'
               }`}>
-                {formatTime12h(minutesToTime(scheduledDragMinutes))}
+                {scheduledDragBlocked ? 'BLOCKED' : formatTime12h(minutesToTime(scheduledDragMinutes))}
               </span>
-              {scheduledDragIsLinked && (
+              {!scheduledDragBlocked && scheduledDragIsLinked && (
                 <span className={`text-[8px] font-mono tracking-wider uppercase transition-colors duration-200 ${
                   scheduledDragUnlinkMode
                     ? 'text-destructive/50'
