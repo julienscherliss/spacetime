@@ -140,6 +140,12 @@ export function TimelineColumn({
   const activeTasks = tasks.filter((t) => !t.completed && t.time);
   const nowTop = ((nowMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT;
 
+  // Compute routine conflict IDs when routines are enabled
+  const routineConflictIds = useMemo(() => {
+    if (!routinesEnabled) return new Set<string>();
+    return getRoutineConflicts(allStoreTasks, date);
+  }, [allStoreTasks, date, routinesEnabled]);
+
   const activeTaskId = isToday
     ? activeTasks.find((t) => {
         if (!t.time) return false;
