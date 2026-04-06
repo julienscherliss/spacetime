@@ -71,6 +71,7 @@ export function TimelineTaskBlock({
   formatDuration,
   hourHeight,
   startHour,
+  hasRoutineConflict = false,
 }: TimelineTaskBlockProps) {
   const taskMinutes = task.time ? parseInt(task.time.split(':')[0], 10) * 60 + parseInt(task.time.split(':')[1], 10) : 0;
   const taskEndMinutes = taskMinutes + (task.duration || 30);
