@@ -648,8 +648,13 @@ export function TaskEditPanel() {
 
               {/* ─── 6. Actions ─── */}
               {!showEditScope && (
-                <div className="flex items-center gap-2 pt-3 mt-1 border-t border-border/30">
+                <div
+                  className="flex items-center gap-2 pt-3 mt-1 border-t border-border/30"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       if (!task) return;
@@ -663,6 +668,7 @@ export function TaskEditPanel() {
                     WAITING
                   </button>
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       if (!task) return;
@@ -678,8 +684,10 @@ export function TaskEditPanel() {
                   </button>
                   <div className="flex-1" />
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
+                      if (!task) return;
                       if (isRecurring) {
                         setShowDeleteConfirm(true);
                       } else {
