@@ -158,8 +158,10 @@ export const useLibraryStore = create<LibraryState>()(
         }
 
         // Urgency filter
-        if (filters.urgency !== 'all') {
-          filtered = filtered.filter((i) => (i.urgency || 'none') === filters.urgency);
+        if (filters.urgency === 'urgent') {
+          filtered = filtered.filter((i) => i.isUrgent);
+        } else if (filters.urgency === 'important') {
+          filtered = filtered.filter((i) => i.isImportant);
         }
 
         // Due date filter
