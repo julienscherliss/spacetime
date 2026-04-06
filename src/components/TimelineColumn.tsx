@@ -887,7 +887,17 @@ export function TimelineColumn({
       )}
 
       {/* Task blocks */}
-      {activeTasks.map((task) => {
+      {activeTasks
+        .slice()
+        .sort((a, b) => {
+          // Routines render below non-routines when there's a conflict
+          const aIsRoutine = a.isRoutine !== false && a.type === 'recurring';
+          const bIsRoutine = b.isRoutine !== false && b.type === 'recurring';
+          if (aIsRoutine && !bIsRoutine) return -1; // routine first = lower z
+          if (!aIsRoutine && bIsRoutine) return 1;
+          return 0;
+        })
+        .map((task, idx, arr) => {
         if (!task.time) return null;
         const taskMinutes = timeToMinutes(task.time);
         const top = ((taskMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT;
@@ -895,7 +905,8 @@ export function TimelineColumn({
         const isActive = task.id === activeTaskId;
         const isResizingThis = resizing?.id === task.id;
         const isLocked = task.priority >= 3;
-        const showUnlinkedOutline = false; // unlinked state shown via icon, not border
+        const showUnlinkedOutline = false;
+        const hasConflict = routineConflictIds.has(task.id);
 
         return (
           <TimelineTaskBlock
@@ -919,6 +930,7 @@ export function TimelineColumn({
             formatDuration={formatDuration}
             hourHeight={HOUR_HEIGHT}
             startHour={START_HOUR}
+            hasRoutineConflict={hasConflict}
           />
         );
       })}
