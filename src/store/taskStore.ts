@@ -20,6 +20,7 @@ export type RecurrencePattern =
 export interface Task {
   id: string;
   title: string;
+  category?: string;
   description?: string;
   subtasks?: Subtask[];
   type: TaskType;
@@ -695,6 +696,7 @@ export const useTaskStore = create<TaskState>()(
             const generatedTask: Task = {
               id: generateId(),
               title: parent.title,
+              category: parent.category,
               description: parent.description,
               subtasks: linkState.linked ? parent.subtasks : undefined,
               type: 'recurring',

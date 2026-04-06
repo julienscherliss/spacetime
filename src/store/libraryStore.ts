@@ -8,11 +8,6 @@ export interface CategoryDef {
   label: string;
 }
 
-// No default categories — users create their own
-export const DEFAULT_CATEGORIES: CategoryDef[] = [];
-
-export const LIBRARY_CATEGORIES = DEFAULT_CATEGORIES;
-
 export type TaskUrgency = 'none' | 'urgent' | 'important';
 
 export interface LibrarySubtask {
@@ -35,6 +30,19 @@ export interface LibraryTask {
   // Legacy compat
   urgency?: TaskUrgency;
 }
+
+type LibraryScheduleSource =
+  | string
+  | {
+      title: string;
+      duration?: number;
+      category?: LibraryCategory;
+      note?: string;
+      isUrgent?: boolean;
+      isImportant?: boolean;
+      dueDate?: string | null;
+      subtasks?: LibrarySubtask[];
+    };
 
 type SortMode = 'recent' | 'alpha' | 'category' | 'due';
 type FilterCategory = string | 'all';
@@ -63,7 +71,7 @@ interface LibraryState {
   updateItem: (id: string, updates: Partial<Pick<LibraryTask, 'title' | 'note' | 'category' | 'defaultDuration' | 'isUrgent' | 'isImportant' | 'dueDate' | 'subtasks'>>) => void;
   deleteItem: (id: string) => void;
   removeItem: (id: string) => void;
-  addFromSchedule: (title: string, duration?: number) => void;
+  addFromSchedule: (source: LibraryScheduleSource, duration?: number) => void;
   getFilteredItems: () => LibraryTask[];
   addCategory: (name: string) => void;
   removeCategory: (value: string) => void;
@@ -71,6 +79,36 @@ interface LibraryState {
 }
 
 const generateId = () => crypto.randomUUID();
+
+const normalizeCategoryValue = (value: string) => value.trim().toLowerCase().replace(/\s+/g, '-');
+
+const humanizeCategoryValue = (value: string) =>
+  value
+    .split('-')
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+
+const mergeCategories = (items: LibraryTask[], categories: CategoryDef[]) => {
+  const map = new Map<string, CategoryDef>();
+
+  categories.forEach((category) => {
+    const value = normalizeCategoryValue(category.value || '');
+    if (!value) return;
+    map.set(value, {
+      value,
+      label: category.label?.trim() || humanizeCategoryValue(value),
+    });
+  });
+
+  items.forEach((item) => {
+    const value = normalizeCategoryValue(item.category || '');
+    if (!value || map.has(value)) return;
+    map.set(value, { value, label: humanizeCategoryValue(value) });
+  });
+
+  return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
+};
 
 export const useLibraryStore = create<LibraryState>()(
   persist(
@@ -104,7 +142,7 @@ export const useLibraryStore = create<LibraryState>()(
               id: generateId(),
               title,
               note: '',
-              category,
+              category: normalizeCategoryValue(category),
               defaultDuration: 30,
               createdAt: new Date().toISOString(),
               isUrgent: false,
@@ -119,7 +157,19 @@ export const useLibraryStore = create<LibraryState>()(
 
       updateItem: (id, updates) =>
         set((s) => ({
-          items: s.items.map((i) => (i.id === id ? { ...i, ...updates } : i)),
+          items: s.items.map((i) => (i.id === id ? {
+            ...i,
+            ...updates,
+            category: updates.category !== undefined ? normalizeCategoryValue(updates.category) : i.category,
+          } : i)),
+          categories: mergeCategories(
+            s.items.map((i) => (i.id === id ? {
+              ...i,
+              ...updates,
+              category: updates.category !== undefined ? normalizeCategoryValue(updates.category) : i.category,
+            } : i)),
+            s.categories
+          ),
         })),
 
       deleteItem: (id) =>
@@ -128,23 +178,63 @@ export const useLibraryStore = create<LibraryState>()(
       removeItem: (id) =>
         set((s) => ({ items: s.items.filter((i) => i.id !== id) })),
 
-      addFromSchedule: (title, duration = 30) => {
-        set((s) => ({
-          items: [
-            {
-              id: generateId(),
-              title,
-              note: '',
+      addFromSchedule: (source, duration = 30) => {
+        const payload = typeof source === 'string'
+          ? {
+              title: source,
+              duration,
               category: '',
-              defaultDuration: duration,
-              createdAt: new Date().toISOString(),
+              note: '',
               isUrgent: false,
               isImportant: false,
               dueDate: null,
               subtasks: [],
+            }
+          : {
+              title: source.title,
+              duration: source.duration ?? duration,
+              category: normalizeCategoryValue(source.category || ''),
+              note: source.note || '',
+              isUrgent: source.isUrgent ?? false,
+              isImportant: source.isImportant ?? false,
+              dueDate: source.dueDate ?? null,
+              subtasks: source.subtasks ?? [],
+            };
+
+        set((s) => ({
+          items: [
+            {
+              id: generateId(),
+              title: payload.title,
+              note: payload.note,
+              category: payload.category,
+              defaultDuration: payload.duration,
+              createdAt: new Date().toISOString(),
+              isUrgent: payload.isUrgent,
+              isImportant: payload.isImportant,
+              dueDate: payload.dueDate,
+              subtasks: payload.subtasks,
             },
             ...s.items,
           ],
+          categories: mergeCategories(
+            [
+              {
+                id: 'new',
+                title: payload.title,
+                note: payload.note,
+                category: payload.category,
+                defaultDuration: payload.duration,
+                createdAt: new Date().toISOString(),
+                isUrgent: payload.isUrgent,
+                isImportant: payload.isImportant,
+                dueDate: payload.dueDate,
+                subtasks: payload.subtasks,
+              },
+              ...s.items,
+            ],
+            s.categories
+          ),
         }));
       },
 
@@ -194,23 +284,30 @@ export const useLibraryStore = create<LibraryState>()(
       },
 
       addCategory: (name) => {
-        const value = name.toLowerCase().replace(/\s+/g, '-');
+        const trimmed = name.trim();
+        const value = normalizeCategoryValue(trimmed);
         set((s) => {
-          if (s.categories.some(c => c.value === value)) return s;
-          return { categories: [...s.categories, { value, label: name }] };
+          if (!value || s.categories.some(c => c.value === value)) return s;
+          return { categories: mergeCategories(s.items, [...s.categories, { value, label: trimmed }]) };
         });
       },
 
       removeCategory: (value) => {
-        set((s) => ({
-          categories: s.categories.filter(c => c.value !== value),
-          items: s.items.map(i => i.category === value ? { ...i, category: '' } : i),
-        }));
+        set((s) => {
+          const nextItems = s.items.map(i => i.category === value ? { ...i, category: '' } : i);
+          return {
+            categories: mergeCategories(nextItems, s.categories.filter(c => c.value !== value)),
+            items: nextItems,
+          };
+        });
       },
 
       renameCategory: (value, newLabel) => {
         set((s) => ({
-          categories: s.categories.map(c => c.value === value ? { ...c, label: newLabel } : c),
+          categories: mergeCategories(
+            s.items,
+            s.categories.map(c => c.value === value ? { ...c, label: newLabel.trim() || c.label } : c)
+          ),
         }));
       },
     }),
@@ -226,13 +323,13 @@ export const useLibraryStore = create<LibraryState>()(
             dueDate: i.dueDate ?? null,
             subtasks: i.subtasks ?? [],
             ...i,
-            category: i.category === 'uncategorized' ? '' : (i.category || ''),
+            category: i.category === 'uncategorized' ? '' : normalizeCategoryValue(i.category || ''),
           }));
         }
         if (!merged.filters) {
           merged.filters = { category: merged.filterCategory || 'all', urgency: 'all', hasDueDate: null };
         }
-        if (!merged.categories) merged.categories = [];
+        merged.categories = mergeCategories(merged.items || [], merged.categories || []);
         return merged;
       },
     }

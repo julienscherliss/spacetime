@@ -85,13 +85,44 @@ export type Database = {
         }
         Relationships: []
       }
+      library_categories: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          updated_at: string
+          user_id: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label: string
+          updated_at?: string
+          user_id: string
+          value: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          updated_at?: string
+          user_id?: string
+          value?: string
+        }
+        Relationships: []
+      }
       library_items: {
         Row: {
           category: string | null
           created_at: string
           default_duration: number | null
+          due_date: string | null
           id: string
+          is_important: boolean
+          is_urgent: boolean
           note: string | null
+          subtasks: Json
           title: string
           user_id: string
         }
@@ -99,8 +130,12 @@ export type Database = {
           category?: string | null
           created_at?: string
           default_duration?: number | null
+          due_date?: string | null
           id?: string
+          is_important?: boolean
+          is_urgent?: boolean
           note?: string | null
+          subtasks?: Json
           title: string
           user_id: string
         }
@@ -108,8 +143,12 @@ export type Database = {
           category?: string | null
           created_at?: string
           default_duration?: number | null
+          due_date?: string | null
           id?: string
+          is_important?: boolean
+          is_urgent?: boolean
           note?: string | null
+          subtasks?: Json
           title?: string
           user_id?: string
         }
@@ -143,6 +182,7 @@ export type Database = {
         Row: {
           archive_reason: string | null
           archived_at: string | null
+          category: string | null
           completed: boolean
           created_at: string
           date: string
@@ -173,6 +213,7 @@ export type Database = {
         Insert: {
           archive_reason?: string | null
           archived_at?: string | null
+          category?: string | null
           completed?: boolean
           created_at?: string
           date: string
@@ -203,6 +244,7 @@ export type Database = {
         Update: {
           archive_reason?: string | null
           archived_at?: string | null
+          category?: string | null
           completed?: boolean
           created_at?: string
           date?: string
