@@ -42,6 +42,8 @@ export interface Task {
   inWaitingRoom?: boolean;
   waitingRoomCount?: number;
   dueDate?: string;
+  archivedAt?: string;
+  archiveReason?: 'completed' | 'deleted';
 }
 
 export interface DailyStats {
@@ -73,6 +75,9 @@ interface TaskState {
   updateFutureInstances: (taskId: string, fromDate: string, updates: Partial<Task>) => void;
   completeTask: (id: string) => void;
   deleteTask: (id: string) => void;
+  archiveTask: (id: string, reason: 'completed' | 'deleted') => void;
+  restoreTask: (id: string) => void;
+  getArchivedTasks: () => Task[];
   deleteFutureInstances: (parentId: string, fromDate: string) => void;
   removeInstances: (parentId: string) => void;
   deleteRecurrenceSeries: (parentId: string) => void;
@@ -371,26 +376,50 @@ export const useTaskStore = create<TaskState>()(
       },
 
       completeTask: (id) => {
+        const now = new Date().toISOString();
         set((s) => ({
           tasks: s.tasks.map((t) =>
-            t.id === id ? { ...t, completed: true, inWaitingRoom: false } : t
+            t.id === id ? { ...t, completed: true, inWaitingRoom: false, archivedAt: now, archiveReason: 'completed' as const } : t
           ),
           editingTaskId: s.editingTaskId === id ? null : s.editingTaskId,
         }));
         const state = get();
         const today = new Date().toISOString().split('T')[0];
-        const todayTasks = state.tasks.filter((t) => t.date === today);
+        const todayTasks = state.tasks.filter((t) => t.date === today && !t.archivedAt);
         const allDone = todayTasks.length > 0 && todayTasks.every((t) => t.completed);
         if (allDone) {
           set({ showCompletionStats: true, dailyStats: get().getDailyStats() });
         }
       },
 
-      deleteTask: (id) =>
+      deleteTask: (id) => {
+        const now = new Date().toISOString();
         set((s) => ({
-          tasks: s.tasks.filter((t) => t.id !== id),
+          tasks: s.tasks.map((t) =>
+            t.id === id ? { ...t, archivedAt: now, archiveReason: 'deleted' as const } : t
+          ),
           editingTaskId: s.editingTaskId === id ? null : s.editingTaskId,
+        }));
+      },
+
+      archiveTask: (id, reason) => {
+        const now = new Date().toISOString();
+        set((s) => ({
+          tasks: s.tasks.map((t) =>
+            t.id === id ? { ...t, archivedAt: now, archiveReason: reason, completed: reason === 'completed' ? true : t.completed } : t
+          ),
+          editingTaskId: s.editingTaskId === id ? null : s.editingTaskId,
+        }));
+      },
+
+      restoreTask: (id) =>
+        set((s) => ({
+          tasks: s.tasks.map((t) =>
+            t.id === id ? { ...t, archivedAt: undefined, archiveReason: undefined, completed: false, inWaitingRoom: false } : t
+          ),
         })),
+
+      getArchivedTasks: () => get().tasks.filter((t) => !!t.archivedAt),
 
       deleteFutureInstances: (parentId, fromDate) =>
         set((s) => ({
