@@ -112,73 +112,228 @@ function categoryToRow(cat: CategoryDef, userId: string) {
 // ─── Validation ────────────────────────────────────────
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 function isValidUUID(id: string): boolean {
   return UUID_RE.test(id);
 }
 
-// ─── Module-level debounce timers ──────────────────────
+// ─── Debounce timers ───────────────────────────────────
 
-let saveTimeout: ReturnType<typeof setTimeout> | null = null;
+let taskSaveTimeout: ReturnType<typeof setTimeout> | null = null;
 let libSaveTimeout: ReturnType<typeof setTimeout> | null = null;
 let catSaveTimeout: ReturnType<typeof setTimeout> | null = null;
 
-// ─── Immediate save for critical task mutations ────────
+// ─── Snapshot for diffing ──────────────────────────────
 
-async function immediateTaskSave(taskId: string, userId: string) {
-  const task = useTaskStore.getState().tasks.find(t => t.id === taskId);
-  if (!task || !isValidUUID(task.id)) return;
-  try {
-    const row = taskToRow(task, userId);
-    const { error } = await supabase.from('tasks').upsert([row] as any);
-    if (error) console.error('[DataSync] Immediate save failed:', error);
-  } catch (err) {
-    console.error('[DataSync] Immediate save error:', err);
-  }
+let lastSyncedTaskSnapshot: string = '';
+let lastSyncedLibSnapshot: string = '';
+let lastSyncedCatSnapshot: string = '';
+
+function snapshotTasks(tasks: Task[]): string {
+  return JSON.stringify(tasks.filter(t => isValidUUID(t.id)).map(t => ({
+    id: t.id, title: t.title, category: t.category, description: t.description,
+    subtasks: t.subtasks, type: t.type, priority: t.priority, originalPriority: t.originalPriority,
+    date: t.date, time: t.time, duration: t.duration, completed: t.completed,
+    moveCount: t.moveCount, recurrence: t.recurrence, recurrenceParentId: t.recurrenceParentId,
+    isRecurrenceInstance: t.isRecurrenceInstance, isRoutine: t.isRoutine, linked: t.linked,
+    seriesId: t.seriesId, linkedGroupId: t.linkedGroupId, detachedFromSeries: t.detachedFromSeries,
+    inWaitingRoom: t.inWaitingRoom, waitingRoomCount: t.waitingRoomCount,
+    dueDate: t.dueDate, archivedAt: t.archivedAt, archiveReason: t.archiveReason,
+  })));
 }
 
-// ─── Flush pending saves on page unload ────────────────
+function snapshotLib(items: LibraryTask[]): string {
+  return JSON.stringify(items.filter(i => isValidUUID(i.id)));
+}
 
-function flushPendingSaves(userId: string) {
-  if (!saveTimeout) return;
-  clearTimeout(saveTimeout);
-  saveTimeout = null;
-  // Use sendBeacon with a simple upsert via REST API
-  const state = useTaskStore.getState();
-  const validTasks = state.tasks.filter(t => isValidUUID(t.id));
-  if (validTasks.length === 0) return;
-  const rows = validTasks.map(t => taskToRow(t, userId));
-  const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/tasks`;
-  const blob = new Blob([JSON.stringify(rows)], { type: 'application/json' });
-  try {
-    navigator.sendBeacon(
-      `${url}?on_conflict=id`,
-      blob
-    );
-  } catch (_) {
-    // sendBeacon not available, data will sync next session
-  }
+function snapshotCats(cats: CategoryDef[]): string {
+  return JSON.stringify(cats);
 }
 
 // ─── Clear all user-scoped state ───────────────────────
 
 function clearAllUserState() {
-  // Clear zustand in-memory state
   useTaskStore.setState({ tasks: [], editingTaskId: null, focusTaskId: null });
   useLibraryStore.setState({ items: [] });
-  
-  // Clear persisted localStorage so stale data never leaks across accounts
   try {
     localStorage.removeItem('do-task-store');
     localStorage.removeItem('do-library-store');
-  } catch (_) {
-    // localStorage may not be available
-  }
-
-  // Kill any pending saves
-  if (saveTimeout) { clearTimeout(saveTimeout); saveTimeout = null; }
+  } catch (_) {}
+  if (taskSaveTimeout) { clearTimeout(taskSaveTimeout); taskSaveTimeout = null; }
   if (libSaveTimeout) { clearTimeout(libSaveTimeout); libSaveTimeout = null; }
   if (catSaveTimeout) { clearTimeout(catSaveTimeout); catSaveTimeout = null; }
+  lastSyncedTaskSnapshot = '';
+  lastSyncedLibSnapshot = '';
+  lastSyncedCatSnapshot = '';
+}
+
+// ─── Write-through save functions ──────────────────────
+
+async function saveTasksNow(userId: string): Promise<boolean> {
+  const state = useTaskStore.getState();
+  const validTasks = state.tasks.filter(t => isValidUUID(t.id));
+  const snap = snapshotTasks(state.tasks);
+
+  // Skip if nothing changed
+  if (snap === lastSyncedTaskSnapshot) return true;
+
+  try {
+    // Get current DB IDs to detect deletions
+    const { data: dbTasks, error: fetchErr } = await supabase
+      .from('tasks')
+      .select('id')
+      .eq('user_id', userId);
+
+    if (fetchErr) {
+      console.error('[Sync] Failed to fetch task IDs:', fetchErr);
+      toast.error('Sync failed — changes may not persist across devices.');
+      return false;
+    }
+
+    const localIds = new Set(state.tasks.map(t => t.id));
+    const toDelete = (dbTasks || []).map((t: any) => t.id).filter((id: string) => !localIds.has(id));
+
+    if (toDelete.length > 0) {
+      const { error: delErr } = await supabase.from('tasks').delete().in('id', toDelete);
+      if (delErr) {
+        console.error('[Sync] Failed to delete tasks:', delErr);
+        toast.error('Failed to sync deleted tasks.');
+        return false;
+      }
+    }
+
+    if (validTasks.length > 0) {
+      const rows = validTasks.map(t => taskToRow(t, userId));
+      const { error: upsertErr } = await supabase.from('tasks').upsert(rows as any);
+      if (upsertErr) {
+        console.error('[Sync] Failed to save tasks:', upsertErr);
+        toast.error('Failed to save tasks — changes may not persist.');
+        return false;
+      }
+    }
+
+    lastSyncedTaskSnapshot = snap;
+    return true;
+  } catch (err) {
+    console.error('[Sync] Task save error:', err);
+    toast.error('Sync error — please check your connection.');
+    return false;
+  }
+}
+
+async function saveLibraryNow(userId: string): Promise<boolean> {
+  const state = useLibraryStore.getState();
+  const validItems = state.items.filter(i => isValidUUID(i.id));
+  const snap = snapshotLib(state.items);
+
+  if (snap === lastSyncedLibSnapshot) return true;
+
+  try {
+    const { data: dbItems, error: fetchErr } = await supabase
+      .from('library_items')
+      .select('id')
+      .eq('user_id', userId);
+
+    if (fetchErr) {
+      console.error('[Sync] Failed to fetch library IDs:', fetchErr);
+      return false;
+    }
+
+    const localIds = new Set(state.items.map(i => i.id));
+    const toDelete = (dbItems || []).map((i: any) => i.id).filter((id: string) => !localIds.has(id));
+
+    if (toDelete.length > 0) {
+      await supabase.from('library_items').delete().in('id', toDelete);
+    }
+
+    if (validItems.length > 0) {
+      const rows = validItems.map(i => libraryItemToRow(i, userId));
+      const { error } = await supabase.from('library_items').upsert(rows as any);
+      if (error) {
+        console.error('[Sync] Failed to save library:', error);
+        toast.error('Failed to save library items.');
+        return false;
+      }
+    }
+
+    lastSyncedLibSnapshot = snap;
+    return true;
+  } catch (err) {
+    console.error('[Sync] Library save error:', err);
+    return false;
+  }
+}
+
+async function saveCategoriesNow(userId: string): Promise<boolean> {
+  const state = useLibraryStore.getState();
+  const snap = snapshotCats(state.categories);
+
+  if (snap === lastSyncedCatSnapshot) return true;
+
+  try {
+    const { data: dbCats, error: fetchErr } = await supabase
+      .from('library_categories')
+      .select('value')
+      .eq('user_id', userId);
+
+    if (fetchErr) return false;
+
+    const localValues = new Set(state.categories.map(c => c.value));
+    const toDelete = (dbCats || []).map((c: any) => c.value).filter((v: string) => !localValues.has(v));
+
+    if (toDelete.length > 0) {
+      await supabase.from('library_categories').delete().eq('user_id', userId).in('value', toDelete);
+    }
+
+    if (state.categories.length > 0) {
+      const rows = state.categories.map(c => categoryToRow(c, userId));
+      await supabase.from('library_categories').upsert(rows as any, { onConflict: 'user_id,value' });
+    }
+
+    lastSyncedCatSnapshot = snap;
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+// ─── Load from DB (source of truth) ───────────────────
+
+async function loadFromDB(userId: string): Promise<boolean> {
+  try {
+    const [taskRes, libRes, catRes] = await Promise.all([
+      supabase.from('tasks').select('*').eq('user_id', userId),
+      supabase.from('library_items').select('*').eq('user_id', userId),
+      supabase.from('library_categories').select('*').eq('user_id', userId),
+    ]);
+
+    if (taskRes.error) {
+      console.error('[Sync] Failed to load tasks:', taskRes.error);
+      toast.error('Failed to load tasks. Please refresh.');
+      return false;
+    }
+
+    const tasks = (taskRes.data || []).map(rowToTask);
+    useTaskStore.setState({ tasks });
+    lastSyncedTaskSnapshot = snapshotTasks(tasks);
+
+    if (!libRes.error) {
+      const items = (libRes.data || []).map(rowToLibraryItem);
+      useLibraryStore.setState({ items });
+      lastSyncedLibSnapshot = snapshotLib(items);
+    }
+
+    if (!catRes.error && catRes.data && catRes.data.length > 0) {
+      const categories = catRes.data.map(rowToCategory);
+      useLibraryStore.setState({ categories });
+      lastSyncedCatSnapshot = snapshotCats(categories);
+    }
+
+    return true;
+  } catch (err) {
+    console.error('[Sync] Load error:', err);
+    toast.error('Error loading data. Please refresh.');
+    return false;
+  }
 }
 
 // ─── Hook ──────────────────────────────────────────────
@@ -187,11 +342,22 @@ export function useDataSync(user: User | null) {
   const initialLoadDone = useRef(false);
   const userIdRef = useRef<string | null>(null);
   const prevUserIdRef = useRef<string | null>(null);
+  const accessTokenRef = useRef<string | null>(null);
 
-  // Clear state on logout or user change
+  // Keep access token up to date for beforeunload
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      accessTokenRef.current = session?.access_token ?? null;
+    });
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      accessTokenRef.current = session?.access_token ?? null;
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // ─── Initial load & user change ──────────────────────
   useEffect(() => {
     if (!user) {
-      // User logged out — wipe everything
       clearAllUserState();
       initialLoadDone.current = false;
       userIdRef.current = null;
@@ -199,7 +365,6 @@ export function useDataSync(user: User | null) {
       return;
     }
 
-    // Different user logged in — clear previous user's data first
     if (prevUserIdRef.current && prevUserIdRef.current !== user.id) {
       clearAllUserState();
       initialLoadDone.current = false;
@@ -208,326 +373,149 @@ export function useDataSync(user: User | null) {
     userIdRef.current = user.id;
     prevUserIdRef.current = user.id;
 
-    const loadData = async () => {
-      try {
-        // Load tasks — always from DB, never trust local cache
-        const { data: taskRows, error: taskError } = await supabase
-          .from('tasks')
-          .select('*')
-          .eq('user_id', user.id);
+    // Clear localStorage-cached data BEFORE loading from DB
+    // This prevents stale local data from flashing or being pushed back
+    useTaskStore.setState({ tasks: [] });
+    useLibraryStore.setState({ items: [] });
 
-        if (taskError) {
-          console.error('[DataSync] Failed to load tasks:', taskError);
-          toast.error('Failed to load tasks. Please refresh.');
-          initialLoadDone.current = true;
-          return;
-        }
-
-        // Guard: make sure we're still the active user
-        if (userIdRef.current !== user.id) return;
-
-        if (taskRows && taskRows.length > 0) {
-          const tasks = taskRows.map(rowToTask);
-          useTaskStore.setState({ tasks });
-        } else {
-          // First login — push local tasks to DB if any exist with valid UUIDs
-          const currentTasks = useTaskStore.getState().tasks;
-          if (currentTasks.length > 0) {
-            const fixedTasks = currentTasks.map(t => {
-              if (!isValidUUID(t.id)) {
-                return { ...t, id: crypto.randomUUID() };
-              }
-              return t;
-            });
-            useTaskStore.setState({ tasks: fixedTasks });
-            const rows = fixedTasks.map(t => taskToRow(t, user.id));
-            const { error: upsertErr } = await supabase.from('tasks').upsert(rows as any);
-            if (upsertErr) {
-              console.error('[DataSync] Failed to push initial tasks:', upsertErr);
-            }
-          } else {
-            // Ensure store is empty for a new account
-            useTaskStore.setState({ tasks: [] });
-          }
-        }
-
-        // Load library items
-        const { data: libRows, error: libError } = await supabase
-          .from('library_items')
-          .select('*')
-          .eq('user_id', user.id);
-
-        if (libError) {
-          console.error('[DataSync] Failed to load library:', libError);
-        }
-
-        // Guard again
-        if (userIdRef.current !== user.id) return;
-
-        if (libRows && libRows.length > 0) {
-          const items = libRows.map(rowToLibraryItem);
-          useLibraryStore.setState({ items });
-        } else {
-          const currentItems = useLibraryStore.getState().items;
-          if (currentItems.length > 0) {
-            // Fix any non-UUID library IDs before pushing
-            const fixedItems = currentItems.map(i => {
-              if (!isValidUUID(i.id)) {
-                return { ...i, id: crypto.randomUUID() };
-              }
-              return i;
-            });
-            useLibraryStore.setState({ items: fixedItems });
-            const rows = fixedItems.map(i => libraryItemToRow(i, user.id));
-            const { error: libUpsertErr } = await supabase.from('library_items').upsert(rows as any);
-            if (libUpsertErr) {
-              console.error('[DataSync] Failed to push initial library items:', libUpsertErr);
-            }
-          } else {
-            useLibraryStore.setState({ items: [] });
-          }
-        }
-
-        // Load library categories
-        const { data: catRows, error: catError } = await supabase
-          .from('library_categories')
-          .select('*')
-          .eq('user_id', user.id);
-
-        if (catError) {
-          console.error('[DataSync] Failed to load library categories:', catError);
-        } else if (catRows && catRows.length > 0) {
-          const categories = catRows.map(rowToCategory);
-          useLibraryStore.setState({ categories });
-        } else {
-          // Push local categories to DB if any
-          const currentCats = useLibraryStore.getState().categories;
-          if (currentCats.length > 0) {
-            const rows = currentCats.map(c => categoryToRow(c, user.id));
-            const { error: catUpsertErr } = await supabase.from('library_categories').upsert(rows as any, { onConflict: 'user_id,value' });
-            if (catUpsertErr) console.error('[DataSync] Failed to push initial categories:', catUpsertErr);
-          }
-        }
-
+    loadFromDB(user.id).then((ok) => {
+      if (ok && userIdRef.current === user.id) {
         initialLoadDone.current = true;
-      } catch (err) {
-        console.error('[DataSync] Load error:', err);
-        toast.error('Error loading data. Please refresh.');
-        initialLoadDone.current = true;
+
+        // If DB had zero tasks but localStorage had some (first-time migration),
+        // push them up. This only matters on the very first login.
+        const currentTasks = useTaskStore.getState().tasks;
+        if (currentTasks.length === 0) {
+          // Check if localStorage had tasks before we cleared
+          try {
+            const cached = localStorage.getItem('do-task-store');
+            if (cached) {
+              const parsed = JSON.parse(cached);
+              if (parsed?.state?.tasks?.length > 0) {
+                const fixedTasks = parsed.state.tasks.map((t: any) => ({
+                  ...t,
+                  id: isValidUUID(t.id) ? t.id : crypto.randomUUID(),
+                }));
+                useTaskStore.setState({ tasks: fixedTasks });
+                saveTasksNow(user.id);
+              }
+            }
+          } catch (_) {}
+        }
       }
-    };
-
-    loadData();
+    });
   }, [user?.id]);
 
-  // Subscribe to task store changes → save to DB (debounced)
-  // Also detect critical mutations (archive/delete/complete) for immediate save
-  const prevTasksRef = useRef<Map<string, { archivedAt?: string; completed: boolean }>>(new Map());
-
+  // ─── Subscribe to task store → write-through save ────
   useEffect(() => {
     if (!user) return;
 
-    // Flush pending saves on page unload
-    const handleBeforeUnload = () => {
-      if (userIdRef.current) flushPendingSaves(userIdRef.current);
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
-    const unsub = useTaskStore.subscribe((state) => {
+    const unsub = useTaskStore.subscribe(() => {
       if (!initialLoadDone.current || !userIdRef.current) return;
       if (userIdRef.current !== user.id) return;
-
       const userId = userIdRef.current;
 
-      // Detect tasks that just got archived/completed and save immediately
-      const prevMap = prevTasksRef.current;
-      for (const task of state.tasks) {
-        const prev = prevMap.get(task.id);
-        if (prev && !prev.archivedAt && task.archivedAt) {
-          // Task was just archived/deleted/completed — save immediately
-          immediateTaskSave(task.id, userId);
-        } else if (prev && !prev.completed && task.completed && !task.archivedAt) {
-          // Task was just completed without archive — save immediately
-          immediateTaskSave(task.id, userId);
-        }
-      }
-
-      // Update previous state snapshot
-      const newMap = new Map<string, { archivedAt?: string; completed: boolean }>();
-      for (const t of state.tasks) {
-        newMap.set(t.id, { archivedAt: t.archivedAt, completed: t.completed });
-      }
-      prevTasksRef.current = newMap;
-
-      // Still do debounced full sync for other changes
-      if (saveTimeout) clearTimeout(saveTimeout);
-      saveTimeout = setTimeout(async () => {
-        const uid = userIdRef.current;
-        if (!uid || uid !== user.id) return;
-
-        try {
-          const { data: dbTasks, error: fetchErr } = await supabase
-            .from('tasks')
-            .select('id')
-            .eq('user_id', uid);
-
-          if (fetchErr) {
-            console.error('[DataSync] Failed to fetch task IDs for sync:', fetchErr);
-            return;
-          }
-
-          if (userIdRef.current !== uid) return;
-
-          const currentState = useTaskStore.getState();
-          const dbIds = new Set((dbTasks || []).map((t: any) => t.id));
-          const localIds = new Set(currentState.tasks.map(t => t.id));
-
-          const toDelete = [...dbIds].filter(id => !localIds.has(id));
-          if (toDelete.length > 0) {
-            const { error: delErr } = await supabase.from('tasks').delete().in('id', toDelete);
-            if (delErr) console.error('[DataSync] Failed to delete tasks:', delErr);
-          }
-
-          const validTasks = currentState.tasks.filter(t => isValidUUID(t.id));
-          if (validTasks.length > 0) {
-            const rows = validTasks.map(t => taskToRow(t, uid));
-            const { error: upsertErr } = await supabase.from('tasks').upsert(rows as any);
-            if (upsertErr) {
-              console.error('[DataSync] Failed to save tasks:', upsertErr);
-              toast.error('Failed to save tasks. Your changes may not persist.');
-            }
-          }
-
-          const invalidTasks = currentState.tasks.filter(t => !isValidUUID(t.id));
-          if (invalidTasks.length > 0) {
-            console.warn('[DataSync] Skipped saving tasks with invalid IDs:', invalidTasks.map(t => t.id));
-          }
-        } catch (err) {
-          console.error('[DataSync] Task save error:', err);
-        }
-      }, 1000);
+      // Debounce at 300ms (short enough to catch most actions before app switch)
+      if (taskSaveTimeout) clearTimeout(taskSaveTimeout);
+      taskSaveTimeout = setTimeout(() => saveTasksNow(userId), 300);
     });
 
     return () => {
       unsub();
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      if (saveTimeout) { clearTimeout(saveTimeout); saveTimeout = null; }
+      // Flush pending save immediately on cleanup
+      if (taskSaveTimeout && userIdRef.current) {
+        clearTimeout(taskSaveTimeout);
+        taskSaveTimeout = null;
+        saveTasksNow(userIdRef.current);
+      }
     };
   }, [user?.id]);
 
-  // Subscribe to library store changes → save to DB (debounced)
+  // ─── Subscribe to library store → write-through save ─
   useEffect(() => {
     if (!user) return;
 
-    const unsub = useLibraryStore.subscribe((state) => {
+    const unsub = useLibraryStore.subscribe(() => {
       if (!initialLoadDone.current || !userIdRef.current) return;
       if (userIdRef.current !== user.id) return;
+      const userId = userIdRef.current;
 
       if (libSaveTimeout) clearTimeout(libSaveTimeout);
-      libSaveTimeout = setTimeout(async () => {
-        const userId = userIdRef.current;
-        if (!userId || userId !== user.id) return;
+      libSaveTimeout = setTimeout(() => saveLibraryNow(userId), 300);
 
-        try {
-          const { data: dbItems, error: fetchErr } = await supabase
-            .from('library_items')
-            .select('id')
-            .eq('user_id', userId);
-
-          if (fetchErr) {
-            console.error('[DataSync] Failed to fetch library IDs for sync:', fetchErr);
-            return;
-          }
-
-          if (userIdRef.current !== userId) return;
-
-          const currentState = useLibraryStore.getState();
-          const dbIds = new Set((dbItems || []).map((i: any) => i.id));
-          const localIds = new Set(currentState.items.map(i => i.id));
-
-          const toDelete = [...dbIds].filter(id => !localIds.has(id));
-          if (toDelete.length > 0) {
-            const { error: delErr } = await supabase.from('library_items').delete().in('id', toDelete);
-            if (delErr) console.error('[DataSync] Failed to delete library items:', delErr);
-          }
-
-          // Fix and upsert library items
-          const validItems = currentState.items.filter(i => isValidUUID(i.id));
-          if (validItems.length > 0) {
-            const rows = validItems.map(i => libraryItemToRow(i, userId));
-            const { error: upsertErr } = await supabase.from('library_items').upsert(rows as any);
-            if (upsertErr) {
-              console.error('[DataSync] Failed to save library items:', upsertErr);
-              toast.error('Failed to save library. Your changes may not persist.');
-            }
-          }
-
-          const invalidItems = currentState.items.filter(i => !isValidUUID(i.id));
-          if (invalidItems.length > 0) {
-            console.warn('[DataSync] Skipped saving library items with invalid IDs:', invalidItems.map(i => i.id));
-          }
-        } catch (err) {
-          console.error('[DataSync] Library save error:', err);
-        }
-      }, 1000);
+      if (catSaveTimeout) clearTimeout(catSaveTimeout);
+      catSaveTimeout = setTimeout(() => saveCategoriesNow(userId), 300);
     });
 
     return () => {
       unsub();
-      if (libSaveTimeout) { clearTimeout(libSaveTimeout); libSaveTimeout = null; }
+      if (libSaveTimeout && userIdRef.current) {
+        clearTimeout(libSaveTimeout);
+        libSaveTimeout = null;
+        saveLibraryNow(userIdRef.current);
+      }
+      if (catSaveTimeout && userIdRef.current) {
+        clearTimeout(catSaveTimeout);
+        catSaveTimeout = null;
+        saveCategoriesNow(userIdRef.current);
+      }
     };
   }, [user?.id]);
-  // Subscribe to library categories → save to DB (debounced)
+
+  // ─── Refetch on visibility change (tab/app foreground) ─
   useEffect(() => {
     if (!user) return;
 
-    const unsub = useLibraryStore.subscribe(
-      (state) => {
-        if (!initialLoadDone.current || !userIdRef.current) return;
-        if (userIdRef.current !== user.id) return;
-
-        if (catSaveTimeout) clearTimeout(catSaveTimeout);
-        catSaveTimeout = setTimeout(async () => {
-          const userId = userIdRef.current;
-          if (!userId || userId !== user.id) return;
-
-          try {
-            const { data: dbCats, error: fetchErr } = await supabase
-              .from('library_categories')
-              .select('value')
-              .eq('user_id', userId);
-
-            if (fetchErr) {
-              console.error('[DataSync] Failed to fetch category values for sync:', fetchErr);
-              return;
-            }
-
-            if (userIdRef.current !== userId) return;
-
-            const currentCats = useLibraryStore.getState().categories;
-            const dbValues = new Set((dbCats || []).map((c: any) => c.value));
-            const localValues = new Set(currentCats.map(c => c.value));
-
-            const toDelete = [...dbValues].filter(v => !localValues.has(v));
-            if (toDelete.length > 0) {
-              await supabase.from('library_categories').delete().eq('user_id', userId).in('value', toDelete);
-            }
-
-            if (currentCats.length > 0) {
-              const rows = currentCats.map(c => categoryToRow(c, userId));
-              const { error: upsertErr } = await supabase.from('library_categories').upsert(rows as any, { onConflict: 'user_id,value' });
-              if (upsertErr) console.error('[DataSync] Failed to save categories:', upsertErr);
-            }
-          } catch (err) {
-            console.error('[DataSync] Category save error:', err);
-          }
-        }, 1000);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && userIdRef.current === user.id) {
+        console.log('[Sync] App became visible — refetching from DB');
+        loadFromDB(user.id).then(() => {
+          initialLoadDone.current = true;
+        });
       }
-    );
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    // Also flush on beforeunload
+    const handleBeforeUnload = () => {
+      if (userIdRef.current) {
+        // Cancel debounce and save synchronously via sendBeacon as best-effort
+        if (taskSaveTimeout) { clearTimeout(taskSaveTimeout); taskSaveTimeout = null; }
+        if (libSaveTimeout) { clearTimeout(libSaveTimeout); libSaveTimeout = null; }
+
+        // sendBeacon needs auth header — use REST API with apikey
+        const url = import.meta.env.VITE_SUPABASE_URL;
+        const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        if (!url || !key) return;
+
+        const state = useTaskStore.getState();
+        const validTasks = state.tasks.filter(t => isValidUUID(t.id));
+        if (validTasks.length > 0 && snapshotTasks(state.tasks) !== lastSyncedTaskSnapshot) {
+          const rows = validTasks.map(t => taskToRow(t, userIdRef.current!));
+          try {
+            // Use fetch with keepalive instead of sendBeacon for auth headers
+            fetch(`${url}/rest/v1/tasks?on_conflict=id`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': key,
+                'Authorization': `Bearer ${accessTokenRef.current || key}`,
+                'Prefer': 'resolution=merge-duplicates',
+              },
+              body: JSON.stringify(rows),
+              keepalive: true,
+            }).catch(() => {});
+          } catch (_) {}
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
-      unsub();
-      if (catSaveTimeout) { clearTimeout(catSaveTimeout); catSaveTimeout = null; }
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [user?.id]);
 }
