@@ -33,6 +33,8 @@ function rowToTask(row: any): Task {
     inWaitingRoom: row.in_waiting_room ?? false,
     waitingRoomCount: row.waiting_room_count ?? 0,
     dueDate: row.due_date ?? undefined,
+    archivedAt: row.archived_at ?? undefined,
+    archiveReason: row.archive_reason ?? undefined,
   };
 }
 
@@ -62,6 +64,8 @@ function taskToRow(task: Task, userId: string) {
     in_waiting_room: task.inWaitingRoom ?? false,
     waiting_room_count: task.waitingRoomCount ?? 0,
     due_date: task.dueDate ?? null,
+    archived_at: task.archivedAt ?? null,
+    archive_reason: task.archiveReason ?? null,
   };
 }
 

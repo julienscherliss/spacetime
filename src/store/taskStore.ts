@@ -556,7 +556,7 @@ export const useTaskStore = create<TaskState>()(
 
       getTasksForDate: (date) => {
         const state = get();
-        return state.tasks.filter((t) => t.date === date && !t.completed && !t.inWaitingRoom &&
+        return state.tasks.filter((t) => t.date === date && !t.completed && !t.inWaitingRoom && !t.archivedAt &&
           !(!state.routinesEnabled && t.isRoutine !== false && t.type === 'recurring'));
       },
 
