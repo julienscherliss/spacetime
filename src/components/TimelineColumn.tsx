@@ -522,7 +522,20 @@ export function TimelineColumn({
     // Calculate target time from tap position
     const mins = getMinutesFromY(e.clientY);
     const snapped = snapTo15(mins);
-    const newTime = minutesToTime(snapped);
+
+    // Collision check for carry drop
+    const allTasks = useTaskStore.getState().tasks;
+    const excludeId = carried.fromLibrary ? undefined : carried.taskId;
+    const occupiedSlots = getOccupiedSlots(allTasks, date, excludeId);
+    const { startMin, blocked } = findValidPosition(snapped, carried.duration, occupiedSlots);
+
+    if (blocked) {
+      setDragMsg('No space available');
+      setTimeout(() => setDragMsg(''), 2000);
+      return;
+    }
+
+    const newTime = minutesToTime(startMin);
 
     // Perform the drop
     const dropped = useCarryStore.getState().drop();
