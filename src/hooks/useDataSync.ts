@@ -500,7 +500,7 @@ export function useDataSync(user: User | null) {
               headers: {
                 'Content-Type': 'application/json',
                 'apikey': key,
-                'Authorization': `Bearer ${key}`,
+                'Authorization': `Bearer ${accessTokenRef.current || key}`,
                 'Prefer': 'resolution=merge-duplicates',
               },
               body: JSON.stringify(rows),
