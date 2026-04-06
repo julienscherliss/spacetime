@@ -682,6 +682,7 @@ export function TimelineColumn({
   const scheduledDragTargetDate = useScheduledDragStore((s) => s.targetDate);
   const scheduledDragUnlinkMode = useScheduledDragStore((s) => s.unlinkMode);
   const scheduledDragIsLinked = useScheduledDragStore((s) => s.isLinkedTask);
+  const scheduledDragBlocked = useScheduledDragStore((s) => s.blocked);
 
   // Scheduled drag: single global drop handler — only the column matching targetDate processes it
   useEffect(() => {
