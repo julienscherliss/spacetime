@@ -92,7 +92,8 @@ export function TimelineColumn({
   hourHeight: hourHeightProp,
 }: TimelineColumnProps) {
   const HOUR_HEIGHT = hourHeightProp ?? DEFAULT_HOUR_HEIGHT;
-  const { setEditingTask, reorderTask, moveTask, resizeTask, completeTask, canMoveTask, addTask } = useTaskStore();
+  const { setEditingTask, reorderTask, moveTask, resizeTask, completeTask, canMoveTask, addTask, routinesEnabled } = useTaskStore();
+  const allStoreTasks = useTaskStore((s) => s.tasks);
   const colRef = useRef<HTMLDivElement>(null);
   const [dragOverTime, setDragOverTime] = useState<string | null>(null);
   const [dragOverDuration, setDragOverDuration] = useState<number>(30);
