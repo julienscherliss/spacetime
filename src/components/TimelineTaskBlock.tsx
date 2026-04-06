@@ -1,5 +1,6 @@
 import { MutableRefObject, useRef, useCallback, useEffect, useState } from 'react';
 import { Check, Link, Unlink } from 'lucide-react';
+import { useTimezoneStore, getTodayInTz } from '@/store/timezoneStore';
 import { Task } from '@/store/taskStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { HoldToConfirmRing } from '@/components/HoldToConfirmRing';
@@ -71,8 +72,11 @@ export function TimelineTaskBlock({
 }: TimelineTaskBlockProps) {
   const taskMinutes = task.time ? parseInt(task.time.split(':')[0], 10) * 60 + parseInt(task.time.split(':')[1], 10) : 0;
   const taskEndMinutes = taskMinutes + (task.duration || 30);
-  const todayStr = new Date().toISOString().split('T')[0];
-  const isOverdue = !task.completed && !!task.time && task.date <= todayStr && taskEndMinutes < nowMinutes;
+  const timezone = useTimezoneStore((s) => s.timezone);
+  const todayStr = getTodayInTz(timezone);
+  const isPastDate = task.date < todayStr;
+  const isTodayDate = task.date === todayStr;
+  const isOverdue = !task.completed && !!task.time && (isPastDate || (isTodayDate && taskEndMinutes < nowMinutes));
   const isDraggingThis = useScheduledDragStore((s) => s.active && s.taskId === task.id);
   const isCarried = useCarryStore((s) => s.carried?.taskId === task.id);
 
