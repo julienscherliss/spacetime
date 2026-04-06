@@ -418,8 +418,7 @@ export function useDataSync(user: User | null) {
     if (!user) return;
 
     const unsub = useLibraryStore.subscribe(
-      (state) => state.categories,
-      (categories) => {
+      (state) => {
         if (!initialLoadDone.current || !userIdRef.current) return;
         if (userIdRef.current !== user.id) return;
 
