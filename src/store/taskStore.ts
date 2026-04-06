@@ -609,7 +609,7 @@ export const useTaskStore = create<TaskState>()(
 
         set((s) => ({
           tasks: s.tasks.map((t) => {
-            if (t.completed || t.inWaitingRoom) return t;
+            if (t.completed || t.inWaitingRoom || t.archivedAt) return t;
             if (!t.time) return t;
             // Only move tasks from days strictly before today (using 3 AM boundary)
             // Tasks from today stay on the calendar even if overdue
