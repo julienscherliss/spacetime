@@ -385,7 +385,7 @@ export function TimelineTaskBlock({
           : isResizingThis
             ? 'cursor-ns-resize'
             : 'cursor-grab active:cursor-grabbing'
-      } ${isActive ? 'z-[15]' : 'z-10'} ${(isDraggingThis || isCarried) ? 'opacity-0' : 'opacity-100'}`}
+      } ${isActive ? 'z-[15]' : hasRoutineConflict ? 'z-[12]' : 'z-10'} ${(isDraggingThis || isCarried) ? 'opacity-0' : 'opacity-100'}`}
       style={{
         top,
         height,
@@ -403,12 +403,14 @@ export function TimelineTaskBlock({
         className={`h-full rounded-[2px] transition-all duration-200 ${
           isActive
             ? 'bg-card border border-primary/20 shadow-sm'
-            : showUnlinkedOutline
-              ? `${task.isRoutine ? 'bg-background/60 backdrop-blur-sm' : 'bg-card'} border border-border/60 border-dashed hover:border-[hsl(var(--task-hover))] hover:shadow-sm`
-              : `${task.isRoutine ? 'bg-background/60 backdrop-blur-sm border border-[hsl(var(--task-border))]' : 'bg-card border border-[hsl(var(--task-border))]'} hover:border-[hsl(var(--task-hover))] hover:shadow-sm`
-        } ${isOverdue ? 'border-destructive/30' : ''}`}
+            : hasRoutineConflict
+              ? 'bg-card border border-[hsl(var(--routine-conflict)/0.5)] shadow-sm'
+              : showUnlinkedOutline
+                ? `${task.isRoutine ? 'bg-background/60 backdrop-blur-sm' : 'bg-card'} border border-border/60 border-dashed hover:border-[hsl(var(--task-hover))] hover:shadow-sm`
+                : `${task.isRoutine ? 'bg-background/60 backdrop-blur-sm border border-[hsl(var(--task-border))]' : 'bg-card border border-[hsl(var(--task-border))]'} hover:border-[hsl(var(--task-hover))] hover:shadow-sm`
+        } ${isOverdue && !hasRoutineConflict ? 'border-destructive/30' : ''}`}
         style={{
-          borderLeftColor,
+          borderLeftColor: hasRoutineConflict ? 'hsl(var(--routine-conflict) / 0.7)' : borderLeftColor,
           borderLeftWidth: task.priority >= 2 ? '3px' : '2px',
         }}
       >
