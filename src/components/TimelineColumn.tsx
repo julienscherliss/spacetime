@@ -235,18 +235,32 @@ export function TimelineColumn({
     const handleMove = (clientY: number) => {
       const deltaY = clientY - resizing.startY;
       const deltaMinutes = (deltaY / HOUR_HEIGHT) * 60;
+
+      // Get collision bounds
+      const allTasks = useTaskStore.getState().tasks;
+      const occupiedSlots = getOccupiedSlots(allTasks, date, resizing.id);
+      const origStartMin = timeToMinutes(resizing.origTime);
+      const origEndMin = origStartMin + resizing.origDuration;
+      const bounds = clampResize(resizing.id, resizing.edge, origStartMin, origEndMin, occupiedSlots);
+
       if (resizing.edge === 'bottom') {
         const newDuration = snapTo15(resizing.origDuration + deltaMinutes);
         const clamped = Math.max(15, newDuration);
-        resizeTask(resizing.id, resizing.origTime, clamped);
-        setResizePreview({ time: resizing.origTime, duration: clamped });
+        // Clamp end to not exceed next task
+        const newEnd = origStartMin + clamped;
+        const clampedEnd = Math.min(newEnd, bounds.maxEnd);
+        const finalDuration = Math.max(15, clampedEnd - origStartMin);
+        resizeTask(resizing.id, resizing.origTime, finalDuration);
+        setResizePreview({ time: resizing.origTime, duration: finalDuration });
       } else {
         const origStart = timeToMinutes(resizing.origTime);
         const newStart = snapTo15(origStart + deltaMinutes);
-        const newDuration = resizing.origDuration + (origStart - newStart);
+        // Clamp start to not go past previous task
+        const clampedStart = Math.max(newStart, bounds.minStart);
+        const newDuration = resizing.origDuration + (origStart - clampedStart);
         if (newDuration >= 15) {
-          resizeTask(resizing.id, minutesToTime(newStart), newDuration);
-          setResizePreview({ time: minutesToTime(newStart), duration: newDuration });
+          resizeTask(resizing.id, minutesToTime(clampedStart), newDuration);
+          setResizePreview({ time: minutesToTime(clampedStart), duration: newDuration });
         }
       }
     };
@@ -267,7 +281,7 @@ export function TimelineColumn({
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchend', handleUp);
     };
-  }, [resizing, resizeTask, HOUR_HEIGHT]);
+  }, [resizing, resizeTask, HOUR_HEIGHT, date]);
 
   // Drag-to-create: mouse handlers
   const handleCreateMouseDown = useCallback((e: React.MouseEvent) => {
