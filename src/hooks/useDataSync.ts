@@ -342,6 +342,18 @@ export function useDataSync(user: User | null) {
   const initialLoadDone = useRef(false);
   const userIdRef = useRef<string | null>(null);
   const prevUserIdRef = useRef<string | null>(null);
+  const accessTokenRef = useRef<string | null>(null);
+
+  // Keep access token up to date for beforeunload
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      accessTokenRef.current = session?.access_token ?? null;
+    });
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      accessTokenRef.current = session?.access_token ?? null;
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   // ─── Initial load & user change ──────────────────────
   useEffect(() => {
