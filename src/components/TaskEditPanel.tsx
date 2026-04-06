@@ -294,7 +294,11 @@ export function TaskEditPanel() {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-background/60 backdrop-blur-[2px]"
-          onClick={handleClose}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              handleClose();
+            }
+          }}
         >
           <motion.div
             initial={{ opacity: 0, y: 24 }}
