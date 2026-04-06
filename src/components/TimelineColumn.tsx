@@ -177,11 +177,28 @@ export function TimelineColumn({
 
     const mins = getMinutesFromY(e.clientY - dragOffsetRef.current);
     const snapped = snapTo15(mins);
-    const newTime = minutesToTime(snapped);
+
+    // Collision check
+    const allTasks = useTaskStore.getState().tasks;
+    const excludeId = taskId || undefined;
+    const occupiedSlots = getOccupiedSlots(allTasks, date, excludeId);
+    const duration = libraryTaskId
+      ? parseInt(e.dataTransfer.getData('libraryDuration') || '30', 10)
+      : taskDuration;
+    const { startMin, blocked } = findValidPosition(snapped, duration, occupiedSlots);
+
+    if (blocked) {
+      setDragMsg('No space available');
+      setDragValid(false);
+      setTimeout(() => { setDragMsg(''); setDragValid(true); }, 2000);
+      setDragOverTime(null);
+      return;
+    }
+
+    const newTime = minutesToTime(startMin);
 
     if (libraryTaskId) {
       const title = e.dataTransfer.getData('libraryTitle');
-      const duration = parseInt(e.dataTransfer.getData('libraryDuration') || '30', 10);
       addTask({
         title,
         date,
