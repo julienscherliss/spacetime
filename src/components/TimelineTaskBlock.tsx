@@ -466,7 +466,12 @@ export function TimelineTaskBlock({
           </div>
           {height > 28 && (
             <div className="flex items-center gap-1 mt-auto">
-              {task.type === 'recurring' && (
+              {hasRoutineConflict && (
+                <span className="text-[8px] font-mono tracking-wider uppercase text-[hsl(var(--routine-conflict-foreground))]" title="Conflicts with routine">
+                  ⚠ ROUTINE CONFLICT
+                </span>
+              )}
+              {task.type === 'recurring' && !hasRoutineConflict && (
                 <span className={`p-0.5 ${task.linked ? 'text-primary/40' : 'text-muted-foreground/20'}`} title={task.linked ? 'Linked' : 'Unlinked'}>
                   {task.linked ? <Link size={9} /> : <Unlink size={9} />}
                 </span>
