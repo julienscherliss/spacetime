@@ -1,10 +1,9 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { motion, AnimatePresence, useMotionValue, useTransform, animate } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
 import { useCurrentTime, timeToMinutes, minutesToTime, formatTime12h } from '@/hooks/useCurrentTime';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { SubtaskList } from '@/components/SubtaskList';
-import { HoldToConfirmRing } from '@/components/HoldToConfirmRing';
 import { ChevronUp, ChevronDown, ChevronRight, Check } from 'lucide-react';
 
 type FocusPanel = 'completed' | 'main' | 'upcoming';
@@ -19,19 +18,30 @@ export function FocusView() {
   const [isHolding, setIsHolding] = useState(false);
   const holdTimerRef = useRef<number | null>(null);
   const holdStartRef = useRef<number>(0);
-  const HOLD_DURATION = 1200; // 1.2s
+  const HOLD_DURATION = 1200;
 
   // Swipe state
   const touchStartY = useRef(0);
-  const isSwiping = useRef(false);
 
   const todayTasks = tasks
     .filter((t) => !t.completed && !t.inWaitingRoom && !t.archivedAt && t.date === today && t.time &&
       !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring'))
     .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
 
+  // Completed today: match by date field OR by archivedAt timestamp falling on today
   const completedToday = tasks
-    .filter((t) => t.completed && t.date === today && !t.archivedAt)
+    .filter((t) => {
+      if (!t.completed || t.archiveReason === 'deleted') return false;
+      // Check date field matches today
+      if (t.date === today && !t.archivedAt) return true;
+      if (t.date === today && t.archivedAt) return true;
+      // Check archivedAt timestamp falls on today (for tasks completed and archived)
+      if (t.archivedAt) {
+        const archivedDate = t.archivedAt.slice(0, 10);
+        if (archivedDate === today) return true;
+      }
+      return false;
+    })
     .sort((a, b) => (b.time || '').localeCompare(a.time || ''));
 
   const activeTask = todayTasks.find((t) => {
@@ -46,13 +56,16 @@ export function FocusView() {
   const progress = activeTask ? Math.min(1, elapsed / (activeTask.duration || 30)) : 0;
   const nextTask = activeTask ? getNextTask(activeTask.id) : todayTasks[0];
 
-  // Upcoming = tasks after active task (or all if no active)
   const upcomingTasks = activeTask
     ? todayTasks.filter((t) => {
         if (!t.time || !activeTask.time) return false;
         return t.time > activeTask.time;
       })
     : todayTasks;
+
+  // Progress narrative
+  const completedCount = completedToday.length;
+  const remainingCount = upcomingTasks.length + (activeTask ? 1 : 0);
 
   // Hold-to-complete handlers
   const startHold = useCallback(() => {
@@ -64,7 +77,6 @@ export function FocusView() {
       const p = Math.min(1, elapsed / HOLD_DURATION);
       setHoldProgress(p);
       if (p >= 1) {
-        // Complete!
         completeTask(activeTask.id);
         setIsHolding(false);
         setHoldProgress(0);
@@ -88,27 +100,22 @@ export function FocusView() {
   // Swipe handlers
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     touchStartY.current = e.touches[0].clientY;
-    isSwiping.current = false;
   }, []);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     const deltaY = e.changedTouches[0].clientY - touchStartY.current;
     const threshold = 60;
-
     if (Math.abs(deltaY) < threshold) return;
 
     if (deltaY < -threshold) {
-      // Swipe up
       if (activePanel === 'main') setActivePanel('upcoming');
       else if (activePanel === 'completed') setActivePanel('main');
     } else if (deltaY > threshold) {
-      // Swipe down
       if (activePanel === 'main') setActivePanel('completed');
       else if (activePanel === 'upcoming') setActivePanel('main');
     }
   }, [activePanel]);
 
-  // Cleanup hold on unmount
   useEffect(() => {
     return () => {
       if (holdTimerRef.current) cancelAnimationFrame(holdTimerRef.current);
@@ -122,30 +129,32 @@ export function FocusView() {
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Navigation chevrons */}
+      {/* Navigation chevrons — more visible */}
       <AnimatePresence>
         {activePanel !== 'completed' && completedToday.length > 0 && (
           <motion.button
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.5 }}
             onClick={() => setActivePanel('completed')}
-            className="absolute top-3 left-1/2 -translate-x-1/2 z-20 p-2 text-muted-foreground/20 hover:text-muted-foreground/40 transition-colors"
+            className="absolute top-3 left-1/2 -translate-x-1/2 z-20 p-2 text-muted-foreground/40 hover:text-muted-foreground/60 transition-colors"
           >
-            <ChevronUp size={16} strokeWidth={1.5} />
+            <ChevronUp size={20} strokeWidth={2} />
           </motion.button>
         )}
       </AnimatePresence>
       <AnimatePresence>
         {activePanel !== 'upcoming' && upcomingTasks.length > 0 && (
           <motion.button
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 4 }}
+            transition={{ duration: 0.5 }}
             onClick={() => setActivePanel('upcoming')}
-            className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 p-2 text-muted-foreground/20 hover:text-muted-foreground/40 transition-colors"
+            className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 p-2 text-muted-foreground/40 hover:text-muted-foreground/60 transition-colors"
           >
-            <ChevronDown size={16} strokeWidth={1.5} />
+            <ChevronDown size={20} strokeWidth={2} />
           </motion.button>
         )}
       </AnimatePresence>
@@ -160,26 +169,26 @@ export function FocusView() {
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
             className="absolute inset-0 flex flex-col items-center pt-12 pb-16 px-6 overflow-y-auto"
           >
-            <div className="text-[9px] font-mono tracking-[0.3em] text-muted-foreground/30 mb-6 uppercase">
-              Completed today
+            <div className="text-[10px] font-mono tracking-[0.25em] text-muted-foreground/50 mb-6 uppercase">
+              Completed today · {completedCount}
             </div>
-            <div className="w-full max-w-sm space-y-1">
+            <div className="w-full max-w-sm space-y-1.5">
               {completedToday.length === 0 ? (
-                <p className="text-center text-muted-foreground/25 font-mono text-[11px]">
+                <p className="text-center text-muted-foreground/40 font-mono text-[12px]">
                   No tasks completed yet
                 </p>
               ) : (
                 completedToday.map((task) => (
                   <div
                     key={task.id}
-                    className="flex items-center gap-3 py-2.5 px-3 rounded-sm"
+                    className="flex items-center gap-3 py-3 px-3 rounded-sm"
                   >
-                    <Check size={12} className="text-muted-foreground/25 shrink-0" />
-                    <span className="text-[12px] font-mono text-muted-foreground/40 line-through truncate flex-1">
+                    <Check size={14} className="text-muted-foreground/40 shrink-0" />
+                    <span className="text-[13px] font-mono text-muted-foreground/60 line-through truncate flex-1">
                       {task.title}
                     </span>
                     {task.time && (
-                      <span className="text-[10px] font-mono text-muted-foreground/20 tabular-nums shrink-0">
+                      <span className="text-[11px] font-mono text-muted-foreground/35 tabular-nums shrink-0">
                         {formatTime12h(task.time)}
                       </span>
                     )}
@@ -188,12 +197,11 @@ export function FocusView() {
               )}
             </div>
 
-            {/* Back to main */}
             <button
               onClick={() => setActivePanel('main')}
-              className="mt-8 p-2 text-muted-foreground/20 hover:text-muted-foreground/40 transition-colors"
+              className="mt-8 p-2 text-muted-foreground/40 hover:text-muted-foreground/60 transition-colors"
             >
-              <ChevronDown size={16} strokeWidth={1.5} />
+              <ChevronDown size={20} strokeWidth={2} />
             </button>
           </motion.div>
         )}
@@ -219,6 +227,8 @@ export function FocusView() {
               onHoldStart={startHold}
               onHoldEnd={cancelHold}
               onUpdateTask={updateTask}
+              completedCount={completedCount}
+              remainingCount={remainingCount}
             />
           </motion.div>
         )}
@@ -232,34 +242,33 @@ export function FocusView() {
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
             className="absolute inset-0 flex flex-col items-center pt-12 pb-16 px-6 overflow-y-auto"
           >
-            {/* Back to main */}
             <button
               onClick={() => setActivePanel('main')}
-              className="mb-6 p-2 text-muted-foreground/20 hover:text-muted-foreground/40 transition-colors"
+              className="mb-6 p-2 text-muted-foreground/40 hover:text-muted-foreground/60 transition-colors"
             >
-              <ChevronUp size={16} strokeWidth={1.5} />
+              <ChevronUp size={20} strokeWidth={2} />
             </button>
 
-            <div className="text-[9px] font-mono tracking-[0.3em] text-muted-foreground/30 mb-6 uppercase">
-              Upcoming today
+            <div className="text-[10px] font-mono tracking-[0.25em] text-muted-foreground/50 mb-6 uppercase">
+              Upcoming today · {upcomingTasks.length}
             </div>
-            <div className="w-full max-w-sm space-y-1">
+            <div className="w-full max-w-sm space-y-2">
               {upcomingTasks.length === 0 ? (
-                <p className="text-center text-muted-foreground/25 font-mono text-[11px]">
+                <p className="text-center text-muted-foreground/40 font-mono text-[12px]">
                   No more tasks today
                 </p>
               ) : (
                 upcomingTasks.map((task) => (
                   <div
                     key={task.id}
-                    className="flex items-center gap-3 py-2.5 px-3 rounded-sm"
+                    className="flex items-center gap-3 py-3 px-3 rounded-sm"
                   >
-                    <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/15 shrink-0" />
-                    <span className="text-[12px] font-mono text-foreground/70 truncate flex-1">
+                    <div className="w-2 h-2 rounded-full bg-muted-foreground/25 shrink-0" />
+                    <span className="text-[14px] font-mono font-medium text-foreground/85 truncate flex-1">
                       {task.title}
                     </span>
                     {task.time && (
-                      <span className="text-[10px] font-mono text-muted-foreground/30 tabular-nums shrink-0">
+                      <span className="text-[11px] font-mono text-muted-foreground/50 tabular-nums shrink-0">
                         {formatTime12h(task.time)}
                         {task.duration && (
                           <> — {formatTime12h(timeToMinutes(task.time) + task.duration)}</>
@@ -277,7 +286,7 @@ export function FocusView() {
   );
 }
 
-// ── Main Focus Panel (extracted for clarity) ──
+// ── Main Focus Panel ──
 interface MainFocusPanelProps {
   activeTask: ReturnType<typeof useTaskStore.getState>['tasks'][0] | undefined;
   nextTask: ReturnType<typeof useTaskStore.getState>['tasks'][0] | undefined;
@@ -290,11 +299,14 @@ interface MainFocusPanelProps {
   onHoldStart: () => void;
   onHoldEnd: () => void;
   onUpdateTask: (id: string, updates: any) => void;
+  completedCount: number;
+  remainingCount: number;
 }
 
 function MainFocusPanel({
   activeTask, nextTask, elapsed, remaining, progress,
   holdProgress, isHolding, onHoldStart, onHoldEnd, onUpdateTask,
+  completedCount, remainingCount,
 }: MainFocusPanelProps) {
   if (!activeTask) {
     return (
@@ -308,9 +320,14 @@ function MainFocusPanel({
           <div className="text-2xl sm:text-4xl font-display font-bold tracking-tight text-foreground/60 mb-2">
             FREE TIME
           </div>
-          <p className="text-muted-foreground/35 font-mono text-[11px] tracking-widest">
+          <p className="text-muted-foreground/45 font-mono text-[11px] tracking-widest">
             {nextTask ? `NEXT — ${nextTask.title} AT ${formatTime12h(nextTask.time!)}` : 'NO MORE TASKS TODAY'}
           </p>
+          {(completedCount > 0 || remainingCount > 0) && (
+            <p className="text-muted-foreground/30 font-mono text-[10px] tracking-widest mt-3">
+              {completedCount} completed · {remainingCount} remaining
+            </p>
+          )}
         </motion.div>
       </div>
     );
@@ -363,9 +380,7 @@ function MainFocusPanel({
             onPointerCancel={onHoldEnd}
           >
             <svg width="120" height="120" className="rotate-[-90deg]">
-              {/* Background ring */}
               <circle cx="60" cy="60" r="54" stroke="hsl(var(--border))" strokeWidth="1.5" fill="none" />
-              {/* Time progress ring */}
               <motion.circle
                 cx="60" cy="60" r="54"
                 stroke="hsl(var(--primary))"
@@ -376,7 +391,6 @@ function MainFocusPanel({
                 animate={{ strokeDashoffset: 339 - 339 * progress }}
                 transition={{ duration: 1 }}
               />
-              {/* Hold-to-complete ring (inner, thicker) */}
               {isHolding && (
                 <circle
                   cx="60" cy="60" r="46"
@@ -401,11 +415,18 @@ function MainFocusPanel({
           </div>
 
           {/* Time info */}
-          <div className="flex items-center justify-center gap-3 text-[10px] font-mono text-muted-foreground/35 tracking-widest flex-wrap">
+          <div className="flex items-center justify-center gap-3 text-[10px] font-mono text-muted-foreground/40 tracking-widest flex-wrap">
             <span>{formatTime12h(activeTask.time!)} — {formatTime12h(timeToMinutes(activeTask.time!) + (activeTask.duration || 30))}</span>
             <span>·</span>
             <span>{elapsed}M ELAPSED</span>
           </div>
+
+          {/* Progress narrative */}
+          {(completedCount > 0 || remainingCount > 0) && (
+            <div className="mt-3 text-[10px] font-mono text-muted-foreground/30 tracking-widest">
+              {completedCount} completed · {remainingCount} remaining
+            </div>
+          )}
         </motion.div>
       </AnimatePresence>
 
@@ -414,7 +435,7 @@ function MainFocusPanel({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="absolute bottom-8 flex items-center gap-1 text-[10px] font-mono text-muted-foreground/20 tracking-widest"
+          className="absolute bottom-8 flex items-center gap-1 text-[10px] font-mono text-muted-foreground/25 tracking-widest"
         >
           NEXT <ChevronRight size={10} /> {nextTask.title} · {formatTime12h(nextTask.time!)}
         </motion.div>
