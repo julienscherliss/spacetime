@@ -15,6 +15,12 @@ export const LIBRARY_CATEGORIES = DEFAULT_CATEGORIES;
 
 export type TaskUrgency = 'none' | 'urgent' | 'important';
 
+export interface LibrarySubtask {
+  id: string;
+  title: string;
+  completed: boolean;
+}
+
 export interface LibraryTask {
   id: string;
   title: string;
@@ -22,8 +28,12 @@ export interface LibraryTask {
   category: LibraryCategory;
   defaultDuration: number;
   createdAt: string;
-  urgency: TaskUrgency;
+  isUrgent: boolean;
+  isImportant: boolean;
   dueDate: string | null;
+  subtasks: LibrarySubtask[];
+  // Legacy compat
+  urgency?: TaskUrgency;
 }
 
 type SortMode = 'recent' | 'alpha' | 'category' | 'due';
@@ -50,7 +60,7 @@ interface LibraryState {
   setFilterCategory: (cat: FilterCategory) => void;
   setFilter: (patch: Partial<FilterState>) => void;
   addItem: (title: string, category?: LibraryCategory) => void;
-  updateItem: (id: string, updates: Partial<Pick<LibraryTask, 'title' | 'note' | 'category' | 'defaultDuration' | 'urgency' | 'dueDate'>>) => void;
+  updateItem: (id: string, updates: Partial<Pick<LibraryTask, 'title' | 'note' | 'category' | 'defaultDuration' | 'isUrgent' | 'isImportant' | 'dueDate' | 'subtasks'>>) => void;
   deleteItem: (id: string) => void;
   removeItem: (id: string) => void;
   addFromSchedule: (title: string, duration?: number) => void;
@@ -97,8 +107,10 @@ export const useLibraryStore = create<LibraryState>()(
               category,
               defaultDuration: 30,
               createdAt: new Date().toISOString(),
-              urgency: 'none',
+              isUrgent: false,
+              isImportant: false,
               dueDate: null,
+              subtasks: [],
             },
             ...s.items,
           ],
@@ -126,8 +138,10 @@ export const useLibraryStore = create<LibraryState>()(
               category: '',
               defaultDuration: duration,
               createdAt: new Date().toISOString(),
-              urgency: 'none',
+              isUrgent: false,
+              isImportant: false,
               dueDate: null,
+              subtasks: [],
             },
             ...s.items,
           ],
@@ -144,8 +158,10 @@ export const useLibraryStore = create<LibraryState>()(
         }
 
         // Urgency filter
-        if (filters.urgency !== 'all') {
-          filtered = filtered.filter((i) => (i.urgency || 'none') === filters.urgency);
+        if (filters.urgency === 'urgent') {
+          filtered = filtered.filter((i) => i.isUrgent);
+        } else if (filters.urgency === 'important') {
+          filtered = filtered.filter((i) => i.isImportant);
         }
 
         // Due date filter
@@ -205,8 +221,10 @@ export const useLibraryStore = create<LibraryState>()(
         // Ensure new fields exist on old items
         if (merged.items) {
           merged.items = merged.items.map((i: any) => ({
-            urgency: 'none',
-            dueDate: null,
+            isUrgent: i.isUrgent ?? (i.urgency === 'urgent'),
+            isImportant: i.isImportant ?? (i.urgency === 'important'),
+            dueDate: i.dueDate ?? null,
+            subtasks: i.subtasks ?? [],
             ...i,
             category: i.category === 'uncategorized' ? '' : (i.category || ''),
           }));

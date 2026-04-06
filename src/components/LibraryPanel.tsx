@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   useLibraryStore,
   LibraryTask,
-  TaskUrgency,
 } from '@/store/libraryStore';
 import {
   X, Plus, Trash2, Clock, AlertTriangle,
@@ -14,10 +13,13 @@ import { useCarryStore } from '@/store/carryStore';
 import { useTaskStore } from '@/store/taskStore';
 import { LibraryEditModal } from '@/components/LibraryEditModal';
 
-function UrgencyIcon({ urgency, size = 13 }: { urgency: TaskUrgency; size?: number }) {
-  if (urgency === 'urgent') return <Clock size={size} className="text-[hsl(var(--priority-1))]" strokeWidth={1.8} />;
-  if (urgency === 'important') return <AlertTriangle size={size} className="text-[hsl(var(--priority-2))]" strokeWidth={1.8} />;
-  return null;
+function UrgencyIcons({ item }: { item: LibraryTask }) {
+  return (
+    <div className="flex items-center gap-1">
+      {item.isUrgent && <Clock size={13} className="text-muted-foreground/50" strokeWidth={1.8} />}
+      {item.isImportant && <AlertTriangle size={13} className="text-muted-foreground/50" strokeWidth={1.8} />}
+    </div>
+  );
 }
 
 function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: boolean; onEdit: () => void }) {
@@ -83,7 +85,7 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
         </span>
       )}
 
-      <UrgencyIcon urgency={item.urgency || 'none'} />
+      <UrgencyIcons item={item} />
 
       <button
         onClick={(e) => { e.stopPropagation(); deleteItem(item.id); }}
