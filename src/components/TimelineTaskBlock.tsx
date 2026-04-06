@@ -30,6 +30,7 @@ interface TimelineTaskBlockProps {
   formatDuration: (mins: number) => string;
   hourHeight: number;
   startHour: number;
+  hasRoutineConflict?: boolean;
 }
 
 const DRAG_THRESHOLD = 8;
@@ -70,6 +71,7 @@ export function TimelineTaskBlock({
   formatDuration,
   hourHeight,
   startHour,
+  hasRoutineConflict = false,
 }: TimelineTaskBlockProps) {
   const taskMinutes = task.time ? parseInt(task.time.split(':')[0], 10) * 60 + parseInt(task.time.split(':')[1], 10) : 0;
   const taskEndMinutes = taskMinutes + (task.duration || 30);
@@ -285,7 +287,8 @@ export function TimelineTaskBlock({
         // Collision detection — clamp to nearest valid position
         const taskDuration = task.duration || 30;
         const allTasks = useTaskStore.getState().tasks;
-        const occupiedSlots = getOccupiedSlots(allTasks, col.date, task.id);
+        const routinesOn = useTaskStore.getState().routinesEnabled;
+        const occupiedSlots = getOccupiedSlots(allTasks, col.date, task.id, routinesOn);
         const { startMin: clampedMin, blocked } = findValidPosition(snapped, taskDuration, occupiedSlots);
 
         useScheduledDragStore.getState().updatePosition(clampedMin);
@@ -383,7 +386,7 @@ export function TimelineTaskBlock({
           : isResizingThis
             ? 'cursor-ns-resize'
             : 'cursor-grab active:cursor-grabbing'
-      } ${isActive ? 'z-[15]' : 'z-10'} ${(isDraggingThis || isCarried) ? 'opacity-0' : 'opacity-100'}`}
+      } ${isActive ? 'z-[15]' : hasRoutineConflict ? 'z-[12]' : 'z-10'} ${(isDraggingThis || isCarried) ? 'opacity-0' : 'opacity-100'}`}
       style={{
         top,
         height,
@@ -401,12 +404,14 @@ export function TimelineTaskBlock({
         className={`h-full rounded-[2px] transition-all duration-200 ${
           isActive
             ? 'bg-card border border-primary/20 shadow-sm'
-            : showUnlinkedOutline
-              ? `${task.isRoutine ? 'bg-background/60 backdrop-blur-sm' : 'bg-card'} border border-border/60 border-dashed hover:border-[hsl(var(--task-hover))] hover:shadow-sm`
-              : `${task.isRoutine ? 'bg-background/60 backdrop-blur-sm border border-[hsl(var(--task-border))]' : 'bg-card border border-[hsl(var(--task-border))]'} hover:border-[hsl(var(--task-hover))] hover:shadow-sm`
-        } ${isOverdue ? 'border-destructive/30' : ''}`}
+            : hasRoutineConflict
+              ? 'bg-card border border-[hsl(var(--routine-conflict)/0.5)] shadow-sm'
+              : showUnlinkedOutline
+                ? `${task.isRoutine ? 'bg-background/60 backdrop-blur-sm' : 'bg-card'} border border-border/60 border-dashed hover:border-[hsl(var(--task-hover))] hover:shadow-sm`
+                : `${task.isRoutine ? 'bg-background/60 backdrop-blur-sm border border-[hsl(var(--task-border))]' : 'bg-card border border-[hsl(var(--task-border))]'} hover:border-[hsl(var(--task-hover))] hover:shadow-sm`
+        } ${isOverdue && !hasRoutineConflict ? 'border-destructive/30' : ''}`}
         style={{
-          borderLeftColor,
+          borderLeftColor: hasRoutineConflict ? 'hsl(var(--routine-conflict) / 0.7)' : borderLeftColor,
           borderLeftWidth: task.priority >= 2 ? '3px' : '2px',
         }}
       >
@@ -462,7 +467,12 @@ export function TimelineTaskBlock({
           </div>
           {height > 28 && (
             <div className="flex items-center gap-1 mt-auto">
-              {task.type === 'recurring' && (
+              {hasRoutineConflict && (
+                <span className="text-[8px] font-mono tracking-wider uppercase text-[hsl(var(--routine-conflict-foreground))]" title="Conflicts with routine">
+                  ⚠ ROUTINE CONFLICT
+                </span>
+              )}
+              {task.type === 'recurring' && !hasRoutineConflict && (
                 <span className={`p-0.5 ${task.linked ? 'text-primary/40' : 'text-muted-foreground/20'}`} title={task.linked ? 'Linked' : 'Unlinked'}>
                   {task.linked ? <Link size={9} /> : <Unlink size={9} />}
                 </span>

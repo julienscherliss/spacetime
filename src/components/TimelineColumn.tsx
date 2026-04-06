@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect, Fragment } from 'react';
+import { useRef, useState, useCallback, useEffect, Fragment, useMemo } from 'react';
 import { useTaskStore, Task } from '@/store/taskStore';
 import { useCalendarStore, CalendarEvent } from '@/store/calendarStore';
 import { useLibraryStore } from '@/store/libraryStore';
@@ -9,7 +9,7 @@ import { PriorityBadge } from '@/components/PriorityBadge';
 import { TimelineTaskBlock } from '@/components/TimelineTaskBlock';
 import { timeToMinutes, minutesToTime, snapTo15, formatTime12h, formatHour12h } from '@/hooks/useCurrentTime';
 import { Calendar as CalIcon } from 'lucide-react';
-import { getOccupiedSlots, findValidPosition, clampResize, wouldOverlap } from '@/utils/collisionDetection';
+import { getOccupiedSlots, findValidPosition, clampResize, wouldOverlap, getRoutineConflicts } from '@/utils/collisionDetection';
 
 export const DEFAULT_HOUR_HEIGHT = 56;
 export const HOUR_HEIGHT = DEFAULT_HOUR_HEIGHT;
@@ -92,7 +92,8 @@ export function TimelineColumn({
   hourHeight: hourHeightProp,
 }: TimelineColumnProps) {
   const HOUR_HEIGHT = hourHeightProp ?? DEFAULT_HOUR_HEIGHT;
-  const { setEditingTask, reorderTask, moveTask, resizeTask, completeTask, canMoveTask, addTask } = useTaskStore();
+  const { setEditingTask, reorderTask, moveTask, resizeTask, completeTask, canMoveTask, addTask, routinesEnabled } = useTaskStore();
+  const allStoreTasks = useTaskStore((s) => s.tasks);
   const colRef = useRef<HTMLDivElement>(null);
   const [dragOverTime, setDragOverTime] = useState<string | null>(null);
   const [dragOverDuration, setDragOverDuration] = useState<number>(30);
@@ -139,6 +140,12 @@ export function TimelineColumn({
   const activeTasks = tasks.filter((t) => !t.completed && t.time);
   const nowTop = ((nowMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT;
 
+  // Compute routine conflict IDs when routines are enabled
+  const routineConflictIds = useMemo(() => {
+    if (!routinesEnabled) return new Set<string>();
+    return getRoutineConflicts(allStoreTasks, date);
+  }, [allStoreTasks, date, routinesEnabled]);
+
   const activeTaskId = isToday
     ? activeTasks.find((t) => {
         if (!t.time) return false;
@@ -162,7 +169,7 @@ export function TimelineColumn({
     const taskDurationStr = e.dataTransfer.types.includes('taskduration') ? '30' : '30';
     const duration = parseInt(taskDurationStr, 10);
     const allTasks = useTaskStore.getState().tasks;
-    const occupiedSlots = getOccupiedSlots(allTasks, date);
+    const occupiedSlots = getOccupiedSlots(allTasks, date, undefined, routinesEnabled);
     const overlap = wouldOverlap(snapped, duration, occupiedSlots);
     setDragOverTime(minutesToTime(snapped));
     setDragValid(!overlap);
@@ -181,7 +188,7 @@ export function TimelineColumn({
     // Collision check
     const allTasks = useTaskStore.getState().tasks;
     const excludeId = taskId || undefined;
-    const occupiedSlots = getOccupiedSlots(allTasks, date, excludeId);
+    const occupiedSlots = getOccupiedSlots(allTasks, date, excludeId, routinesEnabled);
     const duration = libraryTaskId
       ? parseInt(e.dataTransfer.getData('libraryDuration') || '30', 10)
       : taskDuration;
@@ -259,7 +266,7 @@ export function TimelineColumn({
 
       // Get collision bounds
       const allTasks = useTaskStore.getState().tasks;
-      const occupiedSlots = getOccupiedSlots(allTasks, date, resizing.id);
+      const occupiedSlots = getOccupiedSlots(allTasks, date, resizing.id, routinesEnabled);
       const origStartMin = timeToMinutes(resizing.origTime);
       const origEndMin = origStartMin + resizing.origDuration;
       const bounds = clampResize(resizing.id, resizing.edge, origStartMin, origEndMin, occupiedSlots);
@@ -470,7 +477,7 @@ export function TimelineColumn({
 
     // Collision check before creating
     const allTasks = useTaskStore.getState().tasks;
-    const occupiedSlots = getOccupiedSlots(allTasks, date);
+    const occupiedSlots = getOccupiedSlots(allTasks, date, undefined, routinesEnabled);
     const startMin = timeToMinutes(newTaskInput.time);
     if (wouldOverlap(startMin, newTaskInput.duration, occupiedSlots)) {
       const { startMin: validStart, blocked } = findValidPosition(startMin, newTaskInput.duration, occupiedSlots);
@@ -551,7 +558,7 @@ export function TimelineColumn({
     // Collision check for carry drop
     const allTasks = useTaskStore.getState().tasks;
     const excludeId = carried.fromLibrary ? undefined : carried.taskId;
-    const occupiedSlots = getOccupiedSlots(allTasks, date, excludeId);
+    const occupiedSlots = getOccupiedSlots(allTasks, date, excludeId, routinesEnabled);
     const { startMin, blocked } = findValidPosition(snapped, carried.duration, occupiedSlots);
 
     if (blocked) {
@@ -626,7 +633,7 @@ export function TimelineColumn({
         const allTasks = useTaskStore.getState().tasks;
         const excludeId = dragging.type === 'task' ? dragging.id : undefined;
         const duration = dragging.duration || 30;
-        const occupiedSlots = getOccupiedSlots(allTasks, date, excludeId);
+        const occupiedSlots = getOccupiedSlots(allTasks, date, excludeId, routinesEnabled);
         const { startMin, blocked } = findValidPosition(snapped, duration, occupiedSlots);
 
         if (blocked) {
@@ -880,7 +887,17 @@ export function TimelineColumn({
       )}
 
       {/* Task blocks */}
-      {activeTasks.map((task) => {
+      {activeTasks
+        .slice()
+        .sort((a, b) => {
+          // Routines render below non-routines when there's a conflict
+          const aIsRoutine = a.isRoutine !== false && a.type === 'recurring';
+          const bIsRoutine = b.isRoutine !== false && b.type === 'recurring';
+          if (aIsRoutine && !bIsRoutine) return -1; // routine first = lower z
+          if (!aIsRoutine && bIsRoutine) return 1;
+          return 0;
+        })
+        .map((task, idx, arr) => {
         if (!task.time) return null;
         const taskMinutes = timeToMinutes(task.time);
         const top = ((taskMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT;
@@ -888,7 +905,8 @@ export function TimelineColumn({
         const isActive = task.id === activeTaskId;
         const isResizingThis = resizing?.id === task.id;
         const isLocked = task.priority >= 3;
-        const showUnlinkedOutline = false; // unlinked state shown via icon, not border
+        const showUnlinkedOutline = false;
+        const hasConflict = routineConflictIds.has(task.id);
 
         return (
           <TimelineTaskBlock
@@ -912,6 +930,7 @@ export function TimelineColumn({
             formatDuration={formatDuration}
             hourHeight={HOUR_HEIGHT}
             startHour={START_HOUR}
+            hasRoutineConflict={hasConflict}
           />
         );
       })}

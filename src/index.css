@@ -58,6 +58,10 @@
 
     --routine-card: 0 0% 96%;
     --routine-border: 0 0% 90%;
+
+    /* Routine conflict — amber/orange, distinct from destructive red */
+    --routine-conflict: 30 90% 50%;
+    --routine-conflict-foreground: 30 90% 35%;
   }
 }
 
