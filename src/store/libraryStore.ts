@@ -15,6 +15,12 @@ export const LIBRARY_CATEGORIES = DEFAULT_CATEGORIES;
 
 export type TaskUrgency = 'none' | 'urgent' | 'important';
 
+export interface LibrarySubtask {
+  id: string;
+  title: string;
+  completed: boolean;
+}
+
 export interface LibraryTask {
   id: string;
   title: string;
@@ -22,8 +28,12 @@ export interface LibraryTask {
   category: LibraryCategory;
   defaultDuration: number;
   createdAt: string;
-  urgency: TaskUrgency;
+  isUrgent: boolean;
+  isImportant: boolean;
   dueDate: string | null;
+  subtasks: LibrarySubtask[];
+  // Legacy compat
+  urgency?: TaskUrgency;
 }
 
 type SortMode = 'recent' | 'alpha' | 'category' | 'due';
