@@ -28,11 +28,13 @@ export function slotsOverlap(a: { startMin: number; endMin: number }, b: { start
 
 /**
  * Get all occupied slots for a given date, excluding a specific task ID.
+ * When routinesEnabled is false, routine tasks are excluded from collision detection.
  */
 export function getOccupiedSlots(
-  tasks: Array<{ id: string; time?: string; duration?: number; date: string; completed: boolean; archivedAt?: string; inWaitingRoom?: boolean }>,
+  tasks: Array<{ id: string; time?: string; duration?: number; date: string; completed: boolean; archivedAt?: string; inWaitingRoom?: boolean; isRoutine?: boolean; type?: string }>,
   date: string,
-  excludeId?: string
+  excludeId?: string,
+  routinesEnabled: boolean = true
 ): TimeSlot[] {
   return tasks
     .filter(t =>
@@ -41,7 +43,9 @@ export function getOccupiedSlots(
       !t.archivedAt &&
       !t.inWaitingRoom &&
       t.time &&
-      t.id !== excludeId
+      t.id !== excludeId &&
+      // Skip routines when they are disabled
+      (routinesEnabled || !(t.isRoutine !== false && t.type === 'recurring'))
     )
     .map(t => taskToSlot(t))
     .filter((s): s is TimeSlot => s !== null)
@@ -171,4 +175,54 @@ export function wouldOverlap(
 ): boolean {
   const candidate = { startMin, endMin: startMin + duration };
   return occupiedSlots.some(s => slotsOverlap(candidate, s));
+}
+
+/**
+ * Detect which non-routine tasks conflict with active routine tasks on a given date.
+ * Returns a Set of task IDs that have routine conflicts.
+ */
+export function getRoutineConflicts(
+  tasks: Array<{ id: string; time?: string; duration?: number; date: string; completed: boolean; archivedAt?: string; inWaitingRoom?: boolean; isRoutine?: boolean; type?: string }>,
+  date: string
+): Set<string> {
+  const conflictIds = new Set<string>();
+
+  // Get routine slots (only active routines with time)
+  const routineSlots = tasks
+    .filter(t =>
+      t.date === date &&
+      !t.completed &&
+      !t.archivedAt &&
+      !t.inWaitingRoom &&
+      t.time &&
+      t.isRoutine !== false &&
+      t.type === 'recurring'
+    )
+    .map(t => taskToSlot(t))
+    .filter((s): s is TimeSlot => s !== null);
+
+  if (routineSlots.length === 0) return conflictIds;
+
+  // Get non-routine tasks
+  const nonRoutineTasks = tasks.filter(t =>
+    t.date === date &&
+    !t.completed &&
+    !t.archivedAt &&
+    !t.inWaitingRoom &&
+    t.time &&
+    !(t.isRoutine !== false && t.type === 'recurring')
+  );
+
+  for (const task of nonRoutineTasks) {
+    const slot = taskToSlot(task);
+    if (!slot) continue;
+    for (const routine of routineSlots) {
+      if (slotsOverlap(slot, routine)) {
+        conflictIds.add(task.id);
+        break;
+      }
+    }
+  }
+
+  return conflictIds;
 }
