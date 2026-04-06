@@ -10,7 +10,7 @@ export function FocusView() {
   const { minutes: nowMinutes, dateStr: today } = useCurrentTime(5000);
 
   const todayTasks = tasks
-    .filter((t) => !t.completed && !t.inWaitingRoom && t.date === today && t.time &&
+    .filter((t) => !t.completed && !t.inWaitingRoom && !t.archivedAt && t.date === today && t.time &&
       !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring'))
     .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
 

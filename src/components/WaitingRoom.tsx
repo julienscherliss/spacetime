@@ -116,7 +116,7 @@ export function WaitingRoom({ open, onClose }: { open: boolean; onClose: () => v
   const { tasks } = useTaskStore();
   const isMobile = useIsMobile();
 
-  const waitingTasks = tasks.filter((t) => t.inWaitingRoom && !t.completed);
+  const waitingTasks = tasks.filter((t) => t.inWaitingRoom && !t.completed && !t.archivedAt);
 
   return (
     <>

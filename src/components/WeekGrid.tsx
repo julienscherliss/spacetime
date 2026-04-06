@@ -133,7 +133,7 @@ export function WeekGrid({
 
         {/* Day columns */}
         {weekDays.map((day) => {
-          const dayTasks = tasks.filter((t) => t.date === day.date && !t.inWaitingRoom &&
+          const dayTasks = tasks.filter((t) => t.date === day.date && !t.inWaitingRoom && !t.archivedAt &&
             !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring'));
           return (
             <div
