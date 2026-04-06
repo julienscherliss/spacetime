@@ -123,6 +123,43 @@ let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 let libSaveTimeout: ReturnType<typeof setTimeout> | null = null;
 let catSaveTimeout: ReturnType<typeof setTimeout> | null = null;
 
+// ─── Immediate save for critical task mutations ────────
+
+async function immediateTaskSave(taskId: string, userId: string) {
+  const task = useTaskStore.getState().tasks.find(t => t.id === taskId);
+  if (!task || !isValidUUID(task.id)) return;
+  try {
+    const row = taskToRow(task, userId);
+    const { error } = await supabase.from('tasks').upsert([row] as any);
+    if (error) console.error('[DataSync] Immediate save failed:', error);
+  } catch (err) {
+    console.error('[DataSync] Immediate save error:', err);
+  }
+}
+
+// ─── Flush pending saves on page unload ────────────────
+
+function flushPendingSaves(userId: string) {
+  if (!saveTimeout) return;
+  clearTimeout(saveTimeout);
+  saveTimeout = null;
+  // Use sendBeacon with a simple upsert via REST API
+  const state = useTaskStore.getState();
+  const validTasks = state.tasks.filter(t => isValidUUID(t.id));
+  if (validTasks.length === 0) return;
+  const rows = validTasks.map(t => taskToRow(t, userId));
+  const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/tasks`;
+  const blob = new Blob([JSON.stringify(rows)], { type: 'application/json' });
+  try {
+    navigator.sendBeacon(
+      `${url}?on_conflict=id`,
+      blob
+    );
+  } catch (_) {
+    // sendBeacon not available, data will sync next session
+  }
+}
+
 // ─── Clear all user-scoped state ───────────────────────
 
 function clearAllUserState() {
@@ -284,49 +321,76 @@ export function useDataSync(user: User | null) {
   }, [user?.id]);
 
   // Subscribe to task store changes → save to DB (debounced)
+  // Also detect critical mutations (archive/delete/complete) for immediate save
+  const prevTasksRef = useRef<Map<string, { archivedAt?: string; completed: boolean }>>(new Map());
+
   useEffect(() => {
     if (!user) return;
 
+    // Flush pending saves on page unload
+    const handleBeforeUnload = () => {
+      if (userIdRef.current) flushPendingSaves(userIdRef.current);
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     const unsub = useTaskStore.subscribe((state) => {
       if (!initialLoadDone.current || !userIdRef.current) return;
-      // Safety: don't save if the user changed
       if (userIdRef.current !== user.id) return;
 
+      const userId = userIdRef.current;
+
+      // Detect tasks that just got archived/completed and save immediately
+      const prevMap = prevTasksRef.current;
+      for (const task of state.tasks) {
+        const prev = prevMap.get(task.id);
+        if (prev && !prev.archivedAt && task.archivedAt) {
+          // Task was just archived/deleted/completed — save immediately
+          immediateTaskSave(task.id, userId);
+        } else if (prev && !prev.completed && task.completed && !task.archivedAt) {
+          // Task was just completed without archive — save immediately
+          immediateTaskSave(task.id, userId);
+        }
+      }
+
+      // Update previous state snapshot
+      const newMap = new Map<string, { archivedAt?: string; completed: boolean }>();
+      for (const t of state.tasks) {
+        newMap.set(t.id, { archivedAt: t.archivedAt, completed: t.completed });
+      }
+      prevTasksRef.current = newMap;
+
+      // Still do debounced full sync for other changes
       if (saveTimeout) clearTimeout(saveTimeout);
       saveTimeout = setTimeout(async () => {
-        const userId = userIdRef.current;
-        if (!userId || userId !== user.id) return;
+        const uid = userIdRef.current;
+        if (!uid || uid !== user.id) return;
 
         try {
-          // Get current DB task IDs
           const { data: dbTasks, error: fetchErr } = await supabase
             .from('tasks')
             .select('id')
-            .eq('user_id', userId);
+            .eq('user_id', uid);
 
           if (fetchErr) {
             console.error('[DataSync] Failed to fetch task IDs for sync:', fetchErr);
             return;
           }
 
-          // Re-check user hasn't changed during async gap
-          if (userIdRef.current !== userId) return;
+          if (userIdRef.current !== uid) return;
 
           const currentState = useTaskStore.getState();
           const dbIds = new Set((dbTasks || []).map((t: any) => t.id));
           const localIds = new Set(currentState.tasks.map(t => t.id));
 
-          // Delete tasks removed locally
           const toDelete = [...dbIds].filter(id => !localIds.has(id));
           if (toDelete.length > 0) {
             const { error: delErr } = await supabase.from('tasks').delete().in('id', toDelete);
             if (delErr) console.error('[DataSync] Failed to delete tasks:', delErr);
           }
 
-          // Upsert valid tasks
           const validTasks = currentState.tasks.filter(t => isValidUUID(t.id));
           if (validTasks.length > 0) {
-            const rows = validTasks.map(t => taskToRow(t, userId));
+            const rows = validTasks.map(t => taskToRow(t, uid));
             const { error: upsertErr } = await supabase.from('tasks').upsert(rows as any);
             if (upsertErr) {
               console.error('[DataSync] Failed to save tasks:', upsertErr);
@@ -334,7 +398,6 @@ export function useDataSync(user: User | null) {
             }
           }
 
-          // Warn about invalid-ID tasks that couldn't be saved
           const invalidTasks = currentState.tasks.filter(t => !isValidUUID(t.id));
           if (invalidTasks.length > 0) {
             console.warn('[DataSync] Skipped saving tasks with invalid IDs:', invalidTasks.map(t => t.id));
@@ -347,6 +410,7 @@ export function useDataSync(user: User | null) {
 
     return () => {
       unsub();
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       if (saveTimeout) { clearTimeout(saveTimeout); saveTimeout = null; }
     };
   }, [user?.id]);
