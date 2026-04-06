@@ -616,25 +616,25 @@ export function TaskEditPanel() {
 
               {/* Move info */}
               {task.moveCount > 0 && (
-                <div className="text-[8px] font-mono text-muted-foreground/30 tracking-widest">
+                <div className="text-[8px] font-mono text-muted-foreground/40 tracking-widest pt-1">
                   MOVED {task.moveCount}× · ORIGINALLY {PRIORITY_LABELS[task.originalPriority].toUpperCase()}
                 </div>
               )}
 
               {/* Edit scope prompt */}
               {showEditScope && (
-                <div className="p-2.5 border border-border rounded-sm bg-muted/30">
-                  <p className="text-[9px] font-mono text-foreground/70 mb-2">Apply changes to:</p>
-                  <div className="flex gap-1.5">
+                <div className="p-3 border border-border rounded-sm bg-muted/30 mt-1">
+                  <p className="text-[9px] font-mono text-foreground/70 mb-2.5">Apply changes to:</p>
+                  <div className="flex gap-2">
                     <button
                       onClick={handleSaveThisOnly}
-                      className="flex-1 py-1.5 rounded-sm border border-border text-[8px] font-mono tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+                      className="flex-1 py-2 rounded-sm border border-border text-[9px] font-mono tracking-wider text-muted-foreground hover:text-foreground transition-colors"
                     >
                       This only
                     </button>
                     <button
                       onClick={handleSaveAllFuture}
-                      className="flex-1 py-1.5 rounded-sm border border-primary/20 text-[8px] font-mono tracking-wider text-primary hover:bg-primary/5 transition-colors"
+                      className="flex-1 py-2 rounded-sm border border-primary/20 text-[9px] font-mono tracking-wider text-primary hover:bg-primary/5 transition-colors"
                     >
                       All future
                     </button>
@@ -644,35 +644,38 @@ export function TaskEditPanel() {
 
               {/* ─── 6. Actions ─── */}
               {!showEditScope && (
-                <div className="flex items-center gap-1.5 pt-2 border-t border-border/20">
+                <div className="flex items-center gap-2 pt-3 mt-1 border-t border-border/30">
                   <button
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       if (!task) return;
                       updateTask(task.id, { inWaitingRoom: true, time: undefined });
                       setEditingTask(null);
                     }}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-sm border border-border text-[9px] font-mono tracking-wider text-muted-foreground/50 hover:text-foreground hover:border-primary/20 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-2.5 rounded-sm border border-border/60 text-[9px] font-mono tracking-wider text-muted-foreground/60 hover:text-foreground hover:border-border transition-colors min-h-[40px]"
                     title="Move to Waiting Room"
                   >
-                    <Inbox size={11} strokeWidth={1.5} />
+                    <Inbox size={12} strokeWidth={1.5} />
                     WAITING
                   </button>
                   <button
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       if (!task) return;
                       useLibraryStore.getState().addFromSchedule(task.title, task.duration || 30);
                       deleteTask(task.id);
                       setEditingTask(null);
                     }}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-sm border border-border text-[9px] font-mono tracking-wider text-muted-foreground/50 hover:text-foreground hover:border-primary/20 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-2.5 rounded-sm border border-border/60 text-[9px] font-mono tracking-wider text-muted-foreground/60 hover:text-foreground hover:border-border transition-colors min-h-[40px]"
                     title="Send to Library"
                   >
-                    <Archive size={11} strokeWidth={1.5} />
+                    <Archive size={12} strokeWidth={1.5} />
                     LIBRARY
                   </button>
                   <div className="flex-1" />
                   <button
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       if (isRecurring) {
                         setShowDeleteConfirm(true);
                       } else {
@@ -680,34 +683,37 @@ export function TaskEditPanel() {
                         setEditingTask(null);
                       }
                     }}
-                    className="p-2 rounded-sm border border-border text-muted-foreground/40 hover:text-destructive hover:border-destructive/20 transition-colors"
+                    className="flex items-center justify-center w-[40px] h-[40px] rounded-sm border border-border/60 text-muted-foreground/50 hover:text-destructive hover:border-destructive/30 transition-colors"
+                    title="Delete task"
                   >
-                    <Trash2 size={12} strokeWidth={1.5} />
+                    <Trash2 size={14} strokeWidth={1.5} />
                   </button>
                 </div>
               )}
 
               {/* Delete confirmation for recurring */}
               {showDeleteConfirm && (
-                <div className="p-2.5 border border-border rounded-sm bg-muted/30">
-                  <p className="text-[9px] font-mono text-foreground/70 mb-2">Delete routine task?</p>
-                  <div className="flex gap-1.5">
+                <div className="p-3 border border-border rounded-sm bg-muted/30 mt-2">
+                  <p className="text-[9px] font-mono text-foreground/70 mb-2.5">Delete routine task?</p>
+                  <div className="flex gap-2">
                     <button
-                      onClick={() => { deleteTask(task.id); setEditingTask(null); }}
-                      className="flex-1 py-1.5 rounded-sm border border-border text-[8px] font-mono tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+                      onClick={(e) => { e.stopPropagation(); deleteTask(task.id); setEditingTask(null); }}
+                      className="flex-1 py-2 rounded-sm border border-border text-[9px] font-mono tracking-wider text-muted-foreground hover:text-foreground transition-colors"
                     >
                       This only
                     </button>
                     <button
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         const parentId = task.recurrenceParentId || task.id;
                         if (task.isRecurrenceInstance) {
                           deleteFutureInstances(parentId, task.date);
                         } else {
                           deleteRecurrenceSeries(parentId);
                         }
+                        setEditingTask(null);
                       }}
-                      className="flex-1 py-1.5 rounded-sm border border-destructive/20 text-[8px] font-mono tracking-wider text-destructive hover:bg-destructive/5 transition-colors"
+                      className="flex-1 py-2 rounded-sm border border-destructive/20 text-[9px] font-mono tracking-wider text-destructive hover:bg-destructive/5 transition-colors"
                     >
                       All future
                     </button>
