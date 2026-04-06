@@ -73,8 +73,10 @@ function rowToLibraryItem(row: any): LibraryTask {
     category: row.category === 'uncategorized' ? '' : (row.category ?? ''),
     defaultDuration: row.default_duration ?? 30,
     createdAt: row.created_at,
-    urgency: 'none',
+    isUrgent: false,
+    isImportant: false,
     dueDate: null,
+    subtasks: [],
   };
 }
 
