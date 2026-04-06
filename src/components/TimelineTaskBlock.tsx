@@ -30,6 +30,7 @@ interface TimelineTaskBlockProps {
   formatDuration: (mins: number) => string;
   hourHeight: number;
   startHour: number;
+  hasRoutineConflict?: boolean;
 }
 
 const DRAG_THRESHOLD = 8;
