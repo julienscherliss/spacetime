@@ -195,7 +195,7 @@ function ArchiveRow({ task, onRevive }: { task: Task; onRevive: (id: string) => 
       {/* Revive button */}
       <button
         onClick={() => onRevive(task.id)}
-        className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-md text-[9px] font-mono tracking-wide text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors opacity-0 group-hover:opacity-100"
+        className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-md text-[9px] font-mono tracking-wide text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors sm:opacity-0 sm:group-hover:opacity-100"
       >
         <RotateCcw size={11} strokeWidth={1.5} />
         <span>Revive</span>
