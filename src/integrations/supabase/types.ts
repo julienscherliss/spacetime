@@ -141,6 +141,8 @@ export type Database = {
       }
       tasks: {
         Row: {
+          archive_reason: string | null
+          archived_at: string | null
           completed: boolean
           created_at: string
           date: string
@@ -169,6 +171,8 @@ export type Database = {
           waiting_room_count: number | null
         }
         Insert: {
+          archive_reason?: string | null
+          archived_at?: string | null
           completed?: boolean
           created_at?: string
           date: string
@@ -197,6 +201,8 @@ export type Database = {
           waiting_room_count?: number | null
         }
         Update: {
+          archive_reason?: string | null
+          archived_at?: string | null
           completed?: boolean
           created_at?: string
           date?: string
