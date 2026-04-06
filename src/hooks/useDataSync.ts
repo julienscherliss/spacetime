@@ -123,6 +123,43 @@ let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 let libSaveTimeout: ReturnType<typeof setTimeout> | null = null;
 let catSaveTimeout: ReturnType<typeof setTimeout> | null = null;
 
+// ─── Immediate save for critical task mutations ────────
+
+async function immediateTaskSave(taskId: string, userId: string) {
+  const task = useTaskStore.getState().tasks.find(t => t.id === taskId);
+  if (!task || !isValidUUID(task.id)) return;
+  try {
+    const row = taskToRow(task, userId);
+    const { error } = await supabase.from('tasks').upsert([row] as any);
+    if (error) console.error('[DataSync] Immediate save failed:', error);
+  } catch (err) {
+    console.error('[DataSync] Immediate save error:', err);
+  }
+}
+
+// ─── Flush pending saves on page unload ────────────────
+
+function flushPendingSaves(userId: string) {
+  if (!saveTimeout) return;
+  clearTimeout(saveTimeout);
+  saveTimeout = null;
+  // Use sendBeacon with a simple upsert via REST API
+  const state = useTaskStore.getState();
+  const validTasks = state.tasks.filter(t => isValidUUID(t.id));
+  if (validTasks.length === 0) return;
+  const rows = validTasks.map(t => taskToRow(t, userId));
+  const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/tasks`;
+  const blob = new Blob([JSON.stringify(rows)], { type: 'application/json' });
+  try {
+    navigator.sendBeacon(
+      `${url}?on_conflict=id`,
+      blob
+    );
+  } catch (_) {
+    // sendBeacon not available, data will sync next session
+  }
+}
+
 // ─── Clear all user-scoped state ───────────────────────
 
 function clearAllUserState() {
