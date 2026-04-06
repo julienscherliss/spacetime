@@ -287,7 +287,8 @@ export function TimelineTaskBlock({
         // Collision detection — clamp to nearest valid position
         const taskDuration = task.duration || 30;
         const allTasks = useTaskStore.getState().tasks;
-        const occupiedSlots = getOccupiedSlots(allTasks, col.date, task.id);
+        const routinesOn = useTaskStore.getState().routinesEnabled;
+        const occupiedSlots = getOccupiedSlots(allTasks, col.date, task.id, routinesOn);
         const { startMin: clampedMin, blocked } = findValidPosition(snapped, taskDuration, occupiedSlots);
 
         useScheduledDragStore.getState().updatePosition(clampedMin);
