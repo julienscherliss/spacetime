@@ -665,6 +665,14 @@ export function TimelineColumn({
       // Only the column that matches targetDate should process the drop
       if (state.targetDate !== date) return;
 
+      // Block drop if collision detected
+      if (state.blocked) {
+        setDragMsg('No space available');
+        setTimeout(() => setDragMsg(''), 2000);
+        useScheduledDragStore.getState().cancel();
+        return;
+      }
+
       const newTime = minutesToTime(state.currentMinutes);
 
       // If unlink mode is active, detach this single occurrence before moving
