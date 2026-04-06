@@ -62,7 +62,12 @@ function WaitingRoomItem({ task, isMobile, onClosePanel }: { task: Task; isMobil
 
   const handleMoveToLibrary = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    useLibraryStore.getState().addFromSchedule(task.title, task.duration || 30);
+    useLibraryStore.getState().addFromSchedule({
+      title: task.title,
+      duration: task.duration || 30,
+      category: task.category,
+      note: task.description,
+    });
     deleteTask(task.id);
   }, [task, deleteTask]);
 

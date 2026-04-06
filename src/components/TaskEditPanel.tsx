@@ -672,7 +672,12 @@ export function TaskEditPanel() {
                     onClick={(e) => {
                       e.stopPropagation();
                       if (!task) return;
-                      useLibraryStore.getState().addFromSchedule(task.title, task.duration || 30);
+                      useLibraryStore.getState().addFromSchedule({
+                        title: task.title,
+                        duration: task.duration || 30,
+                        category: task.category,
+                        note: task.description,
+                      });
                       deleteTask(task.id);
                       setEditingTask(null);
                     }}

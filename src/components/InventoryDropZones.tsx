@@ -99,7 +99,12 @@ export function InventoryDropZones() {
       // Move task to library
       const task = useTaskStore.getState().tasks.find(t => t.id === state.taskId);
       if (task) {
-        useLibraryStore.getState().addFromSchedule(task.title, task.duration || 30);
+        useLibraryStore.getState().addFromSchedule({
+          title: task.title,
+          duration: task.duration || 30,
+          category: task.category,
+          note: task.description,
+        });
         useTaskStore.getState().deleteTask(task.id);
       }
     } else if (zone === 'waitingRoom') {
