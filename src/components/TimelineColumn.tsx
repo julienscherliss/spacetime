@@ -596,7 +596,23 @@ export function TimelineColumn({
         const y = touch.clientY - rect.top - dragOffsetRef.current;
         const mins = START_HOUR * 60 + (y / HOUR_HEIGHT) * 60;
         const snapped = snapTo15(mins);
-        const newTime = minutesToTime(snapped);
+
+        // Collision check for touch drop
+        const allTasks = useTaskStore.getState().tasks;
+        const excludeId = dragging.type === 'task' ? dragging.id : undefined;
+        const duration = dragging.duration || 30;
+        const occupiedSlots = getOccupiedSlots(allTasks, date, excludeId);
+        const { startMin, blocked } = findValidPosition(snapped, duration, occupiedSlots);
+
+        if (blocked) {
+          setDragMsg('No space available');
+          setDragValid(false);
+          setTimeout(() => { setDragMsg(''); setDragValid(true); }, 2000);
+          useTouchDragStore.getState().endDrag();
+          return;
+        }
+
+        const newTime = minutesToTime(startMin);
 
         if (dragging.type === 'library') {
           addTask({
