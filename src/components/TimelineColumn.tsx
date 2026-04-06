@@ -159,11 +159,14 @@ export function TimelineColumn({
     e.preventDefault();
     const mins = getMinutesFromY(e.clientY - dragOffsetRef.current);
     const snapped = snapTo15(mins);
+    const taskDurationStr = e.dataTransfer.types.includes('taskduration') ? '30' : '30';
+    const duration = parseInt(taskDurationStr, 10);
+    const allTasks = useTaskStore.getState().tasks;
+    const occupiedSlots = getOccupiedSlots(allTasks, date);
+    const overlap = wouldOverlap(snapped, duration, occupiedSlots);
     setDragOverTime(minutesToTime(snapped));
-    // Try to get duration from the dragged task
-    const taskId = e.dataTransfer.types.includes('taskid') ? 'pending' : null;
-    setDragValid(true);
-  }, [getMinutesFromY]);
+    setDragValid(!overlap);
+  }, [getMinutesFromY, date]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
