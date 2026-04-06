@@ -8,7 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Focus, List, CalendarDays, Grid3X3, Repeat,
-  Archive, Clock, LogOut, Settings, MoreHorizontal, X
+  Archive, Clock, LogOut, Settings, MoreHorizontal, X, ArchiveRestore
 } from 'lucide-react';
 
 const views: { mode: ViewMode; icon: typeof Focus; label: string }[] = [
@@ -125,6 +125,11 @@ export function AppNav() {
                         label="Waiting Room"
                         badge={waitingCount > 0 ? String(waitingCount) : undefined}
                         onClick={() => { window.dispatchEvent(new CustomEvent('toggle-waiting-room')); setMoreOpen(false); }}
+                      />
+                      <OverflowItem
+                        icon={<ArchiveRestore size={18} strokeWidth={1.5} />}
+                        label="Archive"
+                        onClick={() => { window.dispatchEvent(new CustomEvent('toggle-archive')); setMoreOpen(false); }}
                       />
 
                       <div className="border-t border-border/40 my-1" />

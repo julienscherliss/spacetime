@@ -10,6 +10,7 @@ import { DailyCompletionModal } from '@/components/DailyCompletionModal';
 
 import { LibraryPanel } from '@/components/LibraryPanel';
 import { WaitingRoom } from '@/components/WaitingRoom';
+import { ArchivePanel } from '@/components/ArchivePanel';
 import { TouchDragGhost } from '@/components/TouchDragGhost';
 import { SettingsPanel } from '@/components/SettingsPanel';
 import { InventoryDropZones } from '@/components/InventoryDropZones';
@@ -20,6 +21,7 @@ const Index = () => {
   const { viewMode, routinesEnabled, moveOverdueToWaitingRoom } = useTaskStore();
   const [waitingOpen, setWaitingOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
 
   // Move overdue tasks to waiting room periodically
   useEffect(() => {
@@ -40,6 +42,13 @@ const Index = () => {
     const handler = () => setSettingsOpen((o) => !o);
     window.addEventListener('toggle-settings', handler);
     return () => window.removeEventListener('toggle-settings', handler);
+  }, []);
+
+  // Listen for archive toggle from nav
+  useEffect(() => {
+    const handler = () => setArchiveOpen((o) => !o);
+    window.addEventListener('toggle-archive', handler);
+    return () => window.removeEventListener('toggle-archive', handler);
   }, []);
 
   return (
@@ -88,6 +97,7 @@ const Index = () => {
       <CarryIndicator />
       <InventoryDropZones />
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <ArchivePanel open={archiveOpen} onClose={() => setArchiveOpen(false)} />
     </div>
   );
 };
