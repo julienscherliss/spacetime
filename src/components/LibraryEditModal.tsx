@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useLibraryStore, LibraryTask, LibrarySubtask } from '@/store/libraryStore';
-import { X, Trash2, Clock, AlertTriangle, Tag, CalendarDays, Plus, GripVertical } from 'lucide-react';
+import { X, Trash2, Clock, AlertTriangle, Tag, CalendarDays, Plus } from 'lucide-react';
 import { DurationPicker } from '@/components/ScrollWheelPicker';
 import { Checkbox } from '@/components/ui/checkbox';
 
@@ -14,10 +14,10 @@ function PriorityToggle({ active, icon, label, onClick }: { active: boolean; ico
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-1.5 px-3 py-2.5 rounded-sm border text-[10px] font-mono tracking-wider transition-all min-h-[40px] ${
+      className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-md border text-[11px] font-mono tracking-wider transition-all min-h-[42px] ${
         active
-          ? 'border-foreground/20 bg-foreground/[0.04] text-foreground'
-          : 'border-border text-muted-foreground/40 hover:text-foreground hover:border-border'
+          ? 'border-foreground/25 bg-foreground/[0.06] text-foreground font-medium'
+          : 'border-border/60 text-muted-foreground/50 hover:text-foreground hover:border-border'
       }`}
     >
       {icon}
@@ -33,25 +33,25 @@ function SubtaskRow({ subtask, onToggle, onDelete, onChange }: {
   onChange: (title: string) => void;
 }) {
   return (
-    <div className="flex items-center gap-2 group py-1">
+    <div className="flex items-center gap-2.5 group py-1.5">
       <Checkbox
         checked={subtask.completed}
         onCheckedChange={onToggle}
-        className="h-3.5 w-3.5 border-muted-foreground/30 data-[state=checked]:bg-primary/60 data-[state=checked]:border-primary/40"
+        className="h-4 w-4 border-muted-foreground/40 data-[state=checked]:bg-primary/60 data-[state=checked]:border-primary/40"
       />
       <input
         value={subtask.title}
         onChange={(e) => onChange(e.target.value)}
-        className={`flex-1 bg-transparent text-[12px] font-mono focus:outline-none placeholder:text-muted-foreground/20 ${
-          subtask.completed ? 'text-muted-foreground/30 line-through' : 'text-foreground/70'
+        className={`flex-1 bg-transparent text-[13px] font-mono focus:outline-none placeholder:text-muted-foreground/30 ${
+          subtask.completed ? 'text-muted-foreground/40 line-through' : 'text-foreground/80'
         }`}
         placeholder="Subtask…"
       />
       <button
         onClick={onDelete}
-        className="p-1 text-muted-foreground/15 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+        className="p-1 text-muted-foreground/25 hover:text-destructive opacity-0 group-hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
       >
-        <X size={11} />
+        <X size={12} />
       </button>
     </div>
   );
@@ -140,25 +140,25 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 24 }}
         transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-        className="bg-card border border-border rounded-t-lg sm:rounded-sm w-full sm:max-w-sm shadow-lg max-h-[90vh] overflow-y-auto"
+        className="bg-card border border-border/60 rounded-t-lg sm:rounded-lg w-full sm:max-w-sm shadow-lg max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-4 pt-3 pb-2 border-b border-border/30 flex items-center justify-between">
-          <span className="text-[11px] font-mono text-muted-foreground/50">Edit item</span>
-          <button onClick={handleSave} className="p-1 text-muted-foreground/40 hover:text-foreground transition-colors">
+        <div className="px-4 pt-4 pb-2.5 border-b border-border/40 flex items-center justify-between">
+          <span className="text-[11px] font-mono text-muted-foreground/70 font-medium tracking-wide">Edit item</span>
+          <button onClick={handleSave} className="p-1 text-muted-foreground/50 hover:text-foreground transition-colors">
             <X size={16} strokeWidth={1.5} />
           </button>
         </div>
 
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-5">
           {/* Title */}
           <input
             ref={titleRef}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Item name…"
-            className="w-full bg-transparent font-display font-bold text-foreground text-base leading-tight focus:outline-none placeholder:text-muted-foreground/20"
+            className="w-full bg-transparent font-display font-bold text-foreground text-base leading-tight focus:outline-none placeholder:text-muted-foreground/30"
           />
 
           {/* Category */}
@@ -166,16 +166,16 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
             <div className="relative">
               <button
                 onClick={() => setShowCatPicker(!showCatPicker)}
-                className="flex items-center gap-1.5 px-2.5 py-2 rounded-sm border border-border text-[11px] font-mono text-muted-foreground/60 hover:text-foreground transition-colors min-h-[40px]"
+                className="flex items-center gap-1.5 px-3 py-2.5 rounded-md border border-border/60 text-[11px] font-mono text-muted-foreground/70 hover:text-foreground hover:border-border transition-colors min-h-[42px]"
               >
                 <Tag size={11} />
                 {catLabel}
               </button>
               {showCatPicker && (
-                <div className="absolute left-0 top-full mt-1 z-50 bg-card border border-border rounded-sm shadow-md py-1 w-36">
+                <div className="absolute left-0 top-full mt-1 z-50 bg-card border border-border rounded-md shadow-lg py-1 w-40">
                   <button
                     onClick={() => { setCategory(''); setShowCatPicker(false); }}
-                    className={`w-full text-left px-3 py-2 text-[11px] font-mono min-h-[40px] ${!category ? 'text-foreground bg-muted/50' : 'text-muted-foreground/50 hover:text-foreground'}`}
+                    className={`w-full text-left px-3 py-2.5 text-[11px] font-mono min-h-[40px] ${!category ? 'text-foreground bg-muted/50 font-medium' : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30'}`}
                   >
                     No category
                   </button>
@@ -183,12 +183,12 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
                     <button
                       key={cat.value}
                       onClick={() => { setCategory(cat.value); setShowCatPicker(false); }}
-                      className={`w-full text-left px-3 py-2 text-[11px] font-mono min-h-[40px] ${category === cat.value ? 'text-foreground bg-muted/50' : 'text-muted-foreground/50 hover:text-foreground'}`}
+                      className={`w-full text-left px-3 py-2.5 text-[11px] font-mono min-h-[40px] ${category === cat.value ? 'text-foreground bg-muted/50 font-medium' : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30'}`}
                     >
                       {cat.label}
                     </button>
                   ))}
-                  <div className="border-t border-border/30 mt-1 pt-1">
+                  <div className="border-t border-border/40 mt-1 pt-1">
                     {showNewCatInput ? (
                       <div className="px-3 py-2">
                         <input
@@ -197,14 +197,14 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
                           onKeyDown={(e) => { if (e.key === 'Enter') handleAddCatInline(); if (e.key === 'Escape') setShowNewCatInput(false); }}
                           onBlur={handleAddCatInline}
                           placeholder="Category name…"
-                          className="w-full bg-transparent text-[11px] font-mono text-foreground placeholder:text-muted-foreground/30 focus:outline-none border-b border-primary/30"
+                          className="w-full bg-transparent text-[11px] font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none border-b border-primary/40"
                           autoFocus
                         />
                       </div>
                     ) : (
                       <button
                         onClick={() => setShowNewCatInput(true)}
-                        className="w-full text-left px-3 py-2 text-[11px] font-mono text-primary/60 hover:text-primary flex items-center gap-2 min-h-[40px]"
+                        className="w-full text-left px-3 py-2.5 text-[11px] font-mono text-primary/70 hover:text-primary flex items-center gap-2 min-h-[40px]"
                       >
                         <Tag size={10} /> New…
                       </button>
@@ -217,23 +217,23 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
 
           {/* Duration picker */}
           <div>
-            <label className="block text-[9px] font-mono tracking-widest text-muted-foreground/40 mb-2">DURATION</label>
+            <label className="block text-[9px] font-mono tracking-widest text-muted-foreground/60 mb-2 font-medium">DURATION</label>
             <DurationPicker duration={duration} onChange={setDuration} />
           </div>
 
           {/* Due date */}
           <div className="flex items-center gap-2">
-            <CalendarDays size={12} className="text-muted-foreground/40 shrink-0" />
+            <CalendarDays size={13} className="text-muted-foreground/50 shrink-0" />
             <input
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
-              className="bg-transparent text-[11px] font-mono text-foreground/70 focus:outline-none border border-border rounded-sm px-2 py-2 min-h-[40px]"
+              className="bg-transparent text-[12px] font-mono text-foreground/80 focus:outline-none border border-border/60 rounded-md px-2.5 py-2.5 min-h-[42px]"
             />
             {dueDate && (
               <button
                 onClick={() => setDueDate('')}
-                className="text-[9px] font-mono text-muted-foreground/40 hover:text-foreground"
+                className="text-[9px] font-mono text-muted-foreground/50 hover:text-foreground"
               >
                 Clear
               </button>
@@ -242,8 +242,8 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
 
           {/* Priority toggles - independent */}
           <div>
-            <label className="block text-[9px] font-mono tracking-widest text-muted-foreground/40 mb-1.5">PRIORITY</label>
-            <div className="flex items-center gap-1.5">
+            <label className="block text-[9px] font-mono tracking-widest text-muted-foreground/60 mb-2 font-medium">PRIORITY</label>
+            <div className="flex items-center gap-2">
               <PriorityToggle
                 active={isUrgent}
                 icon={<Clock size={13} strokeWidth={1.8} />}
@@ -261,19 +261,19 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
 
           {/* Notes */}
           <div>
-            <label className="block text-[9px] font-mono tracking-widest text-muted-foreground/40 mb-1.5">NOTES</label>
+            <label className="block text-[9px] font-mono tracking-widest text-muted-foreground/60 mb-2 font-medium">NOTES</label>
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Add details, context, links…"
               rows={3}
-              className="w-full bg-muted/30 border border-border/50 rounded-sm px-3 py-2.5 text-[12px] font-mono text-foreground/70 placeholder:text-muted-foreground/20 focus:outline-none focus:border-primary/20 resize-none leading-relaxed"
+              className="w-full bg-muted/30 border border-border/50 rounded-md px-3 py-2.5 text-[13px] font-mono text-foreground/80 placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/30 resize-none leading-relaxed"
             />
           </div>
 
           {/* Subtasks */}
           <div>
-            <label className="block text-[9px] font-mono tracking-widest text-muted-foreground/40 mb-1.5">SUBTASKS</label>
+            <label className="block text-[9px] font-mono tracking-widest text-muted-foreground/60 mb-2 font-medium">SUBTASKS</label>
             <div className="space-y-0.5">
               {subtasks.map((st) => (
                 <SubtaskRow
@@ -285,25 +285,25 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
                 />
               ))}
             </div>
-            <div className="flex items-center gap-2 mt-1.5">
-              <Plus size={12} className="text-muted-foreground/25 shrink-0" />
+            <div className="flex items-center gap-2.5 mt-2">
+              <Plus size={13} className="text-muted-foreground/35 shrink-0" />
               <input
                 ref={newSubtaskRef}
                 value={newSubtaskText}
                 onChange={(e) => setNewSubtaskText(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') addSubtask(); }}
                 placeholder="Add subtask…"
-                className="flex-1 bg-transparent text-[12px] font-mono text-foreground/70 placeholder:text-muted-foreground/20 focus:outline-none py-1.5"
+                className="flex-1 bg-transparent text-[13px] font-mono text-foreground/80 placeholder:text-muted-foreground/30 focus:outline-none py-1.5"
               />
             </div>
           </div>
 
           {/* Delete */}
-          <div className="flex items-center pt-2 border-t border-border/20">
+          <div className="flex items-center pt-3 border-t border-border/30">
             <div className="flex-1" />
             <button
               onClick={handleDelete}
-              className="p-2.5 rounded-sm border border-border text-muted-foreground/40 hover:text-destructive hover:border-destructive/20 transition-colors min-h-[44px]"
+              className="p-2.5 rounded-md border border-border/50 text-muted-foreground/50 hover:text-destructive hover:border-destructive/30 transition-colors min-h-[44px]"
             >
               <Trash2 size={14} strokeWidth={1.5} />
             </button>
