@@ -51,31 +51,59 @@ export function DayView() {
 
   const handleZoomToCluster = useCallback((cluster: TaskCluster, targetHourHeight: number, scrollToMin: number) => {
     if (!scrollRef.current) return;
+    const el = scrollRef.current;
+
+    // Save pre-zoom state for exit
     preClusterScaleRef.current = hourHeight;
-    preClusterScrollRef.current = scrollRef.current.scrollTop;
-    setClusterZoomed(true);
+    preClusterScrollRef.current = el.scrollTop;
 
     const clamped = Math.min(SCALE_MAX, Math.max(SCALE_MIN, targetHourHeight));
-    setScale(clamped);
+    const viewportH = el.clientHeight;
 
-    // After zoom, scroll to center the cluster
-    requestAnimationFrame(() => {
-      if (!scrollRef.current) return;
-      const viewportH = scrollRef.current.clientHeight;
-      const targetScrollTop = ((scrollToMin - START_HOUR * 60) / 60) * clamped - viewportH / 2;
-      scrollRef.current.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' });
+    // Pre-compute the exact scroll position at the NEW scale
+    // so we can set it synchronously and avoid "jump then scroll"
+    const clusterCenterMin = (cluster.startMin + cluster.endMin) / 2;
+    const targetScrollTop = Math.max(0,
+      ((clusterCenterMin - START_HOUR * 60) / 60) * clamped - viewportH / 2
+    );
+
+    // Temporarily disable smooth scrolling on the container
+    el.style.scrollBehavior = 'auto';
+
+    // Apply zoom — this triggers re-render at new scale
+    setScale(clamped);
+    setClusterZoomed(true);
+
+    // Synchronously set scroll position in the same frame via microtask
+    // so the browser never paints at the wrong scroll offset
+    queueMicrotask(() => {
+      el.scrollTop = targetScrollTop;
+      // Re-enable smooth scrolling after a frame
+      requestAnimationFrame(() => {
+        el.style.scrollBehavior = '';
+      });
     });
   }, [hourHeight, setScale]);
 
   const handleExitClusterZoom = useCallback(() => {
-    if (preClusterScaleRef.current !== null) {
-      setScale(preClusterScaleRef.current);
-      requestAnimationFrame(() => {
-        if (scrollRef.current && preClusterScrollRef.current !== null) {
-          scrollRef.current.scrollTo({ top: preClusterScrollRef.current, behavior: 'smooth' });
-        }
-      });
+    if (!scrollRef.current || preClusterScaleRef.current === null) {
+      setClusterZoomed(false);
+      return;
     }
+    const el = scrollRef.current;
+    const restoreScale = preClusterScaleRef.current;
+    const restoreScroll = preClusterScrollRef.current ?? 0;
+
+    el.style.scrollBehavior = 'auto';
+    setScale(restoreScale);
+
+    queueMicrotask(() => {
+      el.scrollTop = restoreScroll;
+      requestAnimationFrame(() => {
+        el.style.scrollBehavior = '';
+      });
+    });
+
     setClusterZoomed(false);
     preClusterScaleRef.current = null;
     preClusterScrollRef.current = null;
