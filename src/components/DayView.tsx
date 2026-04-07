@@ -6,11 +6,12 @@ import { useTouchDragStore } from '@/store/touchDragStore';
 import { useScheduledDragStore } from '@/store/scheduledDragStore';
 import { useCarryStore } from '@/store/carryStore';
 import { useCurrentTime, formatTime12h } from '@/hooks/useCurrentTime';
-import { TimelineColumn } from '@/components/TimelineColumn';
+import { TimelineColumn, START_HOUR } from '@/components/TimelineColumn';
 import { BlockedModal } from '@/components/BlockedModal';
 import { ZoomControl } from '@/components/ZoomControl';
-import { useTimeScale } from '@/hooks/useTimeScale';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useTimeScale, SCALE_MIN, SCALE_MAX } from '@/hooks/useTimeScale';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { TaskCluster } from '@/utils/taskClustering';
 
 function addDaysToDate(dateStr: string, days: number): string {
   const d = new Date(dateStr + 'T12:00:00');
@@ -42,6 +43,43 @@ export function DayView() {
     bindScrollZoom, bindPinchZoom,
     zoomPercent, isMin, isMax, isDefault,
   } = useTimeScale('day');
+
+  // Cluster zoom state
+  const [clusterZoomed, setClusterZoomed] = useState(false);
+  const preClusterScaleRef = useRef<number | null>(null);
+  const preClusterScrollRef = useRef<number | null>(null);
+
+  const handleZoomToCluster = useCallback((cluster: TaskCluster, targetHourHeight: number, scrollToMin: number) => {
+    if (!scrollRef.current) return;
+    preClusterScaleRef.current = hourHeight;
+    preClusterScrollRef.current = scrollRef.current.scrollTop;
+    setClusterZoomed(true);
+
+    const clamped = Math.min(SCALE_MAX, Math.max(SCALE_MIN, targetHourHeight));
+    setScale(clamped);
+
+    // After zoom, scroll to center the cluster
+    requestAnimationFrame(() => {
+      if (!scrollRef.current) return;
+      const viewportH = scrollRef.current.clientHeight;
+      const targetScrollTop = ((scrollToMin - START_HOUR * 60) / 60) * clamped - viewportH / 2;
+      scrollRef.current.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' });
+    });
+  }, [hourHeight, setScale]);
+
+  const handleExitClusterZoom = useCallback(() => {
+    if (preClusterScaleRef.current !== null) {
+      setScale(preClusterScaleRef.current);
+      requestAnimationFrame(() => {
+        if (scrollRef.current && preClusterScrollRef.current !== null) {
+          scrollRef.current.scrollTo({ top: preClusterScrollRef.current, behavior: 'smooth' });
+        }
+      });
+    }
+    setClusterZoomed(false);
+    preClusterScaleRef.current = null;
+    preClusterScrollRef.current = null;
+  }, [setScale]);
 
   useEffect(() => {
     generateRecurringInstances(selectedDate, selectedDate);
