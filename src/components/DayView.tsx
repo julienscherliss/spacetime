@@ -228,8 +228,16 @@ export function DayView() {
             onClick={() => setSelectedDate(d => addDaysToDate(d, 1))}
             className="p-1.5 rounded-sm text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors"
           >
-            <ChevronRight size={16} strokeWidth={1.5} />
+          <ChevronRight size={16} strokeWidth={1.5} />
           </button>
+          <FitViewButton
+            tasks={dayTasks}
+            scrollRef={scrollRef as React.RefObject<HTMLElement>}
+            hourHeight={hourHeight}
+            setScale={setScale}
+            resetZoom={resetZoom}
+            nowMinutes={nowMinutes}
+          />
         </div>
       </div>
 
