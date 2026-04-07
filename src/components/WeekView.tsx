@@ -5,7 +5,6 @@ import { useCalendarStore } from '@/store/calendarStore';
 import { useCurrentTime } from '@/hooks/useCurrentTime';
 import { WeekGrid, WeekDayHeaders, useWeekDays } from '@/components/WeekGrid';
 import { BlockedModal } from '@/components/BlockedModal';
-import { ZoomControl } from '@/components/ZoomControl';
 import { useTimeScale, SCALE_MIN, SCALE_MAX } from '@/hooks/useTimeScale';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { FitViewButton } from '@/components/FitViewButton';
