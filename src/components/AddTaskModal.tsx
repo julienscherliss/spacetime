@@ -2,7 +2,16 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Priority } from '@/store/taskStore';
 import { useCarryStore } from '@/store/carryStore';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, ChevronDown } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+
+const PRIORITY_LABELS = ['Flex', 'Semi', 'Fixed', 'Lock'] as const;
+const PRIORITY_COLORS = [
+  'border-[hsl(var(--priority-0)/0.3)] text-[hsl(var(--priority-0))]',
+  'border-[hsl(var(--priority-1)/0.3)] text-[hsl(var(--priority-1))]',
+  'border-[hsl(var(--priority-2)/0.3)] text-[hsl(var(--priority-2))]',
+  'border-[hsl(var(--priority-3)/0.3)] text-[hsl(var(--priority-3))]',
+];
 
 export function AddTaskModal() {
   const [open, setOpen] = useState(false);
@@ -11,7 +20,7 @@ export function AddTaskModal() {
   const [title, setTitle] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [time, setTime] = useState('09:00');
-  const [duration, setDuration] = useState(30);
+  const [duration] = useState(30);
   const [priority, setPriority] = useState<Priority>(0);
 
   const handleSubmit = () => {
@@ -20,18 +29,9 @@ export function AddTaskModal() {
     setTitle('');
     setDate(new Date().toISOString().split('T')[0]);
     setTime('09:00');
-    setDuration(30);
     setPriority(0);
     setOpen(false);
   };
-
-  const priorityLabels = ['Flex', 'Semi', 'Fixed', 'Lock'];
-  const priorityColors = [
-    'border-[hsl(var(--priority-0)/0.3)] text-[hsl(var(--priority-0))]',
-    'border-[hsl(var(--priority-1)/0.3)] text-[hsl(var(--priority-1))]',
-    'border-[hsl(var(--priority-2)/0.3)] text-[hsl(var(--priority-2))]',
-    'border-[hsl(var(--priority-3)/0.3)] text-[hsl(var(--priority-3))]',
-  ];
 
   return (
     <>
@@ -102,34 +102,30 @@ export function AddTaskModal() {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-mono tracking-widest text-muted-foreground/50 mb-1">DURATION (MIN)</label>
-                  <input
-                    type="number"
-                    value={duration}
-                    onChange={(e) => setDuration(Number(e.target.value))}
-                    min={5}
-                    step={5}
-                    className="w-full bg-muted/40 border border-border rounded-sm px-3 py-2.5 text-sm font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
-                  />
-                </div>
-
-                <div>
                   <label className="block text-[10px] font-mono tracking-widest text-muted-foreground/50 mb-1.5">PRIORITY</label>
-                  <div className="flex gap-1.5">
-                    {([0, 1, 2, 3] as Priority[]).map((p) => (
-                      <button
-                        key={p}
-                        onClick={() => setPriority(p)}
-                        className={`flex-1 py-2 rounded-sm text-[11px] font-mono tracking-wider border transition-colors ${
-                          priority === p
-                            ? `${priorityColors[p]} bg-muted/60`
-                            : 'border-border text-muted-foreground/50 hover:border-border'
-                        }`}
-                      >
-                        {priorityLabels[p]}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className={`flex items-center gap-1.5 px-3 py-2.5 rounded-sm text-[11px] font-mono tracking-wider border transition-colors ${PRIORITY_COLORS[priority]} bg-muted/40 hover:bg-muted/60`}>
+                        {PRIORITY_LABELS[priority]}
+                        <ChevronDown size={12} strokeWidth={1.5} />
                       </button>
-                    ))}
-                  </div>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-36 p-1 z-[70]" align="start">
+                      {([0, 1, 2, 3] as Priority[]).map((p) => (
+                        <button
+                          key={p}
+                          onClick={() => setPriority(p)}
+                          className={`w-full text-left px-3 py-2 text-[11px] font-mono rounded-sm transition-colors ${
+                            priority === p
+                              ? `${PRIORITY_COLORS[p]} bg-muted/50`
+                              : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30'
+                          }`}
+                        >
+                          {PRIORITY_LABELS[p]}
+                        </button>
+                      ))}
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
                 <p className="text-[10px] font-mono text-muted-foreground/35 tracking-wider">
