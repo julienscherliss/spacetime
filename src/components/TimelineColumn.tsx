@@ -801,16 +801,17 @@ export function TimelineColumn({
         </div>
       ))}
 
-      {/* Half-hour lines — fade in between 36-56px */}
+      {/* Half-hour dashes — fade in between 36-56px */}
       {HOUR_HEIGHT >= 36 && HOURS.map((hour, i) => {
-        const opacity = Math.min(1, (HOUR_HEIGHT - 36) / 20) * 0.2;
+        const opacity = Math.min(1, (HOUR_HEIGHT - 36) / 20) * 0.35;
         return (
           <div
             key={`h30-${hour}`}
-            className="absolute right-0 border-t border-border"
+            className="absolute border-t border-border"
             style={{
               top: i * HOUR_HEIGHT + HOUR_HEIGHT / 2,
               left: timeLabelsWidth,
+              width: 12,
               opacity,
               transition: 'opacity 0.15s ease',
             }}
@@ -818,25 +819,27 @@ export function TimelineColumn({
         );
       })}
 
-      {/* 15-min lines — fade in between 64-96px */}
+      {/* 15-min dashes — fade in between 64-96px */}
       {HOUR_HEIGHT >= 64 && HOURS.map((hour, i) => {
-        const opacity = Math.min(1, (HOUR_HEIGHT - 64) / 32) * 0.1;
+        const opacity = Math.min(1, (HOUR_HEIGHT - 64) / 32) * 0.2;
         return (
           <Fragment key={`q-${hour}`}>
             <div
-              className="absolute right-0 border-t border-border"
+              className="absolute border-t border-border"
               style={{
                 top: i * HOUR_HEIGHT + HOUR_HEIGHT / 4,
                 left: timeLabelsWidth,
+                width: 8,
                 opacity,
                 transition: 'opacity 0.15s ease',
               }}
             />
             <div
-              className="absolute right-0 border-t border-border"
+              className="absolute border-t border-border"
               style={{
                 top: i * HOUR_HEIGHT + (HOUR_HEIGHT * 3) / 4,
                 left: timeLabelsWidth,
+                width: 8,
                 opacity,
                 transition: 'opacity 0.15s ease',
               }}
