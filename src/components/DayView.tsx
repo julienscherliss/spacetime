@@ -77,43 +77,23 @@ export function DayView() {
   }, [hourHeight, setScale]);
 
   const handleExitClusterZoom = useCallback(() => {
-    if (!scrollRef.current || !timelineWrapperRef.current || preClusterScaleRef.current === null) {
+    if (!scrollRef.current || preClusterScaleRef.current === null) {
       setClusterZoomed(false);
       return;
     }
     const el = scrollRef.current;
-    const wrapper = timelineWrapperRef.current;
     const restoreScale = preClusterScaleRef.current;
     const restoreScroll = preClusterScrollRef.current ?? 0;
-    const scaleRatio = restoreScale / hourHeight;
 
-    // Compute current view center for transform origin
-    const viewCenterY = el.scrollTop + el.clientHeight / 2;
-    const originX = wrapper.offsetWidth / 2;
-    wrapper.style.transformOrigin = `${originX}px ${viewCenterY}px`;
+    el.style.scrollBehavior = 'auto';
+    setScale(restoreScale);
 
-    // Phase 1: Animate scale down
-    setIsZoomAnimating(true);
-    wrapper.style.transition = 'transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)';
-    wrapper.style.transform = `scale(${scaleRatio})`;
-
-    // Phase 2: Swap to real layout
-    setTimeout(() => {
-      wrapper.style.transition = 'none';
-      wrapper.style.transform = 'none';
-      wrapper.style.transformOrigin = '';
-
-      el.style.scrollBehavior = 'auto';
-      setScale(restoreScale);
-
-      queueMicrotask(() => {
-        el.scrollTop = restoreScroll;
-        requestAnimationFrame(() => {
-          el.style.scrollBehavior = '';
-          setIsZoomAnimating(false);
-        });
+    queueMicrotask(() => {
+      el.scrollTop = restoreScroll;
+      requestAnimationFrame(() => {
+        el.style.scrollBehavior = '';
       });
-    }, 310);
+    });
 
     setClusterZoomed(false);
     preClusterScaleRef.current = null;
@@ -290,7 +270,7 @@ export function DayView() {
           onTouchEnd={handleTouchEnd}
         >
           <div
-            ref={timelineWrapperRef}
+            ref={undefined}
             style={{
               transform: swiping ? `translateX(${swipeOffset * 0.3}px)` : 'none',
               transition: swiping ? 'none' : 'none',
