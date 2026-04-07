@@ -28,14 +28,10 @@ export function FocusView() {
       !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring'))
     .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
 
-  // Completed today: match by date field OR by archivedAt timestamp falling on today
   const completedToday = tasks
     .filter((t) => {
       if (!t.completed || t.archiveReason === 'deleted') return false;
-      // Check date field matches today
-      if (t.date === today && !t.archivedAt) return true;
-      if (t.date === today && t.archivedAt) return true;
-      // Check archivedAt timestamp falls on today (for tasks completed and archived)
+      if (t.date === today) return true;
       if (t.archivedAt) {
         const archivedDate = t.archivedAt.slice(0, 10);
         if (archivedDate === today) return true;
@@ -63,7 +59,6 @@ export function FocusView() {
       })
     : todayTasks;
 
-  // Progress narrative
   const completedCount = completedToday.length;
   const remainingCount = upcomingTasks.length + (activeTask ? 1 : 0);
 
@@ -122,6 +117,10 @@ export function FocusView() {
     };
   }, []);
 
+  // Determine which arrows to show on the main screen
+  const showUpArrow = activePanel === 'main' && completedToday.length > 0;
+  const showDownArrow = activePanel === 'main' && upcomingTasks.length > 0;
+
   return (
     <div
       className="relative overflow-hidden"
@@ -129,35 +128,29 @@ export function FocusView() {
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Navigation chevrons — more visible */}
-      <AnimatePresence>
-        {activePanel !== 'completed' && completedToday.length > 0 && (
-          <motion.button
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.5 }}
-            onClick={() => setActivePanel('completed')}
-            className="absolute top-3 left-1/2 -translate-x-1/2 z-20 p-2 text-muted-foreground/40 hover:text-muted-foreground/60 transition-colors"
-          >
-            <ChevronUp size={20} strokeWidth={2} />
-          </motion.button>
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {activePanel !== 'upcoming' && upcomingTasks.length > 0 && (
-          <motion.button
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 4 }}
-            transition={{ duration: 0.5 }}
-            onClick={() => setActivePanel('upcoming')}
-            className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 p-2 text-muted-foreground/40 hover:text-muted-foreground/60 transition-colors"
-          >
-            <ChevronDown size={20} strokeWidth={2} />
-          </motion.button>
-        )}
-      </AnimatePresence>
+      {/* Navigation chevrons — only on main panel */}
+      {showUpArrow && (
+        <motion.button
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          onClick={() => setActivePanel('completed')}
+          className="absolute top-3 left-1/2 -translate-x-1/2 z-20 p-2 text-muted-foreground/50 hover:text-muted-foreground/70 transition-colors"
+        >
+          <ChevronUp size={24} strokeWidth={2} />
+        </motion.button>
+      )}
+      {showDownArrow && (
+        <motion.button
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          onClick={() => setActivePanel('upcoming')}
+          className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 p-2 text-muted-foreground/50 hover:text-muted-foreground/70 transition-colors"
+        >
+          <ChevronDown size={24} strokeWidth={2} />
+        </motion.button>
+      )}
 
       <AnimatePresence mode="wait">
         {activePanel === 'completed' && (
@@ -179,10 +172,7 @@ export function FocusView() {
                 </p>
               ) : (
                 completedToday.map((task) => (
-                  <div
-                    key={task.id}
-                    className="flex items-center gap-3 py-3 px-3 rounded-sm"
-                  >
+                  <div key={task.id} className="flex items-center gap-3 py-3 px-3 rounded-sm">
                     <Check size={14} className="text-muted-foreground/40 shrink-0" />
                     <span className="text-[13px] font-mono text-muted-foreground/60 line-through truncate flex-1">
                       {task.title}
@@ -199,9 +189,9 @@ export function FocusView() {
 
             <button
               onClick={() => setActivePanel('main')}
-              className="mt-8 p-2 text-muted-foreground/40 hover:text-muted-foreground/60 transition-colors"
+              className="mt-8 p-2 text-muted-foreground/50 hover:text-muted-foreground/70 transition-colors"
             >
-              <ChevronDown size={20} strokeWidth={2} />
+              <ChevronDown size={24} strokeWidth={2} />
             </button>
           </motion.div>
         )}
@@ -244,9 +234,9 @@ export function FocusView() {
           >
             <button
               onClick={() => setActivePanel('main')}
-              className="mb-6 p-2 text-muted-foreground/40 hover:text-muted-foreground/60 transition-colors"
+              className="mb-6 p-2 text-muted-foreground/50 hover:text-muted-foreground/70 transition-colors"
             >
-              <ChevronUp size={20} strokeWidth={2} />
+              <ChevronUp size={24} strokeWidth={2} />
             </button>
 
             <div className="text-[10px] font-mono tracking-[0.25em] text-muted-foreground/50 mb-6 uppercase">
@@ -259,10 +249,7 @@ export function FocusView() {
                 </p>
               ) : (
                 upcomingTasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className="flex items-center gap-3 py-3 px-3 rounded-sm"
-                  >
+                  <div key={task.id} className="flex items-center gap-3 py-3 px-3 rounded-sm">
                     <div className="w-2 h-2 rounded-full bg-muted-foreground/25 shrink-0" />
                     <span className="text-[14px] font-mono font-medium text-foreground/85 truncate flex-1">
                       {task.title}

@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Priority, RecurrencePattern, CustomUnit } from '@/store/taskStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { SubtaskList, Subtask } from '@/components/SubtaskList';
-import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar, Inbox, CalendarCheck, XCircle } from 'lucide-react';
+import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar, Inbox, CalendarCheck, XCircle, Paperclip, ExternalLink, Check } from 'lucide-react';
 import { useLibraryStore } from '@/store/libraryStore';
 import { formatTime12h } from '@/hooks/useCurrentTime';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -83,6 +83,17 @@ function getDueDateText(dueDate: string): { relative: string; absolute: string; 
   return { relative: `Due in ${diffDays} days`, absolute, isOverdue: false };
 }
 
+function isValidUrl(str: string): boolean {
+  try {
+    const url = new URL(str);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch { return false; }
+}
+
+function getDomain(url: string): string {
+  try { return new URL(url).hostname.replace('www.', ''); } catch { return url; }
+}
+
 export function TaskEditPanel() {
   const {
     tasks, editingTaskId, setEditingTask, updateTask, updateFutureInstances,
@@ -96,11 +107,13 @@ export function TaskEditPanel() {
   const [subtasks, setSubtasks] = useState<Subtask[]>(task?.subtasks || []);
   const [priority, setPriority] = useState<Priority>(task?.priority || 0);
   const [recurrenceType, setRecurrenceType] = useState(recurrenceToType(task?.recurrence));
-  const [weeklyDays, setWeeklyDays] = useState<number[]>(
-    task?.recurrence?.type === 'weekly' ? task.recurrence.days :
-    task?.recurrence?.type === 'custom' && task.recurrence.days ? task.recurrence.days :
-    [new Date().getDay()]
-  );
+  const [weeklyDays, setWeeklyDays] = useState<number[]>(() => {
+    if (task?.recurrence?.type === 'weekly') return task.recurrence.days;
+    if (task?.recurrence?.type === 'custom' && task.recurrence.days) return task.recurrence.days;
+    // Default to the task's own day, not today
+    if (task?.date) return [new Date(task.date + 'T12:00:00').getDay()];
+    return [new Date().getDay()];
+  });
   const [customInterval, setCustomInterval] = useState(
     task?.recurrence?.type === 'custom' ? task.recurrence.interval : 1
   );
@@ -115,8 +128,13 @@ export function TaskEditPanel() {
   const [pendingUpdates, setPendingUpdates] = useState<any>(null);
   const [dueDate, setDueDate] = useState<string>(task?.dueDate || '');
   const [showDuePicker, setShowDuePicker] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [links, setLinks] = useState<string[]>([]);
+  const [linkInput, setLinkInput] = useState('');
+  const [showLinkInput, setShowLinkInput] = useState(false);
   const scopeTriggeredRef = useRef(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isRecurring = !!(task?.recurrence || task?.isRecurrenceInstance);
 
@@ -129,10 +147,12 @@ export function TaskEditPanel() {
       setIsRoutine(task.isRoutine !== false && task.type === 'recurring');
       setIsLinked(task.linked || false);
       setRecurrenceType(recurrenceToType(task.recurrence));
+      // Default weekly days to the TASK's day, not current day
+      const taskDay = task.date ? new Date(task.date + 'T12:00:00').getDay() : new Date().getDay();
       setWeeklyDays(
         task.recurrence?.type === 'weekly' ? task.recurrence.days :
         task.recurrence?.type === 'custom' && task.recurrence.days ? task.recurrence.days :
-        [new Date().getDay()]
+        [taskDay]
       );
       setCustomInterval(task.recurrence?.type === 'custom' ? task.recurrence.interval : 1);
       setCustomUnit(task.recurrence?.type === 'custom' ? task.recurrence.unit : 'weeks');
@@ -141,6 +161,13 @@ export function TaskEditPanel() {
       setPendingUpdates(null);
       setDueDate(task.dueDate || '');
       setShowDuePicker(false);
+      setSaveStatus('idle');
+      setShowLinkInput(false);
+      setLinkInput('');
+      // Parse links from description
+      const urlRegex = /https?:\/\/[^\s]+/g;
+      const foundLinks = task.description?.match(urlRegex) || [];
+      setLinks(foundLinks);
       scopeTriggeredRef.current = false;
     }
   }, [task?.id]);
@@ -153,11 +180,12 @@ export function TaskEditPanel() {
   }, [task?.id]);
 
   const buildRecurrence = (): RecurrencePattern | undefined => {
+    const taskDay = task?.date ? new Date(task.date + 'T12:00:00').getDay() : new Date().getDay();
     switch (recurrenceType) {
       case 'none': return undefined;
       case 'daily': return { type: 'daily' };
       case 'weekdays': return { type: 'weekdays' };
-      case 'weekly': return { type: 'weekly', days: weeklyDays.length > 0 ? weeklyDays : [new Date().getDay()] };
+      case 'weekly': return { type: 'weekly', days: weeklyDays.length > 0 ? weeklyDays : [taskDay] };
       case 'monthly': return { type: 'monthly', dayOfMonth: new Date((task?.date || '') + 'T12:00:00').getDate() };
       case 'yearly': {
         const d = new Date((task?.date || '') + 'T12:00:00');
@@ -170,7 +198,7 @@ export function TaskEditPanel() {
           unit: customUnit,
         };
         if (customUnit === 'weeks') {
-          pattern.days = weeklyDays.length > 0 ? weeklyDays : [new Date().getDay()];
+          pattern.days = weeklyDays.length > 0 ? weeklyDays : [taskDay];
         }
         return pattern;
       }
@@ -182,9 +210,11 @@ export function TaskEditPanel() {
     const recurrence = buildRecurrence();
     const parentId = task?.recurrenceParentId || task?.id;
     const seriesId = task?.seriesId || parentId;
+    // Build description with links appended
+    let fullDescription = description || '';
     return {
       title,
-      description: description || undefined,
+      description: fullDescription || undefined,
       subtasks: subtasks.length > 0 ? subtasks : undefined,
       priority,
       recurrence,
@@ -208,11 +238,20 @@ export function TaskEditPanel() {
     }, 50);
   };
 
+  const showSaveConfirmation = () => {
+    setSaveStatus('saving');
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      setSaveStatus('saved');
+      saveTimeoutRef.current = setTimeout(() => setSaveStatus('idle'), 1200);
+    }, 300);
+  };
+
   const handleSave = () => {
     if (!task) return;
     const updates = getUpdates();
 
-    // Handle linked state change separately — apply from this date forward
+    // Handle linked state change separately
     if (isRecurring && task.linked !== isLinked) {
       linkSeriesFromDate(task.id, task.date, isLinked);
     }
@@ -281,9 +320,35 @@ export function TaskEditPanel() {
     scopeTriggeredRef.current = false;
     handleSave();
     if (!scopeTriggeredRef.current) {
-      setEditingTask(null);
+      showSaveConfirmation();
+      setTimeout(() => setEditingTask(null), 400);
     }
   };
+
+  const addLink = () => {
+    const trimmed = linkInput.trim();
+    if (!trimmed) { setShowLinkInput(false); return; }
+    const url = trimmed.startsWith('http') ? trimmed : `https://${trimmed}`;
+    if (isValidUrl(url)) {
+      setLinks(prev => [...prev, url]);
+      // Append to description
+      setDescription(prev => prev ? `${prev}\n${url}` : url);
+    }
+    setLinkInput('');
+    setShowLinkInput(false);
+  };
+
+  const removeLink = (index: number) => {
+    const removed = links[index];
+    setLinks(prev => prev.filter((_, i) => i !== index));
+    setDescription(prev => prev.replace(removed, '').replace(/\n\n+/g, '\n').trim());
+  };
+
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, []);
 
   return (
     <AnimatePresence>
@@ -308,11 +373,52 @@ export function TaskEditPanel() {
             className="bg-card border border-border rounded-t-lg sm:rounded-sm w-full sm:max-w-sm shadow-lg max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* ─── Header with Done + Save Status ─── */}
+            <div className="px-4 pt-3 pb-2 border-b border-border/30 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono text-muted-foreground/50 tracking-wider">
+                  {task.time ? formatScheduleContext(task.date, task.time, task.duration) : formatScheduleContext(task.date)}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <AnimatePresence mode="wait">
+                  {saveStatus === 'saving' && (
+                    <motion.span
+                      key="saving"
+                      initial={{ opacity: 0, x: 4 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="text-[9px] font-mono text-muted-foreground/40 tracking-wider"
+                    >
+                      Saving…
+                    </motion.span>
+                  )}
+                  {saveStatus === 'saved' && (
+                    <motion.span
+                      key="saved"
+                      initial={{ opacity: 0, x: 4 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="flex items-center gap-1 text-[9px] font-mono text-primary/70 tracking-wider"
+                    >
+                      <Check size={10} /> Saved
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+                <button
+                  onClick={handleClose}
+                  className="px-2.5 py-1.5 rounded-sm text-[10px] font-mono tracking-wider text-foreground/70 hover:text-foreground hover:bg-muted/50 transition-colors"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+
             {/* ─── Due date header ─── */}
             {dueDate ? (() => {
               const info = getDueDateText(dueDate);
               return (
-                <div className="px-4 pt-4 pb-3 border-b border-border/30">
+                <div className="px-4 pt-3 pb-2.5 border-b border-border/30">
                   <div className={`flex items-center gap-2 font-mono font-bold text-[15px] ${info.isOverdue ? 'text-destructive' : 'text-foreground/80'}`}>
                     <CalendarCheck size={15} strokeWidth={1.5} />
                     <span>{info.relative}</span>
@@ -329,9 +435,7 @@ export function TaskEditPanel() {
                           mode="single"
                           selected={dueDate ? new Date(dueDate + 'T12:00:00') : undefined}
                           onSelect={(d) => {
-                            if (d) {
-                              setDueDate(d.toISOString().split('T')[0]);
-                            }
+                            if (d) setDueDate(d.toISOString().split('T')[0]);
                             setShowDuePicker(false);
                           }}
                           className="p-3 pointer-events-auto"
@@ -349,12 +453,10 @@ export function TaskEditPanel() {
                 </div>
               );
             })() : (
-              <div className="px-4 pt-3 pb-3 border-b border-border/30">
+              <div className="px-4 pt-3 pb-2.5 border-b border-border/30">
                 <Popover open={showDuePicker} onOpenChange={setShowDuePicker}>
                   <PopoverTrigger asChild>
-                    <button
-                      className="flex items-center gap-1.5 text-[12px] font-mono text-muted-foreground/40 hover:text-foreground transition-colors py-1"
-                    >
+                    <button className="flex items-center gap-1.5 text-[12px] font-mono text-muted-foreground/40 hover:text-foreground transition-colors py-1">
                       <CalendarCheck size={12} strokeWidth={1.5} />
                       <span>Add due date</span>
                     </button>
@@ -364,9 +466,7 @@ export function TaskEditPanel() {
                       mode="single"
                       selected={undefined}
                       onSelect={(d) => {
-                        if (d) {
-                          setDueDate(d.toISOString().split('T')[0]);
-                        }
+                        if (d) setDueDate(d.toISOString().split('T')[0]);
                         setShowDuePicker(false);
                       }}
                       className="p-3 pointer-events-auto"
@@ -430,19 +530,7 @@ export function TaskEditPanel() {
                 )}
               </div>
 
-              {/* ─── 3. Notes / description ─── */}
-              <div>
-                <label className="block text-[8px] font-mono tracking-widest text-muted-foreground/40 mb-1.5">NOTES</label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Add details, context, links..."
-                  rows={3}
-                  className="w-full bg-muted/30 border border-border/50 rounded-sm px-3 py-2 text-[11px] font-mono text-foreground/70 placeholder:text-muted-foreground/20 focus:outline-none focus:border-primary/20 resize-none leading-relaxed"
-                />
-              </div>
-
-              {/* ─── 4. Subtasks ─── */}
+              {/* ─── 3. Subtasks ─── */}
               <div>
                 <label className="block text-[8px] font-mono tracking-widest text-muted-foreground/40 mb-1.5">
                   SUBTASKS {subtasks.length > 0 && (
@@ -456,7 +544,80 @@ export function TaskEditPanel() {
                 </div>
               </div>
 
-              {/* ─── 5. Advanced (collapsed) ─── */}
+              {/* ─── 4. Notes / description ─── */}
+              <div>
+                <label className="block text-[8px] font-mono tracking-widest text-muted-foreground/40 mb-1.5">NOTES</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => {
+                    setDescription(e.target.value);
+                    // Auto-grow
+                    const ta = e.target;
+                    ta.style.height = 'auto';
+                    ta.style.height = ta.scrollHeight + 'px';
+                  }}
+                  onFocus={(e) => {
+                    const ta = e.target;
+                    ta.style.height = 'auto';
+                    ta.style.height = ta.scrollHeight + 'px';
+                  }}
+                  placeholder="Add details, context, links..."
+                  rows={2}
+                  className="w-full bg-muted/30 border border-border/50 rounded-sm px-3 py-2 text-[11px] font-mono text-foreground/70 placeholder:text-muted-foreground/20 focus:outline-none focus:border-primary/20 resize-none leading-relaxed"
+                  style={{ minHeight: '48px' }}
+                />
+              </div>
+
+              {/* ─── 5. Links / Attachments ─── */}
+              <div>
+                {links.length > 0 && (
+                  <div className="space-y-1 mb-2">
+                    {links.map((url, i) => (
+                      <div key={i} className="flex items-center gap-2 py-1.5 px-2 rounded-sm bg-muted/20 border border-border/30 group">
+                        <ExternalLink size={11} className="text-muted-foreground/40 shrink-0" />
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 text-[10px] font-mono text-primary/70 hover:text-primary truncate"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {getDomain(url)}
+                        </a>
+                        <button
+                          onClick={() => removeLink(i)}
+                          className="p-0.5 text-muted-foreground/25 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X size={10} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {showLinkInput ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      value={linkInput}
+                      onChange={(e) => setLinkInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') addLink(); if (e.key === 'Escape') { setShowLinkInput(false); setLinkInput(''); } }}
+                      onBlur={addLink}
+                      placeholder="Paste URL…"
+                      className="flex-1 bg-transparent text-[11px] font-mono text-foreground placeholder:text-muted-foreground/30 focus:outline-none border-b border-primary/30 py-1"
+                      autoFocus
+                    />
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowLinkInput(true)}
+                    className="flex items-center gap-1.5 text-[9px] font-mono tracking-wider text-muted-foreground/35 hover:text-foreground transition-colors"
+                  >
+                    <Paperclip size={10} strokeWidth={1.5} />
+                    Add link
+                  </button>
+                )}
+              </div>
+
+              {/* ─── 6. Advanced (collapsed) ─── */}
               <div className="border-t border-border/20 pt-3">
                 <button
                   onClick={() => setShowRecurrence(!showRecurrence)}
@@ -487,6 +648,13 @@ export function TaskEditPanel() {
                                 setIsLinked(false);
                               } else if (recurrenceType === 'none') {
                                 setIsRoutine(true);
+                              }
+                              // When selecting weekly, default to task's day
+                              if (opt.value === 'weekly' && task?.date) {
+                                const taskDay = new Date(task.date + 'T12:00:00').getDay();
+                                if (!weeklyDays.includes(taskDay)) {
+                                  setWeeklyDays([taskDay]);
+                                }
                               }
                               if (opt.value !== 'custom') {
                                 setShowRecurrence(false);
@@ -646,7 +814,7 @@ export function TaskEditPanel() {
                 </div>
               )}
 
-              {/* ─── 6. Actions ─── */}
+              {/* ─── 7. Actions ─── */}
               {!showEditScope && (
                 <div
                   className="flex items-center gap-2 pt-3 mt-1 border-t border-border/30"

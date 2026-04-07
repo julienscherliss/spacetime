@@ -228,6 +228,13 @@ export function AppNav() {
             )}
           </button>
           <button
+            onClick={() => window.dispatchEvent(new CustomEvent('toggle-archive'))}
+            className="flex items-center gap-1 px-2 py-1.5 rounded-sm text-[10px] font-mono tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArchiveRestore size={12} strokeWidth={1.5} />
+            <span>ARCHIVE</span>
+          </button>
+          <button
             onClick={() => window.dispatchEvent(new CustomEvent('toggle-settings'))}
             className="flex items-center gap-1 px-1.5 py-1.5 rounded-sm text-[10px] font-mono tracking-wider text-muted-foreground/40 hover:text-foreground transition-colors"
             title="Settings"
