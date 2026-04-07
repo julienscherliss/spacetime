@@ -844,7 +844,7 @@ export function TimelineColumn({
                   {/* Gutter marker */}
                   {showTimeLabels && (
                     <div
-                      className="absolute border-t border-border"
+                      className="absolute border-t border-muted-foreground/70"
                       style={{ top: topPos, left: 'calc(3.25rem - 12px)', width: 8, opacity: markerOpacity, transition: 'opacity 0.15s ease' }}
                     />
                   )}
