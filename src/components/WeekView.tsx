@@ -258,6 +258,7 @@ export function WeekView() {
                 routinesEnabled={routinesEnabled}
                 compact={isMobile}
                 dayCount={dayCount}
+                onZoomToCluster={handleZoomToCluster}
               />
             </div>
           )}
