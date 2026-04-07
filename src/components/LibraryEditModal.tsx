@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useLibraryStore, LibraryTask, LibrarySubtask } from '@/store/libraryStore';
-import { X, Trash2, Clock, AlertTriangle, Tag, CalendarDays, Plus } from 'lucide-react';
+import { X, Trash2, Clock, AlertTriangle, Tag, CalendarDays, Plus, Check } from 'lucide-react';
 import { DurationPicker } from '@/components/ScrollWheelPicker';
 import { Checkbox } from '@/components/ui/checkbox';
 
@@ -71,10 +71,18 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
   const [newCatInline, setNewCatInline] = useState('');
   const [showNewCatInput, setShowNewCatInput] = useState(false);
   const [newSubtaskText, setNewSubtaskText] = useState('');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved'>('idle');
   const titleRef = useRef<HTMLInputElement>(null);
   const newSubtaskRef = useRef<HTMLInputElement>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { titleRef.current?.focus(); }, []);
+
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, []);
 
   const handleSave = () => {
     updateItem(item.id, {
@@ -87,7 +95,11 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
       dueDate: dueDate || null,
       subtasks,
     });
-    onClose();
+    setSaveStatus('saved');
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      onClose();
+    }, 400);
   };
 
   const handleDelete = () => {
@@ -143,12 +155,19 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
         className="bg-card border border-border/60 rounded-t-lg sm:rounded-lg w-full sm:max-w-sm shadow-lg max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
+        {/* Header with Done + Save status */}
         <div className="px-4 pt-4 pb-2.5 border-b border-border/40 flex items-center justify-between">
           <span className="text-[11px] font-mono text-muted-foreground/70 font-medium tracking-wide">Edit item</span>
-          <button onClick={handleSave} className="p-1 text-muted-foreground/50 hover:text-foreground transition-colors">
-            <X size={16} strokeWidth={1.5} />
-          </button>
+          <div className="flex items-center gap-2">
+            {saveStatus === 'saved' && (
+              <span className="flex items-center gap-1 text-[9px] font-mono text-primary/70 tracking-wider">
+                <Check size={10} /> Saved
+              </span>
+            )}
+            <button onClick={handleSave} className="px-2.5 py-1.5 rounded-sm text-[10px] font-mono tracking-wider text-foreground/70 hover:text-foreground hover:bg-muted/50 transition-colors">
+              Done
+            </button>
+          </div>
         </div>
 
         <div className="p-4 space-y-5">
@@ -240,7 +259,7 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
             )}
           </div>
 
-          {/* Priority toggles - independent */}
+          {/* Priority toggles */}
           <div>
             <label className="block text-[9px] font-mono tracking-widest text-muted-foreground/60 mb-2 font-medium">PRIORITY</label>
             <div className="flex items-center gap-2">
@@ -259,19 +278,7 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
             </div>
           </div>
 
-          {/* Notes */}
-          <div>
-            <label className="block text-[9px] font-mono tracking-widest text-muted-foreground/60 mb-2 font-medium">NOTES</label>
-            <textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Add details, context, links…"
-              rows={3}
-              className="w-full bg-muted/30 border border-border/50 rounded-md px-3 py-2.5 text-[13px] font-mono text-foreground/80 placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/30 resize-none leading-relaxed"
-            />
-          </div>
-
-          {/* Subtasks */}
+          {/* Subtasks — BEFORE notes */}
           <div>
             <label className="block text-[9px] font-mono tracking-widest text-muted-foreground/60 mb-2 font-medium">SUBTASKS</label>
             <div className="space-y-0.5">
@@ -296,6 +303,29 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
                 className="flex-1 bg-transparent text-[13px] font-mono text-foreground/80 placeholder:text-muted-foreground/30 focus:outline-none py-1.5"
               />
             </div>
+          </div>
+
+          {/* Notes — AFTER subtasks, auto-growing */}
+          <div>
+            <label className="block text-[9px] font-mono tracking-widest text-muted-foreground/60 mb-2 font-medium">NOTES</label>
+            <textarea
+              value={note}
+              onChange={(e) => {
+                setNote(e.target.value);
+                const ta = e.target;
+                ta.style.height = 'auto';
+                ta.style.height = ta.scrollHeight + 'px';
+              }}
+              onFocus={(e) => {
+                const ta = e.target;
+                ta.style.height = 'auto';
+                ta.style.height = ta.scrollHeight + 'px';
+              }}
+              placeholder="Add details, context, links…"
+              rows={2}
+              className="w-full bg-muted/30 border border-border/50 rounded-md px-3 py-2.5 text-[13px] font-mono text-foreground/80 placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/30 resize-none leading-relaxed"
+              style={{ minHeight: '48px' }}
+            />
           </div>
 
           {/* Delete */}

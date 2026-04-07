@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
+import { useLibraryStore } from '@/store/libraryStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { formatTime12h } from '@/hooks/useCurrentTime';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
@@ -14,33 +15,56 @@ export function CalendarView() {
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [swiping, setSwiping] = useState(false);
+  const swipeAxisRef = useRef<'horizontal' | 'vertical' | null>(null);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (e.touches.length !== 1) return;
     touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    swipeAxisRef.current = null;
   }, []);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (!touchStartRef.current || e.touches.length !== 1) return;
     const dx = e.touches[0].clientX - touchStartRef.current.x;
     const dy = e.touches[0].clientY - touchStartRef.current.y;
-    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) {
+    // Lock axis on first significant movement
+    if (!swipeAxisRef.current && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) {
+      swipeAxisRef.current = Math.abs(dx) > Math.abs(dy) ? 'horizontal' : 'vertical';
+    }
+    if (swipeAxisRef.current === 'horizontal' && Math.abs(dx) > 10) {
       setSwiping(true);
       setSwipeOffset(dx);
     }
   }, []);
 
-  const handleTouchEnd = useCallback(() => {
-    if (Math.abs(swipeOffset) > 60) {
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+    const dy = e.changedTouches[0].clientY - touchStartRef.current.y;
+
+    // Horizontal swipe — month navigation
+    if (swipeAxisRef.current === 'horizontal' && Math.abs(swipeOffset) > 60) {
       if (swipeOffset > 0) {
         setCurrentMonth(m => new Date(m.getFullYear(), m.getMonth() - 1));
       } else {
         setCurrentMonth(m => new Date(m.getFullYear(), m.getMonth() + 1));
       }
     }
+
+    // Vertical swipe — open Library (up) or Waiting Room (down)
+    if (swipeAxisRef.current === 'vertical' && Math.abs(dy) > 80) {
+      if (dy < -80) {
+        // Swipe up → open Library
+        useLibraryStore.getState().setPanelOpen(true);
+      } else if (dy > 80) {
+        // Swipe down → open Waiting Room
+        window.dispatchEvent(new CustomEvent('toggle-waiting-room'));
+      }
+    }
+
     setSwipeOffset(0);
     setSwiping(false);
     touchStartRef.current = null;
+    swipeAxisRef.current = null;
   }, [swipeOffset]);
 
   const calendarData = useMemo(() => {
