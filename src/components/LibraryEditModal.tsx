@@ -173,32 +173,11 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="What needs doing…"
-            className="w-full bg-transparent font-display font-bold text-foreground text-lg leading-tight focus:outline-none placeholder:text-muted-foreground/25 mb-1"
-          />
-
-          {/* ─── Subtitle / Notes (freeform, replaces Notes section) ─── */}
-          <textarea
-            ref={noteRef}
-            value={note}
-            onChange={(e) => {
-              setNote(e.target.value);
-              const ta = e.target;
-              ta.style.height = 'auto';
-              ta.style.height = ta.scrollHeight + 'px';
-            }}
-            onFocus={(e) => {
-              const ta = e.target;
-              ta.style.height = 'auto';
-              ta.style.height = ta.scrollHeight + 'px';
-            }}
-            placeholder="Add details, context, links…"
-            rows={1}
-            className="w-full bg-transparent text-[13px] font-mono text-foreground/60 placeholder:text-muted-foreground/20 focus:outline-none resize-none leading-relaxed mb-4"
-            style={{ minHeight: '24px' }}
+            className="w-full bg-transparent font-display font-bold text-foreground text-lg leading-tight focus:outline-none placeholder:text-muted-foreground/25 mb-2"
           />
 
           {/* ─── Metadata chips ─── */}
-          <div className="flex items-center gap-1.5 flex-wrap mb-5">
+          <div className="flex items-center gap-1.5 flex-wrap mb-3">
             {/* Duration */}
             <Popover open={showDurationPicker} onOpenChange={setShowDurationPicker}>
               <PopoverTrigger asChild>
@@ -212,7 +191,7 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
               </PopoverContent>
             </Popover>
 
-            {/* Due date — popover calendar */}
+            {/* Due date */}
             <Popover open={showDuePicker} onOpenChange={setShowDuePicker}>
               <PopoverTrigger asChild>
                 <button className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
@@ -248,7 +227,7 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
               </PopoverContent>
             </Popover>
 
-            {/* Category */}
+            {/* Category / Tag */}
             <Popover open={showCatPicker} onOpenChange={setShowCatPicker}>
               <PopoverTrigger asChild>
                 <button className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
@@ -301,7 +280,7 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
               </PopoverContent>
             </Popover>
 
-            {/* Priority toggles as chips */}
+            {/* Urgent toggle */}
             <button
               onClick={() => setIsUrgent(!isUrgent)}
               className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
@@ -313,6 +292,8 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
               <Clock size={10} strokeWidth={1.5} />
               {isUrgent ? 'Urgent' : ''}
             </button>
+
+            {/* Important toggle */}
             <button
               onClick={() => setIsImportant(!isImportant)}
               className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
@@ -325,6 +306,21 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
               {isImportant ? 'Important' : ''}
             </button>
           </div>
+
+          {/* ─── Subtitle / Notes (always fully visible) ─── */}
+          <textarea
+            ref={noteRef}
+            value={note}
+            onChange={(e) => {
+              setNote(e.target.value);
+              const ta = e.target;
+              ta.style.height = 'auto';
+              ta.style.height = ta.scrollHeight + 'px';
+            }}
+            placeholder="Add details, context, links…"
+            rows={2}
+            className="w-full bg-transparent text-[13px] font-mono text-foreground/60 placeholder:text-muted-foreground/20 focus:outline-none resize-none leading-relaxed mb-4"
+          />
 
           {/* ─── Subtasks ─── */}
           {(subtasks.length > 0 || newSubtaskText) && (
