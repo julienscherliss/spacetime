@@ -438,17 +438,11 @@ export function TimelineTaskBlock({
               }`}>
                 {task.title}
               </div>
-              {height > 36 && task.time && showTimeLabels && (
+              {height > 36 && isActive && (
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="text-[10px] font-mono text-muted-foreground/50">{formatTime12h(task.time)}</span>
-                  {task.duration && (
-                    <span className="text-[10px] font-mono text-muted-foreground/35">{formatDuration(task.duration)}</span>
-                  )}
-                  {isActive && (
-                    <span className="text-[10px] font-mono text-primary/70">
-                      {formatDuration(Math.max(0, taskMinutes + (task.duration || 30) - nowMinutes))} left
-                    </span>
-                  )}
+                  <span className="text-[10px] font-mono text-primary/70">
+                    {formatDuration(Math.max(0, taskMinutes + (task.duration || 30) - nowMinutes))} left
+                  </span>
                 </div>
               )}
             </div>
@@ -469,15 +463,9 @@ export function TimelineTaskBlock({
             <div className="flex items-center gap-1 mt-auto">
               {hasRoutineConflict && (
                 <span className="text-[8px] font-mono tracking-wider uppercase text-[hsl(var(--routine-conflict-foreground))]" title="Conflicts with routine">
-                  ⚠ ROUTINE CONFLICT
+                  ⚠ CONFLICT
                 </span>
               )}
-              {task.type === 'recurring' && !hasRoutineConflict && (
-                <span className={`p-0.5 ${task.linked ? 'text-primary/40' : 'text-muted-foreground/20'}`} title={task.linked ? 'Linked' : 'Unlinked'}>
-                  {task.linked ? <Link size={9} /> : <Unlink size={9} />}
-                </span>
-              )}
-              <PriorityBadge priority={task.priority} />
             </div>
           )}
         </div>
