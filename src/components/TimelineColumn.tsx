@@ -902,7 +902,7 @@ export function TimelineColumn({
             return 0;
           });
 
-        const clusters = clusterTasks(sortedTasks, HOUR_HEIGHT);
+        const clusters = clusterTasks(sortedTasks, HOUR_HEIGHT, routineConflictIds);
 
         return clusters.map((cluster, ci) => {
           if (cluster.type === 'condensed' && cluster.tasks.length > 1) {
