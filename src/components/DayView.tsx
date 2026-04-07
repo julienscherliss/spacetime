@@ -324,11 +324,11 @@ export function DayView() {
           onTouchEnd={handleTouchEnd}
         >
           <div
+            ref={timelineWrapperRef}
             style={{
               transform: swiping ? `translateX(${swipeOffset * 0.3}px)` : 'none',
-              transition: swiping ? 'none' : isZoomAnimating
-                ? 'transform 0.2s ease-out'
-                : 'transform 0.2s ease-out',
+              transition: swiping ? 'none' : 'none',
+              overflow: 'hidden',
             }}
           >
             <TimelineColumn
