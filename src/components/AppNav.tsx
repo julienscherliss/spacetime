@@ -157,109 +157,112 @@ export function AppNav() {
   }
 
   // Desktop layout
+  const navItemBase = "relative flex items-center gap-1.5 px-3 py-2 rounded-md text-[11px] font-mono tracking-[0.06em] transition-colors whitespace-nowrap";
+  const navItemInactive = "text-muted-foreground/50 hover:text-foreground/70 hover:bg-muted/30";
+
   return (
-    <nav className="sticky top-0 z-40 bg-background/98 backdrop-blur-sm border-b border-border/40 shadow-[0_1px_3px_0_hsl(var(--foreground)/0.04)]">
-      <div className="max-w-5xl mx-auto flex items-center justify-between px-5 sm:px-6 py-3">
-        {/* Logo — more breathing room */}
-        <h1 className="flex flex-col leading-[0.85] font-display font-bold text-[12px] uppercase shrink-0 mr-6">
+    <nav className="sticky top-0 z-40 bg-background border-b border-border/30">
+      <div className="max-w-5xl mx-auto flex items-center h-12 px-5 sm:px-6 gap-8">
+        {/* Logo */}
+        <h1 className="flex flex-col leading-[0.85] font-display font-bold text-[13px] uppercase shrink-0">
           <span className="text-foreground tracking-[0.14em]">space</span>
-          <span className="text-muted-foreground/50 tracking-[0.38em]">time</span>
+          <span className="text-muted-foreground/45 tracking-[0.38em]">time</span>
         </h1>
 
         {/* LEFT GROUP — View tabs */}
-        <div className="flex items-center bg-muted/40 rounded-md p-0.5 gap-0.5">
+        <div className="flex items-center bg-muted/30 rounded-md p-0.5 gap-0.5">
           {views.map(({ mode, icon: Icon, label }) => (
             <button
               key={mode}
               onClick={() => setViewMode(mode)}
-              className={`relative flex items-center gap-2 px-4 py-2.5 rounded-md text-[11px] font-mono tracking-[0.08em] transition-colors whitespace-nowrap ${
+              className={`${navItemBase} ${
                 viewMode === mode
-                  ? 'text-foreground font-semibold'
-                  : 'text-muted-foreground/60 hover:text-foreground/80 hover:bg-muted/40'
+                  ? 'text-foreground'
+                  : navItemInactive
               }`}
             >
               {viewMode === mode && (
                 <motion.div
                   layoutId="activeView"
-                  className="absolute inset-0 bg-card rounded-md border border-border/50 shadow-sm"
+                  className="absolute inset-0 bg-card rounded-md border border-border/40 shadow-sm"
                   transition={{ type: 'spring', bounce: 0.08, duration: 0.4 }}
                 />
               )}
-              <span className="relative z-10 flex items-center gap-2">
-                <Icon size={14} strokeWidth={viewMode === mode ? 2 : 1.5} />
-                <span>{label}</span>
+              <span className="relative z-10 flex items-center gap-1.5">
+                <Icon size={13} strokeWidth={viewMode === mode ? 2 : 1.5} />
+                <span className={viewMode === mode ? 'font-medium' : ''}>{label}</span>
               </span>
             </button>
           ))}
         </div>
 
-        {/* Spacer between groups */}
-        <div className="flex-1 min-w-6" />
+        {/* Flexible spacer */}
+        <div className="flex-1" />
 
         {/* RIGHT GROUP — Sections */}
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-0.5 shrink-0">
           <button
             onClick={toggleRoutines}
-            className={`flex items-center gap-1.5 px-3 py-2.5 rounded-md text-[11px] font-mono tracking-wider transition-colors ${
+            className={`${navItemBase} ${
               routinesEnabled
-                ? 'bg-primary/8 text-primary border border-primary/15 font-semibold'
-                : 'text-muted-foreground/50 hover:text-foreground hover:bg-muted/30'
+                ? 'bg-primary/8 text-primary border border-primary/12'
+                : navItemInactive
             }`}
           >
-            <Repeat size={14} strokeWidth={1.5} />
-            <span>{routinesEnabled ? 'ROUTINES' : 'OFF'}</span>
+            <Repeat size={13} strokeWidth={1.5} />
+            <span className={routinesEnabled ? 'font-medium' : ''}>{routinesEnabled ? 'ROUTINES' : 'OFF'}</span>
           </button>
           <button
             onClick={() => setLibPanelOpen(!libPanelOpen)}
-            className={`flex items-center gap-1.5 px-3 py-2.5 rounded-md text-[11px] font-mono tracking-wider transition-colors ${
+            className={`${navItemBase} ${
               libPanelOpen
-                ? 'bg-primary/8 text-primary border border-primary/15 font-semibold'
-                : 'text-muted-foreground/50 hover:text-foreground hover:bg-muted/30'
+                ? 'bg-primary/8 text-primary border border-primary/12'
+                : navItemInactive
             }`}
           >
-            <Archive size={14} strokeWidth={1.5} />
-            <span>LIBRARY</span>
+            <Archive size={13} strokeWidth={1.5} />
+            <span className={libPanelOpen ? 'font-medium' : ''}>LIBRARY</span>
             {libCount > 0 && (
-              <span className="text-[10px] font-mono text-muted-foreground/40 ml-0.5">{libCount}</span>
+              <span className="text-[9px] font-mono text-muted-foreground/35 ml-0.5">{libCount}</span>
             )}
           </button>
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('toggle-waiting-room'))}
-            className="flex items-center gap-1.5 px-3 py-2.5 rounded-md text-[11px] font-mono tracking-wider text-muted-foreground/50 hover:text-foreground hover:bg-muted/30 transition-colors relative"
+            className={`${navItemBase} ${navItemInactive} relative`}
           >
-            <Clock size={14} strokeWidth={1.5} />
+            <Clock size={13} strokeWidth={1.5} />
             <span>WAITING</span>
             {waitingCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] rounded-full bg-primary text-primary-foreground text-[9px] font-mono flex items-center justify-center">
+              <span className="absolute -top-0.5 -right-0.5 min-w-[15px] h-[15px] rounded-full bg-primary text-primary-foreground text-[8px] font-mono flex items-center justify-center">
                 {waitingCount}
               </span>
             )}
           </button>
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('toggle-archive'))}
-            className="flex items-center gap-1.5 px-3 py-2.5 rounded-md text-[11px] font-mono tracking-wider text-muted-foreground/50 hover:text-foreground hover:bg-muted/30 transition-colors"
+            className={`${navItemBase} ${navItemInactive}`}
           >
-            <ArchiveRestore size={14} strokeWidth={1.5} />
+            <ArchiveRestore size={13} strokeWidth={1.5} />
             <span>ARCHIVE</span>
           </button>
 
-          {/* Subtle separator */}
-          <div className="w-px h-5 bg-border/30 mx-1" />
+          {/* Utility separator */}
+          <div className="w-px h-4 bg-border/25 mx-1.5" />
 
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('toggle-settings'))}
-            className="flex items-center gap-1.5 px-2.5 py-2.5 rounded-md text-[11px] font-mono tracking-wider text-muted-foreground/40 hover:text-foreground hover:bg-muted/30 transition-colors"
+            className={`${navItemBase} ${navItemInactive} px-2`}
             title="Settings"
           >
-            <Settings size={14} strokeWidth={1.5} />
-            <span className="text-[10px] text-muted-foreground/30">{getTzAbbr(useTimezoneStore.getState().timezone)}</span>
+            <Settings size={13} strokeWidth={1.5} />
+            <span className="text-[9px] text-muted-foreground/25">{getTzAbbr(useTimezoneStore.getState().timezone)}</span>
           </button>
           <button
             onClick={signOut}
-            className="p-2.5 rounded-md text-muted-foreground/40 hover:text-foreground hover:bg-muted/30 transition-colors"
+            className="flex items-center justify-center p-2 rounded-md text-muted-foreground/35 hover:text-foreground hover:bg-muted/30 transition-colors"
             title="Sign out"
           >
-            <LogOut size={14} strokeWidth={1.5} />
+            <LogOut size={13} strokeWidth={1.5} />
           </button>
         </div>
       </div>
