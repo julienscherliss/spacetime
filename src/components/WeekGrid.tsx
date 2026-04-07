@@ -3,7 +3,6 @@ import { useTaskStore } from '@/store/taskStore';
 import { TimelineColumn, HOURS } from '@/components/TimelineColumn';
 import { formatHour12h } from '@/hooks/useCurrentTime';
 import { TaskCluster } from '@/utils/taskClustering';
-import { formatHour12h } from '@/hooks/useCurrentTime';
 
 interface WeekGridProps {
   weekOffset: number;
