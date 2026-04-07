@@ -98,24 +98,26 @@ export function WeekGrid({
         )}
       </div>
 
-      {/* Day headers */}
-      <div className="flex">
-        <div className={compact ? 'w-6 shrink-0' : 'w-[3.25rem] shrink-0'} />
-        {weekDays.map((day) => (
-          <div
-            key={day.date}
-            className={`flex-1 text-center py-1.5 border-b ${
-              day.isToday ? 'border-primary/20' : 'border-border/40'
-            }`}
-          >
-            <div className="text-[9px] font-mono tracking-[0.15em] text-muted-foreground/40">
-              {compact ? day.shortLabel : day.label}
+      {/* Day headers — sticky */}
+      <div className="sticky top-0 z-20 bg-background">
+        <div className="flex">
+          <div className={compact ? 'w-6 shrink-0' : 'w-[3.25rem] shrink-0'} />
+          {weekDays.map((day) => (
+            <div
+              key={day.date}
+              className={`flex-1 text-center py-1.5 border-b ${
+                day.isToday ? 'border-primary/20' : 'border-border/40'
+              }`}
+            >
+              <div className="text-[9px] font-mono tracking-[0.15em] text-muted-foreground/40">
+                {compact ? day.shortLabel : day.label}
+              </div>
+              <div className={`text-sm font-display font-bold ${day.isToday ? 'text-primary' : 'text-foreground/50'}`}>
+                {day.day}
+              </div>
             </div>
-            <div className={`text-sm font-display font-bold ${day.isToday ? 'text-primary' : 'text-foreground/50'}`}>
-              {day.day}
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {/* Timeline */}
