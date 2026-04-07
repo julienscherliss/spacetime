@@ -5,7 +5,6 @@ import { useCalendarStore } from '@/store/calendarStore';
 import { useCurrentTime } from '@/hooks/useCurrentTime';
 import { WeekGrid, WeekDayHeaders, useWeekDays } from '@/components/WeekGrid';
 import { BlockedModal } from '@/components/BlockedModal';
-import { ZoomControl } from '@/components/ZoomControl';
 import { useTimeScale, SCALE_MIN, SCALE_MAX } from '@/hooks/useTimeScale';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { FitViewButton } from '@/components/FitViewButton';
@@ -27,9 +26,8 @@ export function WeekView() {
   const dayCount = isMobile ? 3 : 7;
 
   const {
-    hourHeight, zoomIn, zoomOut, resetZoom, setScale,
+    hourHeight, setScale, resetZoom,
     bindScrollZoom, bindPinchZoom,
-    zoomPercent, isMin, isMax, isDefault,
   } = useTimeScale('week');
 
   // Cluster zoom state
@@ -162,71 +160,39 @@ export function WeekView() {
     !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring')
   );
   const completedCount = visibleTasks.filter(t => t.completed).length;
+  const headerControls = (
+    <div className="flex flex-col items-center gap-0.5 pb-0.5">
+      <button
+        onClick={() => setWeekOffset(o => o - 1)}
+        className="p-0.5 rounded-sm text-muted-foreground/40 hover:text-foreground transition-colors"
+      >
+        <ChevronLeft size={12} strokeWidth={1.5} />
+      </button>
+      <button
+        onClick={goToCurrentWeek}
+        className={`text-[7px] font-mono tracking-wider leading-none transition-colors ${
+          isCurrentWeek ? 'text-primary' : 'text-muted-foreground/40 hover:text-foreground'
+        }`}
+      >
+        NOW
+      </button>
+      <button
+        onClick={() => setWeekOffset(o => o + 1)}
+        className="p-0.5 rounded-sm text-muted-foreground/40 hover:text-foreground transition-colors"
+      >
+        <ChevronRight size={12} strokeWidth={1.5} />
+      </button>
+    </div>
+  );
 
   return (
-    <div className="w-full px-2 sm:px-3 lg:px-4 py-2 sm:py-3">
-      {/* Header — matches Day view structure */}
-      <div className="mb-2 flex items-center justify-between">
-        <div>
-          <h2 className="text-base sm:text-lg font-display font-bold text-foreground tracking-tight">
-            {rangeLabel}
-          </h2>
-          <p className="text-[10px] font-mono text-muted-foreground/50 mt-0.5 tracking-widest">
-            {completedCount}/{visibleTasks.length} COMPLETED
-          </p>
-        </div>
-
-        {/* Navigation — same rhythm as Day view */}
-        <div className="flex items-center gap-0.5">
-          <button
-            onClick={() => setWeekOffset(o => o - 1)}
-            className="p-1.5 rounded-sm text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors"
-          >
-            <ChevronLeft size={16} strokeWidth={1.5} />
-          </button>
-          <button
-            onClick={goToCurrentWeek}
-            className={`px-2.5 py-1 rounded-sm text-[10px] font-mono tracking-widest transition-colors ${
-              isCurrentWeek
-                ? 'text-primary bg-primary/5'
-                : 'text-muted-foreground/50 hover:text-foreground hover:bg-muted/50'
-            }`}
-          >
-            TODAY
-          </button>
-          <button
-            onClick={() => setWeekOffset(o => o + 1)}
-            className="p-1.5 rounded-sm text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors"
-          >
-            <ChevronRight size={16} strokeWidth={1.5} />
-          </button>
-          <FitViewButton
-            tasks={visibleTasks}
-            scrollRef={scrollRef as React.RefObject<HTMLElement>}
-            hourHeight={hourHeight}
-            setScale={setScale}
-            resetZoom={resetZoom}
-            nowMinutes={nowMinutes}
-          />
-        </div>
-      </div>
-
-      {/* Progress — matches Day view */}
-      <div className="h-px bg-border/40 mb-2 overflow-hidden">
-        <motion.div
-          className="h-full bg-primary/50"
-          initial={{ width: 0 }}
-          animate={{ width: visibleTasks.length > 0 ? `${(completedCount / visibleTasks.length) * 100}%` : '0%' }}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        />
-      </div>
-
+    <div className="w-full px-2 sm:px-3 lg:px-4 py-1">
       {/* Cluster zoom exit */}
       {clusterZoomed && (
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-3 flex items-center justify-center"
+          className="mb-2 flex items-center justify-center"
         >
           <button
             onClick={handleExitClusterZoom}
@@ -238,59 +204,61 @@ export function WeekView() {
         </motion.div>
       )}
 
-      {/* Pinned day headers */}
+      {/* Pinned day headers with integrated controls */}
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-baseline gap-2">
+          <span className="text-[10px] font-mono text-muted-foreground/40 tracking-widest">
+            {rangeLabel}
+          </span>
+          <span className="text-[9px] font-mono text-muted-foreground/30 tracking-wider">
+            {completedCount}/{visibleTasks.length}
+          </span>
+        </div>
+        <FitViewButton
+          tasks={visibleTasks}
+          scrollRef={scrollRef as React.RefObject<HTMLElement>}
+          hourHeight={hourHeight}
+          setScale={setScale}
+          resetZoom={resetZoom}
+          nowMinutes={nowMinutes}
+        />
+      </div>
+
       <WeekDayHeaders
         weekOffset={weekOffset}
         today={today}
         compact={isMobile}
         dayCount={dayCount}
+        controls={headerControls}
       />
 
-      {/* Timeline + Zoom control */}
-      <div className="flex gap-1 sm:gap-2">
+      {/* Timeline */}
+      <div
+        ref={scrollRef}
+        className="overflow-y-auto overflow-x-hidden"
+        style={{ maxHeight: 'calc(100vh - 120px)', WebkitOverflowScrolling: 'touch' }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         <div
-          ref={scrollRef}
-          className="flex-1 overflow-y-auto overflow-x-hidden"
-          style={{ maxHeight: 'calc(100vh - 140px)', WebkitOverflowScrolling: 'touch' }}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
+          style={{
+            transform: swiping ? `translateX(${swipeOffset * 0.2}px)` : 'none',
+            transition: swiping ? 'none' : 'none',
+            overflow: 'hidden',
+          }}
         >
-          <div
-            style={{
-              transform: swiping ? `translateX(${swipeOffset * 0.2}px)` : 'none',
-              transition: swiping ? 'none' : 'none',
-              overflow: 'hidden',
-            }}
-          >
-            <WeekGrid
-              weekOffset={weekOffset}
-              today={today}
-              nowMinutes={nowMinutes}
-              hourHeight={hourHeight}
-              routinesEnabled={routinesEnabled}
-              compact={isMobile}
-              dayCount={dayCount}
-              onZoomToCluster={handleZoomToCluster}
-            />
-          </div>
+          <WeekGrid
+            weekOffset={weekOffset}
+            today={today}
+            nowMinutes={nowMinutes}
+            hourHeight={hourHeight}
+            routinesEnabled={routinesEnabled}
+            compact={isMobile}
+            dayCount={dayCount}
+            onZoomToCluster={handleZoomToCluster}
+          />
         </div>
-
-        {/* Zoom control — desktop only */}
-        {!isMobile && (
-          <div className="shrink-0 pt-2 hidden sm:block">
-            <ZoomControl
-              onZoomIn={zoomIn}
-              onZoomOut={zoomOut}
-              onReset={resetZoom}
-              onSetScale={setScale}
-              zoomPercent={zoomPercent}
-              isMin={isMin}
-              isMax={isMax}
-              isDefault={isDefault}
-            />
-          </div>
-        )}
       </div>
 
       <BlockedModal taskId="" open={false} onClose={() => {}} />
