@@ -5,6 +5,7 @@ import { X, Trash2, Clock, AlertTriangle, Tag, CalendarDays, Plus, Check } from 
 import { DurationPicker } from '@/components/ScrollWheelPicker';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 
 function formatDuration(m: number): string {
   const h = Math.floor(m / 60);
@@ -78,6 +79,7 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
   const [newCatInline, setNewCatInline] = useState('');
   const [showNewCatInput, setShowNewCatInput] = useState(false);
   const [showDurationPicker, setShowDurationPicker] = useState(false);
+  const [showDuePicker, setShowDuePicker] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
   const noteRef = useRef<HTMLTextAreaElement>(null);
   const newSubtaskRef = useRef<HTMLInputElement>(null);
@@ -210,33 +212,41 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
               </PopoverContent>
             </Popover>
 
-            {/* Due date */}
-            <div className="relative">
-              <input
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10"
-              />
-              <span className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
-                dueBadge?.overdue
-                  ? 'text-destructive/80 bg-destructive/10'
-                  : dueDate
-                    ? 'text-foreground/70 bg-muted/40'
-                    : 'text-muted-foreground/40 bg-muted/30 hover:bg-muted/50'
-              }`}>
-                <CalendarDays size={11} strokeWidth={1.5} />
-                {dueBadge ? dueBadge.text : 'Due'}
-              </span>
-            </div>
-            {dueDate && (
-              <button
-                onClick={() => setDueDate('')}
-                className="text-[9px] text-muted-foreground/30 hover:text-foreground font-mono"
-              >
-                ×
-              </button>
-            )}
+            {/* Due date — popover calendar */}
+            <Popover open={showDuePicker} onOpenChange={setShowDuePicker}>
+              <PopoverTrigger asChild>
+                <button className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
+                  dueBadge?.overdue
+                    ? 'text-destructive/80 bg-destructive/10'
+                    : dueDate
+                      ? 'text-foreground/70 bg-muted/40'
+                      : 'text-muted-foreground/40 bg-muted/30 hover:bg-muted/50'
+                }`}>
+                  <CalendarDays size={11} strokeWidth={1.5} />
+                  {dueBadge ? dueBadge.text : 'Due'}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 z-[70]" align="start" onClick={(e) => e.stopPropagation()}>
+                <CalendarPicker
+                  mode="single"
+                  selected={dueDate ? new Date(dueDate + 'T12:00:00') : undefined}
+                  onSelect={(d) => {
+                    if (d) setDueDate(d.toISOString().split('T')[0]);
+                    else setDueDate('');
+                    setShowDuePicker(false);
+                  }}
+                  className="p-3 pointer-events-auto"
+                />
+                {dueDate && (
+                  <div className="px-3 pb-2">
+                    <button onClick={() => { setDueDate(''); setShowDuePicker(false); }}
+                      className="text-[10px] font-mono text-muted-foreground/40 hover:text-destructive/60">
+                      Remove due date
+                    </button>
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
 
             {/* Category */}
             <Popover open={showCatPicker} onOpenChange={setShowCatPicker}>

@@ -129,6 +129,8 @@ export function TaskEditPanel() {
   const [isRoutine, setIsRoutine] = useState(task?.isRoutine !== false && task?.type === 'recurring');
   const [isLinked, setIsLinked] = useState(task?.linked || false);
   const [showRecurrence, setShowRecurrence] = useState(false);
+  const [showCatPicker, setShowCatPicker] = useState(false);
+  const [taskCategory, setTaskCategory] = useState(task?.category || '');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showEditScope, setShowEditScope] = useState(false);
   const [pendingUpdates, setPendingUpdates] = useState<any>(null);
@@ -166,7 +168,9 @@ export function TaskEditPanel() {
       setShowEditScope(false);
       setPendingUpdates(null);
       setDueDate(task.dueDate || '');
+      setTaskCategory(task.category || '');
       setShowDuePicker(false);
+      setShowCatPicker(false);
       setSaveStatus('idle');
       setShowLinkInput(false);
       setLinkInput('');
@@ -226,6 +230,7 @@ export function TaskEditPanel() {
       linkedGroupId: (recurrence && isLinked) ? (task?.linkedGroupId || task?.id || seriesId) : undefined,
       detachedFromSeries: (recurrence && !isLinked && task?.recurrenceParentId) ? true : false,
       dueDate: dueDate || undefined,
+      category: taskCategory || undefined,
     };
   };
 
@@ -477,7 +482,37 @@ export function TaskEditPanel() {
                   </PopoverContent>
                 </Popover>
 
-                {/* Priority chips */}
+                {/* Category / Tag */}
+                <Popover open={showCatPicker} onOpenChange={setShowCatPicker}>
+                  <PopoverTrigger asChild>
+                    <button className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
+                      taskCategory
+                        ? 'text-foreground/70 bg-muted/40 hover:bg-muted/60'
+                        : 'text-muted-foreground/40 bg-muted/30 hover:bg-muted/50'
+                    }`}>
+                      <Tag size={10} strokeWidth={1.5} />
+                      {taskCategory ? (useLibraryStore.getState().categories.find(c => c.value === taskCategory)?.label || taskCategory) : 'Tag'}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-40 p-1 z-[70]" align="start" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => { setTaskCategory(''); setShowCatPicker(false); }}
+                      className={`w-full text-left px-3 py-2 text-[11px] font-mono rounded-sm ${!taskCategory ? 'text-foreground bg-muted/50' : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30'}`}
+                    >
+                      No tag
+                    </button>
+                    {useLibraryStore.getState().categories.map((cat) => (
+                      <button
+                        key={cat.value}
+                        onClick={() => { setTaskCategory(cat.value); setShowCatPicker(false); }}
+                        className={`w-full text-left px-3 py-2 text-[11px] font-mono rounded-sm ${taskCategory === cat.value ? 'text-foreground bg-muted/50' : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30'}`}
+                      >
+                        {cat.label}
+                      </button>
+                    ))}
+                  </PopoverContent>
+                </Popover>
+
                 {([0, 1, 2, 3] as Priority[]).map((p) => (
                   <button
                     key={p}
