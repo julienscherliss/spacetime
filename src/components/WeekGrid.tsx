@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import { useTaskStore } from '@/store/taskStore';
 import { TimelineColumn, HOURS } from '@/components/TimelineColumn';
 import { formatHour12h } from '@/hooks/useCurrentTime';
+import { TaskCluster } from '@/utils/taskClustering';
+import { formatHour12h } from '@/hooks/useCurrentTime';
 
 interface WeekGridProps {
   weekOffset: number;
@@ -66,6 +68,18 @@ export function useWeekDays(offset: number, today: string, count: number = 7) {
   return useMemo(() => getWeekDays(offset, today, count), [offset, today, count]);
 }
 
+interface WeekGridProps {
+  weekOffset: number;
+  today: string;
+  nowMinutes: number;
+  hourHeight: number;
+  routinesEnabled: boolean;
+  label?: string;
+  compact?: boolean;
+  dayCount?: number;
+  onZoomToCluster?: (cluster: TaskCluster, targetHourHeight: number, scrollToMin: number) => void;
+}
+
 export function WeekGrid({
   weekOffset,
   today,
@@ -75,6 +89,7 @@ export function WeekGrid({
   label,
   compact = false,
   dayCount = 7,
+  onZoomToCluster,
 }: WeekGridProps) {
   const { tasks } = useTaskStore();
   const weekDays = useWeekDays(weekOffset, today, dayCount);
@@ -147,6 +162,7 @@ export function WeekGrid({
                 isToday={day.isToday}
                 showTimeLabels={false}
                 hourHeight={hourHeight}
+                onZoomToCluster={onZoomToCluster}
               />
             </div>
           );
