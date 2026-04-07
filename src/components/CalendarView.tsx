@@ -12,60 +12,79 @@ export function CalendarView() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   // Swipe state
+  const containerRef = useRef<HTMLDivElement>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const swipeOffsetRef = useRef(0);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [swiping, setSwiping] = useState(false);
   const swipeAxisRef = useRef<'horizontal' | 'vertical' | null>(null);
 
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length !== 1) return;
-    touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    swipeAxisRef.current = null;
-  }, []);
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
 
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!touchStartRef.current || e.touches.length !== 1) return;
-    const dx = e.touches[0].clientX - touchStartRef.current.x;
-    const dy = e.touches[0].clientY - touchStartRef.current.y;
-    // Lock axis on first significant movement
-    if (!swipeAxisRef.current && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) {
-      swipeAxisRef.current = Math.abs(dx) > Math.abs(dy) ? 'horizontal' : 'vertical';
-    }
-    if (swipeAxisRef.current === 'horizontal' && Math.abs(dx) > 10) {
-      setSwiping(true);
-      setSwipeOffset(dx);
-    }
-  }, []);
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      swipeAxisRef.current = null;
+      swipeOffsetRef.current = 0;
+    };
 
-  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    if (!touchStartRef.current) return;
-    const dy = e.changedTouches[0].clientY - touchStartRef.current.y;
-
-    // Horizontal swipe — month navigation
-    if (swipeAxisRef.current === 'horizontal' && Math.abs(swipeOffset) > 60) {
-      if (swipeOffset > 0) {
-        setCurrentMonth(m => new Date(m.getFullYear(), m.getMonth() - 1));
-      } else {
-        setCurrentMonth(m => new Date(m.getFullYear(), m.getMonth() + 1));
+    const onTouchMove = (e: TouchEvent) => {
+      if (!touchStartRef.current || e.touches.length !== 1) return;
+      const dx = e.touches[0].clientX - touchStartRef.current.x;
+      const dy = e.touches[0].clientY - touchStartRef.current.y;
+      if (!swipeAxisRef.current && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) {
+        swipeAxisRef.current = Math.abs(dx) > Math.abs(dy) ? 'horizontal' : 'vertical';
       }
-    }
-
-    // Vertical swipe — open Library (up) or Waiting Room (down)
-    if (swipeAxisRef.current === 'vertical' && Math.abs(dy) > 80) {
-      if (dy < -80) {
-        // Swipe up → open Library
-        useLibraryStore.getState().setPanelOpen(true);
-      } else if (dy > 80) {
-        // Swipe down → open Waiting Room
-        window.dispatchEvent(new CustomEvent('toggle-waiting-room'));
+      if (swipeAxisRef.current === 'horizontal' && Math.abs(dx) > 10) {
+        e.preventDefault();
+        setSwiping(true);
+        swipeOffsetRef.current = dx;
+        setSwipeOffset(dx);
       }
-    }
+      if (swipeAxisRef.current === 'vertical' && Math.abs(dy) > 30) {
+        e.preventDefault();
+      }
+    };
 
-    setSwipeOffset(0);
-    setSwiping(false);
-    touchStartRef.current = null;
-    swipeAxisRef.current = null;
-  }, [swipeOffset]);
+    const onTouchEnd = (e: TouchEvent) => {
+      if (!touchStartRef.current) return;
+      const dy = e.changedTouches[0].clientY - touchStartRef.current.y;
+      const dx = swipeOffsetRef.current;
+
+      if (swipeAxisRef.current === 'horizontal' && Math.abs(dx) > 60) {
+        if (dx > 0) {
+          setCurrentMonth(m => new Date(m.getFullYear(), m.getMonth() - 1));
+        } else {
+          setCurrentMonth(m => new Date(m.getFullYear(), m.getMonth() + 1));
+        }
+      }
+
+      if (swipeAxisRef.current === 'vertical' && Math.abs(dy) > 80) {
+        if (dy < -80) {
+          useLibraryStore.getState().setPanelOpen(true);
+        } else if (dy > 80) {
+          window.dispatchEvent(new CustomEvent('toggle-waiting-room'));
+        }
+      }
+
+      setSwipeOffset(0);
+      setSwiping(false);
+      swipeOffsetRef.current = 0;
+      touchStartRef.current = null;
+      swipeAxisRef.current = null;
+    };
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    el.addEventListener('touchend', onTouchEnd, { passive: true });
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+    };
+  }, []);
 
   const calendarData = useMemo(() => {
     const year = currentMonth.getFullYear();
@@ -131,10 +150,8 @@ export function CalendarView() {
 
   return (
     <div
+      ref={containerRef}
       className="max-w-2xl mx-auto px-3 sm:px-4 py-4"
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
