@@ -141,16 +141,14 @@ export function WeekView() {
   const goToCurrentWeek = () => setWeekOffset(0);
   const isCurrentWeek = weekOffset === 0;
 
-  // Date range label
-  const rangeLabel = (() => {
+  // Month label
+  const monthLabel = (() => {
     if (week.length === 0) return '';
     const startDate = new Date(week[0].date + 'T12:00:00');
     const endDate = new Date(week[week.length - 1].date + 'T12:00:00');
-    const sameMonth = startDate.getMonth() === endDate.getMonth();
-    if (sameMonth) {
-      return `${startDate.toLocaleDateString('en-US', { month: 'long' })} ${startDate.getDate()}–${endDate.getDate()}`;
-    }
-    return `${startDate.toLocaleDateString('en-US', { month: 'short' })} ${startDate.getDate()} – ${endDate.toLocaleDateString('en-US', { month: 'short' })} ${endDate.getDate()}`;
+    const startMonth = startDate.toLocaleDateString('en-US', { month: 'long' });
+    const endMonth = endDate.toLocaleDateString('en-US', { month: 'long' });
+    return startMonth === endMonth ? startMonth : `${startDate.toLocaleDateString('en-US', { month: 'short' })} / ${endDate.toLocaleDateString('en-US', { month: 'short' })}`;
   })();
 
   // Visible tasks for fit button
@@ -159,7 +157,6 @@ export function WeekView() {
     visibleDates.has(t.date) && !t.inWaitingRoom && !t.archivedAt &&
     !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring')
   );
-  const completedCount = visibleTasks.filter(t => t.completed).length;
   const headerControls = (
     <div className="flex flex-col items-center gap-0.5 pb-0.5">
       <button
@@ -206,14 +203,9 @@ export function WeekView() {
 
       {/* Pinned day headers with integrated controls */}
       <div className="flex items-center justify-between mb-1">
-        <div className="flex items-baseline gap-2">
-          <span className="text-[10px] font-mono text-muted-foreground/40 tracking-widest">
-            {rangeLabel}
-          </span>
-          <span className="text-[9px] font-mono text-muted-foreground/30 tracking-wider">
-            {completedCount}/{visibleTasks.length}
-          </span>
-        </div>
+        <span className="text-[11px] font-mono text-muted-foreground/50 tracking-widest uppercase">
+          {monthLabel}
+        </span>
         <FitViewButton
           tasks={visibleTasks}
           scrollRef={scrollRef as React.RefObject<HTMLElement>}
