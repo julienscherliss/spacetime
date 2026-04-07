@@ -22,6 +22,20 @@ function UrgencyIcons({ item }: { item: LibraryTask }) {
   );
 }
 
+function getDueBadge(dueDate?: string | null): { text: string; urgent: boolean } | null {
+  if (!dueDate) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(dueDate + 'T12:00:00');
+  due.setHours(0, 0, 0, 0);
+  const diffMs = due.getTime() - today.getTime();
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) return { text: 'Overdue', urgent: true };
+  if (diffDays === 0) return { text: 'Due today', urgent: true };
+  if (diffDays === 1) return { text: 'Tomorrow', urgent: false };
+  return { text: `${diffDays}d`, urgent: false };
+}
+
 function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: boolean; onEdit: () => void }) {
   const { deleteItem } = useLibraryStore();
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -57,6 +71,7 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
   }, []);
 
   const catLabel = useLibraryStore.getState().categories.find(c => c.value === item.category)?.label;
+  const dueBadge = getDueBadge(item.dueDate);
 
   return (
     <div
@@ -74,11 +89,20 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
         <div className={`font-mono text-foreground font-medium truncate leading-tight ${isMobile ? 'text-[15px]' : 'text-[13px]'}`}>
           {item.title}
         </div>
-        {catLabel && (
-          <span className={`font-mono text-muted-foreground/60 tracking-wider ${isMobile ? 'text-[11px]' : 'text-[10px]'}`}>
-            {catLabel}
-          </span>
-        )}
+        <div className="flex items-center gap-2 mt-0.5">
+          {catLabel && (
+            <span className={`font-mono text-muted-foreground/60 tracking-wider ${isMobile ? 'text-[11px]' : 'text-[10px]'}`}>
+              {catLabel}
+            </span>
+          )}
+          {dueBadge && (
+            <span className={`font-mono tracking-wider ${isMobile ? 'text-[10px]' : 'text-[9px]'} ${
+              dueBadge.urgent ? 'text-destructive/70' : 'text-muted-foreground/50'
+            }`}>
+              {dueBadge.text}
+            </span>
+          )}
+        </div>
       </div>
 
       {item.defaultDuration > 0 && (
