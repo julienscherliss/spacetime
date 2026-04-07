@@ -38,83 +38,50 @@ export function WeekView() {
   const [clusterZoomed, setClusterZoomed] = useState(false);
   const preClusterScaleRef = useRef<number | null>(null);
   const preClusterScrollRef = useRef<number | null>(null);
-  const weekWrapperRef = useRef<HTMLDivElement>(null);
-  const [isZoomAnimating, setIsZoomAnimating] = useState(false);
-
   const handleZoomToCluster = useCallback((cluster: TaskCluster, targetHourHeight: number, scrollToMin: number) => {
-    if (!scrollRef.current || !weekWrapperRef.current) return;
+    if (!scrollRef.current) return;
     const el = scrollRef.current;
-    const wrapper = weekWrapperRef.current;
     preClusterScaleRef.current = hourHeight;
     preClusterScrollRef.current = el.scrollTop;
 
     const clamped = Math.min(SCALE_MAX, Math.max(SCALE_MIN, targetHourHeight));
     const viewportH = el.clientHeight;
-    const scaleRatio = clamped / hourHeight;
     const clusterCenterMin = (cluster.startMin + cluster.endMin) / 2;
-    const clusterCenterY = ((clusterCenterMin - START_HOUR * 60) / 60) * hourHeight;
 
-    wrapper.style.transformOrigin = `${wrapper.offsetWidth / 2}px ${clusterCenterY}px`;
-    setIsZoomAnimating(true);
-    wrapper.style.transition = 'transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)';
-    wrapper.style.transform = `scale(${scaleRatio})`;
+    el.style.scrollBehavior = 'auto';
+    setScale(clamped);
+    setClusterZoomed(true);
 
-    setTimeout(() => {
-      wrapper.style.transition = 'none';
-      wrapper.style.transform = 'none';
-      wrapper.style.transformOrigin = '';
+    const targetScrollTop = Math.max(0,
+      ((clusterCenterMin - START_HOUR * 60) / 60) * clamped - viewportH / 2
+    );
 
-      el.style.scrollBehavior = 'auto';
-      setScale(clamped);
-      setClusterZoomed(true);
-
-      const targetScrollTop = Math.max(0,
-        ((clusterCenterMin - START_HOUR * 60) / 60) * clamped - viewportH / 2
-      );
-
-      queueMicrotask(() => {
-        el.scrollTop = targetScrollTop;
-        requestAnimationFrame(() => {
-          el.style.scrollBehavior = '';
-          setIsZoomAnimating(false);
-        });
+    queueMicrotask(() => {
+      el.scrollTop = targetScrollTop;
+      requestAnimationFrame(() => {
+        el.style.scrollBehavior = '';
       });
-    }, 310);
+    });
   }, [hourHeight, setScale]);
 
   const handleExitClusterZoom = useCallback(() => {
-    if (!scrollRef.current || !weekWrapperRef.current || preClusterScaleRef.current === null) {
+    if (!scrollRef.current || preClusterScaleRef.current === null) {
       setClusterZoomed(false);
       return;
     }
     const el = scrollRef.current;
-    const wrapper = weekWrapperRef.current;
     const restoreScale = preClusterScaleRef.current;
     const restoreScroll = preClusterScrollRef.current ?? 0;
-    const scaleRatio = restoreScale / hourHeight;
-    const viewCenterY = el.scrollTop + el.clientHeight / 2;
 
-    wrapper.style.transformOrigin = `${wrapper.offsetWidth / 2}px ${viewCenterY}px`;
-    setIsZoomAnimating(true);
-    wrapper.style.transition = 'transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)';
-    wrapper.style.transform = `scale(${scaleRatio})`;
+    el.style.scrollBehavior = 'auto';
+    setScale(restoreScale);
 
-    setTimeout(() => {
-      wrapper.style.transition = 'none';
-      wrapper.style.transform = 'none';
-      wrapper.style.transformOrigin = '';
-
-      el.style.scrollBehavior = 'auto';
-      setScale(restoreScale);
-
-      queueMicrotask(() => {
-        el.scrollTop = restoreScroll;
-        requestAnimationFrame(() => {
-          el.style.scrollBehavior = '';
-          setIsZoomAnimating(false);
-        });
+    queueMicrotask(() => {
+      el.scrollTop = restoreScroll;
+      requestAnimationFrame(() => {
+        el.style.scrollBehavior = '';
       });
-    }, 310);
+    });
 
     setClusterZoomed(false);
     preClusterScaleRef.current = null;
@@ -266,7 +233,6 @@ export function WeekView() {
           onTouchEnd={handleTouchEnd}
         >
           <div
-            ref={weekWrapperRef}
             style={{
               transform: swiping ? `translateX(${swipeOffset * 0.2}px)` : 'none',
               transition: swiping ? 'none' : 'none',
