@@ -1,29 +1,34 @@
 import { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useLibraryStore, LibraryTask, LibrarySubtask } from '@/store/libraryStore';
 import { X, Trash2, Clock, AlertTriangle, Tag, CalendarDays, Plus, Check } from 'lucide-react';
 import { DurationPicker } from '@/components/ScrollWheelPicker';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+
+function formatDuration(m: number): string {
+  const h = Math.floor(m / 60);
+  const mins = m % 60;
+  if (h > 0 && mins > 0) return `${h}h ${mins}m`;
+  if (h > 0) return `${h}h`;
+  return `${mins}m`;
+}
+
+function getDueBadge(dueDate: string): { text: string; overdue: boolean } {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(dueDate + 'T12:00:00');
+  due.setHours(0, 0, 0, 0);
+  const diff = Math.round((due.getTime() - today.getTime()) / 86400000);
+  if (diff < 0) return { text: 'Overdue', overdue: true };
+  if (diff === 0) return { text: 'Today', overdue: false };
+  if (diff === 1) return { text: 'Tomorrow', overdue: false };
+  return { text: `${diff}d`, overdue: false };
+}
 
 interface LibraryEditModalProps {
   item: LibraryTask;
   onClose: () => void;
-}
-
-function PriorityToggle({ active, icon, label, onClick }: { active: boolean; icon: React.ReactNode; label: string; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-md border text-[11px] font-mono tracking-wider transition-all min-h-[42px] ${
-        active
-          ? 'border-foreground/25 bg-foreground/[0.06] text-foreground font-medium'
-          : 'border-border/60 text-muted-foreground/50 hover:text-foreground hover:border-border'
-      }`}
-    >
-      {icon}
-      {label}
-    </button>
-  );
 }
 
 function SubtaskRow({ subtask, onToggle, onDelete, onChange }: {
@@ -33,25 +38,25 @@ function SubtaskRow({ subtask, onToggle, onDelete, onChange }: {
   onChange: (title: string) => void;
 }) {
   return (
-    <div className="flex items-center gap-2.5 group py-1.5">
+    <div className="flex items-center gap-2.5 group py-1">
       <Checkbox
         checked={subtask.completed}
         onCheckedChange={onToggle}
-        className="h-4 w-4 border-muted-foreground/40 data-[state=checked]:bg-primary/60 data-[state=checked]:border-primary/40"
+        className="h-3.5 w-3.5 border-muted-foreground/30 data-[state=checked]:bg-primary/50 data-[state=checked]:border-primary/30"
       />
       <input
         value={subtask.title}
         onChange={(e) => onChange(e.target.value)}
-        className={`flex-1 bg-transparent text-[13px] font-mono focus:outline-none placeholder:text-muted-foreground/30 ${
-          subtask.completed ? 'text-muted-foreground/40 line-through' : 'text-foreground/80'
+        className={`flex-1 bg-transparent text-[13px] font-mono focus:outline-none placeholder:text-muted-foreground/25 ${
+          subtask.completed ? 'text-muted-foreground/35 line-through' : 'text-foreground/75'
         }`}
         placeholder="Subtask…"
       />
       <button
         onClick={onDelete}
-        className="p-1 text-muted-foreground/25 hover:text-destructive opacity-0 group-hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+        className="p-0.5 text-muted-foreground/20 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
       >
-        <X size={12} />
+        <X size={11} />
       </button>
     </div>
   );
@@ -67,22 +72,19 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
   const [isImportant, setIsImportant] = useState(item.isImportant ?? false);
   const [dueDate, setDueDate] = useState(item.dueDate || '');
   const [subtasks, setSubtasks] = useState<LibrarySubtask[]>(item.subtasks || []);
+  const [newSubtaskText, setNewSubtaskText] = useState('');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved'>('idle');
   const [showCatPicker, setShowCatPicker] = useState(false);
   const [newCatInline, setNewCatInline] = useState('');
   const [showNewCatInput, setShowNewCatInput] = useState(false);
-  const [newSubtaskText, setNewSubtaskText] = useState('');
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved'>('idle');
+  const [showDurationPicker, setShowDurationPicker] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
+  const noteRef = useRef<HTMLTextAreaElement>(null);
   const newSubtaskRef = useRef<HTMLInputElement>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { titleRef.current?.focus(); }, []);
-
-  useEffect(() => {
-    return () => {
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    };
-  }, []);
+  useEffect(() => () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); }, []);
 
   const handleSave = () => {
     updateItem(item.id, {
@@ -97,9 +99,7 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
     });
     setSaveStatus('saved');
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(() => {
-      onClose();
-    }, 400);
+    saveTimeoutRef.current = setTimeout(() => onClose(), 400);
   };
 
   const handleDelete = () => {
@@ -110,8 +110,7 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
   const handleAddCatInline = () => {
     if (!newCatInline.trim()) { setShowNewCatInput(false); return; }
     addCategory(newCatInline.trim());
-    const val = newCatInline.trim().toLowerCase().replace(/\s+/g, '-');
-    setCategory(val);
+    setCategory(newCatInline.trim().toLowerCase().replace(/\s+/g, '-'));
     setNewCatInline('');
     setShowNewCatInput(false);
     setShowCatPicker(false);
@@ -124,19 +123,8 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
     newSubtaskRef.current?.focus();
   };
 
-  const toggleSubtask = (id: string) => {
-    setSubtasks(subtasks.map(s => s.id === id ? { ...s, completed: !s.completed } : s));
-  };
-
-  const deleteSubtask = (id: string) => {
-    setSubtasks(subtasks.filter(s => s.id !== id));
-  };
-
-  const updateSubtaskTitle = (id: string, title: string) => {
-    setSubtasks(subtasks.map(s => s.id === id ? { ...s, title } : s));
-  };
-
-  const catLabel = categories.find(c => c.value === category)?.label || (category ? category : 'No category');
+  const catLabel = categories.find(c => c.value === category)?.label || (category || '');
+  const dueBadge = dueDate ? getDueBadge(dueDate) : null;
 
   return (
     <motion.div
@@ -152,188 +140,215 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 24 }}
         transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-        className="bg-card border border-border/60 rounded-t-lg sm:rounded-lg w-full sm:max-w-sm shadow-lg max-h-[90vh] overflow-y-auto"
+        className="bg-card border border-border/50 rounded-t-lg sm:rounded-lg w-full sm:max-w-md shadow-lg max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header with Done + Save status */}
-        <div className="px-4 pt-4 pb-2.5 border-b border-border/40 flex items-center justify-between">
-          <span className="text-[11px] font-mono text-muted-foreground/70 font-medium tracking-wide">Edit item</span>
+        {/* ─── Header ─── */}
+        <div className="px-5 pt-4 pb-2 flex items-center justify-between">
           <div className="flex items-center gap-2">
             {saveStatus === 'saved' && (
-              <span className="flex items-center gap-1 text-[9px] font-mono text-primary/70 tracking-wider">
+              <motion.span
+                initial={{ opacity: 0, x: 4 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="flex items-center gap-1 text-[9px] font-mono text-primary/60 tracking-wider"
+              >
                 <Check size={10} /> Saved
-              </span>
+              </motion.span>
             )}
-            <button onClick={handleSave} className="px-2.5 py-1.5 rounded-sm text-[10px] font-mono tracking-wider text-foreground/70 hover:text-foreground hover:bg-muted/50 transition-colors">
-              Done
-            </button>
           </div>
+          <button
+            onClick={handleSave}
+            className="text-[11px] font-mono tracking-wider text-foreground/60 hover:text-foreground transition-colors"
+          >
+            Done
+          </button>
         </div>
 
-        <div className="p-4 space-y-5">
-          {/* Title */}
+        <div className="px-5 pb-5">
+          {/* ─── Title ─── */}
           <input
             ref={titleRef}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Item name…"
-            className="w-full bg-transparent font-display font-bold text-foreground text-base leading-tight focus:outline-none placeholder:text-muted-foreground/30"
+            placeholder="What needs doing…"
+            className="w-full bg-transparent font-display font-bold text-foreground text-lg leading-tight focus:outline-none placeholder:text-muted-foreground/25 mb-1"
           />
 
-          {/* Category */}
-          <div className="flex items-center gap-2 flex-wrap">
+          {/* ─── Subtitle / Notes (freeform, replaces Notes section) ─── */}
+          <textarea
+            ref={noteRef}
+            value={note}
+            onChange={(e) => {
+              setNote(e.target.value);
+              const ta = e.target;
+              ta.style.height = 'auto';
+              ta.style.height = ta.scrollHeight + 'px';
+            }}
+            onFocus={(e) => {
+              const ta = e.target;
+              ta.style.height = 'auto';
+              ta.style.height = ta.scrollHeight + 'px';
+            }}
+            placeholder="Add details, context, links…"
+            rows={1}
+            className="w-full bg-transparent text-[13px] font-mono text-foreground/60 placeholder:text-muted-foreground/20 focus:outline-none resize-none leading-relaxed mb-4"
+            style={{ minHeight: '24px' }}
+          />
+
+          {/* ─── Metadata chips ─── */}
+          <div className="flex items-center gap-1.5 flex-wrap mb-5">
+            {/* Duration */}
+            <Popover open={showDurationPicker} onOpenChange={setShowDurationPicker}>
+              <PopoverTrigger asChild>
+                <button className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide text-muted-foreground/60 hover:text-foreground bg-muted/40 hover:bg-muted/60 transition-colors">
+                  <Clock size={11} strokeWidth={1.5} />
+                  {formatDuration(duration)}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56 p-3 z-[70]" align="start" onClick={(e) => e.stopPropagation()}>
+                <DurationPicker duration={duration} onChange={setDuration} />
+              </PopoverContent>
+            </Popover>
+
+            {/* Due date */}
             <div className="relative">
-              <button
-                onClick={() => setShowCatPicker(!showCatPicker)}
-                className="flex items-center gap-1.5 px-3 py-2.5 rounded-md border border-border/60 text-[11px] font-mono text-muted-foreground/70 hover:text-foreground hover:border-border transition-colors min-h-[42px]"
-              >
-                <Tag size={11} />
-                {catLabel}
-              </button>
-              {showCatPicker && (
-                <div className="absolute left-0 top-full mt-1 z-50 bg-card border border-border rounded-md shadow-lg py-1 w-40">
-                  <button
-                    onClick={() => { setCategory(''); setShowCatPicker(false); }}
-                    className={`w-full text-left px-3 py-2.5 text-[11px] font-mono min-h-[40px] ${!category ? 'text-foreground bg-muted/50 font-medium' : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30'}`}
-                  >
-                    No category
-                  </button>
-                  {categories.map((cat) => (
-                    <button
-                      key={cat.value}
-                      onClick={() => { setCategory(cat.value); setShowCatPicker(false); }}
-                      className={`w-full text-left px-3 py-2.5 text-[11px] font-mono min-h-[40px] ${category === cat.value ? 'text-foreground bg-muted/50 font-medium' : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30'}`}
-                    >
-                      {cat.label}
-                    </button>
-                  ))}
-                  <div className="border-t border-border/40 mt-1 pt-1">
-                    {showNewCatInput ? (
-                      <div className="px-3 py-2">
-                        <input
-                          value={newCatInline}
-                          onChange={(e) => setNewCatInline(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === 'Enter') handleAddCatInline(); if (e.key === 'Escape') setShowNewCatInput(false); }}
-                          onBlur={handleAddCatInline}
-                          placeholder="Category name…"
-                          className="w-full bg-transparent text-[11px] font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none border-b border-primary/40"
-                          autoFocus
-                        />
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setShowNewCatInput(true)}
-                        className="w-full text-left px-3 py-2.5 text-[11px] font-mono text-primary/70 hover:text-primary flex items-center gap-2 min-h-[40px]"
-                      >
-                        <Tag size={10} /> New…
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10"
+              />
+              <span className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
+                dueBadge?.overdue
+                  ? 'text-destructive/80 bg-destructive/10'
+                  : dueDate
+                    ? 'text-foreground/70 bg-muted/40'
+                    : 'text-muted-foreground/40 bg-muted/30 hover:bg-muted/50'
+              }`}>
+                <CalendarDays size={11} strokeWidth={1.5} />
+                {dueBadge ? dueBadge.text : 'Due'}
+              </span>
             </div>
-          </div>
-
-          {/* Duration picker */}
-          <div>
-            <label className="block text-[9px] font-mono tracking-widest text-muted-foreground/60 mb-2 font-medium">DURATION</label>
-            <DurationPicker duration={duration} onChange={setDuration} />
-          </div>
-
-          {/* Due date */}
-          <div className="flex items-center gap-2">
-            <CalendarDays size={13} className="text-muted-foreground/50 shrink-0" />
-            <input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className="bg-transparent text-[12px] font-mono text-foreground/80 focus:outline-none border border-border/60 rounded-md px-2.5 py-2.5 min-h-[42px]"
-            />
             {dueDate && (
               <button
                 onClick={() => setDueDate('')}
-                className="text-[9px] font-mono text-muted-foreground/50 hover:text-foreground"
+                className="text-[9px] text-muted-foreground/30 hover:text-foreground font-mono"
               >
-                Clear
+                ×
               </button>
             )}
+
+            {/* Category */}
+            <Popover open={showCatPicker} onOpenChange={setShowCatPicker}>
+              <PopoverTrigger asChild>
+                <button className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
+                  category
+                    ? 'text-foreground/70 bg-muted/40 hover:bg-muted/60'
+                    : 'text-muted-foreground/40 bg-muted/30 hover:bg-muted/50'
+                }`}>
+                  <Tag size={10} strokeWidth={1.5} />
+                  {catLabel || 'Tag'}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-40 p-1 z-[70]" align="start" onClick={(e) => e.stopPropagation()}>
+                <button
+                  onClick={() => { setCategory(''); setShowCatPicker(false); }}
+                  className={`w-full text-left px-3 py-2 text-[11px] font-mono rounded-sm ${!category ? 'text-foreground bg-muted/50' : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30'}`}
+                >
+                  No tag
+                </button>
+                {categories.map((cat) => (
+                  <button
+                    key={cat.value}
+                    onClick={() => { setCategory(cat.value); setShowCatPicker(false); }}
+                    className={`w-full text-left px-3 py-2 text-[11px] font-mono rounded-sm ${category === cat.value ? 'text-foreground bg-muted/50' : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30'}`}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+                <div className="border-t border-border/30 mt-1 pt-1">
+                  {showNewCatInput ? (
+                    <div className="px-3 py-1.5">
+                      <input
+                        value={newCatInline}
+                        onChange={(e) => setNewCatInline(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleAddCatInline(); if (e.key === 'Escape') setShowNewCatInput(false); }}
+                        onBlur={handleAddCatInline}
+                        placeholder="New tag…"
+                        className="w-full bg-transparent text-[11px] font-mono text-foreground placeholder:text-muted-foreground/30 focus:outline-none border-b border-primary/30"
+                        autoFocus
+                      />
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setShowNewCatInput(true)}
+                      className="w-full text-left px-3 py-2 text-[11px] font-mono text-primary/60 hover:text-primary flex items-center gap-1.5"
+                    >
+                      <Plus size={10} /> New…
+                    </button>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {/* Priority toggles as chips */}
+            <button
+              onClick={() => setIsUrgent(!isUrgent)}
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
+                isUrgent
+                  ? 'text-foreground/80 bg-foreground/[0.07]'
+                  : 'text-muted-foreground/35 bg-muted/25 hover:bg-muted/40'
+              }`}
+            >
+              <Clock size={10} strokeWidth={1.5} />
+              {isUrgent ? 'Urgent' : ''}
+            </button>
+            <button
+              onClick={() => setIsImportant(!isImportant)}
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
+                isImportant
+                  ? 'text-foreground/80 bg-foreground/[0.07]'
+                  : 'text-muted-foreground/35 bg-muted/25 hover:bg-muted/40'
+              }`}
+            >
+              <AlertTriangle size={10} strokeWidth={1.5} />
+              {isImportant ? 'Important' : ''}
+            </button>
           </div>
 
-          {/* Priority toggles */}
-          <div>
-            <label className="block text-[9px] font-mono tracking-widest text-muted-foreground/60 mb-2 font-medium">PRIORITY</label>
-            <div className="flex items-center gap-2">
-              <PriorityToggle
-                active={isUrgent}
-                icon={<Clock size={13} strokeWidth={1.8} />}
-                label="Urgent"
-                onClick={() => setIsUrgent(!isUrgent)}
-              />
-              <PriorityToggle
-                active={isImportant}
-                icon={<AlertTriangle size={13} strokeWidth={1.8} />}
-                label="Important"
-                onClick={() => setIsImportant(!isImportant)}
-              />
-            </div>
-          </div>
-
-          {/* Subtasks — BEFORE notes */}
-          <div>
-            <label className="block text-[9px] font-mono tracking-widest text-muted-foreground/60 mb-2 font-medium">SUBTASKS</label>
-            <div className="space-y-0.5">
+          {/* ─── Subtasks ─── */}
+          {(subtasks.length > 0 || newSubtaskText) && (
+            <div className="mb-4">
               {subtasks.map((st) => (
                 <SubtaskRow
                   key={st.id}
                   subtask={st}
-                  onToggle={() => toggleSubtask(st.id)}
-                  onDelete={() => deleteSubtask(st.id)}
-                  onChange={(t) => updateSubtaskTitle(st.id, t)}
+                  onToggle={() => setSubtasks(subtasks.map(s => s.id === st.id ? { ...s, completed: !s.completed } : s))}
+                  onDelete={() => setSubtasks(subtasks.filter(s => s.id !== st.id))}
+                  onChange={(t) => setSubtasks(subtasks.map(s => s.id === st.id ? { ...s, title: t } : s))}
                 />
               ))}
             </div>
-            <div className="flex items-center gap-2.5 mt-2">
-              <Plus size={13} className="text-muted-foreground/35 shrink-0" />
-              <input
-                ref={newSubtaskRef}
-                value={newSubtaskText}
-                onChange={(e) => setNewSubtaskText(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') addSubtask(); }}
-                placeholder="Add subtask…"
-                className="flex-1 bg-transparent text-[13px] font-mono text-foreground/80 placeholder:text-muted-foreground/30 focus:outline-none py-1.5"
-              />
-            </div>
-          </div>
-
-          {/* Notes — AFTER subtasks, auto-growing */}
-          <div>
-            <label className="block text-[9px] font-mono tracking-widest text-muted-foreground/60 mb-2 font-medium">NOTES</label>
-            <textarea
-              value={note}
-              onChange={(e) => {
-                setNote(e.target.value);
-                const ta = e.target;
-                ta.style.height = 'auto';
-                ta.style.height = ta.scrollHeight + 'px';
-              }}
-              onFocus={(e) => {
-                const ta = e.target;
-                ta.style.height = 'auto';
-                ta.style.height = ta.scrollHeight + 'px';
-              }}
-              placeholder="Add details, context, links…"
-              rows={2}
-              className="w-full bg-muted/30 border border-border/50 rounded-md px-3 py-2.5 text-[13px] font-mono text-foreground/80 placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/30 resize-none leading-relaxed"
-              style={{ minHeight: '48px' }}
+          )}
+          <div className="flex items-center gap-2 mb-5">
+            <Plus size={12} className="text-muted-foreground/25 shrink-0" />
+            <input
+              ref={newSubtaskRef}
+              value={newSubtaskText}
+              onChange={(e) => setNewSubtaskText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') addSubtask(); }}
+              placeholder="Add subtask…"
+              className="flex-1 bg-transparent text-[12px] font-mono text-foreground/60 placeholder:text-muted-foreground/20 focus:outline-none py-1"
             />
           </div>
 
-          {/* Delete */}
-          <div className="flex items-center pt-3 border-t border-border/30">
+          {/* ─── Delete ─── */}
+          <div className="flex items-center pt-3 border-t border-border/20">
             <div className="flex-1" />
             <button
-              onClick={handleDelete}
-              className="p-2.5 rounded-md border border-border/50 text-muted-foreground/50 hover:text-destructive hover:border-destructive/30 transition-colors min-h-[44px]"
+              onClick={(e) => { e.stopPropagation(); handleDelete(); }}
+              className="p-2.5 rounded-md text-muted-foreground/35 hover:text-destructive transition-colors"
+              title="Delete"
             >
               <Trash2 size={14} strokeWidth={1.5} />
             </button>

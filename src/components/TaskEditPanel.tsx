@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Priority, RecurrencePattern, CustomUnit } from '@/store/taskStore';
-import { PriorityBadge } from '@/components/PriorityBadge';
 import { SubtaskList, Subtask } from '@/components/SubtaskList';
-import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar, Inbox, CalendarCheck, XCircle, Paperclip, ExternalLink, Check } from 'lucide-react';
+import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar, Inbox, CalendarCheck, XCircle, Paperclip, ExternalLink, Check, AlertTriangle, Tag } from 'lucide-react';
 import { useLibraryStore } from '@/store/libraryStore';
 import { formatTime12h } from '@/hooks/useCurrentTime';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
+import { DurationPicker } from '@/components/ScrollWheelPicker';
 import { format } from 'date-fns';
 
 const PRIORITY_LABELS = ['Flex', 'Semi', 'Fixed', 'Lock'] as const;
@@ -59,12 +59,19 @@ function recurrenceLabel(r?: RecurrencePattern): string {
   }
 }
 
+function formatDuration(m: number): string {
+  const h = Math.floor(m / 60);
+  const mins = m % 60;
+  if (h > 0 && mins > 0) return `${h}h ${mins}m`;
+  if (h > 0) return `${h}h`;
+  return `${mins}m`;
+}
+
 function formatScheduleContext(date: string, time?: string, duration?: number): string {
   const d = new Date(date + 'T12:00:00');
   const dayStr = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   const parts = [dayStr];
   if (time) parts.push(`at ${formatTime12h(time)}`);
-  if (duration) parts.push(`· ${duration}m`);
   return parts.join(' ');
 }
 
@@ -77,10 +84,10 @@ function getDueDateText(dueDate: string): { relative: string; absolute: string; 
   const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
   const absolute = due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-  if (diffDays < 0) return { relative: `Overdue by ${Math.abs(diffDays)} day${Math.abs(diffDays) !== 1 ? 's' : ''}`, absolute, isOverdue: true };
+  if (diffDays < 0) return { relative: `Overdue by ${Math.abs(diffDays)}d`, absolute, isOverdue: true };
   if (diffDays === 0) return { relative: 'Due today', absolute, isOverdue: false };
-  if (diffDays === 1) return { relative: 'Due tomorrow', absolute, isOverdue: false };
-  return { relative: `Due in ${diffDays} days`, absolute, isOverdue: false };
+  if (diffDays === 1) return { relative: 'Tomorrow', absolute, isOverdue: false };
+  return { relative: `${diffDays}d`, absolute, isOverdue: false };
 }
 
 function isValidUrl(str: string): boolean {
@@ -110,7 +117,6 @@ export function TaskEditPanel() {
   const [weeklyDays, setWeeklyDays] = useState<number[]>(() => {
     if (task?.recurrence?.type === 'weekly') return task.recurrence.days;
     if (task?.recurrence?.type === 'custom' && task.recurrence.days) return task.recurrence.days;
-    // Default to the task's own day, not today
     if (task?.date) return [new Date(task.date + 'T12:00:00').getDay()];
     return [new Date().getDay()];
   });
@@ -128,6 +134,7 @@ export function TaskEditPanel() {
   const [pendingUpdates, setPendingUpdates] = useState<any>(null);
   const [dueDate, setDueDate] = useState<string>(task?.dueDate || '');
   const [showDuePicker, setShowDuePicker] = useState(false);
+  const [showDurationPicker, setShowDurationPicker] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [links, setLinks] = useState<string[]>([]);
   const [linkInput, setLinkInput] = useState('');
@@ -147,7 +154,6 @@ export function TaskEditPanel() {
       setIsRoutine(task.isRoutine !== false && task.type === 'recurring');
       setIsLinked(task.linked || false);
       setRecurrenceType(recurrenceToType(task.recurrence));
-      // Default weekly days to the TASK's day, not current day
       const taskDay = task.date ? new Date(task.date + 'T12:00:00').getDay() : new Date().getDay();
       setWeeklyDays(
         task.recurrence?.type === 'weekly' ? task.recurrence.days :
@@ -164,7 +170,6 @@ export function TaskEditPanel() {
       setSaveStatus('idle');
       setShowLinkInput(false);
       setLinkInput('');
-      // Parse links from description
       const urlRegex = /https?:\/\/[^\s]+/g;
       const foundLinks = task.description?.match(urlRegex) || [];
       setLinks(foundLinks);
@@ -172,7 +177,6 @@ export function TaskEditPanel() {
     }
   }, [task?.id]);
 
-  // Auto-focus title only for new/untitled tasks
   useEffect(() => {
     if (task && !task.title.trim() && titleInputRef.current) {
       titleInputRef.current.focus();
@@ -210,11 +214,9 @@ export function TaskEditPanel() {
     const recurrence = buildRecurrence();
     const parentId = task?.recurrenceParentId || task?.id;
     const seriesId = task?.seriesId || parentId;
-    // Build description with links appended
-    let fullDescription = description || '';
     return {
       title,
-      description: fullDescription || undefined,
+      description: description || undefined,
       subtasks: subtasks.length > 0 ? subtasks : undefined,
       priority,
       recurrence,
@@ -251,7 +253,6 @@ export function TaskEditPanel() {
     if (!task) return;
     const updates = getUpdates();
 
-    // Handle linked state change separately
     if (isRecurring && task.linked !== isLinked) {
       linkSeriesFromDate(task.id, task.date, isLinked);
     }
@@ -331,7 +332,6 @@ export function TaskEditPanel() {
     const url = trimmed.startsWith('http') ? trimmed : `https://${trimmed}`;
     if (isValidUrl(url)) {
       setLinks(prev => [...prev, url]);
-      // Append to description
       setDescription(prev => prev ? `${prev}\n${url}` : url);
     }
     setLinkInput('');
@@ -345,10 +345,10 @@ export function TaskEditPanel() {
   };
 
   useEffect(() => {
-    return () => {
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    };
+    return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
   }, []);
+
+  const dueInfo = dueDate ? getDueDateText(dueDate) : null;
 
   return (
     <AnimatePresence>
@@ -360,9 +360,7 @@ export function TaskEditPanel() {
           transition={{ duration: 0.15 }}
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-background/60 backdrop-blur-[2px]"
           onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              handleClose();
-            }
+            if (e.target === e.currentTarget) handleClose();
           }}
         >
           <motion.div
@@ -370,309 +368,232 @@ export function TaskEditPanel() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 24 }}
             transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className="bg-card border border-border rounded-t-lg sm:rounded-sm w-full sm:max-w-sm shadow-lg max-h-[90vh] overflow-y-auto"
+            className="bg-card border border-border/50 rounded-t-lg sm:rounded-lg w-full sm:max-w-md shadow-lg max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* ─── Header with Done + Save Status ─── */}
-            <div className="px-4 pt-3 pb-2 border-b border-border/30 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-mono text-muted-foreground/50 tracking-wider">
-                  {task.time ? formatScheduleContext(task.date, task.time, task.duration) : formatScheduleContext(task.date)}
-                </span>
-              </div>
+            {/* ─── Header ─── */}
+            <div className="px-5 pt-4 pb-2 flex items-center justify-between">
+              <span className="text-[10px] font-mono text-muted-foreground/40 tracking-wider">
+                {task.time ? formatScheduleContext(task.date, task.time) : formatScheduleContext(task.date)}
+              </span>
               <div className="flex items-center gap-2">
                 <AnimatePresence mode="wait">
                   {saveStatus === 'saving' && (
-                    <motion.span
-                      key="saving"
-                      initial={{ opacity: 0, x: 4 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0 }}
-                      className="text-[9px] font-mono text-muted-foreground/40 tracking-wider"
-                    >
-                      Saving…
-                    </motion.span>
+                    <motion.span key="saving" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      className="text-[9px] font-mono text-muted-foreground/35 tracking-wider">Saving…</motion.span>
                   )}
                   {saveStatus === 'saved' && (
-                    <motion.span
-                      key="saved"
-                      initial={{ opacity: 0, x: 4 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0 }}
-                      className="flex items-center gap-1 text-[9px] font-mono text-primary/70 tracking-wider"
-                    >
+                    <motion.span key="saved" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      className="flex items-center gap-1 text-[9px] font-mono text-primary/60 tracking-wider">
                       <Check size={10} /> Saved
                     </motion.span>
                   )}
                 </AnimatePresence>
-                <button
-                  onClick={handleClose}
-                  className="px-2.5 py-1.5 rounded-sm text-[10px] font-mono tracking-wider text-foreground/70 hover:text-foreground hover:bg-muted/50 transition-colors"
-                >
+                <button onClick={handleClose}
+                  className="text-[11px] font-mono tracking-wider text-foreground/60 hover:text-foreground transition-colors">
                   Done
                 </button>
               </div>
             </div>
 
-            {/* ─── Due date header ─── */}
-            {dueDate ? (() => {
-              const info = getDueDateText(dueDate);
-              return (
-                <div className="px-4 pt-3 pb-2.5 border-b border-border/30">
-                  <div className={`flex items-center gap-2 font-mono font-bold text-[15px] ${info.isOverdue ? 'text-destructive' : 'text-foreground/80'}`}>
-                    <CalendarCheck size={15} strokeWidth={1.5} />
-                    <span>{info.relative}</span>
-                  </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Popover open={showDuePicker} onOpenChange={setShowDuePicker}>
-                      <PopoverTrigger asChild>
-                        <button className="text-[11px] font-mono text-muted-foreground/50 hover:text-foreground transition-colors">
-                          Due {info.absolute}
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 z-[70]" align="start" onClick={(e) => e.stopPropagation()}>
-                        <CalendarPicker
-                          mode="single"
-                          selected={dueDate ? new Date(dueDate + 'T12:00:00') : undefined}
-                          onSelect={(d) => {
-                            if (d) setDueDate(d.toISOString().split('T')[0]);
-                            setShowDuePicker(false);
-                          }}
-                          className="p-3 pointer-events-auto"
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <span className="text-muted-foreground/20">·</span>
-                    <button
-                      onClick={() => { setDueDate(''); setShowDuePicker(false); }}
-                      className="text-[10px] font-mono text-muted-foreground/30 hover:text-destructive/60 transition-colors"
-                    >
-                      remove
+            <div className="px-5 pb-5">
+              {/* ─── Title ─── */}
+              <input
+                ref={titleInputRef}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Task name…"
+                className="w-full bg-transparent font-display font-bold text-foreground text-lg leading-tight focus:outline-none placeholder:text-muted-foreground/20 mb-1"
+              />
+
+              {/* ─── Subtitle / Description ─── */}
+              <textarea
+                value={description}
+                onChange={(e) => {
+                  setDescription(e.target.value);
+                  const ta = e.target;
+                  ta.style.height = 'auto';
+                  ta.style.height = ta.scrollHeight + 'px';
+                }}
+                onFocus={(e) => {
+                  const ta = e.target;
+                  ta.style.height = 'auto';
+                  ta.style.height = ta.scrollHeight + 'px';
+                }}
+                placeholder="Add details, context, links…"
+                rows={1}
+                className="w-full bg-transparent text-[13px] font-mono text-foreground/60 placeholder:text-muted-foreground/20 focus:outline-none resize-none leading-relaxed mb-4"
+                style={{ minHeight: '24px' }}
+              />
+
+              {/* ─── Metadata chips ─── */}
+              <div className="flex items-center gap-1.5 flex-wrap mb-5">
+                {/* Duration */}
+                <Popover open={showDurationPicker} onOpenChange={setShowDurationPicker}>
+                  <PopoverTrigger asChild>
+                    <button className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide text-muted-foreground/60 hover:text-foreground bg-muted/40 hover:bg-muted/60 transition-colors">
+                      <Clock size={11} strokeWidth={1.5} />
+                      {formatDuration(task.duration || 30)}
                     </button>
-                  </div>
-                </div>
-              );
-            })() : (
-              <div className="px-4 pt-3 pb-2.5 border-b border-border/30">
+                  </PopoverTrigger>
+                  <PopoverContent className="w-56 p-3 z-[70]" align="start" onClick={(e) => e.stopPropagation()}>
+                    <DurationPicker duration={task.duration || 30} onChange={(m) => updateTask(task.id, { duration: m })} />
+                  </PopoverContent>
+                </Popover>
+
+                {/* Due date */}
                 <Popover open={showDuePicker} onOpenChange={setShowDuePicker}>
                   <PopoverTrigger asChild>
-                    <button className="flex items-center gap-1.5 text-[12px] font-mono text-muted-foreground/40 hover:text-foreground transition-colors py-1">
-                      <CalendarCheck size={12} strokeWidth={1.5} />
-                      <span>Add due date</span>
+                    <button className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
+                      dueInfo?.isOverdue
+                        ? 'text-destructive/80 bg-destructive/10'
+                        : dueDate
+                          ? 'text-foreground/70 bg-muted/40'
+                          : 'text-muted-foreground/40 bg-muted/30 hover:bg-muted/50'
+                    }`}>
+                      <CalendarCheck size={11} strokeWidth={1.5} />
+                      {dueInfo ? dueInfo.relative : 'Due'}
                     </button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0 z-[70]" align="start" onClick={(e) => e.stopPropagation()}>
                     <CalendarPicker
                       mode="single"
-                      selected={undefined}
+                      selected={dueDate ? new Date(dueDate + 'T12:00:00') : undefined}
                       onSelect={(d) => {
                         if (d) setDueDate(d.toISOString().split('T')[0]);
+                        else setDueDate('');
                         setShowDuePicker(false);
                       }}
                       className="p-3 pointer-events-auto"
                     />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            )}
-
-            <div className="p-4 space-y-4">
-              {/* ─── 1. Title ─── */}
-              <div>
-                <input
-                  ref={titleInputRef}
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Task name..."
-                  className="w-full bg-transparent font-display font-bold text-foreground text-base leading-tight focus:outline-none placeholder:text-muted-foreground/20"
-                />
-              </div>
-
-              {/* ─── 2. Priority ─── */}
-              <div>
-                <div className="flex gap-1.5">
-                  {([0, 1, 2, 3] as Priority[]).map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => setPriority(p)}
-                      className={`flex-1 py-2 rounded-sm text-[10px] font-mono tracking-wider border transition-colors ${
-                        priority === p
-                          ? `${PRIORITY_COLORS[p]} bg-muted/60`
-                          : 'border-border text-muted-foreground/40 hover:border-border hover:text-muted-foreground/60'
-                      }`}
-                    >
-                      {PRIORITY_LABELS[p]}
-                    </button>
-                  ))}
-                </div>
-                {/* Link/unlink for recurring */}
-                {isRecurring && (
-                  <div className="mt-2 flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      {isLinked ? <Link size={10} className="text-primary/50" /> : <Unlink size={10} className="text-muted-foreground/30" />}
-                      <span className="text-[9px] font-mono tracking-wider text-muted-foreground/50">
-                        {isLinked ? 'LINKED · THIS + FOLLOWING' : 'UNLINKED'}
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => setIsLinked(!isLinked)}
-                      className={`relative w-7 h-4 rounded-full transition-colors ${
-                        isLinked ? 'bg-primary/30' : 'bg-muted'
-                      }`}
-                    >
-                      <span
-                        className={`absolute top-0.5 w-3 h-3 rounded-full transition-all ${
-                          isLinked ? 'left-3.5 bg-primary' : 'left-0.5 bg-muted-foreground/40'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* ─── 3. Subtasks ─── */}
-              <div>
-                <label className="block text-[8px] font-mono tracking-widest text-muted-foreground/40 mb-1.5">
-                  SUBTASKS {subtasks.length > 0 && (
-                    <span className="text-muted-foreground/25 ml-1">
-                      {subtasks.filter(s => s.completed).length}/{subtasks.length}
-                    </span>
-                  )}
-                </label>
-                <div className="bg-muted/20 border border-border/30 rounded-sm p-2">
-                  <SubtaskList subtasks={subtasks} onChange={setSubtasks} />
-                </div>
-              </div>
-
-              {/* ─── 4. Notes / description ─── */}
-              <div>
-                <label className="block text-[8px] font-mono tracking-widest text-muted-foreground/40 mb-1.5">NOTES</label>
-                <textarea
-                  value={description}
-                  onChange={(e) => {
-                    setDescription(e.target.value);
-                    // Auto-grow
-                    const ta = e.target;
-                    ta.style.height = 'auto';
-                    ta.style.height = ta.scrollHeight + 'px';
-                  }}
-                  onFocus={(e) => {
-                    const ta = e.target;
-                    ta.style.height = 'auto';
-                    ta.style.height = ta.scrollHeight + 'px';
-                  }}
-                  placeholder="Add details, context, links..."
-                  rows={2}
-                  className="w-full bg-muted/30 border border-border/50 rounded-sm px-3 py-2 text-[11px] font-mono text-foreground/70 placeholder:text-muted-foreground/20 focus:outline-none focus:border-primary/20 resize-none leading-relaxed"
-                  style={{ minHeight: '48px' }}
-                />
-              </div>
-
-              {/* ─── 5. Links / Attachments ─── */}
-              <div>
-                {links.length > 0 && (
-                  <div className="space-y-1 mb-2">
-                    {links.map((url, i) => (
-                      <div key={i} className="flex items-center gap-2 py-1.5 px-2 rounded-sm bg-muted/20 border border-border/30 group">
-                        <ExternalLink size={11} className="text-muted-foreground/40 shrink-0" />
-                        <a
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex-1 text-[10px] font-mono text-primary/70 hover:text-primary truncate"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {getDomain(url)}
-                        </a>
-                        <button
-                          onClick={() => removeLink(i)}
-                          className="p-0.5 text-muted-foreground/25 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X size={10} />
+                    {dueDate && (
+                      <div className="px-3 pb-2">
+                        <button onClick={() => { setDueDate(''); setShowDuePicker(false); }}
+                          className="text-[10px] font-mono text-muted-foreground/40 hover:text-destructive/60">
+                          Remove due date
                         </button>
                       </div>
-                    ))}
-                  </div>
-                )}
-                {showLinkInput ? (
-                  <div className="flex items-center gap-2">
-                    <input
-                      value={linkInput}
-                      onChange={(e) => setLinkInput(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') addLink(); if (e.key === 'Escape') { setShowLinkInput(false); setLinkInput(''); } }}
-                      onBlur={addLink}
-                      placeholder="Paste URL…"
-                      className="flex-1 bg-transparent text-[11px] font-mono text-foreground placeholder:text-muted-foreground/30 focus:outline-none border-b border-primary/30 py-1"
-                      autoFocus
-                    />
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setShowLinkInput(true)}
-                    className="flex items-center gap-1.5 text-[9px] font-mono tracking-wider text-muted-foreground/35 hover:text-foreground transition-colors"
-                  >
-                    <Paperclip size={10} strokeWidth={1.5} />
-                    Add link
-                  </button>
-                )}
-              </div>
+                    )}
+                  </PopoverContent>
+                </Popover>
 
-              {/* ─── 6. Advanced (collapsed) ─── */}
-              <div className="border-t border-border/20 pt-3">
+                {/* Priority chips */}
+                {([0, 1, 2, 3] as Priority[]).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setPriority(p)}
+                    className={`px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
+                      priority === p
+                        ? `${PRIORITY_COLORS[p]} bg-muted/50`
+                        : 'text-muted-foreground/30 hover:text-muted-foreground/60'
+                    }`}
+                  >
+                    {PRIORITY_LABELS[p]}
+                  </button>
+                ))}
+
+                {/* Repeat */}
                 <button
                   onClick={() => setShowRecurrence(!showRecurrence)}
-                  className="flex items-center gap-1.5 text-[9px] font-mono tracking-wider text-muted-foreground/40 hover:text-foreground transition-colors w-full"
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
+                    recurrenceType !== 'none'
+                      ? 'text-foreground/70 bg-muted/40'
+                      : 'text-muted-foreground/35 bg-muted/25 hover:bg-muted/40'
+                  }`}
                 >
                   <Repeat size={10} strokeWidth={1.5} />
-                  <span className="flex-1 text-left">{recurrenceLabel(buildRecurrence())}</span>
-                  <ChevronDown size={9} className={`transition-transform ${showRecurrence ? 'rotate-180' : ''}`} />
+                  {recurrenceType !== 'none' ? recurrenceLabel(buildRecurrence()) : ''}
                 </button>
+              </div>
 
-                <AnimatePresence>
-                  {showRecurrence && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.15 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="mt-2 space-y-1 pl-4 border-l border-border/50">
-                        {RECURRENCE_OPTIONS.map((opt) => (
-                          <button
-                            key={opt.value}
-                            onClick={() => {
-                              setRecurrenceType(opt.value);
-                              if (opt.value === 'none') {
-                                setIsRoutine(false);
-                                setIsLinked(false);
-                              } else if (recurrenceType === 'none') {
-                                setIsRoutine(true);
-                              }
-                              // When selecting weekly, default to task's day
-                              if (opt.value === 'weekly' && task?.date) {
-                                const taskDay = new Date(task.date + 'T12:00:00').getDay();
-                                if (!weeklyDays.includes(taskDay)) {
-                                  setWeeklyDays([taskDay]);
-                                }
-                              }
-                              if (opt.value !== 'custom') {
-                                setShowRecurrence(false);
-                              }
-                            }}
-                            className={`block w-full text-left text-[9px] font-mono tracking-wider py-1.5 px-2 rounded-sm transition-colors ${
-                              recurrenceType === opt.value
-                                ? 'text-foreground bg-muted/60'
-                                : 'text-muted-foreground/50 hover:text-foreground hover:bg-muted/30'
-                            }`}
-                          >
-                            {opt.label}
-                          </button>
-                        ))}
+              {/* ─── Recurrence expanded ─── */}
+              <AnimatePresence>
+                {showRecurrence && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="overflow-hidden mb-4"
+                  >
+                    <div className="space-y-1 pl-3 border-l-2 border-border/30">
+                      {RECURRENCE_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.value}
+                          onClick={() => {
+                            setRecurrenceType(opt.value);
+                            if (opt.value === 'none') { setIsRoutine(false); setIsLinked(false); }
+                            else if (recurrenceType === 'none') setIsRoutine(true);
+                            if (opt.value === 'weekly' && task?.date) {
+                              const taskDay = new Date(task.date + 'T12:00:00').getDay();
+                              if (!weeklyDays.includes(taskDay)) setWeeklyDays([taskDay]);
+                            }
+                            if (opt.value !== 'custom') setShowRecurrence(false);
+                          }}
+                          className={`block w-full text-left text-[10px] font-mono tracking-wider py-1.5 px-2 rounded-sm transition-colors ${
+                            recurrenceType === opt.value
+                              ? 'text-foreground bg-muted/50'
+                              : 'text-muted-foreground/50 hover:text-foreground hover:bg-muted/30'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
 
-                        {recurrenceType === 'weekly' && (
-                          <div className="pt-2">
-                            <label className="block text-[7px] font-mono tracking-widest text-muted-foreground/40 mb-1.5">REPEAT ON</label>
+                      {recurrenceType === 'weekly' && (
+                        <div className="pt-2">
+                          <div className="flex gap-1">
+                            {DAY_LABELS.map((label, i) => (
+                              <button
+                                key={i}
+                                onClick={() => {
+                                  setWeeklyDays(prev =>
+                                    prev.includes(i)
+                                      ? prev.length > 1 ? prev.filter(d => d !== i) : prev
+                                      : [...prev, i]
+                                  );
+                                }}
+                                className={`w-7 h-7 rounded-sm text-[8px] font-mono transition-colors ${
+                                  weeklyDays.includes(i)
+                                    ? 'bg-primary/10 text-primary border border-primary/20'
+                                    : 'text-muted-foreground/40 border border-border hover:border-border'
+                                }`}
+                              >
+                                {label[0]}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {recurrenceType === 'custom' && (
+                        <div className="pt-2 space-y-2.5">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              value={customInterval}
+                              onChange={(e) => setCustomInterval(Math.max(1, Number(e.target.value)))}
+                              min={1}
+                              className="w-12 bg-muted/50 border border-border rounded-sm px-2 py-1.5 text-[10px] font-mono text-foreground text-center focus:outline-none"
+                            />
+                            <div className="flex gap-0.5">
+                              {UNIT_OPTIONS.map((u) => (
+                                <button
+                                  key={u.value}
+                                  onClick={() => setCustomUnit(u.value)}
+                                  className={`px-2 py-1.5 rounded-sm text-[8px] font-mono tracking-wider border transition-colors ${
+                                    customUnit === u.value
+                                      ? 'text-foreground bg-muted/60 border-border'
+                                      : 'text-muted-foreground/40 border-transparent hover:text-foreground'
+                                  }`}
+                                >
+                                  {u.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {customUnit === 'weeks' && (
                             <div className="flex gap-1">
                               {DAY_LABELS.map((label, i) => (
                                 <button
@@ -694,149 +615,135 @@ export function TaskEditPanel() {
                                 </button>
                               ))}
                             </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
+                      )}
 
-                        {recurrenceType === 'custom' && (
-                          <div className="pt-2 space-y-2.5">
-                            <label className="block text-[7px] font-mono tracking-widest text-muted-foreground/40">REPEAT EVERY</label>
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="number"
-                                value={customInterval}
-                                onChange={(e) => setCustomInterval(Math.max(1, Number(e.target.value)))}
-                                min={1}
-                                className="w-12 bg-muted/50 border border-border rounded-sm px-2 py-1.5 text-[10px] font-mono text-foreground text-center focus:outline-none focus:ring-1 focus:ring-primary/30"
-                              />
-                              <div className="flex gap-0.5">
-                                {UNIT_OPTIONS.map((u) => (
-                                  <button
-                                    key={u.value}
-                                    onClick={() => setCustomUnit(u.value)}
-                                    className={`px-2 py-1.5 rounded-sm text-[8px] font-mono tracking-wider border transition-colors ${
-                                      customUnit === u.value
-                                        ? 'text-foreground bg-muted/60 border-border'
-                                        : 'text-muted-foreground/40 border-transparent hover:text-foreground'
-                                    }`}
-                                  >
-                                    {u.label}
-                                  </button>
-                                ))}
-                              </div>
+                      {/* Routine + Link toggles */}
+                      {recurrenceType !== 'none' && (
+                        <div className="pt-2 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[9px] font-mono tracking-wider text-muted-foreground/50">ROUTINE</span>
+                            <button
+                              onClick={() => setIsRoutine(!isRoutine)}
+                              className={`relative w-7 h-4 rounded-full transition-colors ${isRoutine ? 'bg-primary/30' : 'bg-muted'}`}
+                            >
+                              <span className={`absolute top-0.5 w-3 h-3 rounded-full transition-all ${isRoutine ? 'left-3.5 bg-primary' : 'left-0.5 bg-muted-foreground/40'}`} />
+                            </button>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                              {isLinked ? <Link size={10} className="text-primary/50" /> : <Unlink size={10} className="text-muted-foreground/30" />}
+                              <span className="text-[9px] font-mono tracking-wider text-muted-foreground/50">
+                                {isLinked ? 'LINKED' : 'UNLINKED'}
+                              </span>
                             </div>
-
-                            {customUnit === 'weeks' && (
-                              <div>
-                                <label className="block text-[7px] font-mono tracking-widest text-muted-foreground/40 mb-1.5">ON THESE DAYS</label>
-                                <div className="flex gap-1">
-                                  {DAY_LABELS.map((label, i) => (
-                                    <button
-                                      key={i}
-                                      onClick={() => {
-                                        setWeeklyDays(prev =>
-                                          prev.includes(i)
-                                            ? prev.length > 1 ? prev.filter(d => d !== i) : prev
-                                            : [...prev, i]
-                                        );
-                                      }}
-                                      className={`w-7 h-7 rounded-sm text-[8px] font-mono transition-colors ${
-                                        weeklyDays.includes(i)
-                                          ? 'bg-primary/10 text-primary border border-primary/20'
-                                          : 'text-muted-foreground/40 border border-border hover:border-border'
-                                      }`}
-                                    >
-                                      {label[0]}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {customUnit === 'months' && (
-                              <p className="text-[8px] font-mono text-muted-foreground/40">
-                                On day {new Date((task?.date || '') + 'T12:00:00').getDate()} of each month
-                              </p>
-                            )}
+                            <button
+                              onClick={() => setIsLinked(!isLinked)}
+                              className={`relative w-7 h-4 rounded-full transition-colors ${isLinked ? 'bg-primary/30' : 'bg-muted'}`}
+                            >
+                              <span className={`absolute top-0.5 w-3 h-3 rounded-full transition-all ${isLinked ? 'left-3.5 bg-primary' : 'left-0.5 bg-muted-foreground/40'}`} />
+                            </button>
                           </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-                {/* Routine toggle */}
-                {recurrenceType !== 'none' && (
-                  <div className="mt-2 flex items-center justify-between">
-                    <span className="text-[9px] font-mono tracking-wider text-muted-foreground/50">
-                      ROUTINE
-                    </span>
-                    <button
-                      onClick={() => setIsRoutine(!isRoutine)}
-                      className={`relative w-7 h-4 rounded-full transition-colors ${
-                        isRoutine ? 'bg-primary/30' : 'bg-muted'
-                      }`}
-                    >
-                      <span
-                        className={`absolute top-0.5 w-3 h-3 rounded-full transition-all ${
-                          isRoutine ? 'left-3.5 bg-primary' : 'left-0.5 bg-muted-foreground/40'
-                        }`}
-                      />
-                    </button>
+              {/* ─── Subtasks ─── */}
+              <div className="mb-4">
+                {subtasks.length > 0 && (
+                  <div className="mb-1">
+                    <SubtaskList subtasks={subtasks} onChange={setSubtasks} />
                   </div>
                 )}
               </div>
 
+              {/* ─── Links ─── */}
+              {links.length > 0 && (
+                <div className="space-y-1 mb-3">
+                  {links.map((url, i) => (
+                    <div key={i} className="flex items-center gap-2 py-1 group">
+                      <ExternalLink size={11} className="text-muted-foreground/30 shrink-0" />
+                      <a href={url} target="_blank" rel="noopener noreferrer"
+                        className="flex-1 text-[10px] font-mono text-primary/60 hover:text-primary truncate"
+                        onClick={(e) => e.stopPropagation()}>
+                        {getDomain(url)}
+                      </a>
+                      <button onClick={() => removeLink(i)}
+                        className="p-0.5 text-muted-foreground/20 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                        <X size={10} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {showLinkInput ? (
+                <div className="flex items-center gap-2 mb-3">
+                  <input
+                    value={linkInput}
+                    onChange={(e) => setLinkInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') addLink(); if (e.key === 'Escape') { setShowLinkInput(false); setLinkInput(''); } }}
+                    onBlur={addLink}
+                    placeholder="Paste URL…"
+                    className="flex-1 bg-transparent text-[11px] font-mono text-foreground placeholder:text-muted-foreground/25 focus:outline-none border-b border-primary/30 py-1"
+                    autoFocus
+                  />
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowLinkInput(true)}
+                  className="flex items-center gap-1.5 text-[9px] font-mono tracking-wider text-muted-foreground/30 hover:text-foreground transition-colors mb-3"
+                >
+                  <Paperclip size={10} strokeWidth={1.5} />
+                  Add link
+                </button>
+              )}
+
               {/* Move info */}
               {task.moveCount > 0 && (
-                <div className="text-[8px] font-mono text-muted-foreground/40 tracking-widest pt-1">
+                <div className="text-[8px] font-mono text-muted-foreground/35 tracking-widest mb-3">
                   MOVED {task.moveCount}× · ORIGINALLY {PRIORITY_LABELS[task.originalPriority].toUpperCase()}
                 </div>
               )}
 
               {/* Edit scope prompt */}
               {showEditScope && (
-                <div className="p-3 border border-border rounded-sm bg-muted/30 mt-1">
-                  <p className="text-[9px] font-mono text-foreground/70 mb-2.5">Apply changes to:</p>
+                <div className="p-3 border border-border/40 rounded-sm bg-muted/20 mb-3">
+                  <p className="text-[9px] font-mono text-foreground/60 mb-2.5">Apply changes to:</p>
                   <div className="flex gap-2">
-                    <button
-                      onClick={handleSaveThisOnly}
-                      className="flex-1 py-2 rounded-sm border border-border text-[9px] font-mono tracking-wider text-muted-foreground hover:text-foreground transition-colors"
-                    >
+                    <button onClick={handleSaveThisOnly}
+                      className="flex-1 py-2 rounded-sm border border-border text-[9px] font-mono tracking-wider text-muted-foreground hover:text-foreground transition-colors">
                       This only
                     </button>
-                    <button
-                      onClick={handleSaveAllFuture}
-                      className="flex-1 py-2 rounded-sm border border-primary/20 text-[9px] font-mono tracking-wider text-primary hover:bg-primary/5 transition-colors"
-                    >
+                    <button onClick={handleSaveAllFuture}
+                      className="flex-1 py-2 rounded-sm border border-primary/20 text-[9px] font-mono tracking-wider text-primary hover:bg-primary/5 transition-colors">
                       All future
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* ─── 7. Actions ─── */}
+              {/* ─── Actions ─── */}
               {!showEditScope && (
-                <div
-                  className="flex items-center gap-2 pt-3 mt-1 border-t border-border/30"
+                <div className="flex items-center gap-2 pt-3 border-t border-border/20"
                   onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <button
-                    type="button"
+                  onClick={(e) => e.stopPropagation()}>
+                  <button type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       if (!task) return;
                       updateTask(task.id, { inWaitingRoom: true, time: undefined });
                       setEditingTask(null);
                     }}
-                    className="flex items-center gap-1.5 px-3 py-2.5 rounded-sm border border-border/60 text-[9px] font-mono tracking-wider text-muted-foreground/60 hover:text-foreground hover:border-border transition-colors min-h-[40px]"
-                    title="Move to Waiting Room"
-                  >
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-sm text-[9px] font-mono tracking-wider text-muted-foreground/50 hover:text-foreground hover:bg-muted/30 transition-colors"
+                    title="Move to Waiting Room">
                     <Inbox size={12} strokeWidth={1.5} />
                     WAITING
                   </button>
-                  <button
-                    type="button"
+                  <button type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       if (!task) return;
@@ -849,15 +756,13 @@ export function TaskEditPanel() {
                       deleteTask(task.id);
                       setEditingTask(null);
                     }}
-                    className="flex items-center gap-1.5 px-3 py-2.5 rounded-sm border border-border/60 text-[9px] font-mono tracking-wider text-muted-foreground/60 hover:text-foreground hover:border-border transition-colors min-h-[40px]"
-                    title="Send to Library"
-                  >
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-sm text-[9px] font-mono tracking-wider text-muted-foreground/50 hover:text-foreground hover:bg-muted/30 transition-colors"
+                    title="Send to Library">
                     <Archive size={12} strokeWidth={1.5} />
                     LIBRARY
                   </button>
                   <div className="flex-1" />
-                  <button
-                    type="button"
+                  <button type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       if (!task) return;
@@ -868,9 +773,8 @@ export function TaskEditPanel() {
                         setEditingTask(null);
                       }
                     }}
-                    className="flex items-center justify-center w-[40px] h-[40px] rounded-sm border border-border/60 text-muted-foreground/50 hover:text-destructive hover:border-destructive/30 transition-colors"
-                    title="Delete task"
-                  >
+                    className="p-2.5 rounded-sm text-muted-foreground/35 hover:text-destructive transition-colors"
+                    title="Delete task">
                     <Trash2 size={14} strokeWidth={1.5} />
                   </button>
                 </div>
@@ -878,13 +782,12 @@ export function TaskEditPanel() {
 
               {/* Delete confirmation for recurring */}
               {showDeleteConfirm && (
-                <div className="p-3 border border-border rounded-sm bg-muted/30 mt-2">
-                  <p className="text-[9px] font-mono text-foreground/70 mb-2.5">Delete routine task?</p>
+                <div className="p-3 border border-border/40 rounded-sm bg-muted/20 mt-2">
+                  <p className="text-[9px] font-mono text-foreground/60 mb-2.5">Delete routine task?</p>
                   <div className="flex gap-2">
                     <button
                       onClick={(e) => { e.stopPropagation(); deleteTask(task.id); setEditingTask(null); }}
-                      className="flex-1 py-2 rounded-sm border border-border text-[9px] font-mono tracking-wider text-muted-foreground hover:text-foreground transition-colors"
-                    >
+                      className="flex-1 py-2 rounded-sm border border-border text-[9px] font-mono tracking-wider text-muted-foreground hover:text-foreground transition-colors">
                       This only
                     </button>
                     <button
@@ -898,8 +801,7 @@ export function TaskEditPanel() {
                         }
                         setEditingTask(null);
                       }}
-                      className="flex-1 py-2 rounded-sm border border-destructive/20 text-[9px] font-mono tracking-wider text-destructive hover:bg-destructive/5 transition-colors"
-                    >
+                      className="flex-1 py-2 rounded-sm border border-destructive/20 text-[9px] font-mono tracking-wider text-destructive hover:bg-destructive/5 transition-colors">
                       All future
                     </button>
                   </div>
