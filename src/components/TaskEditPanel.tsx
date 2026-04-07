@@ -403,19 +403,6 @@ export function TaskEditPanel() {
 
             {/* ─── Metadata chips (top, above title) ─── */}
             <div className="px-5 pb-2 flex items-center gap-1.5 flex-wrap">
-              {/* Duration */}
-              <Popover open={showDurationPicker} onOpenChange={setShowDurationPicker}>
-                <PopoverTrigger asChild>
-                  <button className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide text-muted-foreground/60 hover:text-foreground bg-muted/40 hover:bg-muted/60 transition-colors">
-                    <Clock size={11} strokeWidth={1.5} />
-                    {formatDuration(task.duration || 30)}
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-56 p-3 z-[70]" align="start" onClick={(e) => e.stopPropagation()}>
-                  <DurationPicker duration={task.duration || 30} onChange={(m) => updateTask(task.id, { duration: m })} />
-                </PopoverContent>
-              </Popover>
-
               {/* Due date */}
               <Popover open={showDuePicker} onOpenChange={setShowDuePicker}>
                 <PopoverTrigger asChild>
@@ -483,20 +470,30 @@ export function TaskEditPanel() {
                 </PopoverContent>
               </Popover>
 
-              {/* Priority chips */}
-              {([0, 1, 2, 3] as Priority[]).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPriority(p)}
-                  className={`px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
-                    priority === p
-                      ? `${PRIORITY_COLORS[p]} bg-muted/50`
-                      : 'text-muted-foreground/30 hover:text-muted-foreground/60'
-                  }`}
-                >
-                  {PRIORITY_LABELS[p]}
-                </button>
-              ))}
+              {/* Priority dropdown chip */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors border ${PRIORITY_COLORS[priority]} bg-muted/40 hover:bg-muted/60`}>
+                    {PRIORITY_LABELS[priority]}
+                    <ChevronDown size={10} strokeWidth={1.5} />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-32 p-1 z-[70]" align="start" onClick={(e) => e.stopPropagation()}>
+                  {([0, 1, 2, 3] as Priority[]).map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => setPriority(p)}
+                      className={`w-full text-left px-3 py-2 text-[11px] font-mono rounded-sm transition-colors ${
+                        priority === p
+                          ? `${PRIORITY_COLORS[p]} bg-muted/50`
+                          : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30'
+                      }`}
+                    >
+                      {PRIORITY_LABELS[p]}
+                    </button>
+                  ))}
+                </PopoverContent>
+              </Popover>
 
               {/* Repeat */}
               <button
@@ -723,7 +720,7 @@ export function TaskEditPanel() {
                     onChange={(e) => setLinkInput(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') addLink(); if (e.key === 'Escape') { setShowLinkInput(false); setLinkInput(''); } }}
                     onBlur={addLink}
-                    placeholder="Paste URL…"
+                    placeholder="Paste URL or file link…"
                     className="flex-1 bg-transparent text-[11px] font-mono text-foreground placeholder:text-muted-foreground/25 focus:outline-none border-b border-primary/30 py-1"
                     autoFocus
                   />
@@ -734,7 +731,7 @@ export function TaskEditPanel() {
                   className="flex items-center gap-1.5 text-[9px] font-mono tracking-wider text-muted-foreground/30 hover:text-foreground transition-colors mb-3"
                 >
                   <Paperclip size={10} strokeWidth={1.5} />
-                  Add link
+                  Add attachment
                 </button>
               )}
 
