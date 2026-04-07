@@ -7,9 +7,11 @@ import { useScheduledDragStore } from '@/store/scheduledDragStore';
 import { useCarryStore, isInScrollCooldown } from '@/store/carryStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { TimelineTaskBlock } from '@/components/TimelineTaskBlock';
+import { CondensedTaskBlock } from '@/components/CondensedTaskBlock';
 import { timeToMinutes, minutesToTime, snapTo15, formatTime12h, formatHour12h } from '@/hooks/useCurrentTime';
 import { Calendar as CalIcon } from 'lucide-react';
 import { getOccupiedSlots, findValidPosition, clampResize, wouldOverlap, getRoutineConflicts } from '@/utils/collisionDetection';
+import { clusterTasks, TaskCluster, getZoomForCluster } from '@/utils/taskClustering';
 
 export const DEFAULT_HOUR_HEIGHT = 56;
 export const HOUR_HEIGHT = DEFAULT_HOUR_HEIGHT;
@@ -24,6 +26,7 @@ interface TimelineColumnProps {
   isToday: boolean;
   showTimeLabels?: boolean;
   hourHeight?: number;
+  onZoomToCluster?: (cluster: TaskCluster, targetHourHeight: number, scrollToMin: number) => void;
 }
 
 function formatDuration(mins: number): string {
@@ -90,6 +93,7 @@ export function TimelineColumn({
   isToday,
   showTimeLabels = true,
   hourHeight: hourHeightProp,
+  onZoomToCluster,
 }: TimelineColumnProps) {
   const HOUR_HEIGHT = hourHeightProp ?? DEFAULT_HOUR_HEIGHT;
   const { setEditingTask, reorderTask, moveTask, resizeTask, completeTask, canMoveTask, addTask, routinesEnabled } = useTaskStore();
