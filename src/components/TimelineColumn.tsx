@@ -801,37 +801,49 @@ export function TimelineColumn({
         </div>
       ))}
 
-      {/* Half-hour lines */}
-      {HOUR_HEIGHT >= 40 && HOURS.map((hour, i) => (
-        <div
-          key={`h30-${hour}`}
-          className="absolute right-0 border-t border-border/20"
-          style={{
-            top: i * HOUR_HEIGHT + HOUR_HEIGHT / 2,
-            left: timeLabelsWidth,
-          }}
-        />
-      ))}
+      {/* Half-hour lines — fade in between 36-56px */}
+      {HOUR_HEIGHT >= 36 && HOURS.map((hour, i) => {
+        const opacity = Math.min(1, (HOUR_HEIGHT - 36) / 20) * 0.2;
+        return (
+          <div
+            key={`h30-${hour}`}
+            className="absolute right-0 border-t border-border"
+            style={{
+              top: i * HOUR_HEIGHT + HOUR_HEIGHT / 2,
+              left: timeLabelsWidth,
+              opacity,
+              transition: 'opacity 0.15s ease',
+            }}
+          />
+        );
+      })}
 
-      {/* 15-min lines */}
-      {HOUR_HEIGHT >= 72 && HOURS.map((hour, i) => (
-        <Fragment key={`q-${hour}`}>
-          <div
-            className="absolute right-0 border-t border-border/10"
-            style={{
-              top: i * HOUR_HEIGHT + HOUR_HEIGHT / 4,
-              left: timeLabelsWidth,
-            }}
-          />
-          <div
-            className="absolute right-0 border-t border-border/10"
-            style={{
-              top: i * HOUR_HEIGHT + (HOUR_HEIGHT * 3) / 4,
-              left: timeLabelsWidth,
-            }}
-          />
-        </Fragment>
-      ))}
+      {/* 15-min lines — fade in between 64-96px */}
+      {HOUR_HEIGHT >= 64 && HOURS.map((hour, i) => {
+        const opacity = Math.min(1, (HOUR_HEIGHT - 64) / 32) * 0.1;
+        return (
+          <Fragment key={`q-${hour}`}>
+            <div
+              className="absolute right-0 border-t border-border"
+              style={{
+                top: i * HOUR_HEIGHT + HOUR_HEIGHT / 4,
+                left: timeLabelsWidth,
+                opacity,
+                transition: 'opacity 0.15s ease',
+              }}
+            />
+            <div
+              className="absolute right-0 border-t border-border"
+              style={{
+                top: i * HOUR_HEIGHT + (HOUR_HEIGHT * 3) / 4,
+                left: timeLabelsWidth,
+                opacity,
+                transition: 'opacity 0.15s ease',
+              }}
+            />
+          </Fragment>
+        );
+      })}
 
       {/* Now line */}
       {isToday && nowTop > 0 && nowTop < HOURS.length * HOUR_HEIGHT && (
