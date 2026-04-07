@@ -168,7 +168,9 @@ export function TaskEditPanel() {
       setShowEditScope(false);
       setPendingUpdates(null);
       setDueDate(task.dueDate || '');
+      setTaskCategory(task.category || '');
       setShowDuePicker(false);
+      setShowCatPicker(false);
       setSaveStatus('idle');
       setShowLinkInput(false);
       setLinkInput('');
