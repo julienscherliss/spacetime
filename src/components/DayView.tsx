@@ -5,7 +5,7 @@ import { useCalendarStore } from '@/store/calendarStore';
 import { useTouchDragStore } from '@/store/touchDragStore';
 import { useScheduledDragStore } from '@/store/scheduledDragStore';
 import { useCarryStore } from '@/store/carryStore';
-import { useCurrentTime, formatTime12h } from '@/hooks/useCurrentTime';
+import { useCurrentTime } from '@/hooks/useCurrentTime';
 import { TimelineColumn, START_HOUR } from '@/components/TimelineColumn';
 import { BlockedModal } from '@/components/BlockedModal';
 import { ZoomControl } from '@/components/ZoomControl';
