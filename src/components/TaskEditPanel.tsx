@@ -173,11 +173,8 @@ export function TaskEditPanel() {
       setShowDuePicker(false);
       setShowCatPicker(false);
       setSaveStatus('idle');
-      setShowLinkInput(false);
-      setLinkInput('');
-      const urlRegex = /https?:\/\/[^\s]+/g;
-      const foundLinks = task.description?.match(urlRegex) || [];
-      setLinks(foundLinks);
+      setAttachments(task.attachments || []);
+      setIsUploading(false);
       scopeTriggeredRef.current = false;
     }
   }, [task?.id]);
@@ -332,22 +329,34 @@ export function TaskEditPanel() {
     }
   };
 
-  const addLink = () => {
-    const trimmed = linkInput.trim();
-    if (!trimmed) { setShowLinkInput(false); return; }
-    const url = trimmed.startsWith('http') ? trimmed : `https://${trimmed}`;
-    if (isValidUrl(url)) {
-      setLinks(prev => [...prev, url]);
-      setDescription(prev => prev ? `${prev}\n${url}` : url);
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0 || !task) return;
+    setIsUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        const filePath = `${task.id}/${Date.now()}-${file.name}`;
+        const { error } = await supabase.storage.from('task-attachments').upload(filePath, file);
+        if (error) throw error;
+        const { data: { publicUrl } } = supabase.storage.from('task-attachments').getPublicUrl(filePath);
+        setAttachments(prev => [...prev, { name: file.name, url: publicUrl, type: file.type }]);
+      }
+    } catch (err) {
+      console.error('Upload failed:', err);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
-    setLinkInput('');
-    setShowLinkInput(false);
   };
 
-  const removeLink = (index: number) => {
-    const removed = links[index];
-    setLinks(prev => prev.filter((_, i) => i !== index));
-    setDescription(prev => prev.replace(removed, '').replace(/\n\n+/g, '\n').trim());
+  const removeAttachment = async (index: number) => {
+    const att = attachments[index];
+    // Extract path from URL
+    const pathMatch = att.url.match(/task-attachments\/(.+)$/);
+    if (pathMatch) {
+      await supabase.storage.from('task-attachments').remove([pathMatch[1]]);
+    }
+    setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
   useEffect(() => {
