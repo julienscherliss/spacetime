@@ -311,18 +311,6 @@ export function DayView() {
         </div>
       </div>
 
-      {/* Completed */}
-      {dayTasks.filter((t) => t.completed).length > 0 && (
-        <div className="mt-4 pt-3 border-t border-border/30">
-          <div className="text-[10px] font-mono text-muted-foreground/30 tracking-widest mb-1">COMPLETED</div>
-          {dayTasks.filter((t) => t.completed).map((task) => (
-            <div key={task.id} className="flex items-center gap-3 py-0.5 opacity-30">
-              <span className="text-[10px] font-mono text-muted-foreground w-16">{task.time ? formatTime12h(task.time) : ''}</span>
-              <span className="text-[11px] font-mono line-through text-muted-foreground">{task.title}</span>
-            </div>
-          ))}
-        </div>
-      )}
 
       {dayTasks.length === 0 && (
         <div className="text-center py-20">
