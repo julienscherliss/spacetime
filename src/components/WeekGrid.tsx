@@ -146,25 +146,29 @@ interface WeekDayHeadersProps {
   today: string;
   compact?: boolean;
   dayCount?: number;
+  controls?: React.ReactNode;
 }
 
-export function WeekDayHeaders({ weekOffset, today, compact = false, dayCount = 7 }: WeekDayHeadersProps) {
+export function WeekDayHeaders({ weekOffset, today, compact = false, dayCount = 7, controls }: WeekDayHeadersProps) {
   const weekDays = useWeekDays(weekOffset, today, dayCount);
 
   return (
-    <div className="flex bg-background">
-      <div className={compact ? 'w-6 shrink-0' : 'w-[3.25rem] shrink-0'} />
+    <div className="flex bg-background items-end">
+      {/* Gutter area — holds nav controls */}
+      <div className={`${compact ? 'w-6' : 'w-[3.25rem]'} shrink-0 flex flex-col items-center justify-end pb-1`}>
+        {controls}
+      </div>
       {weekDays.map((day) => (
         <div
           key={day.date}
-          className={`flex-1 text-center py-1.5 border-b ${
+          className={`flex-1 text-center py-1 border-b ${
             day.isToday ? 'border-primary/20' : 'border-border/40'
           }`}
         >
           <div className="text-[9px] font-mono tracking-[0.15em] text-muted-foreground/40">
             {compact ? day.shortLabel : day.label}
           </div>
-          <div className={`text-sm font-display font-bold ${day.isToday ? 'text-primary' : 'text-foreground/50'}`}>
+          <div className={`text-sm font-display font-bold leading-tight ${day.isToday ? 'text-primary' : 'text-foreground/50'}`}>
             {day.day}
           </div>
         </div>
