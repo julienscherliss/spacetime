@@ -238,6 +238,14 @@ export function WeekView() {
         </motion.div>
       )}
 
+      {/* Pinned day headers */}
+      <WeekDayHeaders
+        weekOffset={weekOffset}
+        today={today}
+        compact={isMobile}
+        dayCount={dayCount}
+      />
+
       {/* Timeline + Zoom control */}
       <div className="flex gap-2 sm:gap-3">
         <div
