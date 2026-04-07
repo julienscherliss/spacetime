@@ -55,23 +55,6 @@ const Index = () => {
     <div className={`min-h-screen bg-background`}>
       <AppNav />
 
-      {/* Routines off banner */}
-      <AnimatePresence>
-        {!routinesEnabled && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="bg-muted border-b border-border/30 text-center py-2">
-              <span className="text-[10px] font-mono text-muted-foreground tracking-[0.2em]">
-                ROUTINES OFF — ROUTINE TASKS HIDDEN
-              </span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <AnimatePresence mode="wait">
         <motion.div

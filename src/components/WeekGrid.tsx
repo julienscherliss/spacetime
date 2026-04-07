@@ -86,17 +86,6 @@ export function WeekGrid({
 
   return (
     <div>
-      {/* Week label */}
-      <div className="flex items-baseline gap-2 mb-1 px-0.5">
-        <span className="text-[10px] font-mono tracking-[0.12em] text-muted-foreground/50 uppercase">
-          {rangeLabel}
-        </span>
-        {weekOffset === 0 && (
-          <span className="text-[9px] font-mono text-primary/50 tracking-widest">
-            {dayCount === 7 ? 'THIS WEEK' : 'NOW'}
-          </span>
-        )}
-      </div>
 
       {/* Timeline */}
       <div className="flex">
