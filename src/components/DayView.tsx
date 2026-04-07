@@ -11,6 +11,7 @@ import { BlockedModal } from '@/components/BlockedModal';
 import { ZoomControl } from '@/components/ZoomControl';
 import { useTimeScale, SCALE_MIN, SCALE_MAX } from '@/hooks/useTimeScale';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { FitViewButton } from '@/components/FitViewButton';
 import { TaskCluster } from '@/utils/taskClustering';
 
 function addDaysToDate(dateStr: string, days: number): string {
@@ -227,8 +228,16 @@ export function DayView() {
             onClick={() => setSelectedDate(d => addDaysToDate(d, 1))}
             className="p-1.5 rounded-sm text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors"
           >
-            <ChevronRight size={16} strokeWidth={1.5} />
+          <ChevronRight size={16} strokeWidth={1.5} />
           </button>
+          <FitViewButton
+            tasks={dayTasks}
+            scrollRef={scrollRef as React.RefObject<HTMLElement>}
+            hourHeight={hourHeight}
+            setScale={setScale}
+            resetZoom={resetZoom}
+            nowMinutes={nowMinutes}
+          />
         </div>
       </div>
 

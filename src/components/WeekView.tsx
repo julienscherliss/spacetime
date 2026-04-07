@@ -8,12 +8,13 @@ import { BlockedModal } from '@/components/BlockedModal';
 import { ZoomControl } from '@/components/ZoomControl';
 import { useTimeScale, SCALE_MIN, SCALE_MAX } from '@/hooks/useTimeScale';
 import { ChevronLeft, ChevronRight, Layers, Square, X } from 'lucide-react';
+import { FitViewButton } from '@/components/FitViewButton';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { START_HOUR } from '@/components/TimelineColumn';
 import { TaskCluster } from '@/utils/taskClustering';
 
 export function WeekView() {
-  const { routinesEnabled, generateRecurringInstances } = useTaskStore();
+  const { tasks, routinesEnabled, generateRecurringInstances } = useTaskStore();
   const { minutes: nowMinutes, dateStr: today } = useCurrentTime(15000);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [weekOffset, setWeekOffset] = useState(0);
@@ -176,6 +177,24 @@ export function WeekView() {
             >
               <ChevronRight size={16} strokeWidth={1.5} />
             </button>
+            {(() => {
+              const visibleDates = new Set(week1.map(d => d.date));
+              if (stacked) week2.forEach(d => visibleDates.add(d.date));
+              const visibleTasks = tasks.filter(t =>
+                visibleDates.has(t.date) && !t.inWaitingRoom && !t.archivedAt &&
+                !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring')
+              );
+              return (
+                <FitViewButton
+                  tasks={visibleTasks}
+                  scrollRef={scrollRef as React.RefObject<HTMLElement>}
+                  hourHeight={hourHeight}
+                  setScale={setScale}
+                  resetZoom={resetZoom}
+                  nowMinutes={nowMinutes}
+                />
+              );
+            })()}
           </div>
         </div>
 
