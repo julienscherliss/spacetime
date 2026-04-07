@@ -4,16 +4,6 @@ import { TimelineColumn, HOURS } from '@/components/TimelineColumn';
 import { formatHour12h } from '@/hooks/useCurrentTime';
 import { TaskCluster } from '@/utils/taskClustering';
 
-interface WeekGridProps {
-  weekOffset: number;
-  today: string;
-  nowMinutes: number;
-  hourHeight: number;
-  routinesEnabled: boolean;
-  label?: string;
-  compact?: boolean;
-  dayCount?: number; // 3 for mobile, 7 for desktop
-}
 
 function getWeekDays(offset: number, today: string, count: number = 7) {
   const todayDate = new Date();
