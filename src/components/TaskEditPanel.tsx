@@ -229,6 +229,7 @@ export function TaskEditPanel() {
       detachedFromSeries: (recurrence && !isLinked && task?.recurrenceParentId) ? true : false,
       dueDate: dueDate || undefined,
       category: taskCategory || undefined,
+      attachments: attachments.length > 0 ? attachments : undefined,
     };
   };
 
