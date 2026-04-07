@@ -139,9 +139,9 @@ export function TaskEditPanel() {
   const [showDuePicker, setShowDuePicker] = useState(false);
   const [showDurationPicker, setShowDurationPicker] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
-  const [links, setLinks] = useState<string[]>([]);
-  const [linkInput, setLinkInput] = useState('');
-  const [showLinkInput, setShowLinkInput] = useState(false);
+  const [attachments, setAttachments] = useState<{ name: string; url: string; type: string }[]>(task?.attachments || []);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const scopeTriggeredRef = useRef(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
