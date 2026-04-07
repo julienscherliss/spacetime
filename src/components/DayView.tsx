@@ -11,6 +11,7 @@ import { BlockedModal } from '@/components/BlockedModal';
 import { ZoomControl } from '@/components/ZoomControl';
 import { useTimeScale, SCALE_MIN, SCALE_MAX } from '@/hooks/useTimeScale';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { FitViewButton } from '@/components/FitViewButton';
 import { TaskCluster } from '@/utils/taskClustering';
 
 function addDaysToDate(dateStr: string, days: number): string {

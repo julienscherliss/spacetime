@@ -8,6 +8,7 @@ import { BlockedModal } from '@/components/BlockedModal';
 import { ZoomControl } from '@/components/ZoomControl';
 import { useTimeScale, SCALE_MIN, SCALE_MAX } from '@/hooks/useTimeScale';
 import { ChevronLeft, ChevronRight, Layers, Square, X } from 'lucide-react';
+import { FitViewButton } from '@/components/FitViewButton';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { START_HOUR } from '@/components/TimelineColumn';
 import { TaskCluster } from '@/utils/taskClustering';
