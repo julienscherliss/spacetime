@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Priority, RecurrencePattern, CustomUnit } from '@/store/taskStore';
 import { SubtaskList, Subtask } from '@/components/SubtaskList';
-import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar, Inbox, CalendarCheck, XCircle, Paperclip, ExternalLink, Check, AlertTriangle, Tag } from 'lucide-react';
+import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar, Inbox, CalendarCheck, XCircle, Paperclip, ExternalLink, Check, AlertTriangle, Tag, Upload, FileText } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { useLibraryStore } from '@/store/libraryStore';
 import { formatTime12h } from '@/hooks/useCurrentTime';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -138,9 +139,9 @@ export function TaskEditPanel() {
   const [showDuePicker, setShowDuePicker] = useState(false);
   const [showDurationPicker, setShowDurationPicker] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
-  const [links, setLinks] = useState<string[]>([]);
-  const [linkInput, setLinkInput] = useState('');
-  const [showLinkInput, setShowLinkInput] = useState(false);
+  const [attachments, setAttachments] = useState<{ name: string; url: string; type: string }[]>(task?.attachments || []);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const scopeTriggeredRef = useRef(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -172,11 +173,8 @@ export function TaskEditPanel() {
       setShowDuePicker(false);
       setShowCatPicker(false);
       setSaveStatus('idle');
-      setShowLinkInput(false);
-      setLinkInput('');
-      const urlRegex = /https?:\/\/[^\s]+/g;
-      const foundLinks = task.description?.match(urlRegex) || [];
-      setLinks(foundLinks);
+      setAttachments(task.attachments || []);
+      setIsUploading(false);
       scopeTriggeredRef.current = false;
     }
   }, [task?.id]);
@@ -231,6 +229,7 @@ export function TaskEditPanel() {
       detachedFromSeries: (recurrence && !isLinked && task?.recurrenceParentId) ? true : false,
       dueDate: dueDate || undefined,
       category: taskCategory || undefined,
+      attachments: attachments.length > 0 ? attachments : undefined,
     };
   };
 
@@ -331,22 +330,34 @@ export function TaskEditPanel() {
     }
   };
 
-  const addLink = () => {
-    const trimmed = linkInput.trim();
-    if (!trimmed) { setShowLinkInput(false); return; }
-    const url = trimmed.startsWith('http') ? trimmed : `https://${trimmed}`;
-    if (isValidUrl(url)) {
-      setLinks(prev => [...prev, url]);
-      setDescription(prev => prev ? `${prev}\n${url}` : url);
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0 || !task) return;
+    setIsUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        const filePath = `${task.id}/${Date.now()}-${file.name}`;
+        const { error } = await supabase.storage.from('task-attachments').upload(filePath, file);
+        if (error) throw error;
+        const { data: { publicUrl } } = supabase.storage.from('task-attachments').getPublicUrl(filePath);
+        setAttachments(prev => [...prev, { name: file.name, url: publicUrl, type: file.type }]);
+      }
+    } catch (err) {
+      console.error('Upload failed:', err);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
-    setLinkInput('');
-    setShowLinkInput(false);
   };
 
-  const removeLink = (index: number) => {
-    const removed = links[index];
-    setLinks(prev => prev.filter((_, i) => i !== index));
-    setDescription(prev => prev.replace(removed, '').replace(/\n\n+/g, '\n').trim());
+  const removeAttachment = async (index: number) => {
+    const att = attachments[index];
+    // Extract path from URL
+    const pathMatch = att.url.match(/task-attachments\/(.+)$/);
+    if (pathMatch) {
+      await supabase.storage.from('task-attachments').remove([pathMatch[1]]);
+    }
+    setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
   useEffect(() => {
@@ -694,18 +705,18 @@ export function TaskEditPanel() {
                 )}
               </div>
 
-              {/* ─── Links ─── */}
-              {links.length > 0 && (
+              {/* ─── Attachments ─── */}
+              {attachments.length > 0 && (
                 <div className="space-y-1 mb-3">
-                  {links.map((url, i) => (
-                    <div key={i} className="flex items-center gap-2 py-1 group">
-                      <ExternalLink size={11} className="text-muted-foreground/30 shrink-0" />
-                      <a href={url} target="_blank" rel="noopener noreferrer"
-                        className="flex-1 text-[10px] font-mono text-primary/60 hover:text-primary truncate"
+                  {attachments.map((att, i) => (
+                    <div key={i} className="flex items-center gap-2 py-1.5 group">
+                      <FileText size={11} className="text-muted-foreground/40 shrink-0" />
+                      <a href={att.url} target="_blank" rel="noopener noreferrer"
+                        className="flex-1 text-[10px] font-mono text-foreground/60 hover:text-foreground truncate"
                         onClick={(e) => e.stopPropagation()}>
-                        {getDomain(url)}
+                        {att.name}
                       </a>
-                      <button onClick={() => removeLink(i)}
+                      <button onClick={() => removeAttachment(i)}
                         className="p-0.5 text-muted-foreground/20 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
                         <X size={10} />
                       </button>
@@ -713,27 +724,30 @@ export function TaskEditPanel() {
                   ))}
                 </div>
               )}
-              {showLinkInput ? (
-                <div className="flex items-center gap-2 mb-3">
-                  <input
-                    value={linkInput}
-                    onChange={(e) => setLinkInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') addLink(); if (e.key === 'Escape') { setShowLinkInput(false); setLinkInput(''); } }}
-                    onBlur={addLink}
-                    placeholder="Paste URL or file link…"
-                    className="flex-1 bg-transparent text-[11px] font-mono text-foreground placeholder:text-muted-foreground/25 focus:outline-none border-b border-primary/30 py-1"
-                    autoFocus
-                  />
-                </div>
-              ) : (
-                <button
-                  onClick={() => setShowLinkInput(true)}
-                  className="flex items-center gap-1.5 text-[9px] font-mono tracking-wider text-muted-foreground/30 hover:text-foreground transition-colors mb-3"
-                >
-                  <Paperclip size={10} strokeWidth={1.5} />
-                  Add attachment
-                </button>
-              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={handleFileUpload}
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="flex items-center gap-1.5 text-[9px] font-mono tracking-wider text-muted-foreground/30 hover:text-foreground transition-colors mb-3 disabled:opacity-50"
+              >
+                {isUploading ? (
+                  <>
+                    <Upload size={10} strokeWidth={1.5} className="animate-pulse" />
+                    Uploading…
+                  </>
+                ) : (
+                  <>
+                    <Paperclip size={10} strokeWidth={1.5} />
+                    Add attachment
+                  </>
+                )}
+              </button>
 
               {/* Move info */}
               {task.moveCount > 0 && (

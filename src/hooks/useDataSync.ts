@@ -36,6 +36,7 @@ function rowToTask(row: any): Task {
     dueDate: row.due_date ?? undefined,
     archivedAt: row.archived_at ?? undefined,
     archiveReason: row.archive_reason ?? undefined,
+    attachments: row.attachments ?? [],
   };
 }
 
@@ -68,6 +69,7 @@ function taskToRow(task: Task, userId: string) {
     due_date: task.dueDate ?? null,
     archived_at: task.archivedAt ?? null,
     archive_reason: task.archiveReason ?? null,
+    attachments: task.attachments ?? [],
   };
 }
 

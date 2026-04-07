@@ -182,6 +182,7 @@ export type Database = {
         Row: {
           archive_reason: string | null
           archived_at: string | null
+          attachments: Json | null
           category: string | null
           completed: boolean
           created_at: string
@@ -213,6 +214,7 @@ export type Database = {
         Insert: {
           archive_reason?: string | null
           archived_at?: string | null
+          attachments?: Json | null
           category?: string | null
           completed?: boolean
           created_at?: string
@@ -244,6 +246,7 @@ export type Database = {
         Update: {
           archive_reason?: string | null
           archived_at?: string | null
+          attachments?: Json | null
           category?: string | null
           completed?: boolean
           created_at?: string

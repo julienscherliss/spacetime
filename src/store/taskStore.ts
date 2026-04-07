@@ -45,6 +45,7 @@ export interface Task {
   dueDate?: string;
   archivedAt?: string;
   archiveReason?: 'completed' | 'deleted';
+  attachments?: { name: string; url: string; type: string }[];
 }
 
 export interface DailyStats {
