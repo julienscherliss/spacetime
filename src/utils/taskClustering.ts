@@ -20,8 +20,8 @@ export interface TaskCluster {
   endMin: number;
 }
 
-const MIN_READABLE_PX = 28; // minimum height for a task to be readable
-const CLUSTER_PROXIMITY_PX = 4; // if gap between tasks is less than this in px, cluster them
+const MIN_READABLE_PX = 22; // minimum height for a task to be readable — lowered to break apart earlier
+const CLUSTER_PROXIMITY_PX = 2; // if gap between tasks is less than this in px, cluster them
 
 /**
  * Given a list of timed tasks and the current hourHeight,
