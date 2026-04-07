@@ -26,9 +26,8 @@ export function WeekView() {
   const dayCount = isMobile ? 3 : 7;
 
   const {
-    hourHeight, zoomIn, zoomOut, resetZoom, setScale,
+    hourHeight, setScale, resetZoom,
     bindScrollZoom, bindPinchZoom,
-    zoomPercent, isMin, isMax, isDefault,
   } = useTimeScale('week');
 
   // Cluster zoom state
