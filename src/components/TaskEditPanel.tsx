@@ -704,18 +704,18 @@ export function TaskEditPanel() {
                 )}
               </div>
 
-              {/* ─── Links ─── */}
-              {links.length > 0 && (
+              {/* ─── Attachments ─── */}
+              {attachments.length > 0 && (
                 <div className="space-y-1 mb-3">
-                  {links.map((url, i) => (
-                    <div key={i} className="flex items-center gap-2 py-1 group">
-                      <ExternalLink size={11} className="text-muted-foreground/30 shrink-0" />
-                      <a href={url} target="_blank" rel="noopener noreferrer"
-                        className="flex-1 text-[10px] font-mono text-primary/60 hover:text-primary truncate"
+                  {attachments.map((att, i) => (
+                    <div key={i} className="flex items-center gap-2 py-1.5 group">
+                      <FileText size={11} className="text-muted-foreground/40 shrink-0" />
+                      <a href={att.url} target="_blank" rel="noopener noreferrer"
+                        className="flex-1 text-[10px] font-mono text-foreground/60 hover:text-foreground truncate"
                         onClick={(e) => e.stopPropagation()}>
-                        {getDomain(url)}
+                        {att.name}
                       </a>
-                      <button onClick={() => removeLink(i)}
+                      <button onClick={() => removeAttachment(i)}
                         className="p-0.5 text-muted-foreground/20 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
                         <X size={10} />
                       </button>
@@ -723,27 +723,30 @@ export function TaskEditPanel() {
                   ))}
                 </div>
               )}
-              {showLinkInput ? (
-                <div className="flex items-center gap-2 mb-3">
-                  <input
-                    value={linkInput}
-                    onChange={(e) => setLinkInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') addLink(); if (e.key === 'Escape') { setShowLinkInput(false); setLinkInput(''); } }}
-                    onBlur={addLink}
-                    placeholder="Paste URL or file link…"
-                    className="flex-1 bg-transparent text-[11px] font-mono text-foreground placeholder:text-muted-foreground/25 focus:outline-none border-b border-primary/30 py-1"
-                    autoFocus
-                  />
-                </div>
-              ) : (
-                <button
-                  onClick={() => setShowLinkInput(true)}
-                  className="flex items-center gap-1.5 text-[9px] font-mono tracking-wider text-muted-foreground/30 hover:text-foreground transition-colors mb-3"
-                >
-                  <Paperclip size={10} strokeWidth={1.5} />
-                  Add attachment
-                </button>
-              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={handleFileUpload}
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="flex items-center gap-1.5 text-[9px] font-mono tracking-wider text-muted-foreground/30 hover:text-foreground transition-colors mb-3 disabled:opacity-50"
+              >
+                {isUploading ? (
+                  <>
+                    <Upload size={10} strokeWidth={1.5} className="animate-pulse" />
+                    Uploading…
+                  </>
+                ) : (
+                  <>
+                    <Paperclip size={10} strokeWidth={1.5} />
+                    Add attachment
+                  </>
+                )}
+              </button>
 
               {/* Move info */}
               {task.moveCount > 0 && (
