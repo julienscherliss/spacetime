@@ -135,7 +135,7 @@ export function FocusView() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
           onClick={() => setActivePanel('completed')}
-          className="absolute top-[15%] left-1/2 -translate-x-1/2 z-20 p-3 text-muted-foreground/30 hover:text-muted-foreground/50 transition-colors"
+          className="absolute top-6 left-0 right-0 flex justify-center z-20 p-3 text-muted-foreground/25 hover:text-muted-foreground/45 transition-colors"
         >
           <ChevronUp size={30} strokeWidth={1.5} />
         </motion.button>
@@ -146,7 +146,7 @@ export function FocusView() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
           onClick={() => setActivePanel('upcoming')}
-          className="absolute bottom-[15%] left-1/2 -translate-x-1/2 z-20 p-3 text-muted-foreground/30 hover:text-muted-foreground/50 transition-colors"
+          className="absolute bottom-6 left-0 right-0 flex justify-center z-20 p-3 text-muted-foreground/25 hover:text-muted-foreground/45 transition-colors"
         >
           <ChevronDown size={30} strokeWidth={1.5} />
         </motion.button>
