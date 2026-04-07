@@ -54,7 +54,6 @@ export function CalendarView() {
     if (swipeAxisRef.current === 'vertical' && Math.abs(dy) > 80) {
       if (dy < -80) {
         // Swipe up → open Library
-        const { useLibraryStore } = require('@/store/libraryStore');
         useLibraryStore.getState().setPanelOpen(true);
       } else if (dy > 80) {
         // Swipe down → open Waiting Room
