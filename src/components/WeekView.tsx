@@ -41,28 +41,41 @@ export function WeekView() {
 
   const handleZoomToCluster = useCallback((cluster: TaskCluster, targetHourHeight: number, scrollToMin: number) => {
     if (!scrollRef.current) return;
+    const el = scrollRef.current;
     preClusterScaleRef.current = hourHeight;
-    preClusterScrollRef.current = scrollRef.current.scrollTop;
-    setClusterZoomed(true);
+    preClusterScrollRef.current = el.scrollTop;
+
     const clamped = Math.min(SCALE_MAX, Math.max(SCALE_MIN, targetHourHeight));
+    const viewportH = el.clientHeight;
+    const clusterCenterMin = (cluster.startMin + cluster.endMin) / 2;
+    const targetScrollTop = Math.max(0,
+      ((clusterCenterMin - START_HOUR * 60) / 60) * clamped - viewportH / 2
+    );
+
+    el.style.scrollBehavior = 'auto';
     setScale(clamped);
-    requestAnimationFrame(() => {
-      if (!scrollRef.current) return;
-      const viewportH = scrollRef.current.clientHeight;
-      const targetScrollTop = ((scrollToMin - START_HOUR * 60) / 60) * clamped - viewportH / 2;
-      scrollRef.current.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' });
+    setClusterZoomed(true);
+
+    queueMicrotask(() => {
+      el.scrollTop = targetScrollTop;
+      requestAnimationFrame(() => { el.style.scrollBehavior = ''; });
     });
   }, [hourHeight, setScale]);
 
   const handleExitClusterZoom = useCallback(() => {
-    if (preClusterScaleRef.current !== null) {
-      setScale(preClusterScaleRef.current);
-      requestAnimationFrame(() => {
-        if (scrollRef.current && preClusterScrollRef.current !== null) {
-          scrollRef.current.scrollTo({ top: preClusterScrollRef.current, behavior: 'smooth' });
-        }
-      });
+    if (!scrollRef.current || preClusterScaleRef.current === null) {
+      setClusterZoomed(false);
+      return;
     }
+    const el = scrollRef.current;
+    el.style.scrollBehavior = 'auto';
+    setScale(preClusterScaleRef.current);
+
+    queueMicrotask(() => {
+      el.scrollTop = preClusterScrollRef.current ?? 0;
+      requestAnimationFrame(() => { el.style.scrollBehavior = ''; });
+    });
+
     setClusterZoomed(false);
     preClusterScaleRef.current = null;
     preClusterScrollRef.current = null;
