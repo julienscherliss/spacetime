@@ -303,6 +303,16 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
           </button>
         </div>
 
+        <div className="px-5 pb-5">
+          {/* ─── Title ─── */}
+          <input
+            ref={titleRef}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="What needs doing…"
+            className="w-full bg-transparent font-display font-bold text-foreground text-lg leading-tight focus:outline-none placeholder:text-muted-foreground/25 mb-2"
+          />
+
           {/* ─── Subtitle / Notes (always fully visible) ─── */}
           <textarea
             ref={noteRef}
