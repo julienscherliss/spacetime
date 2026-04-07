@@ -3,6 +3,7 @@ import { Check } from 'lucide-react';
 import { useTimezoneStore, getTodayInTz } from '@/store/timezoneStore';
 import { Task, useTaskStore } from '@/store/taskStore';
 import { HoldToConfirmRing } from '@/components/HoldToConfirmRing';
+import { formatTime12h } from '@/hooks/useCurrentTime';
 import { useScheduledDragStore } from '@/store/scheduledDragStore';
 import { useCarryStore } from '@/store/carryStore';
 import { START_HOUR } from '@/components/TimelineColumn';
