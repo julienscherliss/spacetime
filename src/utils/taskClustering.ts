@@ -33,10 +33,11 @@ const CLUSTER_PROXIMITY_PX = 2; // if gap between tasks is less than this in px,
  */
 export function clusterTasks(
   tasks: ClusterableTask[],
-  hourHeight: number
+  hourHeight: number,
+  excludeIds?: Set<string>
 ): TaskCluster[] {
   const timed = tasks
-    .filter(t => t.time)
+    .filter(t => t.time && !(excludeIds?.has(t.id)))
     .map(t => ({
       task: t,
       startMin: timeToMinutes(t.time!),
@@ -45,9 +46,25 @@ export function clusterTasks(
     }))
     .sort((a, b) => a.startMin - b.startMin);
 
-  if (timed.length === 0) return [];
+  // Also produce single-task clusters for excluded (conflict) tasks
+  const excludedTasks = excludeIds
+    ? tasks.filter(t => t.time && excludeIds.has(t.id)).map(t => ({
+        task: t,
+        startMin: timeToMinutes(t.time!),
+        endMin: timeToMinutes(t.time!) + (t.duration || 30),
+      }))
+    : [];
+
+  if (timed.length === 0 && excludedTasks.length === 0) return [];
 
   const clusters: TaskCluster[] = [];
+
+  // Add excluded tasks as individual single clusters
+  for (const ex of excludedTasks) {
+    clusters.push({ type: 'single', tasks: [ex.task], startMin: ex.startMin, endMin: ex.endMin });
+  }
+
+  if (timed.length === 0) return clusters;
   let currentGroup: typeof timed = [timed[0]];
 
   for (let i = 1; i < timed.length; i++) {
