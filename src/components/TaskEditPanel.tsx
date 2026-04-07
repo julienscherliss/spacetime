@@ -408,31 +408,11 @@ export function TaskEditPanel() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Task name…"
-                className="w-full bg-transparent font-display font-bold text-foreground text-lg leading-tight focus:outline-none placeholder:text-muted-foreground/20 mb-1"
-              />
-
-              {/* ─── Subtitle / Description ─── */}
-              <textarea
-                value={description}
-                onChange={(e) => {
-                  setDescription(e.target.value);
-                  const ta = e.target;
-                  ta.style.height = 'auto';
-                  ta.style.height = ta.scrollHeight + 'px';
-                }}
-                onFocus={(e) => {
-                  const ta = e.target;
-                  ta.style.height = 'auto';
-                  ta.style.height = ta.scrollHeight + 'px';
-                }}
-                placeholder="Add details, context, links…"
-                rows={1}
-                className="w-full bg-transparent text-[13px] font-mono text-foreground/60 placeholder:text-muted-foreground/20 focus:outline-none resize-none leading-relaxed mb-4"
-                style={{ minHeight: '24px' }}
+                className="w-full bg-transparent font-display font-bold text-foreground text-lg leading-tight focus:outline-none placeholder:text-muted-foreground/20 mb-2"
               />
 
               {/* ─── Metadata chips ─── */}
-              <div className="flex items-center gap-1.5 flex-wrap mb-5">
+              <div className="flex items-center gap-1.5 flex-wrap mb-3">
                 {/* Duration */}
                 <Popover open={showDurationPicker} onOpenChange={setShowDurationPicker}>
                   <PopoverTrigger asChild>
@@ -513,6 +493,7 @@ export function TaskEditPanel() {
                   </PopoverContent>
                 </Popover>
 
+                {/* Priority chips */}
                 {([0, 1, 2, 3] as Priority[]).map((p) => (
                   <button
                     key={p}
@@ -540,6 +521,26 @@ export function TaskEditPanel() {
                   {recurrenceType !== 'none' ? recurrenceLabel(buildRecurrence()) : ''}
                 </button>
               </div>
+
+              {/* ─── Subtitle / Description (always fully visible) ─── */}
+              <textarea
+                value={description}
+                onChange={(e) => {
+                  setDescription(e.target.value);
+                  const ta = e.target;
+                  ta.style.height = 'auto';
+                  ta.style.height = ta.scrollHeight + 'px';
+                }}
+                ref={(el) => {
+                  if (el) {
+                    el.style.height = 'auto';
+                    el.style.height = el.scrollHeight + 'px';
+                  }
+                }}
+                placeholder="Add details, context, links…"
+                rows={2}
+                className="w-full bg-transparent text-[13px] font-mono text-foreground/60 placeholder:text-muted-foreground/20 focus:outline-none resize-none leading-relaxed mb-4"
+              />
 
               {/* ─── Recurrence expanded ─── */}
               <AnimatePresence>
