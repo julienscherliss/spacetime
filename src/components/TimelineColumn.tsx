@@ -785,7 +785,7 @@ export function TimelineColumn({
       onPointerUp={handleCarryPointerUp}
       /* touch create handlers are native — see useEffect above */
     >
-      {/* Hour grid lines */}
+      {/* Hour grid lines + labels */}
       {HOURS.map((hour, i) => (
         <div
           key={hour}
@@ -801,49 +801,56 @@ export function TimelineColumn({
         </div>
       ))}
 
-      {/* Half-hour dashes — fade in between 36-56px */}
+      {/* 30-min: grid line + gutter marker — fade in 36–56px */}
       {HOUR_HEIGHT >= 36 && HOURS.map((hour, i) => {
-        const opacity = Math.min(1, (HOUR_HEIGHT - 36) / 20) * 0.35;
+        const t = Math.min(1, (HOUR_HEIGHT - 36) / 20);
+        const lineOpacity = t * 0.25;
+        const markerOpacity = t * 0.4;
+        const topPos = i * HOUR_HEIGHT + HOUR_HEIGHT / 2;
         return (
-          <div
-            key={`h30-${hour}`}
-            className="absolute border-t border-border"
-            style={{
-              top: i * HOUR_HEIGHT + HOUR_HEIGHT / 2,
-              left: timeLabelsWidth,
-              width: 12,
-              opacity,
-              transition: 'opacity 0.15s ease',
-            }}
-          />
+          <Fragment key={`h30-${hour}`}>
+            {/* Full-width grid line */}
+            <div
+              className="absolute right-0 border-t border-border"
+              style={{ top: topPos, left: timeLabelsWidth, opacity: lineOpacity, transition: 'opacity 0.15s ease' }}
+            />
+            {/* Gutter marker — right-aligned to time label column */}
+            {showTimeLabels && (
+              <div
+                className="absolute border-t border-border"
+                style={{ top: topPos, left: 'calc(3.25rem - 16px)', width: 12, opacity: markerOpacity, transition: 'opacity 0.15s ease' }}
+              />
+            )}
+          </Fragment>
         );
       })}
 
-      {/* 15-min dashes — fade in between 64-96px */}
+      {/* 15-min: grid lines + gutter markers — fade in 64–96px */}
       {HOUR_HEIGHT >= 64 && HOURS.map((hour, i) => {
-        const opacity = Math.min(1, (HOUR_HEIGHT - 64) / 32) * 0.2;
+        const t = Math.min(1, (HOUR_HEIGHT - 64) / 32);
+        const lineOpacity = t * 0.15;
+        const markerOpacity = t * 0.3;
         return (
           <Fragment key={`q-${hour}`}>
-            <div
-              className="absolute border-t border-border"
-              style={{
-                top: i * HOUR_HEIGHT + HOUR_HEIGHT / 4,
-                left: timeLabelsWidth,
-                width: 8,
-                opacity,
-                transition: 'opacity 0.15s ease',
-              }}
-            />
-            <div
-              className="absolute border-t border-border"
-              style={{
-                top: i * HOUR_HEIGHT + (HOUR_HEIGHT * 3) / 4,
-                left: timeLabelsWidth,
-                width: 8,
-                opacity,
-                transition: 'opacity 0.15s ease',
-              }}
-            />
+            {[1, 3].map((q) => {
+              const topPos = i * HOUR_HEIGHT + (HOUR_HEIGHT * q) / 4;
+              return (
+                <Fragment key={q}>
+                  {/* Full-width grid line */}
+                  <div
+                    className="absolute right-0 border-t border-border"
+                    style={{ top: topPos, left: timeLabelsWidth, opacity: lineOpacity, transition: 'opacity 0.15s ease' }}
+                  />
+                  {/* Gutter marker */}
+                  {showTimeLabels && (
+                    <div
+                      className="absolute border-t border-border"
+                      style={{ top: topPos, left: 'calc(3.25rem - 12px)', width: 8, opacity: markerOpacity, transition: 'opacity 0.15s ease' }}
+                    />
+                  )}
+                </Fragment>
+              );
+            })}
           </Fragment>
         );
       })}
