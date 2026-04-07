@@ -129,6 +129,8 @@ export function TaskEditPanel() {
   const [isRoutine, setIsRoutine] = useState(task?.isRoutine !== false && task?.type === 'recurring');
   const [isLinked, setIsLinked] = useState(task?.linked || false);
   const [showRecurrence, setShowRecurrence] = useState(false);
+  const [showCatPicker, setShowCatPicker] = useState(false);
+  const [taskCategory, setTaskCategory] = useState(task?.category || '');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showEditScope, setShowEditScope] = useState(false);
   const [pendingUpdates, setPendingUpdates] = useState<any>(null);
