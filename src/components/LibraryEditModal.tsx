@@ -86,6 +86,12 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { titleRef.current?.focus(); }, []);
+  useEffect(() => {
+    if (noteRef.current) {
+      noteRef.current.style.height = 'auto';
+      noteRef.current.style.height = noteRef.current.scrollHeight + 'px';
+    }
+  }, [note]);
   useEffect(() => () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); }, []);
 
   const handleSave = () => {
