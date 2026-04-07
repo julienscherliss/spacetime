@@ -233,7 +233,6 @@ export function WeekView() {
           onTouchEnd={handleTouchEnd}
         >
           <div
-            ref={undefined}
             style={{
               transform: swiping ? `translateX(${swipeOffset * 0.2}px)` : 'none',
               transition: swiping ? 'none' : 'none',

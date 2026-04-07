@@ -270,7 +270,6 @@ export function DayView() {
           onTouchEnd={handleTouchEnd}
         >
           <div
-            ref={undefined}
             style={{
               transform: swiping ? `translateX(${swipeOffset * 0.3}px)` : 'none',
               transition: swiping ? 'none' : 'none',
