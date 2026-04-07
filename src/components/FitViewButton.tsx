@@ -1,10 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Maximize2, Clock, RotateCcw, Scan } from 'lucide-react';
+import { Clock, RotateCcw, Scan, Maximize } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Task } from '@/store/taskStore';
 import { timeToMinutes } from '@/hooks/useCurrentTime';
 import { START_HOUR, END_HOUR } from '@/components/TimelineColumn';
-import { SCALE_MIN, SCALE_MAX, SCALE_DEFAULT } from '@/hooks/useTimeScale';
+import { SCALE_MIN, SCALE_MAX } from '@/hooks/useTimeScale';
 
 interface FitViewButtonProps {
   tasks: Task[];
@@ -30,6 +30,23 @@ function getTaskBounds(tasks: Task[]): { earliest: number; latest: number } | nu
   }
 
   return { earliest, latest };
+}
+
+function getActiveTaskCenter(tasks: Task[], nowMinutes: number): number {
+  // Find task that is currently active (now falls within its time range)
+  const active = tasks.find(t => {
+    if (!t.time || t.completed) return false;
+    const start = timeToMinutes(t.time);
+    const end = start + (t.duration || 30);
+    return nowMinutes >= start && nowMinutes < end;
+  });
+
+  if (active) {
+    const start = timeToMinutes(active.time!);
+    return start + (active.duration || 30) / 2;
+  }
+
+  return nowMinutes;
 }
 
 function animateZoom(
@@ -67,9 +84,11 @@ function animateZoom(
 }
 
 export function FitViewButton({ tasks, scrollRef, hourHeight, setScale, resetZoom, nowMinutes }: FitViewButtonProps) {
-  const [longPressOpen, setLongPressOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didLongPress = useRef(false);
+  const pointerMoved = useRef(false);
+  const startPos = useRef<{ x: number; y: number } | null>(null);
 
   const fitToTasks = useCallback(() => {
     const el = scrollRef.current;
@@ -87,51 +106,89 @@ export function FitViewButton({ tasks, scrollRef, hourHeight, setScale, resetZoo
 
     const { earliest, latest } = bounds;
     const spanMinutes = latest - earliest;
-    const padding = 40; // px padding top + bottom
+    const padding = 40;
     const viewportH = el.clientHeight - padding * 2;
 
-    // Calculate scale to fit
     const spanHours = spanMinutes / 60;
     let targetScale = viewportH / spanHours;
     targetScale = Math.max(SCALE_MIN, Math.min(SCALE_MAX, targetScale));
 
-    // Calculate target scroll to center the tasks
     const midMin = (earliest + latest) / 2;
     const targetScroll = Math.max(0,
       ((midMin - START_HOUR * 60) / 60) * targetScale - el.clientHeight / 2
     );
 
-    const fromScale = hourHeight;
-    const fromScroll = el.scrollTop;
-
     el.style.scrollBehavior = 'auto';
-    animateZoom(el, fromScale, targetScale, fromScroll, targetScroll, 250, (scale) => {
+    animateZoom(el, hourHeight, targetScale, el.scrollTop, targetScroll, 250, (scale) => {
       setScale(scale);
     });
   }, [tasks, scrollRef, hourHeight, setScale, nowMinutes]);
 
-  const focusCurrentTime = useCallback(() => {
+  const focusCurrent = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
+
+    const centerMin = getActiveTaskCenter(tasks, nowMinutes);
+
+    // Fixed 5-hour window
+    const windowHours = 5;
+    const targetScale = el.clientHeight / windowHours;
+    const clampedScale = Math.max(SCALE_MIN, Math.min(SCALE_MAX, targetScale));
+
     const targetScroll = Math.max(0,
-      ((nowMinutes - START_HOUR * 60) / 60) * hourHeight - el.clientHeight / 2
+      ((centerMin - START_HOUR * 60) / 60) * clampedScale - el.clientHeight / 2
     );
+
     el.style.scrollBehavior = 'auto';
-    animateZoom(el, hourHeight, hourHeight, el.scrollTop, targetScroll, 250, () => {});
-    setLongPressOpen(false);
-  }, [scrollRef, hourHeight, nowMinutes]);
+    animateZoom(el, hourHeight, clampedScale, el.scrollTop, targetScroll, 250, (scale) => {
+      setScale(scale);
+    });
+    setMenuOpen(false);
+  }, [scrollRef, hourHeight, nowMinutes, tasks, setScale]);
 
-  const handleReset = useCallback(() => {
-    resetZoom();
-    setLongPressOpen(false);
-  }, [resetZoom]);
+  const frameAll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
 
-  const handlePointerDown = useCallback(() => {
+    // Zoom out to show full timeline
+    const totalHours = END_HOUR - START_HOUR;
+    let targetScale = el.clientHeight / totalHours;
+    targetScale = Math.max(SCALE_MIN, Math.min(SCALE_MAX, targetScale));
+
+    const midMin = ((START_HOUR + END_HOUR) / 2) * 60;
+    const targetScroll = Math.max(0,
+      ((midMin - START_HOUR * 60) / 60) * targetScale - el.clientHeight / 2
+    );
+
+    el.style.scrollBehavior = 'auto';
+    animateZoom(el, hourHeight, targetScale, el.scrollTop, targetScroll, 250, (scale) => {
+      setScale(scale);
+    });
+    setMenuOpen(false);
+  }, [scrollRef, hourHeight, setScale]);
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
     didLongPress.current = false;
+    pointerMoved.current = false;
+    startPos.current = { x: e.clientX, y: e.clientY };
+
     longPressTimer.current = setTimeout(() => {
       didLongPress.current = true;
-      setLongPressOpen(true);
-    }, 500);
+      setMenuOpen(true);
+    }, 400);
+  }, []);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!startPos.current) return;
+    const dx = Math.abs(e.clientX - startPos.current.x);
+    const dy = Math.abs(e.clientY - startPos.current.y);
+    if (dx > 5 || dy > 5) {
+      pointerMoved.current = true;
+      if (longPressTimer.current) {
+        clearTimeout(longPressTimer.current);
+        longPressTimer.current = null;
+      }
+    }
   }, []);
 
   const handlePointerUp = useCallback(() => {
@@ -139,9 +196,10 @@ export function FitViewButton({ tasks, scrollRef, hourHeight, setScale, resetZoo
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
     }
-    if (!didLongPress.current) {
+    if (!didLongPress.current && !pointerMoved.current) {
       fitToTasks();
     }
+    startPos.current = null;
   }, [fitToTasks]);
 
   const handlePointerCancel = useCallback(() => {
@@ -149,6 +207,7 @@ export function FitViewButton({ tasks, scrollRef, hourHeight, setScale, resetZoo
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
     }
+    startPos.current = null;
   }, []);
 
   useEffect(() => {
@@ -158,15 +217,16 @@ export function FitViewButton({ tasks, scrollRef, hourHeight, setScale, resetZoo
   }, []);
 
   return (
-    <Popover open={longPressOpen} onOpenChange={setLongPressOpen}>
+    <Popover open={menuOpen} onOpenChange={setMenuOpen}>
       <PopoverTrigger asChild>
         <button
           onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerCancel}
           onContextMenu={(e) => e.preventDefault()}
           className="p-1.5 rounded-sm text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors"
-          title="Fit view to tasks"
+          title="Fit view to tasks (hold for options)"
         >
           <Scan size={16} strokeWidth={1.5} />
         </button>
@@ -178,25 +238,25 @@ export function FitViewButton({ tasks, scrollRef, hourHeight, setScale, resetZoo
       >
         <div className="flex flex-col gap-0.5">
           <button
-            onClick={() => { fitToTasks(); setLongPressOpen(false); }}
+            onClick={() => { fitToTasks(); setMenuOpen(false); }}
             className="flex items-center gap-2 px-2 py-1.5 rounded-sm text-[10px] font-mono tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors w-full text-left"
           >
             <Scan size={11} strokeWidth={1.5} />
-            FIT TASKS
+            FIT ALL
           </button>
           <button
-            onClick={focusCurrentTime}
+            onClick={focusCurrent}
             className="flex items-center gap-2 px-2 py-1.5 rounded-sm text-[10px] font-mono tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors w-full text-left"
           >
             <Clock size={11} strokeWidth={1.5} />
-            FOCUS NOW
+            FOCUS
           </button>
           <button
-            onClick={handleReset}
+            onClick={frameAll}
             className="flex items-center gap-2 px-2 py-1.5 rounded-sm text-[10px] font-mono tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors w-full text-left"
           >
-            <RotateCcw size={11} strokeWidth={1.5} />
-            RESET ZOOM
+            <Maximize size={11} strokeWidth={1.5} />
+            FRAME ALL
           </button>
         </div>
       </PopoverContent>
