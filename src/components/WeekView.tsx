@@ -164,9 +164,9 @@ export function WeekView() {
   const completedCount = visibleTasks.filter(t => t.completed).length;
 
   return (
-    <div className="max-w-3xl mx-auto px-3 sm:px-4 py-4">
+    <div className="w-full px-2 sm:px-3 lg:px-4 py-2 sm:py-3">
       {/* Header — matches Day view structure */}
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-2 flex items-center justify-between">
         <div>
           <h2 className="text-base sm:text-lg font-display font-bold text-foreground tracking-tight">
             {rangeLabel}
@@ -212,7 +212,7 @@ export function WeekView() {
       </div>
 
       {/* Progress — matches Day view */}
-      <div className="h-px bg-border/40 mb-4 overflow-hidden">
+      <div className="h-px bg-border/40 mb-2 overflow-hidden">
         <motion.div
           className="h-full bg-primary/50"
           initial={{ width: 0 }}
@@ -247,11 +247,11 @@ export function WeekView() {
       />
 
       {/* Timeline + Zoom control */}
-      <div className="flex gap-2 sm:gap-3">
+      <div className="flex gap-1 sm:gap-2">
         <div
           ref={scrollRef}
-          className={`flex-1 overflow-y-auto overflow-x-hidden ${!isMobile ? 'min-w-[860px]' : ''}`}
-          style={{ maxHeight: 'calc(100vh - 180px)', WebkitOverflowScrolling: 'touch' }}
+          className="flex-1 overflow-y-auto overflow-x-hidden"
+          style={{ maxHeight: 'calc(100vh - 140px)', WebkitOverflowScrolling: 'touch' }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
