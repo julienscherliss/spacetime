@@ -223,6 +223,23 @@ export function DayView() {
         />
       </div>
 
+      {/* Cluster zoom exit */}
+      {clusterZoomed && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-3 flex items-center justify-center"
+        >
+          <button
+            onClick={handleExitClusterZoom}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-muted/60 border border-border/40 text-[10px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
+            <X size={12} />
+            <span className="tracking-wider">EXIT ZOOM</span>
+          </button>
+        </motion.div>
+      )}
+
       {/* Timeline + Zoom control */}
       <div className="flex gap-2 sm:gap-3">
         <div
