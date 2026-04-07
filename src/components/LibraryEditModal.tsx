@@ -152,7 +152,7 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
         onClick={(e) => e.stopPropagation()}
       >
         {/* ─── Header ─── */}
-        <div className="px-5 pt-4 pb-2 flex items-center justify-between">
+        <div className="px-5 pt-4 pb-1 flex items-center justify-between">
           <div className="flex items-center gap-2">
             {saveStatus === 'saved' && (
               <motion.span
@@ -172,146 +172,136 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
           </button>
         </div>
 
-        <div className="px-5 pb-5">
-          {/* ─── Title ─── */}
-          <input
-            ref={titleRef}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="What needs doing…"
-            className="w-full bg-transparent font-display font-bold text-foreground text-lg leading-tight focus:outline-none placeholder:text-muted-foreground/25 mb-2"
-          />
+        {/* ─── Metadata chips (top, above title) ─── */}
+        <div className="px-5 pb-2 flex items-center gap-1.5 flex-wrap">
+          {/* Duration */}
+          <Popover open={showDurationPicker} onOpenChange={setShowDurationPicker}>
+            <PopoverTrigger asChild>
+              <button className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide text-muted-foreground/60 hover:text-foreground bg-muted/40 hover:bg-muted/60 transition-colors">
+                <Clock size={11} strokeWidth={1.5} />
+                {formatDuration(duration)}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-3 z-[70]" align="start" onClick={(e) => e.stopPropagation()}>
+              <DurationPicker duration={duration} onChange={setDuration} />
+            </PopoverContent>
+          </Popover>
 
-          {/* ─── Metadata chips ─── */}
-          <div className="flex items-center gap-1.5 flex-wrap mb-3">
-            {/* Duration */}
-            <Popover open={showDurationPicker} onOpenChange={setShowDurationPicker}>
-              <PopoverTrigger asChild>
-                <button className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide text-muted-foreground/60 hover:text-foreground bg-muted/40 hover:bg-muted/60 transition-colors">
-                  <Clock size={11} strokeWidth={1.5} />
-                  {formatDuration(duration)}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-56 p-3 z-[70]" align="start" onClick={(e) => e.stopPropagation()}>
-                <DurationPicker duration={duration} onChange={setDuration} />
-              </PopoverContent>
-            </Popover>
-
-            {/* Due date */}
-            <Popover open={showDuePicker} onOpenChange={setShowDuePicker}>
-              <PopoverTrigger asChild>
-                <button className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
-                  dueBadge?.overdue
-                    ? 'text-destructive/80 bg-destructive/10'
-                    : dueDate
-                      ? 'text-foreground/70 bg-muted/40'
-                      : 'text-muted-foreground/40 bg-muted/30 hover:bg-muted/50'
-                }`}>
-                  <CalendarDays size={11} strokeWidth={1.5} />
-                  {dueBadge ? dueBadge.text : 'Due'}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 z-[70]" align="start" onClick={(e) => e.stopPropagation()}>
-                <CalendarPicker
-                  mode="single"
-                  selected={dueDate ? new Date(dueDate + 'T12:00:00') : undefined}
-                  onSelect={(d) => {
-                    if (d) setDueDate(d.toISOString().split('T')[0]);
-                    else setDueDate('');
-                    setShowDuePicker(false);
-                  }}
-                  className="p-3 pointer-events-auto"
-                />
-                {dueDate && (
-                  <div className="px-3 pb-2">
-                    <button onClick={() => { setDueDate(''); setShowDuePicker(false); }}
-                      className="text-[10px] font-mono text-muted-foreground/40 hover:text-destructive/60">
-                      Remove due date
-                    </button>
-                  </div>
-                )}
-              </PopoverContent>
-            </Popover>
-
-            {/* Category / Tag */}
-            <Popover open={showCatPicker} onOpenChange={setShowCatPicker}>
-              <PopoverTrigger asChild>
-                <button className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
-                  category
-                    ? 'text-foreground/70 bg-muted/40 hover:bg-muted/60'
+          {/* Due date */}
+          <Popover open={showDuePicker} onOpenChange={setShowDuePicker}>
+            <PopoverTrigger asChild>
+              <button className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
+                dueBadge?.overdue
+                  ? 'text-destructive/80 bg-destructive/10'
+                  : dueDate
+                    ? 'text-foreground/70 bg-muted/40'
                     : 'text-muted-foreground/40 bg-muted/30 hover:bg-muted/50'
-                }`}>
-                  <Tag size={10} strokeWidth={1.5} />
-                  {catLabel || 'Tag'}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-40 p-1 z-[70]" align="start" onClick={(e) => e.stopPropagation()}>
-                <button
-                  onClick={() => { setCategory(''); setShowCatPicker(false); }}
-                  className={`w-full text-left px-3 py-2 text-[11px] font-mono rounded-sm ${!category ? 'text-foreground bg-muted/50' : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30'}`}
-                >
-                  No tag
-                </button>
-                {categories.map((cat) => (
-                  <button
-                    key={cat.value}
-                    onClick={() => { setCategory(cat.value); setShowCatPicker(false); }}
-                    className={`w-full text-left px-3 py-2 text-[11px] font-mono rounded-sm ${category === cat.value ? 'text-foreground bg-muted/50' : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30'}`}
-                  >
-                    {cat.label}
+              }`}>
+                <CalendarDays size={11} strokeWidth={1.5} />
+                {dueBadge ? dueBadge.text : 'Due'}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0 z-[70]" align="start" onClick={(e) => e.stopPropagation()}>
+              <CalendarPicker
+                mode="single"
+                selected={dueDate ? new Date(dueDate + 'T12:00:00') : undefined}
+                onSelect={(d) => {
+                  if (d) setDueDate(d.toISOString().split('T')[0]);
+                  else setDueDate('');
+                  setShowDuePicker(false);
+                }}
+                className="p-3 pointer-events-auto"
+              />
+              {dueDate && (
+                <div className="px-3 pb-2">
+                  <button onClick={() => { setDueDate(''); setShowDuePicker(false); }}
+                    className="text-[10px] font-mono text-muted-foreground/40 hover:text-destructive/60">
+                    Remove due date
                   </button>
-                ))}
-                <div className="border-t border-border/30 mt-1 pt-1">
-                  {showNewCatInput ? (
-                    <div className="px-3 py-1.5">
-                      <input
-                        value={newCatInline}
-                        onChange={(e) => setNewCatInline(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') handleAddCatInline(); if (e.key === 'Escape') setShowNewCatInput(false); }}
-                        onBlur={handleAddCatInline}
-                        placeholder="New tag…"
-                        className="w-full bg-transparent text-[11px] font-mono text-foreground placeholder:text-muted-foreground/30 focus:outline-none border-b border-primary/30"
-                        autoFocus
-                      />
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => setShowNewCatInput(true)}
-                      className="w-full text-left px-3 py-2 text-[11px] font-mono text-primary/60 hover:text-primary flex items-center gap-1.5"
-                    >
-                      <Plus size={10} /> New…
-                    </button>
-                  )}
                 </div>
-              </PopoverContent>
-            </Popover>
+              )}
+            </PopoverContent>
+          </Popover>
 
-            {/* Urgent toggle */}
-            <button
-              onClick={() => setIsUrgent(!isUrgent)}
-              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
-                isUrgent
-                  ? 'text-foreground/80 bg-foreground/[0.07]'
-                  : 'text-muted-foreground/35 bg-muted/25 hover:bg-muted/40'
-              }`}
-            >
-              <Clock size={10} strokeWidth={1.5} />
-              {isUrgent ? 'Urgent' : ''}
-            </button>
+          {/* Category / Tag */}
+          <Popover open={showCatPicker} onOpenChange={setShowCatPicker}>
+            <PopoverTrigger asChild>
+              <button className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
+                category
+                  ? 'text-foreground/70 bg-muted/40 hover:bg-muted/60'
+                  : 'text-muted-foreground/40 bg-muted/30 hover:bg-muted/50'
+              }`}>
+                <Tag size={10} strokeWidth={1.5} />
+                {catLabel || 'Tag'}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-40 p-1 z-[70]" align="start" onClick={(e) => e.stopPropagation()}>
+              <button
+                onClick={() => { setCategory(''); setShowCatPicker(false); }}
+                className={`w-full text-left px-3 py-2 text-[11px] font-mono rounded-sm ${!category ? 'text-foreground bg-muted/50' : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30'}`}
+              >
+                No tag
+              </button>
+              {categories.map((cat) => (
+                <button
+                  key={cat.value}
+                  onClick={() => { setCategory(cat.value); setShowCatPicker(false); }}
+                  className={`w-full text-left px-3 py-2 text-[11px] font-mono rounded-sm ${category === cat.value ? 'text-foreground bg-muted/50' : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30'}`}
+                >
+                  {cat.label}
+                </button>
+              ))}
+              <div className="border-t border-border/30 mt-1 pt-1">
+                {showNewCatInput ? (
+                  <div className="px-3 py-1.5">
+                    <input
+                      value={newCatInline}
+                      onChange={(e) => setNewCatInline(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleAddCatInline(); if (e.key === 'Escape') setShowNewCatInput(false); }}
+                      onBlur={handleAddCatInline}
+                      placeholder="New tag…"
+                      className="w-full bg-transparent text-[11px] font-mono text-foreground placeholder:text-muted-foreground/30 focus:outline-none border-b border-primary/30"
+                      autoFocus
+                    />
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowNewCatInput(true)}
+                    className="w-full text-left px-3 py-2 text-[11px] font-mono text-primary/60 hover:text-primary flex items-center gap-1.5"
+                  >
+                    <Plus size={10} /> New…
+                  </button>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
 
-            {/* Important toggle */}
-            <button
-              onClick={() => setIsImportant(!isImportant)}
-              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
-                isImportant
-                  ? 'text-foreground/80 bg-foreground/[0.07]'
-                  : 'text-muted-foreground/35 bg-muted/25 hover:bg-muted/40'
-              }`}
-            >
-              <AlertTriangle size={10} strokeWidth={1.5} />
-              {isImportant ? 'Important' : ''}
-            </button>
-          </div>
+          {/* Urgent */}
+          <button
+            onClick={() => setIsUrgent(!isUrgent)}
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
+              isUrgent
+                ? 'text-foreground/80 bg-foreground/[0.07]'
+                : 'text-muted-foreground/35 bg-muted/25 hover:bg-muted/40'
+            }`}
+          >
+            <Clock size={10} strokeWidth={1.5} />
+            {isUrgent ? 'Urgent' : ''}
+          </button>
+
+          {/* Important */}
+          <button
+            onClick={() => setIsImportant(!isImportant)}
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
+              isImportant
+                ? 'text-foreground/80 bg-foreground/[0.07]'
+                : 'text-muted-foreground/35 bg-muted/25 hover:bg-muted/40'
+            }`}
+          >
+            <AlertTriangle size={10} strokeWidth={1.5} />
+            {isImportant ? 'Important' : ''}
+          </button>
+        </div>
 
           {/* ─── Subtitle / Notes (always fully visible) ─── */}
           <textarea
