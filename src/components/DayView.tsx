@@ -246,6 +246,7 @@ export function DayView() {
               isToday={isToday}
               showTimeLabels
               hourHeight={hourHeight}
+              onZoomToCluster={handleZoomToCluster}
             />
           </div>
         </div>
