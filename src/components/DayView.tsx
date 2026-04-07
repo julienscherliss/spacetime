@@ -49,6 +49,9 @@ export function DayView() {
   const preClusterScaleRef = useRef<number | null>(null);
   const preClusterScrollRef = useRef<number | null>(null);
 
+  // Animated zoom state
+  const [isZoomAnimating, setIsZoomAnimating] = useState(false);
+
   const handleZoomToCluster = useCallback((cluster: TaskCluster, targetHourHeight: number, scrollToMin: number) => {
     if (!scrollRef.current) return;
     const el = scrollRef.current;
@@ -61,26 +64,25 @@ export function DayView() {
     const viewportH = el.clientHeight;
 
     // Pre-compute the exact scroll position at the NEW scale
-    // so we can set it synchronously and avoid "jump then scroll"
     const clusterCenterMin = (cluster.startMin + cluster.endMin) / 2;
     const targetScrollTop = Math.max(0,
       ((clusterCenterMin - START_HOUR * 60) / 60) * clamped - viewportH / 2
     );
 
-    // Temporarily disable smooth scrolling on the container
+    // Start animated zoom transition
+    setIsZoomAnimating(true);
     el.style.scrollBehavior = 'auto';
 
-    // Apply zoom — this triggers re-render at new scale
+    // Apply zoom + scroll synchronously
     setScale(clamped);
     setClusterZoomed(true);
 
-    // Synchronously set scroll position in the same frame via microtask
-    // so the browser never paints at the wrong scroll offset
     queueMicrotask(() => {
       el.scrollTop = targetScrollTop;
-      // Re-enable smooth scrolling after a frame
       requestAnimationFrame(() => {
         el.style.scrollBehavior = '';
+        // End animation after CSS transition completes
+        setTimeout(() => setIsZoomAnimating(false), 350);
       });
     });
   }, [hourHeight, setScale]);
@@ -94,6 +96,7 @@ export function DayView() {
     const restoreScale = preClusterScaleRef.current;
     const restoreScroll = preClusterScrollRef.current ?? 0;
 
+    setIsZoomAnimating(true);
     el.style.scrollBehavior = 'auto';
     setScale(restoreScale);
 
@@ -101,6 +104,7 @@ export function DayView() {
       el.scrollTop = restoreScroll;
       requestAnimationFrame(() => {
         el.style.scrollBehavior = '';
+        setTimeout(() => setIsZoomAnimating(false), 350);
       });
     });
 
@@ -281,7 +285,9 @@ export function DayView() {
           <div
             style={{
               transform: swiping ? `translateX(${swipeOffset * 0.3}px)` : 'none',
-              transition: swiping ? 'none' : 'transform 0.2s ease-out',
+              transition: swiping ? 'none' : isZoomAnimating
+                ? 'transform 0.2s ease-out'
+                : 'transform 0.2s ease-out',
             }}
           >
             <TimelineColumn

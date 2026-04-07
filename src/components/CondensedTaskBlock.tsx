@@ -1,7 +1,6 @@
 import { motion } from 'framer-motion';
 import { Layers } from 'lucide-react';
 import { TaskCluster } from '@/utils/taskClustering';
-import { formatTime12h, minutesToTime } from '@/hooks/useCurrentTime';
 import { START_HOUR } from '@/components/TimelineColumn';
 
 interface CondensedTaskBlockProps {
@@ -22,13 +21,10 @@ export function CondensedTaskBlock({
   const height = Math.max((totalMinutes / 60) * hourHeight, 32);
   const count = cluster.tasks.length;
 
-  // Determine how much content to show based on available height
-  const canShowTitles = height > 52;
-  const maxTitles = height > 80 ? 2 : 1;
+  const canShowTitles = height > 46;
+  const maxTitles = height > 72 ? 2 : 1;
   const visibleTitles = canShowTitles ? cluster.tasks.slice(0, maxTitles) : [];
   const remaining = count - visibleTitles.length;
-
-  const timeRange = `${formatTime12h(minutesToTime(cluster.startMin))}–${formatTime12h(minutesToTime(cluster.endMin))}`;
 
   return (
     <motion.div
@@ -58,7 +54,7 @@ export function CondensedTaskBlock({
     >
       <div className="h-full rounded-[3px] border border-border/60 bg-muted/50 hover:bg-muted/70 hover:border-border/80 transition-colors duration-150 overflow-hidden">
         <div className="flex flex-col justify-center h-full px-2 py-1 gap-0">
-          {/* Count + time */}
+          {/* Count */}
           <div className="flex items-center gap-1 min-w-0">
             <Layers size={9} className="text-muted-foreground/50 shrink-0" />
             <span className="text-[10px] font-mono text-muted-foreground/70 tracking-wider truncate leading-none">
@@ -66,14 +62,7 @@ export function CondensedTaskBlock({
             </span>
           </div>
 
-          {/* Time range — only if enough space */}
-          {height > 38 && (
-            <span className="text-[9px] font-mono text-muted-foreground/45 tracking-wider truncate leading-none mt-0.5">
-              {timeRange}
-            </span>
-          )}
-
-          {/* Preview titles — only if enough space */}
+          {/* Preview titles */}
           {canShowTitles && (
             <div className="flex flex-col mt-1 gap-0 overflow-hidden">
               {visibleTitles.map((task) => (
