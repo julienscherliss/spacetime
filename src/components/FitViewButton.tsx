@@ -217,49 +217,53 @@ export function FitViewButton({ tasks, scrollRef, hourHeight, setScale, resetZoo
   }, []);
 
   return (
-    <Popover open={menuOpen} onOpenChange={setMenuOpen}>
-      <PopoverTrigger asChild>
-        <button
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerCancel}
-          onContextMenu={(e) => e.preventDefault()}
-          className="p-1.5 rounded-sm text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors"
-          title="Fit view to tasks (hold for options)"
-        >
-          <Scan size={16} strokeWidth={1.5} />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent
-        className="w-36 p-1.5"
-        align="end"
-        sideOffset={6}
+    <div className="relative">
+      <button
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+        onClick={(e) => e.preventDefault()}
+        onContextMenu={(e) => e.preventDefault()}
+        className="p-1.5 rounded-sm text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors touch-none select-none"
+        title="Fit tasks (hold for options)"
       >
-        <div className="flex flex-col gap-0.5">
-          <button
-            onClick={() => { fitToTasks(); setMenuOpen(false); }}
-            className="flex items-center gap-2 px-2 py-1.5 rounded-sm text-[10px] font-mono tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors w-full text-left"
-          >
-            <Scan size={11} strokeWidth={1.5} />
-            FIT ALL
-          </button>
-          <button
-            onClick={focusCurrent}
-            className="flex items-center gap-2 px-2 py-1.5 rounded-sm text-[10px] font-mono tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors w-full text-left"
-          >
-            <Clock size={11} strokeWidth={1.5} />
-            FOCUS
-          </button>
-          <button
-            onClick={frameAll}
-            className="flex items-center gap-2 px-2 py-1.5 rounded-sm text-[10px] font-mono tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors w-full text-left"
-          >
-            <Maximize size={11} strokeWidth={1.5} />
-            FRAME ALL
-          </button>
-        </div>
-      </PopoverContent>
-    </Popover>
+        <Scan size={16} strokeWidth={1.5} />
+      </button>
+      <Popover open={menuOpen} onOpenChange={setMenuOpen}>
+        <PopoverTrigger asChild>
+          <span className="absolute inset-0 pointer-events-none" />
+        </PopoverTrigger>
+        <PopoverContent
+          className="w-36 p-1.5"
+          align="end"
+          sideOffset={6}
+        >
+          <div className="flex flex-col gap-0.5">
+            <button
+              onClick={() => { fitToTasks(); setMenuOpen(false); }}
+              className="flex items-center gap-2 px-2 py-1.5 rounded-sm text-[10px] font-mono tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors w-full text-left"
+            >
+              <Scan size={11} strokeWidth={1.5} />
+              FIT TASKS
+            </button>
+            <button
+              onClick={focusCurrent}
+              className="flex items-center gap-2 px-2 py-1.5 rounded-sm text-[10px] font-mono tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors w-full text-left"
+            >
+              <Clock size={11} strokeWidth={1.5} />
+              FOCUS
+            </button>
+            <button
+              onClick={frameAll}
+              className="flex items-center gap-2 px-2 py-1.5 rounded-sm text-[10px] font-mono tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors w-full text-left"
+            >
+              <Maximize size={11} strokeWidth={1.5} />
+              FRAME ALL
+            </button>
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 }
