@@ -5,6 +5,7 @@ import { X, Trash2, Clock, AlertTriangle, Tag, CalendarDays, Plus, Check } from 
 import { DurationPicker } from '@/components/ScrollWheelPicker';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 
 function formatDuration(m: number): string {
   const h = Math.floor(m / 60);
@@ -78,6 +79,7 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
   const [newCatInline, setNewCatInline] = useState('');
   const [showNewCatInput, setShowNewCatInput] = useState(false);
   const [showDurationPicker, setShowDurationPicker] = useState(false);
+  const [showDuePicker, setShowDuePicker] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
   const noteRef = useRef<HTMLTextAreaElement>(null);
   const newSubtaskRef = useRef<HTMLInputElement>(null);
