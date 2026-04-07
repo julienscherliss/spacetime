@@ -58,7 +58,9 @@ export function WeekView() {
 
     queueMicrotask(() => {
       el.scrollTop = targetScrollTop;
-      requestAnimationFrame(() => { el.style.scrollBehavior = ''; });
+      requestAnimationFrame(() => {
+        el.style.scrollBehavior = '';
+      });
     });
   }, [hourHeight, setScale]);
 
@@ -73,7 +75,9 @@ export function WeekView() {
 
     queueMicrotask(() => {
       el.scrollTop = preClusterScrollRef.current ?? 0;
-      requestAnimationFrame(() => { el.style.scrollBehavior = ''; });
+      requestAnimationFrame(() => {
+        el.style.scrollBehavior = '';
+      });
     });
 
     setClusterZoomed(false);
