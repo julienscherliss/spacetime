@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
 import { useCalendarStore } from '@/store/calendarStore';
 import { useCurrentTime } from '@/hooks/useCurrentTime';
-import { WeekGrid, useWeekDays } from '@/components/WeekGrid';
+import { WeekGrid, WeekDayHeaders, useWeekDays } from '@/components/WeekGrid';
 import { BlockedModal } from '@/components/BlockedModal';
 import { ZoomControl } from '@/components/ZoomControl';
 import { useTimeScale, SCALE_MIN, SCALE_MAX } from '@/hooks/useTimeScale';
