@@ -1,13 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
 import { useCalendarStore } from '@/store/calendarStore';
 import { useCurrentTime } from '@/hooks/useCurrentTime';
 import { WeekGrid, useWeekDays } from '@/components/WeekGrid';
 import { BlockedModal } from '@/components/BlockedModal';
 import { ZoomControl } from '@/components/ZoomControl';
-import { useTimeScale } from '@/hooks/useTimeScale';
-import { ChevronLeft, ChevronRight, Layers, Square } from 'lucide-react';
+import { useTimeScale, SCALE_MIN, SCALE_MAX } from '@/hooks/useTimeScale';
+import { ChevronLeft, ChevronRight, Layers, Square, X } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { START_HOUR } from '@/components/TimelineColumn';
+import { TaskCluster } from '@/utils/taskClustering';
 
 export function WeekView() {
   const { routinesEnabled, generateRecurringInstances } = useTaskStore();
@@ -30,6 +33,40 @@ export function WeekView() {
     bindScrollZoom, bindPinchZoom,
     zoomPercent, isMin, isMax, isDefault,
   } = useTimeScale('week');
+
+  // Cluster zoom state
+  const [clusterZoomed, setClusterZoomed] = useState(false);
+  const preClusterScaleRef = useRef<number | null>(null);
+  const preClusterScrollRef = useRef<number | null>(null);
+
+  const handleZoomToCluster = useCallback((cluster: TaskCluster, targetHourHeight: number, scrollToMin: number) => {
+    if (!scrollRef.current) return;
+    preClusterScaleRef.current = hourHeight;
+    preClusterScrollRef.current = scrollRef.current.scrollTop;
+    setClusterZoomed(true);
+    const clamped = Math.min(SCALE_MAX, Math.max(SCALE_MIN, targetHourHeight));
+    setScale(clamped);
+    requestAnimationFrame(() => {
+      if (!scrollRef.current) return;
+      const viewportH = scrollRef.current.clientHeight;
+      const targetScrollTop = ((scrollToMin - START_HOUR * 60) / 60) * clamped - viewportH / 2;
+      scrollRef.current.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' });
+    });
+  }, [hourHeight, setScale]);
+
+  const handleExitClusterZoom = useCallback(() => {
+    if (preClusterScaleRef.current !== null) {
+      setScale(preClusterScaleRef.current);
+      requestAnimationFrame(() => {
+        if (scrollRef.current && preClusterScrollRef.current !== null) {
+          scrollRef.current.scrollTo({ top: preClusterScrollRef.current, behavior: 'smooth' });
+        }
+      });
+    }
+    setClusterZoomed(false);
+    preClusterScaleRef.current = null;
+    preClusterScrollRef.current = null;
+  }, [setScale]);
 
   const week1 = useWeekDays(weekOffset, today, dayCount);
   const week2 = useWeekDays(stacked ? week2Offset : weekOffset + 1, today, dayCount);
