@@ -117,7 +117,6 @@ export function FocusView() {
     };
   }, []);
 
-  // Determine which arrows to show on the main screen
   const showUpArrow = activePanel === 'main' && completedToday.length > 0;
   const showDownArrow = activePanel === 'main' && upcomingTasks.length > 0;
 
@@ -128,27 +127,29 @@ export function FocusView() {
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Navigation chevrons — only on main panel */}
+      {/* Centered navigation arrows — only on main panel */}
       {showUpArrow && (
         <motion.button
-          initial={{ opacity: 0, y: -4 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.5 }}
           onClick={() => setActivePanel('completed')}
-          className="absolute top-6 left-0 right-0 flex justify-center z-20 p-3 text-muted-foreground/25 hover:text-muted-foreground/45 transition-colors"
+          className="absolute left-1/2 -translate-x-1/2 z-20 p-4 text-muted-foreground/15 hover:text-muted-foreground/30 transition-colors"
+          style={{ top: 'calc(50% - 140px)' }}
         >
-          <ChevronUp size={30} strokeWidth={1.5} />
+          <ChevronUp size={36} strokeWidth={1} />
         </motion.button>
       )}
       {showDownArrow && (
         <motion.button
-          initial={{ opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.5 }}
           onClick={() => setActivePanel('upcoming')}
-          className="absolute bottom-6 left-0 right-0 flex justify-center z-20 p-3 text-muted-foreground/25 hover:text-muted-foreground/45 transition-colors"
+          className="absolute left-1/2 -translate-x-1/2 z-20 p-4 text-muted-foreground/15 hover:text-muted-foreground/30 transition-colors"
+          style={{ top: 'calc(50% + 100px)' }}
         >
-          <ChevronDown size={30} strokeWidth={1.5} />
+          <ChevronDown size={36} strokeWidth={1} />
         </motion.button>
       )}
 
@@ -257,9 +258,6 @@ export function FocusView() {
                     {task.time && (
                       <span className="text-[11px] font-mono text-muted-foreground/50 tabular-nums shrink-0">
                         {formatTime12h(task.time)}
-                        {task.duration && (
-                          <> — {formatTime12h(timeToMinutes(task.time) + task.duration)}</>
-                        )}
                       </span>
                     )}
                   </div>
@@ -297,22 +295,24 @@ function MainFocusPanel({
 }: MainFocusPanelProps) {
   if (!activeTask) {
     return (
-      <div className="flex flex-col items-center justify-center h-full bg-grid-fade px-4">
+      <div className="flex flex-col items-center justify-center h-full px-6">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
           className="text-center"
         >
-          <div className="text-2xl sm:text-4xl font-display font-bold tracking-tight text-foreground/60 mb-2">
+          <div className="text-4xl sm:text-6xl font-display font-bold tracking-tight text-foreground/50 mb-4">
             FREE TIME
           </div>
-          <p className="text-muted-foreground/45 font-mono text-[11px] tracking-widest">
-            {nextTask ? `NEXT — ${nextTask.title} AT ${formatTime12h(nextTask.time!)}` : 'NO MORE TASKS TODAY'}
-          </p>
-          {(completedCount > 0 || remainingCount > 0) && (
-            <p className="text-muted-foreground/30 font-mono text-[10px] tracking-widest mt-3">
-              {completedCount} completed · {remainingCount} remaining
+          {nextTask && (
+            <p className="text-muted-foreground/30 font-mono text-[10px] tracking-[0.2em] uppercase">
+              next · {nextTask.title} · {formatTime12h(nextTask.time!)}
+            </p>
+          )}
+          {!nextTask && (
+            <p className="text-muted-foreground/25 font-mono text-[10px] tracking-[0.2em] uppercase">
+              no more tasks today
             </p>
           )}
         </motion.div>
@@ -320,33 +320,32 @@ function MainFocusPanel({
     );
   }
 
+  const timeDisplay = minutesToTime(remaining);
+
   return (
-    <div className="flex flex-col items-center justify-center h-full bg-grid-fade relative px-4">
+    <div className="flex flex-col items-center justify-center h-full relative px-6">
       <AnimatePresence mode="wait">
         <motion.div
           key={activeTask.id}
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-          className="text-center relative z-10 max-w-lg px-4 sm:px-6"
+          exit={{ opacity: 0, y: -24 }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          className="text-center relative z-10 w-full max-w-md"
         >
-          <div className="mb-3">
+          {/* Priority badge — small, subtle, above title */}
+          <div className="mb-3 opacity-50">
             <PriorityBadge priority={activeTask.priority} />
           </div>
 
-          <h1 className="text-xl sm:text-2xl md:text-4xl font-display font-bold tracking-tight text-foreground mb-4 leading-tight">
+          {/* Task title — dominant element */}
+          <h1 className="text-3xl sm:text-5xl md:text-6xl font-display font-bold tracking-tight text-foreground leading-[1.1] mb-8">
             {activeTask.title}
           </h1>
 
-          {activeTask.description && (
-            <p className="text-[11px] font-mono text-muted-foreground/50 mb-4 max-w-sm mx-auto leading-relaxed">
-              {activeTask.description}
-            </p>
-          )}
-
+          {/* Subtasks — compact, below title */}
           {activeTask.subtasks && activeTask.subtasks.length > 0 && (
-            <div className="mb-6 text-left max-w-xs mx-auto bg-card/50 rounded-sm p-3 border border-border/30">
+            <div className="mb-8 text-left max-w-xs mx-auto">
               <SubtaskList
                 subtasks={activeTask.subtasks}
                 onChange={(newSubtasks) => onUpdateTask(activeTask.id, { subtasks: newSubtasks })}
@@ -355,9 +354,9 @@ function MainFocusPanel({
             </div>
           )}
 
-          {/* Progress ring with hold-to-complete */}
+          {/* Horizontal progress bar — hold to complete */}
           <div
-            className="relative inline-flex items-center justify-center mb-6 select-none touch-none cursor-pointer"
+            className="w-full max-w-xs mx-auto select-none touch-none cursor-pointer mb-4"
             onPointerDown={(e) => {
               e.preventDefault();
               onHoldStart();
@@ -366,65 +365,63 @@ function MainFocusPanel({
             onPointerLeave={onHoldEnd}
             onPointerCancel={onHoldEnd}
           >
-            <svg width="120" height="120" className="rotate-[-90deg]">
-              <circle cx="60" cy="60" r="54" stroke="hsl(var(--border))" strokeWidth="1.5" fill="none" />
-              <motion.circle
-                cx="60" cy="60" r="54"
-                stroke="hsl(var(--primary))"
-                strokeWidth="1.5"
-                fill="none"
-                strokeLinecap="round"
-                strokeDasharray={339}
-                animate={{ strokeDashoffset: 339 - 339 * progress }}
-                transition={{ duration: 1 }}
+            {/* Time display */}
+            <div className="flex items-baseline justify-center mb-3">
+              <span className="font-mono text-2xl sm:text-3xl text-foreground/80 tabular-nums tracking-wider">
+                {timeDisplay}
+              </span>
+            </div>
+
+            {/* Progress bar track */}
+            <div className="relative w-full h-[3px] bg-border/40 rounded-full overflow-hidden">
+              {/* Elapsed progress */}
+              <motion.div
+                className="absolute inset-y-0 left-0 bg-foreground/20 rounded-full"
+                animate={{ width: `${progress * 100}%` }}
+                transition={{ duration: 1, ease: 'linear' }}
               />
+              {/* Hold progress overlay */}
               {isHolding && (
-                <circle
-                  cx="60" cy="60" r="46"
-                  stroke={holdProgress >= 1 ? 'hsl(var(--primary))' : 'hsl(var(--primary) / 0.5)'}
-                  strokeWidth="3"
-                  fill="none"
-                  strokeLinecap="round"
-                  strokeDasharray={289}
-                  strokeDashoffset={289 - 289 * holdProgress}
-                  style={{ transition: 'none' }}
+                <motion.div
+                  className="absolute inset-y-0 left-0 bg-primary rounded-full"
+                  style={{ width: `${holdProgress * 100}%` }}
                 />
               )}
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <div className="font-mono text-lg text-foreground tabular-nums tracking-widest">
-                {minutesToTime(remaining)}
-              </div>
-              <div className="text-[9px] font-mono text-muted-foreground/35 tracking-widest mt-px">
-                {isHolding ? 'HOLD TO COMPLETE' : 'REMAINING'}
-              </div>
+              {/* Position indicator dot */}
+              <motion.div
+                className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-foreground/50"
+                animate={{ left: `${progress * 100}%` }}
+                transition={{ duration: 1, ease: 'linear' }}
+                style={{ marginLeft: '-4px' }}
+              />
+            </div>
+
+            {/* Hold hint */}
+            <div className="mt-2 text-center">
+              <span className="text-[9px] font-mono text-muted-foreground/20 tracking-[0.2em] uppercase">
+                {isHolding ? 'hold to complete' : ''}
+              </span>
+              {/* Invisible spacer to prevent layout shift */}
+              {!isHolding && <span className="text-[9px] invisible">hold</span>}
             </div>
           </div>
 
-          {/* Time info */}
-          <div className="flex items-center justify-center gap-3 text-[10px] font-mono text-muted-foreground/40 tracking-widest flex-wrap">
-            <span>{formatTime12h(activeTask.time!)} — {formatTime12h(timeToMinutes(activeTask.time!) + (activeTask.duration || 30))}</span>
-            <span>·</span>
-            <span>{elapsed}M ELAPSED</span>
+          {/* Minimal metadata — very low opacity */}
+          <div className="mt-6 text-[9px] font-mono text-muted-foreground/20 tracking-[0.15em] uppercase">
+            {formatTime12h(activeTask.time!)} — {formatTime12h(timeToMinutes(activeTask.time!) + (activeTask.duration || 30))}
           </div>
-
-          {/* Progress narrative */}
-          {(completedCount > 0 || remainingCount > 0) && (
-            <div className="mt-3 text-[10px] font-mono text-muted-foreground/30 tracking-widest">
-              {completedCount} completed · {remainingCount} remaining
-            </div>
-          )}
         </motion.div>
       </AnimatePresence>
 
+      {/* Next task hint — anchored to bottom */}
       {nextTask && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="absolute bottom-8 flex items-center gap-1 text-[10px] font-mono text-muted-foreground/25 tracking-widest"
+          transition={{ delay: 0.5 }}
+          className="absolute bottom-8 flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground/20 tracking-[0.15em] uppercase"
         >
-          NEXT <ChevronRight size={10} /> {nextTask.title} · {formatTime12h(nextTask.time!)}
+          next <ChevronRight size={10} strokeWidth={1.5} /> {nextTask.title}
         </motion.div>
       )}
     </div>
