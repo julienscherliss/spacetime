@@ -341,7 +341,7 @@ function MainFocusPanel({
     return (
       <div className="relative flex flex-col h-full">
         {/* Background dot matrix — atmospheric */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none" aria-hidden>
+        <div className="absolute inset-x-0 top-0 h-1/3 flex items-center justify-center pointer-events-none select-none" aria-hidden>
           <DotMatrixClock hours="--" minutes="--" />
         </div>
 
@@ -390,8 +390,8 @@ function MainFocusPanel({
       onPointerLeave={onHoldEnd}
       onPointerCancel={onHoldEnd}
     >
-      {/* ═══ BACKGROUND DOT MATRIX — full-screen atmospheric layer ═══ */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none" aria-hidden>
+      {/* ═══ BACKGROUND DOT MATRIX — top third atmospheric layer ═══ */}
+      <div className="absolute inset-x-0 top-0 h-1/3 flex items-center justify-center pointer-events-none select-none" aria-hidden>
         <DotMatrixClock hours={remainingH} minutes={remainingM} />
       </div>
 
