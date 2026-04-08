@@ -308,45 +308,27 @@ function MainFocusPanel({
   const [subtasksExpanded, setSubtasksExpanded] = useState(false);
   const SUBTASK_PREVIEW_COUNT = 3;
 
-  // Colon pulse
-  const [colonVisible, setColonVisible] = useState(true);
-  useEffect(() => {
-    if (!activeTask) return;
-    const interval = setInterval(() => setColonVisible(v => !v), 1000);
-    return () => clearInterval(interval);
-  }, [activeTask]);
-
   // ── Free time state ──
   if (!activeTask) {
     return (
-      <div className="flex flex-col h-full relative">
-        {/* Background ambient */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
-          <div
-            className="font-mono font-bold text-foreground/[0.04] tabular-nums leading-none"
-            style={{ fontSize: 'clamp(120px, 40vw, 260px)' }}
-          >
-            --:--
-          </div>
-        </div>
-
-        <div className="flex-1 flex flex-col items-center justify-center px-6 relative z-[1]">
+      <div className="flex flex-col h-full">
+        <div className="flex-1 flex flex-col items-center justify-center px-6">
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
             className="text-center"
           >
-            <div className="font-mono text-4xl sm:text-5xl font-medium text-foreground/80 tabular-nums leading-none mb-4">
-              --:--
+            <div className="font-mono font-semibold text-foreground/90 tabular-nums leading-none mb-4" style={{ fontSize: 'clamp(80px, 28vw, 160px)' }}>
+              --
             </div>
-            <h1 className="text-xl sm:text-2xl font-mono font-bold text-foreground/55 leading-tight">
+            <h1 className="text-lg sm:text-xl font-mono font-semibold text-foreground/50 leading-tight">
               Free Time
             </h1>
           </motion.div>
         </div>
 
-        <div className="pb-8 px-6 relative z-[1]">
+        <div className="pb-8 px-6">
           {nextTask ? (
             <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground/30 tracking-[0.15em] uppercase">
               <ChevronRight size={10} strokeWidth={1.5} className="opacity-50" />
@@ -364,8 +346,7 @@ function MainFocusPanel({
   }
 
   // ── Active task ──
-  const timeDisplay = minutesToTime(remaining);
-  const [timeMins, timeSecs] = timeDisplay.split(':');
+  const remainingMins = String(remaining).padStart(2, '0');
   const hasDescription = activeTask.description && activeTask.description.trim().length > 0;
   const hasAttachments = activeTask.attachments && activeTask.attachments.length > 0;
   const hasSubtasks = activeTask.subtasks && activeTask.subtasks.length > 0;
@@ -379,7 +360,7 @@ function MainFocusPanel({
 
   return (
     <div
-      className="flex flex-col h-full select-none relative"
+      className="flex flex-col h-full select-none"
       onPointerDown={(e) => {
         const target = e.target as HTMLElement;
         if (target.closest('button') || target.closest('a')) return;
@@ -399,44 +380,32 @@ function MainFocusPanel({
           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
           className="flex flex-col h-full"
         >
-          {/* ═══ BACKGROUND TIME — texture layer ═══ */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none" style={{ marginTop: '-3%' }}>
-            <motion.div
-              className="font-mono font-bold text-muted-foreground tabular-nums leading-none"
-              style={{ fontSize: 'clamp(120px, 40vw, 260px)' }}
-              animate={{
-                opacity: isHolding ? 0.08 : 0.05,
-                scale: isHolding ? 1.02 : 1,
-              }}
-              transition={{ duration: 0.3, ease: 'easeOut' }}
-            >
-              {timeMins}:{timeSecs}
-            </motion.div>
-          </div>
-
-          {/* ═══ FOREGROUND CONTENT — single centered stack ═══ */}
-          <div className="flex-1 flex flex-col items-center justify-center px-6 min-h-0 relative z-[1]">
+          {/* ═══ PRIMARY — single large minutes timer + task ═══ */}
+          <div className="flex-1 flex flex-col items-center justify-center px-6 min-h-0">
             <motion.div
               className="w-full max-w-[320px] text-center"
-              animate={isHolding ? { scale: 0.98 } : { scale: 1 }}
+              animate={isHolding ? { scale: 1.04 } : { scale: 1 }}
               transition={{ duration: 0.25, ease: 'easeOut' }}
             >
-              {/* Foreground timer — readable */}
-              <div className="font-mono font-medium text-foreground/85 tabular-nums leading-none mb-4">
-                <span className="text-4xl sm:text-5xl">{timeMins}</span>
-                <span className={`text-4xl sm:text-5xl transition-opacity duration-300 ${colonVisible ? 'opacity-75' : 'opacity-15'}`}>:</span>
-                <span className="text-4xl sm:text-5xl">{timeSecs}</span>
-              </div>
+              {/* Minutes — THE dominant element */}
+              <motion.div
+                className="font-mono font-bold text-foreground/90 tabular-nums leading-none mb-4"
+                style={{ fontSize: 'clamp(80px, 28vw, 160px)' }}
+                animate={{ opacity: isHolding ? 1 : 0.9 }}
+                transition={{ duration: 0.2 }}
+              >
+                {remainingMins}
+              </motion.div>
 
-              {/* Task title — bold, high contrast */}
-              <h1 className="text-xl sm:text-2xl font-mono font-bold text-foreground/90 leading-tight mb-2">
+              {/* Task title — secondary */}
+              <h1 className="text-lg sm:text-xl font-mono font-semibold text-foreground/75 leading-tight mb-2">
                 {activeTask.title}
               </h1>
 
-              {/* Hold to complete — tight under title */}
+              {/* Hold to complete */}
               <div className="h-4 flex items-center justify-center">
                 {isHolding ? (
-                  <div className="w-24 h-[2px] bg-muted-foreground/15 overflow-hidden">
+                  <div className="w-20 h-[2px] bg-muted-foreground/15 overflow-hidden">
                     <motion.div
                       className="h-full bg-foreground/40"
                       style={{ width: `${holdProgress * 100}%` }}
@@ -453,15 +422,14 @@ function MainFocusPanel({
 
           {/* ═══ BOTTOM — detail block ═══ */}
           {hasDetails && (
-            <div className="relative z-[1] px-6 pb-5 flex justify-center">
+            <div className="px-6 pb-5 flex justify-center">
               <div className="w-full max-w-[320px] space-y-4">
-                {/* Description */}
                 {hasDescription && (
                   <button
                     onClick={(e) => { e.stopPropagation(); setDescExpanded(!descExpanded); }}
                     className="w-full text-left"
                   >
-                    <div className={`text-[11px] font-mono text-foreground/50 leading-relaxed ${!descExpanded ? 'line-clamp-2' : ''}`}>
+                    <div className={`text-[11px] font-mono text-foreground/45 leading-relaxed ${!descExpanded ? 'line-clamp-2' : ''}`}>
                       {linkify(activeTask.description!)}
                     </div>
                     {!descExpanded && activeTask.description!.length > 100 && (
@@ -472,12 +440,10 @@ function MainFocusPanel({
                   </button>
                 )}
 
-                {/* Divider between description and subtasks */}
                 {hasDescription && hasSubtasks && (
                   <div className="h-px bg-border/10" />
                 )}
 
-                {/* Subtasks */}
                 {hasSubtasks && (
                   <div>
                     <div className="flex items-center gap-2 mb-3">
@@ -537,7 +503,6 @@ function MainFocusPanel({
                   </div>
                 )}
 
-                {/* Attachments */}
                 {hasAttachments && (
                   <div className="flex flex-wrap gap-1.5">
                     {activeTask.attachments!.map((att, i) => (
@@ -560,7 +525,7 @@ function MainFocusPanel({
           )}
 
           {/* ═══ FOOTER — time range + next ═══ */}
-          <div className="px-6 pb-4 relative z-[1] flex justify-center">
+          <div className="px-6 pb-4 flex justify-center">
             <div className="w-full max-w-[320px] space-y-1">
               <div className="text-[9px] font-mono text-muted-foreground/15 tracking-[0.15em] uppercase tabular-nums">
                 {formatTime12h(activeTask.time!)} — {formatTime12h(timeToMinutes(activeTask.time!) + (activeTask.duration || 30))}
