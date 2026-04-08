@@ -8,7 +8,6 @@ import { useCarryStore } from '@/store/carryStore';
 import { useCurrentTime } from '@/hooks/useCurrentTime';
 import { TimelineColumn, START_HOUR } from '@/components/TimelineColumn';
 import { BlockedModal } from '@/components/BlockedModal';
-import { ZoomControl } from '@/components/ZoomControl';
 import { useTimeScale, SCALE_MIN, SCALE_MAX } from '@/hooks/useTimeScale';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { FitViewButton } from '@/components/FitViewButton';
@@ -25,13 +24,13 @@ export function DayView() {
   const { minutes: nowMinutes, dateStr: today } = useCurrentTime(15000);
   const [selectedDate, setSelectedDate] = useState(navigateToDate || today);
 
-  // Handle navigation from calendar view
   useEffect(() => {
     if (navigateToDate) {
       setSelectedDate(navigateToDate);
       setNavigateToDate(null);
     }
   }, [navigateToDate, setNavigateToDate]);
+
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Swipe state
@@ -40,9 +39,8 @@ export function DayView() {
   const [swiping, setSwiping] = useState(false);
 
   const {
-    hourHeight, zoomIn, zoomOut, resetZoom, setScale,
+    hourHeight, resetZoom, setScale,
     bindScrollZoom, bindPinchZoom,
-    zoomPercent, isMin, isMax, isDefault,
   } = useTimeScale('day');
 
   // Cluster zoom state
@@ -51,17 +49,14 @@ export function DayView() {
   const preClusterScrollRef = useRef<number | null>(null);
 
   const handleZoomToCluster = useCallback((cluster: TaskCluster, targetHourHeight: number, scrollToMin: number) => {
-    if (!scrollRef.current) return;
-    const el = scrollRef.current;
-
+    const el = scrollRef.current ?? document.scrollingElement ?? document.documentElement;
     preClusterScaleRef.current = hourHeight;
     preClusterScrollRef.current = el.scrollTop;
 
     const clamped = Math.min(SCALE_MAX, Math.max(SCALE_MIN, targetHourHeight));
-    const viewportH = el.clientHeight;
+    const viewportH = window.innerHeight;
     const clusterCenterMin = (cluster.startMin + cluster.endMin) / 2;
 
-    el.style.scrollBehavior = 'auto';
     setScale(clamped);
     setClusterZoomed(true);
 
@@ -70,36 +65,28 @@ export function DayView() {
     );
 
     queueMicrotask(() => {
-      el.scrollTop = targetScrollTop;
-      requestAnimationFrame(() => {
-        el.style.scrollBehavior = '';
-      });
+      window.scrollTo({ top: targetScrollTop, behavior: 'auto' });
     });
   }, [hourHeight, setScale]);
 
   const handleExitClusterZoom = useCallback(() => {
-    if (!scrollRef.current || preClusterScaleRef.current === null) {
+    if (preClusterScaleRef.current === null) {
       setClusterZoomed(false);
       return;
     }
-    const el = scrollRef.current;
     const restoreScale = preClusterScaleRef.current;
     const restoreScroll = preClusterScrollRef.current ?? 0;
 
-    el.style.scrollBehavior = 'auto';
     setScale(restoreScale);
 
     queueMicrotask(() => {
-      el.scrollTop = restoreScroll;
-      requestAnimationFrame(() => {
-        el.style.scrollBehavior = '';
-      });
+      window.scrollTo({ top: restoreScroll, behavior: 'auto' });
     });
 
     setClusterZoomed(false);
     preClusterScaleRef.current = null;
     preClusterScrollRef.current = null;
-  }, [hourHeight, setScale]);
+  }, [setScale]);
 
   useEffect(() => {
     generateRecurringInstances(selectedDate, selectedDate);
@@ -110,42 +97,13 @@ export function DayView() {
     if (connected) fetchEvents(selectedDate, selectedDate);
   }, [selectedDate, connected]);
 
-  // Lock scroll during active touch drag
-  const isDragging = useTouchDragStore((s) => !!s.dragging);
-  const isScheduledDragging = useScheduledDragStore((s) => s.active);
-  const anyDragging = isDragging || isScheduledDragging;
-
+  // Bind zoom gestures to the page-level scroll container
   useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
+    const el = document.documentElement;
     const cleanScroll = bindScrollZoom(el);
     const cleanPinch = bindPinchZoom(el);
     return () => { cleanScroll?.(); cleanPinch?.(); };
   }, [bindScrollZoom, bindPinchZoom]);
-
-  // Prevent scroll container from scrolling while dragging a task
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el || !anyDragging) return;
-    const prevent = (e: TouchEvent) => { e.preventDefault(); };
-    el.addEventListener('touchmove', prevent, { passive: false });
-    return () => el.removeEventListener('touchmove', prevent);
-  }, [anyDragging]);
-
-  // Track scroll end for carry mode cooldown
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    let scrollTimer: ReturnType<typeof setTimeout> | null = null;
-    const onScroll = () => {
-      if (scrollTimer) clearTimeout(scrollTimer);
-      scrollTimer = setTimeout(() => {
-        useCarryStore.getState().markScrollEnd();
-      }, 50);
-    };
-    el.addEventListener('scroll', onScroll, { passive: true });
-    return () => el.removeEventListener('scroll', onScroll);
-  }, []);
 
   // Swipe gesture handlers
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
@@ -161,7 +119,6 @@ export function DayView() {
     if (!touchStartRef.current || e.touches.length !== 1) return;
     const dx = e.touches[0].clientX - touchStartRef.current.x;
     const dy = e.touches[0].clientY - touchStartRef.current.y;
-    // Only swipe if horizontal movement dominates
     if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) {
       setSwiping(true);
       setSwipeOffset(dx);
@@ -191,22 +148,28 @@ export function DayView() {
   const isToday = selectedDate === today;
 
   return (
-    <div className="max-w-3xl mx-auto px-3 sm:px-4 py-4">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h2 className="text-base sm:text-lg font-display font-bold text-foreground tracking-tight">
-            {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', {
-              weekday: 'long',
-              month: 'long',
-              day: 'numeric',
-            })}
-          </h2>
-          <p className="text-[10px] font-mono text-muted-foreground/50 mt-0.5 tracking-widest">
-            {completedCount}/{dayTasks.length} COMPLETED
-          </p>
-        </div>
+    <div
+      className="max-w-3xl mx-auto px-3 sm:px-4"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Bold title row — scrolls away naturally */}
+      <div className="pt-3 pb-2">
+        <h2 className="text-lg sm:text-xl font-display font-bold text-foreground tracking-tight">
+          {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric',
+          })}
+        </h2>
+        <p className="text-[10px] font-mono text-muted-foreground/50 mt-0.5 tracking-widest">
+          {completedCount}/{dayTasks.length} COMPLETED
+        </p>
+      </div>
 
-        {/* Day navigation */}
+      {/* Sticky compact control row */}
+      <div className="sticky top-0 z-30 bg-background py-1.5 flex items-center justify-between border-b border-border/30">
         <div className="flex items-center gap-0.5">
           <button
             onClick={() => setSelectedDate(d => addDaysToDate(d, -1))}
@@ -228,8 +191,20 @@ export function DayView() {
             onClick={() => setSelectedDate(d => addDaysToDate(d, 1))}
             className="p-1.5 rounded-sm text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors"
           >
-          <ChevronRight size={16} strokeWidth={1.5} />
+            <ChevronRight size={16} strokeWidth={1.5} />
           </button>
+        </div>
+
+        <div className="flex items-center gap-1">
+          {clusterZoomed && (
+            <button
+              onClick={handleExitClusterZoom}
+              className="flex items-center gap-1 px-2 py-1 rounded-md bg-muted/60 border border-border/40 text-[10px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <X size={10} />
+              <span className="tracking-wider">EXIT ZOOM</span>
+            </button>
+          )}
           <FitViewButton
             tasks={dayTasks}
             scrollRef={scrollRef as React.RefObject<HTMLElement>}
@@ -241,76 +216,24 @@ export function DayView() {
         </div>
       </div>
 
-      {/* Progress */}
-      <div className="h-px bg-border/40 mb-4 overflow-hidden">
-        <motion.div
-          className="h-full bg-primary/50"
-          initial={{ width: 0 }}
-          animate={{ width: dayTasks.length > 0 ? `${(completedCount / dayTasks.length) * 100}%` : '0%' }}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      {/* Calendar grid — flows naturally, no inner scroll */}
+      <div
+        ref={scrollRef}
+        style={{
+          transform: swiping ? `translateX(${swipeOffset * 0.3}px)` : 'none',
+          overflow: 'hidden',
+        }}
+      >
+        <TimelineColumn
+          date={selectedDate}
+          tasks={dayTasks}
+          nowMinutes={nowMinutes}
+          isToday={isToday}
+          showTimeLabels
+          hourHeight={hourHeight}
+          onZoomToCluster={handleZoomToCluster}
         />
       </div>
-
-      {/* Cluster zoom exit */}
-      {clusterZoomed && (
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-3 flex items-center justify-center"
-        >
-          <button
-            onClick={handleExitClusterZoom}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-muted/60 border border-border/40 text-[10px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          >
-            <X size={12} />
-            <span className="tracking-wider">EXIT ZOOM</span>
-          </button>
-        </motion.div>
-      )}
-
-      {/* Timeline + Zoom control */}
-      <div className="flex gap-2 sm:gap-3">
-        <div
-          ref={scrollRef}
-          className="flex-1 overflow-y-auto overflow-x-hidden"
-          style={{ maxHeight: 'calc(100vh - 180px)', WebkitOverflowScrolling: 'touch' }}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-        >
-          <div
-            style={{
-              transform: swiping ? `translateX(${swipeOffset * 0.3}px)` : 'none',
-              transition: swiping ? 'none' : 'none',
-              overflow: 'hidden',
-            }}
-          >
-            <TimelineColumn
-              date={selectedDate}
-              tasks={dayTasks}
-              nowMinutes={nowMinutes}
-              isToday={isToday}
-              showTimeLabels
-              hourHeight={hourHeight}
-              onZoomToCluster={handleZoomToCluster}
-            />
-          </div>
-        </div>
-
-        <div className="shrink-0 pt-2 hidden sm:block">
-          <ZoomControl
-            onZoomIn={zoomIn}
-            onZoomOut={zoomOut}
-            onReset={resetZoom}
-            onSetScale={setScale}
-            zoomPercent={zoomPercent}
-            isMin={isMin}
-            isMax={isMax}
-            isDefault={isDefault}
-          />
-        </div>
-      </div>
-
 
       {dayTasks.length === 0 && (
         <div className="text-center py-20">
