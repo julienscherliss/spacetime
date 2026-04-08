@@ -366,8 +366,9 @@ function MainFocusPanel({
     );
   }
 
-  // ── Active task ──
-  const remainingMins = String(remaining).padStart(2, '0');
+  const clampedRemaining = Math.max(0, remaining);
+  const remainingH = String(Math.floor(clampedRemaining / 60)).padStart(2, '0');
+  const remainingM = String(clampedRemaining % 60).padStart(2, '0');
   const hasDescription = activeTask.description && activeTask.description.trim().length > 0;
   const hasAttachments = activeTask.attachments && activeTask.attachments.length > 0;
   const hasSubtasks = activeTask.subtasks && activeTask.subtasks.length > 0;
