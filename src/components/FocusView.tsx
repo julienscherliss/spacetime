@@ -396,22 +396,34 @@ function MainFocusPanel({
             <div className="h-px flex-1 bg-border/10" />
           </div>
 
-          {/* ═══ PRIMARY — TIME (dominant) + TASK (secondary) ═══ */}
-          <div className="flex-1 flex flex-col items-center justify-center px-6 min-h-0">
+          {/* ═══ BACKGROUND TIME — ambient layer ═══ */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none" style={{ zIndex: 0 }}>
+            <motion.div
+              className="font-mono font-bold tracking-tight text-foreground tabular-nums leading-none"
+              style={{ fontSize: 'min(45vw, 280px)', opacity: isHolding ? 0.12 : 0.06 }}
+              animate={isHolding ? { scale: 1.03 } : { scale: 1 }}
+              transition={{ duration: 0.4, ease: 'easeOut' }}
+            >
+              {timeMins}:{timeSecs}
+            </motion.div>
+          </div>
+
+          {/* ═══ PRIMARY — TIME (readable) + TASK ═══ */}
+          <div className="flex-1 flex flex-col items-center justify-center px-6 min-h-0" style={{ zIndex: 1 }}>
             <motion.div
               className="w-full max-w-sm text-center"
               animate={isHolding ? { scale: 0.97 } : { scale: 1 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
             >
-              {/* TIME — largest element, digital clock feel */}
-              <div className="font-mono font-bold tracking-tight text-foreground tabular-nums leading-none mb-3">
-                <span className="text-7xl sm:text-8xl md:text-9xl">{timeMins}</span>
-                <span className={`text-7xl sm:text-8xl md:text-9xl transition-opacity duration-300 ${colonVisible ? 'opacity-90' : 'opacity-20'}`}>:</span>
-                <span className="text-7xl sm:text-8xl md:text-9xl">{timeSecs}</span>
+              {/* Foreground timer — readable, medium-large */}
+              <div className="font-mono font-semibold tracking-tight text-foreground/85 tabular-nums leading-none mb-3">
+                <span className="text-5xl sm:text-6xl">{timeMins}</span>
+                <span className={`text-5xl sm:text-6xl transition-opacity duration-300 ${colonVisible ? 'opacity-80' : 'opacity-15'}`}>:</span>
+                <span className="text-5xl sm:text-6xl">{timeSecs}</span>
               </div>
 
-              {/* TASK TITLE — secondary, strong but smaller */}
-              <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight text-foreground/80 leading-[1.05] mb-1">
+              {/* TASK TITLE — large, bold, high contrast */}
+              <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight text-foreground/90 leading-[1.05] mb-1">
                 {activeTask.title}
               </h1>
 
