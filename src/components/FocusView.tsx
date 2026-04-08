@@ -149,6 +149,14 @@ export function FocusView() {
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
+      {/* Vignette overlay — subtle center emphasis */}
+      <div
+        className="absolute inset-0 pointer-events-none z-[1]"
+        style={{
+          background: 'radial-gradient(ellipse 70% 60% at 50% 50%, transparent 40%, hsl(var(--background) / 0.6) 100%)',
+        }}
+        aria-hidden
+      />
       {/* Navigation arrows — centered vertically */}
       {showUpArrow && (
         <motion.button
