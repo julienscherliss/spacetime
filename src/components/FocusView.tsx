@@ -438,9 +438,9 @@ function MainFocusPanel({
             </motion.div>
           </div>
 
-          {/* ═══ BOTTOM — detail block ═══ */}
+          {/* ═══ DETAIL — tied closely to title ═══ */}
           {hasDetails && (
-            <div className="px-6 pb-5 flex justify-center">
+            <div className="px-6 pb-5 pt-2 flex justify-center">
               <div className="w-full max-w-[320px] space-y-4">
                 {hasDescription && (
                   <button
