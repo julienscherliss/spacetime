@@ -512,6 +512,8 @@ function MainFocusPanel({
                 </div>
               )}
             </motion.div>
+            {/* Bottom spacer — allows content to grow downward naturally */}
+            <div className="flex-1 min-h-[10%]" />
           </div>
 
           {/* ═══ FOOTER ═══ */}
