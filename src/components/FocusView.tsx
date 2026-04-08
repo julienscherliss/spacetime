@@ -318,16 +318,22 @@ function MainFocusPanel({
 
   if (!activeTask) {
     return (
-      <div className="flex flex-col h-full">
-        <div className="flex-1 flex flex-col items-center justify-center px-6">
+      <div className="flex flex-col h-full relative">
+        {/* Background ambient time */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
+          <div className="font-mono font-bold tracking-tight text-foreground/[0.04] tabular-nums leading-none" style={{ fontSize: 'min(45vw, 280px)' }}>
+            --:--
+          </div>
+        </div>
+
+        <div className="flex-1 flex flex-col items-center justify-center px-6" style={{ zIndex: 1 }}>
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
             className="text-center"
           >
-            {/* Time-dominant even in free state */}
-            <div className="font-mono text-6xl sm:text-8xl font-bold tracking-tight text-foreground/90 tabular-nums mb-6">
+            <div className="font-mono text-5xl sm:text-6xl font-semibold tracking-tight text-foreground/85 tabular-nums mb-6">
               --:--
             </div>
             <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight text-foreground/60 leading-[0.95]">
@@ -336,7 +342,7 @@ function MainFocusPanel({
           </motion.div>
         </div>
 
-        <div className="pb-8 px-6">
+        <div className="pb-8 px-6" style={{ zIndex: 1 }}>
           {nextTask ? (
             <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground/35 tracking-[0.15em] uppercase">
               <ChevronRight size={10} strokeWidth={1.5} className="opacity-60" />
@@ -386,7 +392,7 @@ function MainFocusPanel({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -16 }}
           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-          className="flex flex-col h-full"
+          className="flex flex-col h-full relative"
         >
           {/* ═══ TOP — FLEX tag, very subtle ═══ */}
           <div className="pt-5 px-6 flex items-center gap-3">
@@ -396,22 +402,34 @@ function MainFocusPanel({
             <div className="h-px flex-1 bg-border/10" />
           </div>
 
-          {/* ═══ PRIMARY — TIME (dominant) + TASK (secondary) ═══ */}
-          <div className="flex-1 flex flex-col items-center justify-center px-6 min-h-0">
+          {/* ═══ BACKGROUND TIME — ambient layer ═══ */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none" style={{ zIndex: 0 }}>
+            <motion.div
+              className="font-mono font-bold tracking-tight text-foreground tabular-nums leading-none"
+              style={{ fontSize: 'min(45vw, 280px)', opacity: isHolding ? 0.12 : 0.06 }}
+              animate={isHolding ? { scale: 1.03 } : { scale: 1 }}
+              transition={{ duration: 0.4, ease: 'easeOut' }}
+            >
+              {timeMins}:{timeSecs}
+            </motion.div>
+          </div>
+
+          {/* ═══ PRIMARY — TIME (readable) + TASK ═══ */}
+          <div className="flex-1 flex flex-col items-center justify-center px-6 min-h-0" style={{ zIndex: 1 }}>
             <motion.div
               className="w-full max-w-sm text-center"
               animate={isHolding ? { scale: 0.97 } : { scale: 1 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
             >
-              {/* TIME — largest element, digital clock feel */}
-              <div className="font-mono font-bold tracking-tight text-foreground tabular-nums leading-none mb-3">
-                <span className="text-7xl sm:text-8xl md:text-9xl">{timeMins}</span>
-                <span className={`text-7xl sm:text-8xl md:text-9xl transition-opacity duration-300 ${colonVisible ? 'opacity-90' : 'opacity-20'}`}>:</span>
-                <span className="text-7xl sm:text-8xl md:text-9xl">{timeSecs}</span>
+              {/* Foreground timer — readable, medium-large */}
+              <div className="font-mono font-semibold tracking-tight text-foreground/85 tabular-nums leading-none mb-3">
+                <span className="text-5xl sm:text-6xl">{timeMins}</span>
+                <span className={`text-5xl sm:text-6xl transition-opacity duration-300 ${colonVisible ? 'opacity-80' : 'opacity-15'}`}>:</span>
+                <span className="text-5xl sm:text-6xl">{timeSecs}</span>
               </div>
 
-              {/* TASK TITLE — secondary, strong but smaller */}
-              <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight text-foreground/80 leading-[1.05] mb-1">
+              {/* TASK TITLE — large, bold, high contrast */}
+              <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight text-foreground/90 leading-[1.05] mb-1">
                 {activeTask.title}
               </h1>
 
@@ -434,7 +452,7 @@ function MainFocusPanel({
           </div>
 
           {/* ═══ BOTTOM — structured detail block ═══ */}
-          <div className="px-6 pb-5 space-y-0 max-h-[40%] overflow-y-auto">
+          <div className="px-6 pb-5 space-y-0 max-h-[40%] overflow-y-auto" style={{ zIndex: 1 }}>
             {/* Description — left-aligned */}
             {hasDescription && (
               <button
