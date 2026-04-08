@@ -313,7 +313,6 @@ function MainFocusPanel({
   holdProgress, isHolding, onHoldStart, onHoldEnd, onUpdateTask,
 }: MainFocusPanelProps) {
   const [descExpanded, setDescExpanded] = useState(false);
-  const SUBTASK_PREVIEW_COUNT = 3;
   const autoCompleteRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [completing, setCompleting] = useState(false);
   const { completeTask } = useTaskStore();
@@ -378,12 +377,6 @@ function MainFocusPanel({
   const hasDescription = activeTask.description && activeTask.description.trim().length > 0;
   const hasAttachments = activeTask.attachments && activeTask.attachments.length > 0;
   const hasSubtasks = activeTask.subtasks && activeTask.subtasks.length > 0;
-  const subtasksDone = hasSubtasks ? activeTask.subtasks!.filter(s => s.completed).length : 0;
-  const subtasksTotal = hasSubtasks ? activeTask.subtasks!.length : 0;
-  const visibleSubtasks = hasSubtasks
-    ? (subtasksExpanded ? activeTask.subtasks! : activeTask.subtasks!.slice(0, SUBTASK_PREVIEW_COUNT))
-    : [];
-  const hasMoreSubtasks = hasSubtasks && activeTask.subtasks!.length > SUBTASK_PREVIEW_COUNT;
   const hasDetails = hasDescription || hasSubtasks || hasAttachments;
 
   return (
