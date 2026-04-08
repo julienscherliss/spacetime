@@ -428,7 +428,7 @@ function MainFocusPanel({
               transition={{ duration: 0.3, ease: 'easeOut' }}
             >
               {/* Task title — primary foreground element */}
-              <h1 className="text-3xl sm:text-4xl font-mono font-semibold text-foreground leading-tight">
+              <h1 className="text-4xl sm:text-5xl font-mono font-semibold text-foreground leading-tight text-left">
                 {activeTask.title}
               </h1>
 
@@ -446,7 +446,7 @@ function MainFocusPanel({
 
               {/* Description + subtasks — centered container, left-aligned text */}
               {hasDetails && (
-                <div className="mt-4 text-left max-w-[300px] mx-auto">
+                <div className="mt-4 text-left mx-auto">
                   {hasDescription && (
                     <button
                       onClick={(e) => { e.stopPropagation(); setDescExpanded(!descExpanded); }}
