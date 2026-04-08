@@ -392,7 +392,7 @@ function MainFocusPanel({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -16 }}
           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-          className="flex flex-col h-full"
+          className="flex flex-col h-full relative"
         >
           {/* ═══ TOP — FLEX tag, very subtle ═══ */}
           <div className="pt-5 px-6 flex items-center gap-3">
