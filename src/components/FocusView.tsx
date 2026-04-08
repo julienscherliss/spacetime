@@ -332,24 +332,23 @@ function MainFocusPanel({
   // ── Free time state ──
   if (!activeTask) {
     return (
-      <div className="flex flex-col h-full">
-        <div className="flex-1 flex flex-col items-center justify-center px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-            className="text-center"
-          >
-            <div className="font-mono font-semibold text-foreground/90 tabular-nums leading-none mb-4" style={{ fontSize: 'clamp(64px, 24vw, 140px)' }}>
-              --:--
-            </div>
-            <h1 className="text-lg sm:text-xl font-mono font-semibold text-foreground/50 leading-tight">
-              Free Time
-            </h1>
-          </motion.div>
+      <div className="relative flex flex-col h-full">
+        {/* Background time — atmospheric */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none" aria-hidden>
+          <div className="font-mono font-bold text-foreground/[0.03] tabular-nums leading-[0.85] text-center" style={{ fontSize: 'clamp(140px, 45vw, 320px)' }}>
+            <div>--</div>
+            <div>--</div>
+          </div>
         </div>
 
-        <div className="pb-8 px-6">
+        {/* Foreground */}
+        <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6">
+          <h1 className="text-lg sm:text-xl font-mono font-semibold text-foreground/50 leading-tight">
+            Free Time
+          </h1>
+        </div>
+
+        <div className="relative z-10 pb-8 px-6">
           {nextTask ? (
             <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground/30 tracking-[0.15em] uppercase">
               <ChevronRight size={10} strokeWidth={1.5} className="opacity-50" />
@@ -382,7 +381,7 @@ function MainFocusPanel({
 
   return (
     <div
-      className="flex flex-col h-full select-none"
+      className="relative flex flex-col h-full select-none"
       onPointerDown={(e) => {
         const target = e.target as HTMLElement;
         if (target.closest('button') || target.closest('a')) return;
@@ -393,6 +392,25 @@ function MainFocusPanel({
       onPointerLeave={onHoldEnd}
       onPointerCancel={onHoldEnd}
     >
+      {/* ═══ BACKGROUND TIME — full-screen atmospheric layer ═══ */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none" aria-hidden>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={`bg-${activeTask.id}-${remainingH}-${remainingM}`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.6, ease: 'easeInOut' }}
+            className="font-mono font-bold text-foreground/[0.03] tabular-nums leading-[0.85] text-center"
+            style={{ fontSize: 'clamp(140px, 45vw, 320px)' }}
+          >
+            <div>{remainingH}</div>
+            <div>{remainingM}</div>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* ═══ FOREGROUND CONTENT ═══ */}
       <AnimatePresence mode="wait">
         <motion.div
           key={activeTask.id}
@@ -400,27 +418,22 @@ function MainFocusPanel({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -16 }}
           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-          className="flex flex-col h-full"
+          className="relative z-10 flex flex-col h-full"
         >
-          {/* ═══ UNIFIED TASK BLOCK — one object ═══ */}
+          {/* Centered task content */}
           <div className="flex-1 flex items-center justify-center px-6 min-h-0">
             <motion.div
-              className="w-full max-w-[340px] text-left"
+              className="w-full max-w-[320px] text-center"
               animate={isHolding ? { scale: 1.03 } : completing ? { scale: 0.96, opacity: 0.4 } : { scale: 1 }}
               transition={{ duration: 0.3, ease: 'easeOut' }}
             >
-              {/* Timer — left-aligned, dominant */}
-              <motion.div
-                className="font-mono font-bold text-foreground/90 tabular-nums leading-none"
-                style={{ fontSize: 'clamp(56px, 22vw, 120px)' }}
-                animate={{ opacity: isHolding ? 1 : 0.9 }}
-                transition={{ duration: 0.2 }}
-              >
-                {remainingH}:{remainingM}
-              </motion.div>
+              {/* Task title — primary foreground element */}
+              <h1 className="text-xl sm:text-2xl font-mono font-semibold text-foreground/90 leading-tight">
+                {activeTask.title}
+              </h1>
 
               {/* Hold progress bar */}
-              <div className="h-2 mt-1 mb-2">
+              <div className="h-3 mt-2 flex justify-center">
                 {isHolding && (
                   <div className="w-16 h-[2px] bg-muted-foreground/15 overflow-hidden">
                     <motion.div
@@ -431,116 +444,115 @@ function MainFocusPanel({
                 )}
               </div>
 
-              {/* Task title */}
-              <h1 className="text-xl sm:text-2xl font-mono font-semibold text-foreground/80 leading-tight">
-                {activeTask.title}
-              </h1>
-
-              {/* Description — directly under title */}
-              {hasDescription && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); setDescExpanded(!descExpanded); }}
-                  className="w-full text-left mt-4"
-                >
-                  <div className={`text-[12px] font-mono text-foreground/40 leading-relaxed ${!descExpanded ? 'line-clamp-2' : ''}`}>
-                    {linkify(activeTask.description!)}
-                  </div>
-                  {!descExpanded && activeTask.description!.length > 100 && (
-                    <span className="text-[9px] font-mono text-muted-foreground/25 tracking-[0.15em] uppercase mt-1 inline-block">
-                      More
-                    </span>
-                  )}
-                </button>
-              )}
-
-              {/* Subtasks — stacked directly */}
-              {hasSubtasks && (
-                <div className={hasDescription ? 'mt-3' : 'mt-4'}>
-                  <div className="flex items-center gap-2 mb-2.5">
-                    <span className="text-[9px] font-mono tracking-[0.2em] text-muted-foreground/30 uppercase tabular-nums">
-                      {subtasksDone}/{subtasksTotal}
-                    </span>
-                  </div>
-                  <div className="space-y-2.5">
-                    {visibleSubtasks.map((s) => (
-                      <button
-                        key={s.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const updated = activeTask.subtasks!.map(st =>
-                            st.id === s.id ? { ...st, completed: !st.completed } : st
-                          );
-                          onUpdateTask(activeTask.id, { subtasks: updated });
-                        }}
-                        className="flex items-center gap-2.5 w-full text-left group"
-                      >
-                        <div className={`w-3 h-3 rounded-sm border flex items-center justify-center shrink-0 transition-colors ${
-                          s.completed
-                            ? 'bg-foreground/15 border-foreground/20'
-                            : 'border-muted-foreground/20 group-hover:border-muted-foreground/35'
-                        }`}>
-                          {s.completed && (
-                            <svg width="8" height="8" viewBox="0 0 8 8" className="text-foreground/50">
-                              <path d="M1.5 4L3.2 5.8L6.5 2.2" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          )}
-                        </div>
-                        <span className={`text-[12px] font-mono leading-snug ${
-                          s.completed ? 'line-through text-muted-foreground/25' : 'text-foreground/45'
-                        }`}>
-                          {s.title}
+              {/* Description + subtasks — centered container, left-aligned text */}
+              {hasDetails && (
+                <div className="mt-4 text-left max-w-[300px] mx-auto">
+                  {hasDescription && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setDescExpanded(!descExpanded); }}
+                      className="w-full text-left"
+                    >
+                      <div className={`text-[12px] font-mono text-foreground/40 leading-relaxed ${!descExpanded ? 'line-clamp-2' : ''}`}>
+                        {linkify(activeTask.description!)}
+                      </div>
+                      {!descExpanded && activeTask.description!.length > 100 && (
+                        <span className="text-[9px] font-mono text-muted-foreground/25 tracking-[0.15em] uppercase mt-1 inline-block">
+                          More
                         </span>
-                      </button>
-                    ))}
-                  </div>
-                  {hasMoreSubtasks && !subtasksExpanded && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setSubtasksExpanded(true); }}
-                      className="text-[9px] font-mono text-muted-foreground/25 tracking-[0.15em] uppercase mt-2 hover:text-muted-foreground/40 transition-colors"
-                    >
-                      +{activeTask.subtasks!.length - SUBTASK_PREVIEW_COUNT} more
+                      )}
                     </button>
                   )}
-                  {subtasksExpanded && hasMoreSubtasks && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setSubtasksExpanded(false); }}
-                      className="text-[9px] font-mono text-muted-foreground/25 tracking-[0.15em] uppercase mt-2 hover:text-muted-foreground/40 transition-colors"
-                    >
-                      Show less
-                    </button>
-                  )}
-                </div>
-              )}
 
-              {/* Attachments */}
-              {hasAttachments && (
-                <div className="flex flex-wrap gap-1.5 mt-3">
-                  {activeTask.attachments!.map((att, i) => (
-                    <a
-                      key={i}
-                      href={att.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-2 py-1 border border-border/15 text-[10px] font-mono text-foreground/40 hover:text-foreground/60 hover:border-border/30 transition-colors"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Paperclip size={9} />
-                      <span className="truncate max-w-[100px]">{att.name}</span>
-                    </a>
-                  ))}
+                  {/* Subtasks */}
+                  {hasSubtasks && (
+                    <div className={hasDescription ? 'mt-3' : ''}>
+                      <div className="flex items-center gap-2 mb-2.5">
+                        <span className="text-[9px] font-mono tracking-[0.2em] text-muted-foreground/30 uppercase tabular-nums">
+                          {subtasksDone}/{subtasksTotal}
+                        </span>
+                      </div>
+                      <div className="space-y-2.5">
+                        {visibleSubtasks.map((s) => (
+                          <button
+                            key={s.id}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const updated = activeTask.subtasks!.map(st =>
+                                st.id === s.id ? { ...st, completed: !st.completed } : st
+                              );
+                              onUpdateTask(activeTask.id, { subtasks: updated });
+                            }}
+                            className="flex items-center gap-2.5 w-full text-left group"
+                          >
+                            <div className={`w-3 h-3 rounded-sm border flex items-center justify-center shrink-0 transition-colors ${
+                              s.completed
+                                ? 'bg-foreground/15 border-foreground/20'
+                                : 'border-muted-foreground/20 group-hover:border-muted-foreground/35'
+                            }`}>
+                              {s.completed && (
+                                <svg width="8" height="8" viewBox="0 0 8 8" className="text-foreground/50">
+                                  <path d="M1.5 4L3.2 5.8L6.5 2.2" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              )}
+                            </div>
+                            <span className={`text-[12px] font-mono leading-snug ${
+                              s.completed ? 'line-through text-muted-foreground/25' : 'text-foreground/45'
+                            }`}>
+                              {s.title}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                      {hasMoreSubtasks && !subtasksExpanded && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setSubtasksExpanded(true); }}
+                          className="text-[9px] font-mono text-muted-foreground/25 tracking-[0.15em] uppercase mt-2 hover:text-muted-foreground/40 transition-colors"
+                        >
+                          +{activeTask.subtasks!.length - SUBTASK_PREVIEW_COUNT} more
+                        </button>
+                      )}
+                      {subtasksExpanded && hasMoreSubtasks && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setSubtasksExpanded(false); }}
+                          className="text-[9px] font-mono text-muted-foreground/25 tracking-[0.15em] uppercase mt-2 hover:text-muted-foreground/40 transition-colors"
+                        >
+                          Show less
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Attachments */}
+                  {hasAttachments && (
+                    <div className="flex flex-wrap gap-1.5 mt-3">
+                      {activeTask.attachments!.map((att, i) => (
+                        <a
+                          key={i}
+                          href={att.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-2 py-1 border border-border/15 text-[10px] font-mono text-foreground/40 hover:text-foreground/60 hover:border-border/30 transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Paperclip size={9} />
+                          <span className="truncate max-w-[100px]">{att.name}</span>
+                        </a>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </motion.div>
           </div>
 
-          {/* ═══ FOOTER — time range + next ═══ */}
-          <div className="px-6 pb-4 flex justify-center">
-            <div className="w-full max-w-[340px] space-y-1">
+          {/* ═══ FOOTER ═══ */}
+          <div className="relative z-10 px-6 pb-4 flex justify-center">
+            <div className="w-full max-w-[320px] space-y-1 text-center">
               <div className="text-[9px] font-mono text-muted-foreground/15 tracking-[0.15em] uppercase tabular-nums">
                 {formatTime12h(activeTask.time!)} — {formatTime12h(timeToMinutes(activeTask.time!) + (activeTask.duration || 30))}
               </div>
               {nextTask && (
-                <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/20 tracking-[0.12em] uppercase">
+                <div className="flex items-center justify-center gap-2 text-[9px] font-mono text-muted-foreground/20 tracking-[0.12em] uppercase">
                   <ChevronRight size={9} strokeWidth={1.5} className="opacity-40" />
                   <span className="truncate">{nextTask.title}</span>
                   <span className="tabular-nums ml-auto shrink-0">{formatTime12h(nextTask.time!)}</span>
