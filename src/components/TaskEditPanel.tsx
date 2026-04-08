@@ -698,11 +698,7 @@ export function TaskEditPanel() {
 
               {/* ─── Subtasks ─── */}
               <div className="mb-4">
-                {subtasks.length > 0 && (
-                  <div className="mb-1">
-                    <SubtaskList subtasks={subtasks} onChange={setSubtasks} />
-                  </div>
-                )}
+                <SubtaskList subtasks={subtasks} onChange={setSubtasks} />
               </div>
 
               {/* ─── Attachments ─── */}
