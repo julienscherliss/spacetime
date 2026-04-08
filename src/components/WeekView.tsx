@@ -36,16 +36,13 @@ export function WeekView() {
   const preClusterScrollRef = useRef<number | null>(null);
 
   const handleZoomToCluster = useCallback((cluster: TaskCluster, targetHourHeight: number, scrollToMin: number) => {
-    if (!scrollRef.current) return;
-    const el = scrollRef.current;
     preClusterScaleRef.current = hourHeight;
-    preClusterScrollRef.current = el.scrollTop;
+    preClusterScrollRef.current = window.scrollY;
 
     const clamped = Math.min(SCALE_MAX, Math.max(SCALE_MIN, targetHourHeight));
-    const viewportH = el.clientHeight;
+    const viewportH = window.innerHeight;
     const clusterCenterMin = (cluster.startMin + cluster.endMin) / 2;
 
-    el.style.scrollBehavior = 'auto';
     setScale(clamped);
     setClusterZoomed(true);
 
@@ -54,36 +51,28 @@ export function WeekView() {
     );
 
     queueMicrotask(() => {
-      el.scrollTop = targetScrollTop;
-      requestAnimationFrame(() => {
-        el.style.scrollBehavior = '';
-      });
+      window.scrollTo({ top: targetScrollTop, behavior: 'auto' });
     });
   }, [hourHeight, setScale]);
 
   const handleExitClusterZoom = useCallback(() => {
-    if (!scrollRef.current || preClusterScaleRef.current === null) {
+    if (preClusterScaleRef.current === null) {
       setClusterZoomed(false);
       return;
     }
-    const el = scrollRef.current;
     const restoreScale = preClusterScaleRef.current;
     const restoreScroll = preClusterScrollRef.current ?? 0;
 
-    el.style.scrollBehavior = 'auto';
     setScale(restoreScale);
 
     queueMicrotask(() => {
-      el.scrollTop = restoreScroll;
-      requestAnimationFrame(() => {
-        el.style.scrollBehavior = '';
-      });
+      window.scrollTo({ top: restoreScroll, behavior: 'auto' });
     });
 
     setClusterZoomed(false);
     preClusterScaleRef.current = null;
     preClusterScrollRef.current = null;
-  }, [hourHeight, setScale]);
+  }, [setScale]);
 
   const week = useWeekDays(weekOffset, today, dayCount);
 
@@ -102,9 +91,9 @@ export function WeekView() {
     if (connected && start && end) fetchEvents(start, end);
   }, [week, connected]);
 
+  // Bind zoom gestures to the page-level scroll
   useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
+    const el = document.documentElement;
     const cleanScroll = bindScrollZoom(el);
     const cleanPinch = bindPinchZoom(el);
     return () => { cleanScroll?.(); cleanPinch?.(); };
@@ -157,6 +146,8 @@ export function WeekView() {
     visibleDates.has(t.date) && !t.inWaitingRoom && !t.archivedAt &&
     !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring')
   );
+
+  // Navigation controls placed in the sticky header gutter
   const headerControls = (
     <div className="flex flex-col items-center gap-0.5 pb-0.5">
       <button
@@ -183,74 +174,67 @@ export function WeekView() {
   );
 
   return (
-    <div className="w-full px-2 sm:px-3 lg:px-4 py-1">
-      {/* Cluster zoom exit */}
-      {clusterZoomed && (
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-2 flex items-center justify-center"
-        >
-          <button
-            onClick={handleExitClusterZoom}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-muted/60 border border-border/40 text-[10px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          >
-            <X size={12} />
-            <span className="tracking-wider">EXIT ZOOM</span>
-          </button>
-        </motion.div>
-      )}
-
-      {/* Pinned day headers with integrated controls */}
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-[11px] font-mono text-muted-foreground/50 tracking-widest uppercase">
+    <div
+      className="w-full px-2 sm:px-3 lg:px-4"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Bold title row — scrolls away naturally */}
+      <div className="pt-3 pb-2 flex items-center justify-between">
+        <h2 className="text-lg sm:text-xl font-display font-bold text-foreground tracking-tight">
           {monthLabel}
-        </span>
-        <FitViewButton
-          tasks={visibleTasks}
-          scrollRef={scrollRef as React.RefObject<HTMLElement>}
-          hourHeight={hourHeight}
-          setScale={setScale}
-          resetZoom={resetZoom}
-          nowMinutes={nowMinutes}
+        </h2>
+        <div className="flex items-center gap-1">
+          {clusterZoomed && (
+            <button
+              onClick={handleExitClusterZoom}
+              className="flex items-center gap-1 px-2 py-1 rounded-md bg-muted/60 border border-border/40 text-[10px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <X size={10} />
+              <span className="tracking-wider">EXIT ZOOM</span>
+            </button>
+          )}
+          <FitViewButton
+            tasks={visibleTasks}
+            scrollRef={scrollRef as React.RefObject<HTMLElement>}
+            hourHeight={hourHeight}
+            setScale={setScale}
+            resetZoom={resetZoom}
+            nowMinutes={nowMinutes}
+          />
+        </div>
+      </div>
+
+      {/* Sticky weekday/date header — the only sticky row */}
+      <div className="sticky top-0 z-30 bg-background border-b border-border/30">
+        <WeekDayHeaders
+          weekOffset={weekOffset}
+          today={today}
+          compact={isMobile}
+          dayCount={dayCount}
+          controls={headerControls}
         />
       </div>
 
-      <WeekDayHeaders
-        weekOffset={weekOffset}
-        today={today}
-        compact={isMobile}
-        dayCount={dayCount}
-        controls={headerControls}
-      />
-
-      {/* Timeline */}
+      {/* Calendar grid — flows naturally, no inner scroll */}
       <div
         ref={scrollRef}
-        className="overflow-y-auto overflow-x-hidden"
-        style={{ maxHeight: 'calc(100vh - 120px)', WebkitOverflowScrolling: 'touch' }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
+        style={{
+          transform: swiping ? `translateX(${swipeOffset * 0.2}px)` : 'none',
+          overflow: 'hidden',
+        }}
       >
-        <div
-          style={{
-            transform: swiping ? `translateX(${swipeOffset * 0.2}px)` : 'none',
-            transition: swiping ? 'none' : 'none',
-            overflow: 'hidden',
-          }}
-        >
-          <WeekGrid
-            weekOffset={weekOffset}
-            today={today}
-            nowMinutes={nowMinutes}
-            hourHeight={hourHeight}
-            routinesEnabled={routinesEnabled}
-            compact={isMobile}
-            dayCount={dayCount}
-            onZoomToCluster={handleZoomToCluster}
-          />
-        </div>
+        <WeekGrid
+          weekOffset={weekOffset}
+          today={today}
+          nowMinutes={nowMinutes}
+          hourHeight={hourHeight}
+          routinesEnabled={routinesEnabled}
+          compact={isMobile}
+          dayCount={dayCount}
+          onZoomToCluster={handleZoomToCluster}
+        />
       </div>
 
       <BlockedModal taskId="" open={false} onClose={() => {}} />
