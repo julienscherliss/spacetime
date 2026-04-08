@@ -340,8 +340,8 @@ function MainFocusPanel({
             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
             className="text-center"
           >
-            <div className="font-mono font-semibold text-foreground/90 tabular-nums leading-none mb-4" style={{ fontSize: 'clamp(80px, 28vw, 160px)' }}>
-              --
+            <div className="font-mono font-semibold text-foreground/90 tabular-nums leading-none mb-4" style={{ fontSize: 'clamp(64px, 24vw, 140px)' }}>
+              --:--
             </div>
             <h1 className="text-lg sm:text-xl font-mono font-semibold text-foreground/50 leading-tight">
               Free Time
