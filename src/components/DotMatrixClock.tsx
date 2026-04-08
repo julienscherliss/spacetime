@@ -97,10 +97,11 @@ const DIGIT_PATTERNS: Record<string, number[][]> = {
 
 // Build a full grid: HH on top, MM on bottom, each digit 5 cols wide with 2-col gap
 function buildDotGrid(hours: string, minutes: string): boolean[][] {
-  const h1 = DIGIT_PATTERNS[hours[0]] || DIGIT_PATTERNS['0'];
-  const h2 = DIGIT_PATTERNS[hours[1]] || DIGIT_PATTERNS['0'];
-  const m1 = DIGIT_PATTERNS[minutes[0]] || DIGIT_PATTERNS['0'];
-  const m2 = DIGIT_PATTERNS[minutes[1]] || DIGIT_PATTERNS['0'];
+  const blank: number[][] = Array(7).fill(null).map(() => Array(5).fill(0));
+  const h1 = DIGIT_PATTERNS[hours[0]] || blank;
+  const h2 = DIGIT_PATTERNS[hours[1]] || blank;
+  const m1 = DIGIT_PATTERNS[minutes[0]] || blank;
+  const m2 = DIGIT_PATTERNS[minutes[1]] || blank;
 
   const GAP = 2; // columns between digits
   const ROW_GAP = 2; // rows between hours and minutes
