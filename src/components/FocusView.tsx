@@ -4,9 +4,34 @@ import { useTaskStore } from '@/store/taskStore';
 import { useCurrentTime, timeToMinutes, minutesToTime, formatTime12h } from '@/hooks/useCurrentTime';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { SubtaskList } from '@/components/SubtaskList';
-import { ChevronUp, ChevronDown, ChevronRight, Check } from 'lucide-react';
+import { ChevronUp, ChevronDown, ChevronRight, Paperclip, ExternalLink } from 'lucide-react';
 
 type FocusPanel = 'completed' | 'main' | 'upcoming';
+
+// ── URL detection helper ──
+function linkify(text: string) {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+  return parts.map((part, i) => {
+    if (urlRegex.test(part)) {
+      urlRegex.lastIndex = 0;
+      const display = part.replace(/^https?:\/\/(www\.)?/, '').slice(0, 40);
+      return (
+        <a
+          key={i}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline underline-offset-2 decoration-foreground/25 hover:decoration-foreground/50 transition-colors inline-flex items-center gap-1"
+        >
+          {display}
+          <ExternalLink size={10} className="opacity-50" />
+        </a>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
 
 export function FocusView() {
   const { tasks, routinesEnabled, getNextTask, updateTask, completeTask } = useTaskStore();
@@ -60,7 +85,6 @@ export function FocusView() {
     : todayTasks;
 
   const completedCount = completedToday.length;
-  const remainingCount = upcomingTasks.length + (activeTask ? 1 : 0);
 
   // Hold-to-complete handlers
   const startHold = useCallback(() => {
@@ -101,7 +125,6 @@ export function FocusView() {
     const deltaY = e.changedTouches[0].clientY - touchStartY.current;
     const threshold = 60;
     if (Math.abs(deltaY) < threshold) return;
-
     if (deltaY < -threshold) {
       if (activePanel === 'main') setActivePanel('upcoming');
       else if (activePanel === 'completed') setActivePanel('main');
@@ -127,29 +150,27 @@ export function FocusView() {
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Centered navigation arrows — only on main panel */}
+      {/* Navigation arrows — centered vertically */}
       {showUpArrow && (
         <motion.button
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.5 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
           onClick={() => setActivePanel('completed')}
-          className="absolute left-1/2 -translate-x-1/2 z-20 p-4 text-muted-foreground/15 hover:text-muted-foreground/30 transition-colors"
-          style={{ top: 'calc(50% - 140px)' }}
+          className="absolute left-1/2 -translate-x-1/2 top-4 z-20 p-3 text-muted-foreground/12 hover:text-muted-foreground/25 transition-colors"
         >
-          <ChevronUp size={36} strokeWidth={1} />
+          <ChevronUp size={28} strokeWidth={1.5} />
         </motion.button>
       )}
       {showDownArrow && (
         <motion.button
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.5 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
           onClick={() => setActivePanel('upcoming')}
-          className="absolute left-1/2 -translate-x-1/2 z-20 p-4 text-muted-foreground/15 hover:text-muted-foreground/30 transition-colors"
-          style={{ top: 'calc(50% + 100px)' }}
+          className="absolute left-1/2 -translate-x-1/2 bottom-4 z-20 p-3 text-muted-foreground/12 hover:text-muted-foreground/25 transition-colors"
         >
-          <ChevronDown size={36} strokeWidth={1} />
+          <ChevronDown size={28} strokeWidth={1.5} />
         </motion.button>
       )}
 
@@ -164,22 +185,22 @@ export function FocusView() {
             className="absolute inset-0 flex flex-col items-center pt-12 pb-16 px-6 overflow-y-auto"
           >
             <div className="text-[10px] font-mono tracking-[0.25em] text-muted-foreground/50 mb-6 uppercase">
-              Completed today · {completedCount}
+              Completed · {completedCount}
             </div>
-            <div className="w-full max-w-sm space-y-1.5">
+            <div className="w-full max-w-sm space-y-1">
               {completedToday.length === 0 ? (
                 <p className="text-center text-muted-foreground/40 font-mono text-[12px]">
-                  No tasks completed yet
+                  Nothing yet
                 </p>
               ) : (
                 completedToday.map((task) => (
-                  <div key={task.id} className="flex items-center gap-3 py-3 px-3 rounded-sm">
-                    <Check size={14} className="text-muted-foreground/40 shrink-0" />
-                    <span className="text-[13px] font-mono text-muted-foreground/60 line-through truncate flex-1">
+                  <div key={task.id} className="flex items-center gap-3 py-2.5 px-3">
+                    <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30 shrink-0" />
+                    <span className="text-[13px] font-mono text-muted-foreground/50 line-through truncate flex-1">
                       {task.title}
                     </span>
                     {task.time && (
-                      <span className="text-[11px] font-mono text-muted-foreground/35 tabular-nums shrink-0">
+                      <span className="text-[10px] font-mono text-muted-foreground/30 tabular-nums shrink-0">
                         {formatTime12h(task.time)}
                       </span>
                     )}
@@ -187,12 +208,11 @@ export function FocusView() {
                 ))
               )}
             </div>
-
             <button
               onClick={() => setActivePanel('main')}
-              className="mt-8 p-2 text-muted-foreground/50 hover:text-muted-foreground/70 transition-colors"
+              className="mt-8 p-2 text-muted-foreground/40 hover:text-muted-foreground/60 transition-colors"
             >
-              <ChevronDown size={24} strokeWidth={2} />
+              <ChevronDown size={20} strokeWidth={2} />
             </button>
           </motion.div>
         )}
@@ -200,8 +220,8 @@ export function FocusView() {
         {activePanel === 'main' && (
           <motion.div
             key="main"
-            initial={{ opacity: 0, y: 0 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
             className="absolute inset-0"
@@ -218,8 +238,6 @@ export function FocusView() {
               onHoldStart={startHold}
               onHoldEnd={cancelHold}
               onUpdateTask={updateTask}
-              completedCount={completedCount}
-              remainingCount={remainingCount}
             />
           </motion.div>
         )}
@@ -235,28 +253,27 @@ export function FocusView() {
           >
             <button
               onClick={() => setActivePanel('main')}
-              className="mb-6 p-2 text-muted-foreground/50 hover:text-muted-foreground/70 transition-colors"
+              className="mb-6 p-2 text-muted-foreground/40 hover:text-muted-foreground/60 transition-colors"
             >
-              <ChevronUp size={24} strokeWidth={2} />
+              <ChevronUp size={20} strokeWidth={2} />
             </button>
-
             <div className="text-[10px] font-mono tracking-[0.25em] text-muted-foreground/50 mb-6 uppercase">
-              Upcoming today · {upcomingTasks.length}
+              Upcoming · {upcomingTasks.length}
             </div>
-            <div className="w-full max-w-sm space-y-2">
+            <div className="w-full max-w-sm space-y-1.5">
               {upcomingTasks.length === 0 ? (
                 <p className="text-center text-muted-foreground/40 font-mono text-[12px]">
-                  No more tasks today
+                  Clear ahead
                 </p>
               ) : (
                 upcomingTasks.map((task) => (
-                  <div key={task.id} className="flex items-center gap-3 py-3 px-3 rounded-sm">
-                    <div className="w-2 h-2 rounded-full bg-muted-foreground/25 shrink-0" />
+                  <div key={task.id} className="flex items-center gap-3 py-2.5 px-3">
+                    <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/20 shrink-0" />
                     <span className="text-[14px] font-mono font-medium text-foreground/85 truncate flex-1">
                       {task.title}
                     </span>
                     {task.time && (
-                      <span className="text-[11px] font-mono text-muted-foreground/50 tabular-nums shrink-0">
+                      <span className="text-[10px] font-mono text-muted-foreground/45 tabular-nums shrink-0">
                         {formatTime12h(task.time)}
                       </span>
                     )}
@@ -284,146 +301,208 @@ interface MainFocusPanelProps {
   onHoldStart: () => void;
   onHoldEnd: () => void;
   onUpdateTask: (id: string, updates: any) => void;
-  completedCount: number;
-  remainingCount: number;
 }
 
 function MainFocusPanel({
   activeTask, nextTask, elapsed, remaining, progress,
   holdProgress, isHolding, onHoldStart, onHoldEnd, onUpdateTask,
-  completedCount, remainingCount,
 }: MainFocusPanelProps) {
+  const [descExpanded, setDescExpanded] = useState(false);
+
   if (!activeTask) {
     return (
-      <div className="flex flex-col items-center justify-center h-full px-6">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          className="text-center"
-        >
-          <div className="text-4xl sm:text-6xl font-display font-bold tracking-tight text-foreground/50 mb-4">
-            FREE TIME
+      <div className="flex flex-col h-full">
+        {/* TOP zone — context */}
+        <div className="pt-8 px-6">
+          <div className="text-[9px] font-mono tracking-[0.3em] text-muted-foreground/30 uppercase">
+            No active block
           </div>
-          {nextTask && (
-            <p className="text-muted-foreground/30 font-mono text-[10px] tracking-[0.2em] uppercase">
-              next · {nextTask.title} · {formatTime12h(nextTask.time!)}
-            </p>
+        </div>
+
+        {/* MIDDLE zone — dominant */}
+        <div className="flex-1 flex flex-col items-center justify-center px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <h1 className="text-5xl sm:text-7xl font-display font-bold tracking-tight text-foreground/90 leading-[0.95] text-center">
+              FREE
+            </h1>
+            <h1 className="text-5xl sm:text-7xl font-display font-bold tracking-tight text-foreground/90 leading-[0.95] text-center -mt-1">
+              TIME
+            </h1>
+          </motion.div>
+        </div>
+
+        {/* BOTTOM zone — next task info */}
+        <div className="pb-8 px-6">
+          {nextTask ? (
+            <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground/35 tracking-[0.15em] uppercase">
+              <ChevronRight size={10} strokeWidth={1.5} className="opacity-60" />
+              <span className="truncate">{nextTask.title}</span>
+              <span className="tabular-nums ml-auto shrink-0">{formatTime12h(nextTask.time!)}</span>
+            </div>
+          ) : (
+            <div className="text-[10px] font-mono text-muted-foreground/25 tracking-[0.15em] uppercase">
+              Nothing scheduled
+            </div>
           )}
-          {!nextTask && (
-            <p className="text-muted-foreground/25 font-mono text-[10px] tracking-[0.2em] uppercase">
-              no more tasks today
-            </p>
-          )}
-        </motion.div>
+        </div>
       </div>
     );
   }
 
   const timeDisplay = minutesToTime(remaining);
+  const hasDescription = activeTask.description && activeTask.description.trim().length > 0;
+  const hasAttachments = activeTask.attachments && activeTask.attachments.length > 0;
+  const hasSubtasks = activeTask.subtasks && activeTask.subtasks.length > 0;
 
   return (
-    <div className="flex flex-col items-center justify-center h-full relative px-6">
+    <div className="flex flex-col h-full">
       <AnimatePresence mode="wait">
         <motion.div
           key={activeTask.id}
-          initial={{ opacity: 0, y: 24 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -24 }}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="text-center relative z-10 w-full max-w-md"
+          exit={{ opacity: 0, y: -16 }}
+          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          className="flex flex-col h-full"
         >
-          {/* Priority badge — small, subtle, above title */}
-          <div className="mb-3 opacity-50">
-            <PriorityBadge priority={activeTask.priority} />
+          {/* ═══ TOP ZONE — meta label ═══ */}
+          <div className="pt-6 px-6 flex items-center gap-3">
+            <div className="opacity-40 scale-90">
+              <PriorityBadge priority={activeTask.priority} />
+            </div>
+            <div className="h-px flex-1 bg-border/20" />
+            <span className="text-[9px] font-mono text-muted-foreground/30 tracking-[0.2em] uppercase tabular-nums">
+              {formatTime12h(activeTask.time!)}
+            </span>
           </div>
 
-          {/* Task title — dominant element */}
-          <h1 className="text-3xl sm:text-5xl md:text-6xl font-display font-bold tracking-tight text-foreground leading-[1.1] mb-8">
-            {activeTask.title}
-          </h1>
+          {/* ═══ MIDDLE ZONE — primary focus ═══ */}
+          <div className="flex-1 flex flex-col items-center justify-center px-6 min-h-0">
+            <div className="w-full max-w-sm">
+              {/* Task title — dominant */}
+              <h1 className="text-4xl sm:text-6xl md:text-7xl font-display font-bold tracking-tight text-foreground leading-[0.95] text-center mb-6">
+                {activeTask.title}
+              </h1>
 
-          {/* Subtasks — compact, below title */}
-          {activeTask.subtasks && activeTask.subtasks.length > 0 && (
-            <div className="mb-8 text-left max-w-xs mx-auto">
-              <SubtaskList
-                subtasks={activeTask.subtasks}
-                onChange={(newSubtasks) => onUpdateTask(activeTask.id, { subtasks: newSubtasks })}
-                compact
-              />
-            </div>
-          )}
+              {/* Timer + progress — unified block */}
+              <div
+                className="select-none touch-none cursor-pointer"
+                onPointerDown={(e) => { e.preventDefault(); onHoldStart(); }}
+                onPointerUp={onHoldEnd}
+                onPointerLeave={onHoldEnd}
+                onPointerCancel={onHoldEnd}
+              >
+                {/* Time remaining */}
+                <div className="text-center mb-3">
+                  <span className="font-mono text-3xl sm:text-4xl text-foreground/75 tabular-nums tracking-wider">
+                    {timeDisplay}
+                  </span>
+                </div>
 
-          {/* Horizontal progress bar — hold to complete */}
-          <div
-            className="w-full max-w-xs mx-auto select-none touch-none cursor-pointer mb-4"
-            onPointerDown={(e) => {
-              e.preventDefault();
-              onHoldStart();
-            }}
-            onPointerUp={onHoldEnd}
-            onPointerLeave={onHoldEnd}
-            onPointerCancel={onHoldEnd}
-          >
-            {/* Time display */}
-            <div className="flex items-baseline justify-center mb-3">
-              <span className="font-mono text-2xl sm:text-3xl text-foreground/80 tabular-nums tracking-wider">
-                {timeDisplay}
-              </span>
-            </div>
+                {/* Progress bar — intentional, structural */}
+                <div className="relative w-full h-[4px] bg-border/50 overflow-hidden">
+                  {/* Elapsed */}
+                  <motion.div
+                    className="absolute inset-y-0 left-0 bg-foreground/25"
+                    animate={{ width: `${progress * 100}%` }}
+                    transition={{ duration: 1, ease: 'linear' }}
+                  />
+                  {/* Hold overlay */}
+                  {isHolding && (
+                    <motion.div
+                      className="absolute inset-y-0 left-0 bg-primary"
+                      style={{ width: `${holdProgress * 100}%` }}
+                    />
+                  )}
+                  {/* Position dot */}
+                  <motion.div
+                    className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-foreground/60"
+                    animate={{ left: `${progress * 100}%` }}
+                    transition={{ duration: 1, ease: 'linear' }}
+                    style={{ marginLeft: '-5px' }}
+                  />
+                </div>
 
-            {/* Progress bar track */}
-            <div className="relative w-full h-[3px] bg-border/40 rounded-full overflow-hidden">
-              {/* Elapsed progress */}
-              <motion.div
-                className="absolute inset-y-0 left-0 bg-foreground/20 rounded-full"
-                animate={{ width: `${progress * 100}%` }}
-                transition={{ duration: 1, ease: 'linear' }}
-              />
-              {/* Hold progress overlay */}
-              {isHolding && (
-                <motion.div
-                  className="absolute inset-y-0 left-0 bg-primary rounded-full"
-                  style={{ width: `${holdProgress * 100}%` }}
-                />
+                {/* Hold hint */}
+                <div className="mt-1.5 text-center h-3">
+                  <span className={`text-[8px] font-mono tracking-[0.25em] uppercase transition-opacity duration-200 ${isHolding ? 'text-primary/60' : 'text-transparent'}`}>
+                    Hold to complete
+                  </span>
+                </div>
+              </div>
+
+              {/* Subtasks — compact */}
+              {hasSubtasks && (
+                <div className="mt-6 text-left">
+                  <SubtaskList
+                    subtasks={activeTask.subtasks!}
+                    onChange={(newSubtasks) => onUpdateTask(activeTask.id, { subtasks: newSubtasks })}
+                    compact
+                  />
+                </div>
               )}
-              {/* Position indicator dot */}
-              <motion.div
-                className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-foreground/50"
-                animate={{ left: `${progress * 100}%` }}
-                transition={{ duration: 1, ease: 'linear' }}
-                style={{ marginLeft: '-4px' }}
-              />
-            </div>
 
-            {/* Hold hint */}
-            <div className="mt-2 text-center">
-              <span className="text-[9px] font-mono text-muted-foreground/20 tracking-[0.2em] uppercase">
-                {isHolding ? 'hold to complete' : ''}
-              </span>
-              {/* Invisible spacer to prevent layout shift */}
-              {!isHolding && <span className="text-[9px] invisible">hold</span>}
+              {/* Description — expandable */}
+              {hasDescription && (
+                <div className="mt-6 border-t border-border/20 pt-4">
+                  <button
+                    onClick={() => setDescExpanded(!descExpanded)}
+                    className="w-full text-left group"
+                  >
+                    <div className={`text-[13px] font-mono text-foreground/55 leading-relaxed ${!descExpanded ? 'line-clamp-2' : ''}`}>
+                      {linkify(activeTask.description!)}
+                    </div>
+                    {!descExpanded && activeTask.description!.length > 80 && (
+                      <span className="text-[9px] font-mono text-muted-foreground/30 tracking-[0.15em] uppercase mt-1 inline-block group-hover:text-muted-foreground/50 transition-colors">
+                        More
+                      </span>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* Attachments */}
+              {hasAttachments && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {activeTask.attachments!.map((att, i) => (
+                    <a
+                      key={i}
+                      href={att.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-muted/50 border border-border/30 text-[11px] font-mono text-foreground/60 hover:text-foreground/80 hover:border-border/50 transition-colors"
+                    >
+                      <Paperclip size={10} />
+                      <span className="truncate max-w-[120px]">{att.name}</span>
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Minimal metadata — very low opacity */}
-          <div className="mt-6 text-[9px] font-mono text-muted-foreground/20 tracking-[0.15em] uppercase">
-            {formatTime12h(activeTask.time!)} — {formatTime12h(timeToMinutes(activeTask.time!) + (activeTask.duration || 30))}
+          {/* ═══ BOTTOM ZONE — secondary info ═══ */}
+          <div className="pb-6 px-6 space-y-1.5">
+            {/* Time range */}
+            <div className="text-[9px] font-mono text-muted-foreground/25 tracking-[0.15em] uppercase tabular-nums">
+              {formatTime12h(activeTask.time!)} — {formatTime12h(timeToMinutes(activeTask.time!) + (activeTask.duration || 30))}
+            </div>
+
+            {/* Next task */}
+            {nextTask && (
+              <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground/30 tracking-[0.12em] uppercase">
+                <ChevronRight size={10} strokeWidth={1.5} className="opacity-50" />
+                <span className="truncate">{nextTask.title}</span>
+                <span className="tabular-nums ml-auto shrink-0">{formatTime12h(nextTask.time!)}</span>
+              </div>
+            )}
           </div>
         </motion.div>
       </AnimatePresence>
-
-      {/* Next task hint — anchored to bottom */}
-      {nextTask && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="absolute bottom-8 flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground/20 tracking-[0.15em] uppercase"
-        >
-          next <ChevronRight size={10} strokeWidth={1.5} /> {nextTask.title}
-        </motion.div>
-      )}
     </div>
   );
 }
