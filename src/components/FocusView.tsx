@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
 import { useCurrentTime, timeToMinutes, minutesToTime, formatTime12h } from '@/hooks/useCurrentTime';
 import { PriorityBadge } from '@/components/PriorityBadge';
-import { SubtaskList } from '@/components/SubtaskList';
 import { ChevronUp, ChevronDown, ChevronRight, Paperclip, ExternalLink } from 'lucide-react';
 
 type FocusPanel = 'completed' | 'main' | 'upcoming';
@@ -35,7 +34,7 @@ function linkify(text: string) {
 
 export function FocusView() {
   const { tasks, routinesEnabled, getNextTask, updateTask, completeTask } = useTaskStore();
-  const { minutes: nowMinutes, dateStr: today } = useCurrentTime(5000);
+  const { minutes: nowMinutes, dateStr: today } = useCurrentTime(1000);
   const [activePanel, setActivePanel] = useState<FocusPanel>('main');
 
   // Hold-to-complete state
@@ -43,7 +42,7 @@ export function FocusView() {
   const [isHolding, setIsHolding] = useState(false);
   const holdTimerRef = useRef<number | null>(null);
   const holdStartRef = useRef<number>(0);
-  const HOLD_DURATION = 1200;
+  const HOLD_DURATION = 800;
 
   // Swipe state
   const touchStartY = useRef(0);
@@ -74,7 +73,6 @@ export function FocusView() {
 
   const elapsed = activeTask?.time ? nowMinutes - timeToMinutes(activeTask.time) : 0;
   const remaining = activeTask ? (activeTask.duration || 30) - elapsed : 0;
-  const progress = activeTask ? Math.min(1, elapsed / (activeTask.duration || 30)) : 0;
   const nextTask = activeTask ? getNextTask(activeTask.id) : todayTasks[0];
 
   const upcomingTasks = activeTask
@@ -91,9 +89,10 @@ export function FocusView() {
     if (!activeTask) return;
     setIsHolding(true);
     holdStartRef.current = Date.now();
+    if (navigator.vibrate) navigator.vibrate(10);
     const tick = () => {
-      const elapsed = Date.now() - holdStartRef.current;
-      const p = Math.min(1, elapsed / HOLD_DURATION);
+      const el = Date.now() - holdStartRef.current;
+      const p = Math.min(1, el / HOLD_DURATION);
       setHoldProgress(p);
       if (p >= 1) {
         completeTask(activeTask.id);
@@ -150,14 +149,14 @@ export function FocusView() {
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Navigation arrows */}
+      {/* Navigation arrows — centered vertically */}
       {showUpArrow && (
         <motion.button
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.4 }}
           onClick={() => setActivePanel('completed')}
-          className="absolute left-1/2 -translate-x-1/2 top-4 z-20 p-3 text-muted-foreground/12 hover:text-muted-foreground/25 transition-colors"
+          className="absolute left-1/2 -translate-x-1/2 top-4 z-20 p-3 text-muted-foreground/10 hover:text-muted-foreground/25 transition-colors"
         >
           <ChevronUp size={28} strokeWidth={1.5} />
         </motion.button>
@@ -168,7 +167,7 @@ export function FocusView() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.4 }}
           onClick={() => setActivePanel('upcoming')}
-          className="absolute left-1/2 -translate-x-1/2 bottom-4 z-20 p-3 text-muted-foreground/12 hover:text-muted-foreground/25 transition-colors"
+          className="absolute left-1/2 -translate-x-1/2 bottom-4 z-20 p-3 text-muted-foreground/10 hover:text-muted-foreground/25 transition-colors"
         >
           <ChevronDown size={28} strokeWidth={1.5} />
         </motion.button>
@@ -231,7 +230,6 @@ export function FocusView() {
               nextTask={nextTask}
               elapsed={elapsed}
               remaining={remaining}
-              progress={progress}
               nowMinutes={nowMinutes}
               holdProgress={holdProgress}
               isHolding={isHolding}
@@ -294,7 +292,6 @@ interface MainFocusPanelProps {
   nextTask: ReturnType<typeof useTaskStore.getState>['tasks'][0] | undefined;
   elapsed: number;
   remaining: number;
-  progress: number;
   nowMinutes: number;
   holdProgress: number;
   isHolding: boolean;
@@ -304,40 +301,41 @@ interface MainFocusPanelProps {
 }
 
 function MainFocusPanel({
-  activeTask, nextTask, elapsed, remaining, progress,
+  activeTask, nextTask, remaining,
   holdProgress, isHolding, onHoldStart, onHoldEnd, onUpdateTask,
 }: MainFocusPanelProps) {
   const [descExpanded, setDescExpanded] = useState(false);
   const [subtasksExpanded, setSubtasksExpanded] = useState(false);
   const SUBTASK_PREVIEW_COUNT = 3;
 
+  // Pulse state for the colon
+  const [colonVisible, setColonVisible] = useState(true);
+  useEffect(() => {
+    if (!activeTask) return;
+    const interval = setInterval(() => setColonVisible(v => !v), 1000);
+    return () => clearInterval(interval);
+  }, [activeTask]);
+
   if (!activeTask) {
     return (
       <div className="flex flex-col h-full">
-        {/* TOP zone */}
-        <div className="pt-8 px-6">
-          <div className="text-[9px] font-mono tracking-[0.3em] text-muted-foreground/30 uppercase">
-            No active block
-          </div>
-        </div>
-
-        {/* MIDDLE zone */}
         <div className="flex-1 flex flex-col items-center justify-center px-6">
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            className="text-center"
           >
-            <h1 className="text-5xl sm:text-7xl font-display font-bold tracking-tight text-foreground/90 leading-[0.95] text-center">
-              FREE
-            </h1>
-            <h1 className="text-5xl sm:text-7xl font-display font-bold tracking-tight text-foreground/90 leading-[0.95] text-center -mt-1">
-              TIME
+            {/* Time-dominant even in free state */}
+            <div className="font-mono text-6xl sm:text-8xl font-bold tracking-tight text-foreground/90 tabular-nums mb-6">
+              --:--
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight text-foreground/60 leading-[0.95]">
+              Free Time
             </h1>
           </motion.div>
         </div>
 
-        {/* BOTTOM zone */}
         <div className="pb-8 px-6">
           {nextTask ? (
             <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground/35 tracking-[0.15em] uppercase">
@@ -356,6 +354,7 @@ function MainFocusPanel({
   }
 
   const timeDisplay = minutesToTime(remaining);
+  const [timeMins, timeSecs] = timeDisplay.split(':');
   const hasDescription = activeTask.description && activeTask.description.trim().length > 0;
   const hasAttachments = activeTask.attachments && activeTask.attachments.length > 0;
   const hasSubtasks = activeTask.subtasks && activeTask.subtasks.length > 0;
@@ -365,10 +364,21 @@ function MainFocusPanel({
     ? (subtasksExpanded ? activeTask.subtasks! : activeTask.subtasks!.slice(0, SUBTASK_PREVIEW_COUNT))
     : [];
   const hasMoreSubtasks = hasSubtasks && activeTask.subtasks!.length > SUBTASK_PREVIEW_COUNT;
-  const hasDetail = hasDescription || hasSubtasks || hasAttachments;
 
   return (
-    <div className="flex flex-col h-full">
+    <div
+      className="flex flex-col h-full select-none"
+      onPointerDown={(e) => {
+        // Only trigger hold on the main area, not on buttons/links
+        const target = e.target as HTMLElement;
+        if (target.closest('button') || target.closest('a')) return;
+        e.preventDefault();
+        onHoldStart();
+      }}
+      onPointerUp={onHoldEnd}
+      onPointerLeave={onHoldEnd}
+      onPointerCancel={onHoldEnd}
+    >
       <AnimatePresence mode="wait">
         <motion.div
           key={activeTask.id}
@@ -378,88 +388,64 @@ function MainFocusPanel({
           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
           className="flex flex-col h-full"
         >
-          {/* ═══ TOP ZONE — light metadata ═══ */}
+          {/* ═══ TOP — FLEX tag, very subtle ═══ */}
           <div className="pt-5 px-6 flex items-center gap-3">
-            <div className="opacity-35 scale-[0.85]">
+            <div className="opacity-30 scale-[0.8]">
               <PriorityBadge priority={activeTask.priority} />
             </div>
-            <span className="text-[9px] font-mono text-muted-foreground/25 tracking-[0.2em] uppercase tabular-nums">
-              {formatTime12h(activeTask.time!)}
-            </span>
-            <div className="h-px flex-1 bg-border/15" />
+            <div className="h-px flex-1 bg-border/10" />
           </div>
 
-          {/* ═══ CENTER ZONE — primary focus ═══ */}
+          {/* ═══ PRIMARY — TIME (dominant) + TASK (secondary) ═══ */}
           <div className="flex-1 flex flex-col items-center justify-center px-6 min-h-0">
-            <div className="w-full max-w-sm">
-              {/* Task title — dominant */}
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-display font-bold tracking-tight text-foreground leading-[0.95] text-center mb-4">
+            <motion.div
+              className="w-full max-w-sm text-center"
+              animate={isHolding ? { scale: 0.97 } : { scale: 1 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+            >
+              {/* TIME — largest element, digital clock feel */}
+              <div className="font-mono font-bold tracking-tight text-foreground tabular-nums leading-none mb-3">
+                <span className="text-7xl sm:text-8xl md:text-9xl">{timeMins}</span>
+                <span className={`text-7xl sm:text-8xl md:text-9xl transition-opacity duration-300 ${colonVisible ? 'opacity-90' : 'opacity-20'}`}>:</span>
+                <span className="text-7xl sm:text-8xl md:text-9xl">{timeSecs}</span>
+              </div>
+
+              {/* TASK TITLE — secondary, strong but smaller */}
+              <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight text-foreground/80 leading-[1.05] mb-1">
                 {activeTask.title}
               </h1>
 
-              {/* Timer — large, tight to title */}
-              <div
-                className="select-none touch-none cursor-pointer"
-                onPointerDown={(e) => { e.preventDefault(); onHoldStart(); }}
-                onPointerUp={onHoldEnd}
-                onPointerLeave={onHoldEnd}
-                onPointerCancel={onHoldEnd}
-              >
-                <div className="text-center mb-2.5">
-                  <span className="font-mono text-3xl sm:text-4xl text-foreground/80 tabular-nums tracking-wider">
-                    {timeDisplay}
-                  </span>
-                </div>
-
-                {/* Progress bar — sharp, structural */}
-                <div className="relative w-full h-[5px] bg-border/40 overflow-hidden">
-                  <motion.div
-                    className="absolute inset-y-0 left-0 bg-foreground/20"
-                    animate={{ width: `${progress * 100}%` }}
-                    transition={{ duration: 1, ease: 'linear' }}
-                  />
-                  {isHolding && (
+              {/* Hold-to-complete feedback */}
+              <div className="h-5 flex items-center justify-center">
+                {isHolding ? (
+                  <div className="w-32 h-[3px] bg-border/30 rounded-full overflow-hidden">
                     <motion.div
-                      className="absolute inset-y-0 left-0 bg-primary"
+                      className="h-full bg-primary rounded-full"
                       style={{ width: `${holdProgress * 100}%` }}
                     />
-                  )}
-                  <motion.div
-                    className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-foreground/60"
-                    animate={{ left: `${progress * 100}%` }}
-                    transition={{ duration: 1, ease: 'linear' }}
-                    style={{ marginLeft: '-5px' }}
-                  />
-                </div>
-
-                {/* Hold hint */}
-                <div className="mt-1 text-center h-3">
-                  <span className={`text-[8px] font-mono tracking-[0.25em] uppercase transition-opacity duration-200 ${isHolding ? 'text-primary/60' : 'text-transparent'}`}>
+                  </div>
+                ) : (
+                  <span className="text-[8px] font-mono tracking-[0.3em] text-muted-foreground/15 uppercase">
                     Hold to complete
                   </span>
-                </div>
+                )}
               </div>
-            </div>
+            </motion.div>
           </div>
 
-          {/* ═══ BOTTOM ZONE — structured detail block ═══ */}
-          <div className="px-6 pb-5 space-y-0">
-            {/* Thin divider above detail area */}
-            {hasDetail && (
-              <div className="h-px bg-border/20 mb-4" />
-            )}
-
-            {/* Description — left-aligned, expandable */}
+          {/* ═══ BOTTOM — structured detail block ═══ */}
+          <div className="px-6 pb-5 space-y-0 max-h-[40%] overflow-y-auto">
+            {/* Description — left-aligned */}
             {hasDescription && (
               <button
-                onClick={() => setDescExpanded(!descExpanded)}
+                onClick={(e) => { e.stopPropagation(); setDescExpanded(!descExpanded); }}
                 className="w-full text-left mb-3 group"
               >
-                <div className={`text-[12px] font-mono text-foreground/50 leading-relaxed ${!descExpanded ? 'line-clamp-2' : ''}`}>
+                <div className={`text-[12px] font-mono text-foreground/45 leading-relaxed ${!descExpanded ? 'line-clamp-2' : ''}`}>
                   {linkify(activeTask.description!)}
                 </div>
                 {!descExpanded && activeTask.description!.length > 100 && (
-                  <span className="text-[9px] font-mono text-muted-foreground/30 tracking-[0.15em] uppercase mt-1 inline-block group-hover:text-muted-foreground/50 transition-colors">
+                  <span className="text-[9px] font-mono text-muted-foreground/25 tracking-[0.15em] uppercase mt-1 inline-block group-hover:text-muted-foreground/45 transition-colors">
                     More
                   </span>
                 )}
@@ -479,7 +465,8 @@ function MainFocusPanel({
                   {visibleSubtasks.map((s) => (
                     <button
                       key={s.id}
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         const updated = activeTask.subtasks!.map(st =>
                           st.id === s.id ? { ...st, completed: !st.completed } : st
                         );
@@ -499,7 +486,7 @@ function MainFocusPanel({
                         )}
                       </div>
                       <span className={`text-[11px] font-mono leading-snug ${
-                        s.completed ? 'line-through text-muted-foreground/30' : 'text-foreground/60'
+                        s.completed ? 'line-through text-muted-foreground/30' : 'text-foreground/55'
                       }`}>
                         {s.title}
                       </span>
@@ -508,7 +495,7 @@ function MainFocusPanel({
                 </div>
                 {hasMoreSubtasks && !subtasksExpanded && (
                   <button
-                    onClick={() => setSubtasksExpanded(true)}
+                    onClick={(e) => { e.stopPropagation(); setSubtasksExpanded(true); }}
                     className="text-[9px] font-mono text-muted-foreground/30 tracking-[0.15em] uppercase mt-1.5 hover:text-muted-foreground/50 transition-colors"
                   >
                     +{activeTask.subtasks!.length - SUBTASK_PREVIEW_COUNT} more
@@ -516,7 +503,7 @@ function MainFocusPanel({
                 )}
                 {subtasksExpanded && hasMoreSubtasks && (
                   <button
-                    onClick={() => setSubtasksExpanded(false)}
+                    onClick={(e) => { e.stopPropagation(); setSubtasksExpanded(false); }}
                     className="text-[9px] font-mono text-muted-foreground/30 tracking-[0.15em] uppercase mt-1.5 hover:text-muted-foreground/50 transition-colors"
                   >
                     Show less
@@ -535,6 +522,7 @@ function MainFocusPanel({
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 px-2 py-1 bg-muted/30 border border-border/20 text-[10px] font-mono text-foreground/50 hover:text-foreground/70 hover:border-border/40 transition-colors"
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <Paperclip size={9} />
                     <span className="truncate max-w-[100px]">{att.name}</span>
