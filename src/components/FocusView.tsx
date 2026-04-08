@@ -428,7 +428,7 @@ function MainFocusPanel({
               transition={{ duration: 0.3, ease: 'easeOut' }}
             >
               {/* Task title — primary foreground element */}
-              <h1 className="text-xl sm:text-2xl font-mono font-semibold text-foreground/90 leading-tight">
+              <h1 className="text-3xl sm:text-4xl font-mono font-semibold text-foreground leading-tight">
                 {activeTask.title}
               </h1>
 
@@ -452,7 +452,7 @@ function MainFocusPanel({
                       onClick={(e) => { e.stopPropagation(); setDescExpanded(!descExpanded); }}
                       className="w-full text-left"
                     >
-                      <div className={`text-[12px] font-mono text-foreground/40 leading-relaxed ${!descExpanded ? 'line-clamp-2' : ''}`}>
+                      <div className={`text-[12px] font-mono text-foreground leading-relaxed ${!descExpanded ? 'line-clamp-2' : ''}`}>
                         {linkify(activeTask.description!)}
                       </div>
                       {!descExpanded && activeTask.description!.length > 100 && (
@@ -496,7 +496,7 @@ function MainFocusPanel({
                               )}
                             </div>
                             <span className={`text-[12px] font-mono leading-snug ${
-                              s.completed ? 'line-through text-muted-foreground/25' : 'text-foreground/45'
+                              s.completed ? 'line-through text-muted-foreground/50' : 'text-foreground'
                             }`}>
                               {s.title}
                             </span>
