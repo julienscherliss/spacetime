@@ -402,41 +402,37 @@ function MainFocusPanel({
           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
           className="flex flex-col h-full"
         >
-          {/* ═══ PRIMARY — single large minutes timer + task ═══ */}
+          {/* ═══ PRIMARY — timer + task + details as one composition ═══ */}
           <div className="flex-1 flex flex-col items-center justify-center px-6 min-h-0">
             <motion.div
               className="w-full max-w-[320px] text-center"
-              animate={isHolding ? { scale: 1.04 } : { scale: 1 }}
-              transition={{ duration: 0.25, ease: 'easeOut' }}
+              animate={isHolding ? { scale: 1.04 } : completing ? { scale: 0.96, opacity: 0.4 } : { scale: 1 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
             >
-              {/* Minutes — THE dominant element */}
+              {/* Time — HH:MM dominant element */}
               <motion.div
                 className="font-mono font-bold text-foreground/90 tabular-nums leading-none mb-4"
-                style={{ fontSize: 'clamp(80px, 28vw, 160px)' }}
+                style={{ fontSize: 'clamp(64px, 24vw, 140px)' }}
                 animate={{ opacity: isHolding ? 1 : 0.9 }}
                 transition={{ duration: 0.2 }}
               >
-                {remainingMins}
+                {remainingH}:{remainingM}
               </motion.div>
 
               {/* Task title — secondary */}
-              <h1 className="text-lg sm:text-xl font-mono font-semibold text-foreground/75 leading-tight mb-2">
+              <h1 className="text-lg sm:text-xl font-mono font-semibold text-foreground/75 leading-tight">
                 {activeTask.title}
               </h1>
 
-              {/* Hold to complete */}
-              <div className="h-4 flex items-center justify-center">
-                {isHolding ? (
+              {/* Hold progress bar — no label */}
+              <div className="h-3 flex items-center justify-center mt-1">
+                {isHolding && (
                   <div className="w-20 h-[2px] bg-muted-foreground/15 overflow-hidden">
                     <motion.div
                       className="h-full bg-foreground/40"
                       style={{ width: `${holdProgress * 100}%` }}
                     />
                   </div>
-                ) : (
-                  <span className="text-[8px] font-mono tracking-[0.25em] text-muted-foreground/30 uppercase">
-                    Hold to complete
-                  </span>
                 )}
               </div>
             </motion.div>
