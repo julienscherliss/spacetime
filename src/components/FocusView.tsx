@@ -403,14 +403,11 @@ function MainFocusPanel({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -16 }}
           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-          className="relative z-10 flex flex-col h-full"
+          className="relative z-10 h-full overflow-y-auto"
         >
-          {/* Centered task content — natural vertical flow */}
-          <div className="flex-1 flex flex-col px-6 min-h-0 overflow-y-auto">
-            {/* Spacer to push content toward center when short */}
-            <div className="flex-1 min-h-[20%]" />
+          <div className="min-h-full flex flex-col px-6 pb-4">
             <motion.div
-              className="w-full max-w-[300px] mx-auto"
+              className="w-full max-w-[300px] mx-auto my-auto py-16"
               animate={isHolding ? { scale: 1.03 } : completing ? { scale: 0.96, opacity: 0.4 } : { scale: 1 }}
               transition={{ duration: 0.3, ease: 'easeOut' }}
             >
@@ -438,24 +435,27 @@ function MainFocusPanel({
                 )}
               </AnimatePresence>
 
-              {/* Details block — description + subtasks as unified group */}
+              {/* Details block — single natural-flow stack */}
               {hasDetails && (
-                <div className="mt-5 text-left">
-                  {/* Description — truncated, expandable, muted */}
+                <motion.div layout className="mt-5 flex flex-col gap-4 text-left">
                   {hasDescription && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setDescExpanded(!descExpanded); }}
-                      className="w-full text-left"
-                    >
-                      <div className={`text-[11px] font-mono text-foreground/60 leading-relaxed ${!descExpanded ? 'line-clamp-2' : ''}`}>
-                        {linkify(activeTask.description!)}
-                      </div>
-                    </button>
+                    <motion.div layout>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDescExpanded(!descExpanded);
+                        }}
+                        className="block w-full text-left"
+                      >
+                        <div className={`text-[11px] font-mono text-foreground/60 leading-relaxed ${!descExpanded ? 'line-clamp-2' : ''}`}>
+                          {linkify(activeTask.description!)}
+                        </div>
+                      </button>
+                    </motion.div>
                   )}
 
-                  {/* Attachments — inline with description */}
                   {hasAttachments && (
-                    <div className="flex flex-wrap gap-1.5 mt-2">
+                    <motion.div layout className="flex flex-wrap gap-1.5">
                       {activeTask.attachments!.map((att, i) => (
                         <a
                           key={i}
@@ -469,12 +469,11 @@ function MainFocusPanel({
                           <span className="truncate max-w-[100px]">{att.name}</span>
                         </a>
                       ))}
-                    </div>
+                    </motion.div>
                   )}
 
-                  {/* Subtasks — primary interaction, always visible */}
                   {hasSubtasks && (
-                    <div className={hasDescription || hasAttachments ? 'mt-4' : ''}>
+                    <motion.div layout>
                       <div className="space-y-3">
                         {activeTask.subtasks!.map((s) => (
                           <button
@@ -507,29 +506,24 @@ function MainFocusPanel({
                           </button>
                         ))}
                       </div>
-                    </div>
+                    </motion.div>
                   )}
-                </div>
+                </motion.div>
               )}
-            </motion.div>
-            {/* Bottom spacer — allows content to grow downward naturally */}
-            <div className="flex-1 min-h-[10%]" />
-          </div>
 
-          {/* ═══ FOOTER ═══ */}
-          <div className="relative z-10 px-6 pb-4 flex justify-center">
-            <div className="w-full max-w-[300px] space-y-1 text-center">
-              <div className="text-[9px] font-mono text-muted-foreground/15 tracking-[0.15em] uppercase tabular-nums">
-                {formatTime12h(activeTask.time!)} — {formatTime12h(timeToMinutes(activeTask.time!) + (activeTask.duration || 30))}
-              </div>
-              {nextTask && (
-                <div className="flex items-center justify-center gap-2 text-[9px] font-mono text-muted-foreground/20 tracking-[0.12em] uppercase">
-                  <ChevronRight size={9} strokeWidth={1.5} className="opacity-40" />
-                  <span className="truncate">{nextTask.title}</span>
-                  <span className="tabular-nums ml-auto shrink-0">{formatTime12h(nextTask.time!)}</span>
+              <div className="mt-6 space-y-1 text-center">
+                <div className="text-[9px] font-mono text-muted-foreground/15 tracking-[0.15em] uppercase tabular-nums">
+                  {formatTime12h(activeTask.time!)} — {formatTime12h(timeToMinutes(activeTask.time!) + (activeTask.duration || 30))}
                 </div>
-              )}
-            </div>
+                {nextTask && (
+                  <div className="flex items-center justify-center gap-2 text-[9px] font-mono text-muted-foreground/20 tracking-[0.12em] uppercase">
+                    <ChevronRight size={9} strokeWidth={1.5} className="opacity-40" />
+                    <span className="truncate">{nextTask.title}</span>
+                    <span className="tabular-nums ml-auto shrink-0">{formatTime12h(nextTask.time!)}</span>
+                  </div>
+                )}
+              </div>
+            </motion.div>
           </div>
         </motion.div>
       </AnimatePresence>
