@@ -318,16 +318,22 @@ function MainFocusPanel({
 
   if (!activeTask) {
     return (
-      <div className="flex flex-col h-full">
-        <div className="flex-1 flex flex-col items-center justify-center px-6">
+      <div className="flex flex-col h-full relative">
+        {/* Background ambient time */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
+          <div className="font-mono font-bold tracking-tight text-foreground/[0.04] tabular-nums leading-none" style={{ fontSize: 'min(45vw, 280px)' }}>
+            --:--
+          </div>
+        </div>
+
+        <div className="flex-1 flex flex-col items-center justify-center px-6" style={{ zIndex: 1 }}>
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
             className="text-center"
           >
-            {/* Time-dominant even in free state */}
-            <div className="font-mono text-6xl sm:text-8xl font-bold tracking-tight text-foreground/90 tabular-nums mb-6">
+            <div className="font-mono text-5xl sm:text-6xl font-semibold tracking-tight text-foreground/85 tabular-nums mb-6">
               --:--
             </div>
             <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight text-foreground/60 leading-[0.95]">
@@ -336,7 +342,7 @@ function MainFocusPanel({
           </motion.div>
         </div>
 
-        <div className="pb-8 px-6">
+        <div className="pb-8 px-6" style={{ zIndex: 1 }}>
           {nextTask ? (
             <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground/35 tracking-[0.15em] uppercase">
               <ChevronRight size={10} strokeWidth={1.5} className="opacity-60" />
