@@ -405,10 +405,10 @@ function MainFocusPanel({
           transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
           className="relative z-10 flex flex-col h-full"
         >
-          {/* Centered task content */}
-          <div className="flex-1 flex items-center justify-center px-6 min-h-0">
+          {/* Centered task content — natural vertical flow */}
+          <div className="flex-1 flex flex-col justify-center px-6 min-h-0 overflow-y-auto">
             <motion.div
-              className="w-full max-w-[300px]"
+              className="w-full max-w-[300px] mx-auto"
               animate={isHolding ? { scale: 1.03 } : completing ? { scale: 0.96, opacity: 0.4 } : { scale: 1 }}
               transition={{ duration: 0.3, ease: 'easeOut' }}
             >
