@@ -343,7 +343,7 @@ function MainFocusPanel({
       <div className="relative flex flex-col h-full">
         {/* Background time — atmospheric */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none" aria-hidden>
-          <div className="font-mono font-bold text-foreground/[0.01] tabular-nums leading-[0.85] text-center" style={{ fontSize: 'clamp(140px, 45vw, 320px)' }}>
+          <div className="font-mono font-bold text-foreground/[0.008] tabular-nums leading-[0.85] text-center" style={{ fontSize: 'clamp(140px, 45vw, 320px)' }}>
             <div>--</div>
             <div>--</div>
           </div>
