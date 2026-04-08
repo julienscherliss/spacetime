@@ -307,6 +307,27 @@ function MainFocusPanel({
   const [descExpanded, setDescExpanded] = useState(false);
   const [subtasksExpanded, setSubtasksExpanded] = useState(false);
   const SUBTASK_PREVIEW_COUNT = 3;
+  const autoCompleteRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [completing, setCompleting] = useState(false);
+  const { completeTask } = useTaskStore();
+
+  // Auto-complete when timer reaches zero
+  useEffect(() => {
+    if (remaining <= 0 && activeTask && !completing) {
+      setCompleting(true);
+      autoCompleteRef.current = setTimeout(() => {
+        completeTask(activeTask.id);
+        setCompleting(false);
+      }, 500);
+    }
+    return () => {
+      if (autoCompleteRef.current) clearTimeout(autoCompleteRef.current);
+    };
+  }, [remaining, activeTask?.id, completing, completeTask]);
+
+  useEffect(() => {
+    setCompleting(false);
+  }, [activeTask?.id]);
 
   // ── Free time state ──
   if (!activeTask) {
