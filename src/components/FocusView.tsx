@@ -452,7 +452,7 @@ function MainFocusPanel({
           </div>
 
           {/* ═══ BOTTOM — structured detail block ═══ */}
-          <div className="px-6 pb-5 space-y-0 max-h-[40%] overflow-y-auto">
+          <div className="px-6 pb-5 space-y-0 max-h-[40%] overflow-y-auto" style={{ zIndex: 1 }}>
             {/* Description — left-aligned */}
             {hasDescription && (
               <button
