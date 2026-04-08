@@ -406,7 +406,9 @@ function MainFocusPanel({
           className="relative z-10 flex flex-col h-full"
         >
           {/* Centered task content — natural vertical flow */}
-          <div className="flex-1 flex flex-col justify-center px-6 min-h-0 overflow-y-auto">
+          <div className="flex-1 flex flex-col px-6 min-h-0 overflow-y-auto">
+            {/* Spacer to push content toward center when short */}
+            <div className="flex-1 min-h-[20%]" />
             <motion.div
               className="w-full max-w-[300px] mx-auto"
               animate={isHolding ? { scale: 1.03 } : completing ? { scale: 0.96, opacity: 0.4 } : { scale: 1 }}
@@ -417,17 +419,24 @@ function MainFocusPanel({
                 {activeTask.title}
               </h1>
 
-              {/* Hold progress bar */}
-              <div className="h-3 mt-2 flex justify-center">
+              {/* Hold progress bar — no reserved space when inactive */}
+              <AnimatePresence>
                 {isHolding && (
-                  <div className="w-16 h-[2px] bg-muted-foreground/15 overflow-hidden">
-                    <motion.div
-                      className="h-full bg-foreground/40"
-                      style={{ width: `${holdProgress * 100}%` }}
-                    />
-                  </div>
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 14 }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mt-2 flex justify-center overflow-hidden"
+                  >
+                    <div className="w-16 h-[2px] bg-muted-foreground/15 overflow-hidden">
+                      <motion.div
+                        className="h-full bg-foreground/40"
+                        style={{ width: `${holdProgress * 100}%` }}
+                      />
+                    </div>
+                  </motion.div>
                 )}
-              </div>
+              </AnimatePresence>
 
               {/* Details block — description + subtasks as unified group */}
               {hasDetails && (
@@ -503,6 +512,8 @@ function MainFocusPanel({
                 </div>
               )}
             </motion.div>
+            {/* Bottom spacer — allows content to grow downward naturally */}
+            <div className="flex-1 min-h-[10%]" />
           </div>
 
           {/* ═══ FOOTER ═══ */}
