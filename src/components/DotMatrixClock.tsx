@@ -163,8 +163,8 @@ export const DotMatrixClock = memo(function DotMatrixClock({ hours, minutes }: D
             className="rounded-full"
             animate={{
               backgroundColor: active
-                ? 'hsl(var(--foreground) / 0.32)'
-                : 'hsl(var(--muted-foreground) / 0.1)',
+                ? 'hsl(var(--foreground) / 0.03)'
+                : 'hsl(var(--muted-foreground) / 0.01)',
             }}
             transition={{ duration: 0.5, ease: 'easeInOut' }}
             style={{
