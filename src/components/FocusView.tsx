@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
 import { useCurrentTime, timeToMinutes, minutesToTime, formatTime12h } from '@/hooks/useCurrentTime';
+import { DotMatrixClock } from '@/components/DotMatrixClock';
 
 import { ChevronUp, ChevronDown, ChevronRight, Paperclip, ExternalLink } from 'lucide-react';
 
@@ -339,12 +340,9 @@ function MainFocusPanel({
   if (!activeTask) {
     return (
       <div className="relative flex flex-col h-full">
-        {/* Background time — atmospheric */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none" aria-hidden>
-          <div className="font-mono font-bold text-foreground/[0.008] tabular-nums leading-[0.85] text-center" style={{ fontSize: 'clamp(140px, 45vw, 320px)' }}>
-            <div>--</div>
-            <div>--</div>
-          </div>
+        {/* Background dot matrix — atmospheric */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none" aria-hidden>
+          <DotMatrixClock hours="--" minutes="--" />
         </div>
 
         {/* Foreground */}
@@ -392,22 +390,9 @@ function MainFocusPanel({
       onPointerLeave={onHoldEnd}
       onPointerCancel={onHoldEnd}
     >
-      {/* ═══ BACKGROUND TIME — full-screen atmospheric layer ═══ */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none" aria-hidden>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={`bg-${activeTask.id}-${remainingH}-${remainingM}`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.6, ease: 'easeInOut' }}
-            className="font-mono font-bold text-foreground/[0.025] tabular-nums leading-[0.85] text-center"
-            style={{ fontSize: 'clamp(140px, 45vw, 320px)' }}
-          >
-            <div>{remainingH}</div>
-            <div>{remainingM}</div>
-          </motion.div>
-        </AnimatePresence>
+      {/* ═══ BACKGROUND DOT MATRIX — full-screen atmospheric layer ═══ */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none" aria-hidden>
+        <DotMatrixClock hours={remainingH} minutes={remainingM} />
       </div>
 
       {/* ═══ FOREGROUND CONTENT ═══ */}
