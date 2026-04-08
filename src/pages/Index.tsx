@@ -63,6 +63,7 @@ const Index = () => {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+          style={{ willChange: 'opacity' }}
         >
           {viewMode === 'focus' && <FocusView />}
           {viewMode === 'day' && <DayView />}

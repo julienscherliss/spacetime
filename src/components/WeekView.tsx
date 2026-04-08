@@ -207,7 +207,7 @@ export function WeekView() {
       </div>
 
       {/* Sticky weekday/date header — the only sticky row */}
-      <div className="sticky top-0 z-30 bg-background border-b border-border/30">
+      <div className="sticky top-12 z-30 bg-background border-b border-border/30">
         <WeekDayHeaders
           weekOffset={weekOffset}
           today={today}
