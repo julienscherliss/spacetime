@@ -313,7 +313,6 @@ function MainFocusPanel({
   holdProgress, isHolding, onHoldStart, onHoldEnd, onUpdateTask,
 }: MainFocusPanelProps) {
   const [descExpanded, setDescExpanded] = useState(false);
-  const [subtasksExpanded, setSubtasksExpanded] = useState(false);
   const SUBTASK_PREVIEW_COUNT = 3;
   const autoCompleteRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [completing, setCompleting] = useState(false);
