@@ -2,8 +2,11 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
 import { useCurrentTime, timeToMinutes, formatTime12h } from '@/hooks/useCurrentTime';
-import { ChevronUp, ChevronDown, ChevronRight, Paperclip, ExternalLink, Check, Calendar, Tag } from 'lucide-react';
+import { ChevronUp, ChevronDown, ChevronRight, Paperclip, ExternalLink, Check, Calendar as CalendarIcon, Tag } from 'lucide-react';
 import { SegmentedProgressRing } from '@/components/SegmentedProgressRing';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 
 type FocusPanel = 'completed' | 'main' | 'detail';
 
@@ -430,14 +433,46 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
 
   return (
     <div className="w-full max-w-sm mx-auto flex flex-col gap-5">
-      {/* ── Header: countdown (left) + due date or priority (right) ── */}
+      {/* ── Header: countdown (left, tappable → day view) + due date (right, tappable → date picker) ── */}
       <div className="flex items-center justify-between">
-        <span className="text-sm font-mono tabular-nums tracking-wider text-foreground/60 font-medium">
+        <button
+          onClick={() => {
+            if (!task.time) return;
+            const { setViewMode, setDaySubMode, setListReturnZoom, setShowListReturn } = useTaskStore.getState();
+            setListReturnZoom({ taskTime: task.time, taskDuration: task.duration || 30 });
+            setShowListReturn(true);
+            setDaySubMode('timeline');
+            setViewMode('day');
+          }}
+          className="text-sm font-mono tabular-nums tracking-wider text-foreground/60 font-medium active:text-foreground/80 transition-colors"
+        >
           {task.time ? countdownLabel : '—'}
-        </span>
-        <span className="text-xs font-mono tracking-[0.15em] text-foreground/50 uppercase font-medium">
-          {dueDateLabel || priorityLabel}
-        </span>
+        </button>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <button className="text-xs font-mono tracking-[0.15em] text-foreground/50 uppercase font-medium active:text-foreground/70 transition-colors">
+              {dueDateLabel}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="end">
+            <Calendar
+              mode="single"
+              selected={task.dueDate ? new Date(task.dueDate + 'T12:00:00') : undefined}
+              onSelect={(date) => {
+                if (date) {
+                  const yyyy = date.getFullYear();
+                  const mm = String(date.getMonth() + 1).padStart(2, '0');
+                  const dd = String(date.getDate()).padStart(2, '0');
+                  onUpdateTask(task.id, { dueDate: `${yyyy}-${mm}-${dd}` });
+                } else {
+                  onUpdateTask(task.id, { dueDate: undefined });
+                }
+              }}
+              className={cn("p-3 pointer-events-auto")}
+            />
+          </PopoverContent>
+        </Popover>
       </div>
 
       {/* ── Title ── */}
@@ -647,7 +682,7 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
         )}
         {task.dueDate && (
           <div className="flex items-center gap-2">
-            <Calendar size={10} className="text-muted-foreground/25" />
+            <CalendarIcon size={10} className="text-muted-foreground/25" />
             <span className="text-[10px] font-mono text-muted-foreground/35 tabular-nums tracking-wider">
               Due {new Date(task.dueDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </span>
