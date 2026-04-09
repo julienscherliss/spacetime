@@ -75,14 +75,27 @@ export function AddTaskModal() {
               <div className="space-y-3">
                 <div>
                   <label className="block text-[10px] font-mono tracking-widest text-muted-foreground/50 mb-1">TITLE</label>
-                  <input
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="What needs to be done?"
-                    className="w-full bg-muted/40 border border-border rounded-sm px-3 py-2.5 text-sm font-mono text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:ring-1 focus:ring-primary/30"
-                    autoFocus
-                    onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-                  />
+                  <div className="relative">
+                    <input
+                      ref={titleInputRef}
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="What needs to be done?"
+                      className="w-full bg-muted/40 border border-border rounded-sm px-3 py-2.5 text-sm font-mono text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !title.match(/#\S+$/)) handleSubmit();
+                      }}
+                    />
+                    <TagAutocomplete
+                      inputValue={title}
+                      inputRef={titleInputRef as React.RefObject<HTMLInputElement>}
+                      onSelectTag={(cat, cleaned) => {
+                        setTitle(cleaned);
+                        setCategory(cat.value);
+                      }}
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
