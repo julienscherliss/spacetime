@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
 import { useCurrentTime, timeToMinutes, formatTime12h } from '@/hooks/useCurrentTime';
 import { ChevronUp, ChevronDown, ChevronRight, Paperclip, ExternalLink } from 'lucide-react';
+import { SegmentedProgressRing } from '@/components/SegmentedProgressRing';
 
 type FocusPanel = 'completed' | 'main' | 'upcoming';
 
