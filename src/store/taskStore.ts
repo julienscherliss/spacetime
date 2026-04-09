@@ -6,6 +6,7 @@ import type { Subtask } from '@/components/SubtaskList';
 export type Priority = 0 | 1 | 2 | 3;
 export type TaskType = 'one-time' | 'recurring';
 export type ViewMode = 'focus' | 'day' | 'week' | 'calendar';
+export type DaySubMode = 'timeline' | 'list';
 
 export type CustomUnit = 'days' | 'weeks' | 'months' | 'years';
 
@@ -61,6 +62,7 @@ export type MoveValidation =
 interface TaskState {
   tasks: Task[];
   viewMode: ViewMode;
+  daySubMode: DaySubMode;
   routinesEnabled: boolean;
   focusTaskId: string | null;
   editingTaskId: string | null;
@@ -70,6 +72,7 @@ interface TaskState {
   navigateToDate: string | null;
 
   setViewMode: (mode: ViewMode) => void;
+  setDaySubMode: (mode: DaySubMode) => void;
   setNavigateToDate: (date: string | null) => void;
   toggleRoutines: () => void;
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'completed' | 'moveCount' | 'originalPriority'> & { isRoutine?: boolean }) => void;
@@ -310,6 +313,7 @@ export const useTaskStore = create<TaskState>()(
     (set, get) => ({
       tasks: [],
       viewMode: 'day',
+      daySubMode: 'timeline',
       routinesEnabled: true,
       focusTaskId: null,
       editingTaskId: null,
@@ -318,6 +322,7 @@ export const useTaskStore = create<TaskState>()(
       navigateToDate: null,
 
       setViewMode: (mode) => set({ viewMode: mode }),
+      setDaySubMode: (mode) => set({ daySubMode: mode }),
       setNavigateToDate: (date) => set({ navigateToDate: date }),
       toggleRoutines: () => set((s) => ({ routinesEnabled: !s.routinesEnabled })),
 
