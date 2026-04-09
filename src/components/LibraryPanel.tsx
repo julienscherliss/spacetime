@@ -5,7 +5,7 @@ import {
   LibraryTask,
 } from '@/store/libraryStore';
 import {
-  X, Plus, Check, Clock, AlertTriangle, Trash2, ChevronUp, ChevronDown as ChevronDownIcon,
+  X, Plus, Check, Clock, AlertTriangle, Trash2,
   ArrowDownAZ, CalendarClock, Tag, ChevronDown, GripVertical, CalendarDays,
 } from 'lucide-react';
 import { TagAutocomplete } from '@/components/TagAutocomplete';
