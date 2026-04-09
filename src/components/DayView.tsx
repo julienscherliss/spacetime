@@ -222,7 +222,18 @@ export function DayView() {
         </div>
 
         <div className="flex items-center gap-1">
-          {clusterZoomed && (
+          {showListReturn && (
+            <button
+              onClick={() => {
+                setShowListReturn(false);
+                setDaySubMode('list');
+              }}
+              className="flex items-center gap-1 px-2 py-1 rounded-md bg-muted/60 border border-border/40 text-[10px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <CornerUpLeft size={10} />
+              <span className="tracking-wider">LIST</span>
+            </button>
+          )}
             <button
               onClick={handleExitClusterZoom}
               className="flex items-center gap-1 px-2 py-1 rounded-md bg-muted/60 border border-border/40 text-[10px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
