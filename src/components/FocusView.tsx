@@ -750,8 +750,21 @@ function MainFocusPanel({
     setCompleting(false);
   }, [activeTask?.id]);
 
-  // ── Free time ──
   if (!activeTask) {
+    const hasOverdue = overdueTasks.length > 0;
+
+    // Most overdue task = earliest end time
+    const mostOverdueMinutes = hasOverdue
+      ? Math.max(...overdueTasks.map(t => nowMinutes - (timeToMinutes(t.time!) + (t.duration || 30))))
+      : 0;
+    const overdueH = String(Math.floor(mostOverdueMinutes / 60)).padStart(2, '0');
+    const overdueM = String(mostOverdueMinutes % 60).padStart(2, '0');
+
+    // Time until next task
+    const minsToNext = nextTask?.time ? timeToMinutes(nextTask.time) - nowMinutes : 0;
+    const nextH = String(Math.floor(Math.max(0, minsToNext) / 60)).padStart(2, '0');
+    const nextM = String(Math.max(0, minsToNext) % 60).padStart(2, '0');
+
     return (
       <div className="flex flex-col h-full">
         {/* ── Top status strip ── */}
@@ -762,12 +775,33 @@ function MainFocusPanel({
 
         {/* ── Center ── */}
         <div className="flex-1 flex flex-col items-center justify-center px-6">
-          <div className="font-display text-[72px] sm:text-[96px] font-bold text-foreground/8 leading-none tabular-nums tracking-tight select-none">
-            --:--
-          </div>
-          <h1 className="mt-4 text-lg font-display font-medium text-foreground/40 leading-tight text-center">
-            Free Time
-          </h1>
+          {hasOverdue ? (
+            <>
+              <div className="font-display text-[64px] sm:text-[80px] font-bold text-primary/70 leading-none tabular-nums tracking-tight select-none">
+                +{overdueH}:{overdueM}
+              </div>
+              <h1 className="mt-3 text-sm font-display font-medium text-primary/60 leading-tight text-center uppercase">
+                {overdueTasks.length === 1 ? overdueTasks[0].title : `${overdueTasks.length} tasks`}
+              </h1>
+              <span className="mt-1 text-[10px] font-mono text-primary/35 tracking-[0.15em] uppercase">
+                Overdue
+              </span>
+            </>
+          ) : (
+            <>
+              <div className="font-display text-[64px] sm:text-[80px] font-bold text-foreground/8 leading-none tabular-nums tracking-tight select-none">
+                {nextTask?.time ? `${nextH}:${nextM}` : '--:--'}
+              </div>
+              <h1 className="mt-4 text-lg font-display font-medium text-foreground/40 leading-tight text-center">
+                Free Time
+              </h1>
+              {nextTask && (
+                <span className="mt-2 text-[10px] font-mono text-muted-foreground/25 tracking-[0.1em]">
+                  until {nextTask.title}
+                </span>
+              )}
+            </>
+          )}
         </div>
 
         {/* ── Bottom ── */}
