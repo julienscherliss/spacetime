@@ -435,7 +435,7 @@ function MainFocusPanel({
                 {/* Timer */}
                 <motion.div
                   className="font-mono text-[64px] sm:text-[80px] font-bold text-foreground leading-none tabular-nums tracking-tight select-none"
-                  animate={isHolding ? { scale: 1.04, opacity: 0.7 } : completing ? { scale: 0.95, opacity: 0.3 } : { scale: 1, opacity: 1 }}
+                  animate={completing ? { scale: 0.95, opacity: 0.3 } : { scale: 1, opacity: 1 }}
                   transition={{ duration: 0.25, ease: 'easeOut' }}
                 >
                   {remainingH}:{remainingM}
