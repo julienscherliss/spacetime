@@ -311,6 +311,7 @@ export function LibraryPanel() {
   const [editingItem, setEditingItem] = useState<LibraryTask | null>(null);
   const [tagEditMode, setTagEditMode] = useState(false);
   const [draggingTag, setDraggingTag] = useState<string | null>(null);
+  const [hoveredTag, setHoveredTag] = useState<string | null>(null);
   const [deletingTag, setDeletingTag] = useState<{ value: string; label: string; count: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
