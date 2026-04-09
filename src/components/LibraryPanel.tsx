@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   useLibraryStore,
@@ -6,12 +6,22 @@ import {
 } from '@/store/libraryStore';
 import {
   X, Plus, Trash2, Clock, AlertTriangle,
-  ArrowDownAZ, CalendarClock, Tag, ChevronDown, GripVertical,
+  ArrowDownAZ, CalendarClock, Tag, ChevronDown, GripVertical, CalendarDays,
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useCarryStore } from '@/store/carryStore';
 import { useTaskStore } from '@/store/taskStore';
 import { LibraryEditModal } from '@/components/LibraryEditModal';
+import { Calendar } from '@/components/ui/calendar';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 function UrgencyIcons({ item }: { item: LibraryTask }) {
   return (
@@ -82,7 +92,6 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
     const diffMs = due.getTime() - today.getTime();
     const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
     if (diffDays < 0) return 'border-destructive/60';
-    // Count business days
     let bizDays = 0;
     const d = new Date(today);
     while (d < due && bizDays < 4) {
@@ -146,10 +155,34 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
 }
 
 /* ── Filter chip ── */
-function Chip({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
+function Chip({ active, label, onClick, onLongPress }: { active: boolean; label: string; onClick: () => void; onLongPress?: () => void }) {
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFired = useRef(false);
+
+  const handlePointerDown = useCallback(() => {
+    if (!onLongPress) return;
+    longPressFired.current = false;
+    longPressTimer.current = setTimeout(() => {
+      longPressFired.current = true;
+      onLongPress();
+    }, 500);
+  }, [onLongPress]);
+
+  const handlePointerUp = useCallback(() => {
+    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+    if (!longPressFired.current) onClick();
+  }, [onClick]);
+
+  const handlePointerMove = useCallback(() => {
+    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+  }, []);
+
   return (
     <button
-      onClick={onClick}
+      onPointerDown={onLongPress ? handlePointerDown : undefined}
+      onPointerUp={onLongPress ? handlePointerUp : undefined}
+      onPointerMove={onLongPress ? handlePointerMove : undefined}
+      onClick={onLongPress ? undefined : onClick}
       className={`shrink-0 px-3 py-1.5 rounded-full text-[10px] font-mono tracking-wider transition-colors min-h-[32px] border ${
         active
           ? 'border-foreground/25 bg-foreground/8 text-foreground font-medium'
@@ -161,25 +194,118 @@ function Chip({ active, label, onClick }: { active: boolean; label: string; onCl
   );
 }
 
+/* ── Jiggle chip for edit mode ── */
+function JiggleChip({ label, onDelete }: { label: string; onDelete: () => void }) {
+  return (
+    <motion.div
+      animate={{ rotate: [0, -2, 2, -2, 0] }}
+      transition={{ duration: 0.4, repeat: Infinity, repeatDelay: 0.1 }}
+      className="relative shrink-0"
+    >
+      <div className="px-3 py-1.5 rounded-full text-[10px] font-mono tracking-wider border border-border/50 text-muted-foreground/60 min-h-[32px] flex items-center">
+        {label}
+      </div>
+      <button
+        onClick={(e) => { e.stopPropagation(); onDelete(); }}
+        className="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full bg-destructive flex items-center justify-center shadow-sm"
+      >
+        <X size={10} className="text-destructive-foreground" />
+      </button>
+    </motion.div>
+  );
+}
+
+/* ── Quick due-date picker for add input ── */
+function QuickDuePicker({ dueDate, setDueDate }: { dueDate: string; setDueDate: (d: string) => void }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="relative shrink-0">
+      <button
+        onClick={() => setOpen(!open)}
+        className={`p-2 transition-colors ${
+          dueDate ? 'text-primary' : 'text-muted-foreground/40 hover:text-muted-foreground'
+        }`}
+      >
+        <CalendarDays size={16} />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-50 bg-card border border-border rounded-md shadow-lg p-2">
+          <Calendar
+            mode="single"
+            selected={dueDate ? new Date(dueDate + 'T12:00:00') : undefined}
+            onSelect={(d) => {
+              if (d) {
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                setDueDate(`${y}-${m}-${day}`);
+              }
+              setOpen(false);
+            }}
+            className="pointer-events-auto"
+          />
+          <div className="flex items-center gap-1.5 px-1 pb-1 pt-1">
+            {[
+              { label: '1w', days: 7 },
+              { label: '1m', days: 30 },
+              { label: '6m', days: 182 },
+              { label: '1y', days: 365 },
+            ].map((opt) => (
+              <button
+                key={opt.label}
+                onClick={() => {
+                  const d = new Date();
+                  d.setDate(d.getDate() + opt.days);
+                  const y = d.getFullYear();
+                  const m = String(d.getMonth() + 1).padStart(2, '0');
+                  const day = String(d.getDate()).padStart(2, '0');
+                  setDueDate(`${y}-${m}-${day}`);
+                  setOpen(false);
+                }}
+                className="flex-1 py-1.5 text-[10px] font-mono tracking-wider text-muted-foreground/60 hover:text-foreground hover:bg-muted/30 rounded transition-colors"
+              >
+                {opt.label}
+              </button>
+            ))}
+            {dueDate && (
+              <button
+                onClick={() => { setDueDate(''); setOpen(false); }}
+                className="text-[10px] font-mono tracking-wider text-destructive/60 hover:text-destructive ml-auto px-2 py-1.5"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function LibraryPanel() {
   const {
     panelOpen, setPanelOpen,
     sortMode, setSortMode,
     filters, setFilter,
     addItem, getFilteredItems,
-    categories, addCategory,
+    categories, addCategory, removeCategory,
   } = useLibraryStore();
 
   const [input, setInput] = useState('');
+  const [quickDueDate, setQuickDueDate] = useState('');
   const [showSort, setShowSort] = useState(false);
   const [showNewCat, setShowNewCat] = useState(false);
   const [newCatName, setNewCatName] = useState('');
   const [editingItem, setEditingItem] = useState<LibraryTask | null>(null);
+  const [tagEditMode, setTagEditMode] = useState(false);
+  const [deletingTag, setDeletingTag] = useState<{ value: string; label: string; count: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
 
   const items = getFilteredItems();
-  const totalCount = useLibraryStore((s) => s.items.length);
+  const allItems = useLibraryStore((s) => s.items);
+  const totalCount = allItems.length;
 
   const activeFilterCount = [
     filters.category !== 'all',
@@ -187,10 +313,32 @@ export function LibraryPanel() {
     filters.hasDueDate !== null,
   ].filter(Boolean).length;
 
+  // Exit tag edit mode on tap outside
+  useEffect(() => {
+    if (!tagEditMode) return;
+    const handler = (e: PointerEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('[data-tag-edit-zone]')) {
+        setTagEditMode(false);
+      }
+    };
+    document.addEventListener('pointerdown', handler);
+    return () => document.removeEventListener('pointerdown', handler);
+  }, [tagEditMode]);
+
   const handleAdd = () => {
     if (!input.trim()) return;
-    addItem(input.trim());
+    const store = useLibraryStore.getState();
+    // Use addItem then update due date if set
+    store.addItem(input.trim());
+    if (quickDueDate) {
+      const newItem = store.items[0]; // just added at front
+      if (newItem) {
+        store.updateItem(newItem.id, { dueDate: quickDueDate });
+      }
+    }
     setInput('');
+    setQuickDueDate('');
     inputRef.current?.focus();
   };
 
@@ -199,6 +347,23 @@ export function LibraryPanel() {
     addCategory(newCatName.trim());
     setNewCatName('');
     setShowNewCat(false);
+  };
+
+  const handleDeleteTag = (catValue: string) => {
+    const cat = categories.find(c => c.value === catValue);
+    if (!cat) return;
+    const count = allItems.filter(i => i.category === catValue).length;
+    if (count > 0) {
+      setDeletingTag({ value: catValue, label: cat.label, count });
+    } else {
+      removeCategory(catValue);
+    }
+  };
+
+  const confirmDeleteTag = () => {
+    if (!deletingTag) return;
+    removeCategory(deletingTag.value);
+    setDeletingTag(null);
   };
 
   return (
@@ -240,6 +405,10 @@ export function LibraryPanel() {
                   placeholder="Add to library…"
                   className="flex-1 bg-transparent font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none min-h-[44px] text-[14px]"
                 />
+                {quickDueDate && (
+                  <span className="text-[10px] font-mono text-primary/70 shrink-0">{quickDueDate}</span>
+                )}
+                <QuickDuePicker dueDate={quickDueDate} setDueDate={setQuickDueDate} />
               </div>
             </div>
 
@@ -281,68 +450,91 @@ export function LibraryPanel() {
                     CLEAR FILTERS
                   </button>
                 )}
-              </div>
 
-              {/* Filter chips */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                {/* Category chips */}
-                <Chip
-                  active={filters.category === 'all'}
-                  label="All"
-                  onClick={() => setFilter({ category: 'all' })}
-                />
-                {categories.map((cat) => (
-                  <Chip
-                    key={cat.value}
-                    active={filters.category === cat.value}
-                    label={cat.label}
-                    onClick={() => setFilter({ category: filters.category === cat.value ? 'all' : cat.value })}
-                  />
-                ))}
-
-                {/* Add category chip */}
-                {showNewCat ? (
-                  <input
-                    value={newCatName}
-                    onChange={(e) => setNewCatName(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') handleAddCategory(); if (e.key === 'Escape') setShowNewCat(false); }}
-                    onBlur={handleAddCategory}
-                    placeholder="Name…"
-                    className="shrink-0 w-20 bg-transparent text-[10px] font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none border-b border-primary/40 px-1 py-1"
-                    autoFocus
-                  />
-                ) : (
+                {tagEditMode && (
                   <button
-                    onClick={() => setShowNewCat(true)}
-                    className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wider text-primary/50 hover:text-primary border border-dashed border-primary/25 hover:border-primary/50 transition-colors min-h-[32px]"
+                    onClick={() => setTagEditMode(false)}
+                    className="text-[9px] font-mono tracking-wider text-foreground/60 hover:text-foreground ml-auto"
                   >
-                    <Tag size={10} />
-                    Add
+                    DONE
                   </button>
                 )}
+              </div>
 
-                <div className="w-px h-4 bg-border/40 shrink-0" />
+              {/* Filter chips — two rows */}
+              <div data-tag-edit-zone className="space-y-2">
+                {/* Row 1: Category chips */}
+                <div className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-hide">
+                  {tagEditMode ? (
+                    <>
+                      {categories.map((cat) => (
+                        <JiggleChip
+                          key={cat.value}
+                          label={cat.label}
+                          onDelete={() => handleDeleteTag(cat.value)}
+                        />
+                      ))}
+                    </>
+                  ) : (
+                    <>
+                      <Chip
+                        active={filters.category === 'all'}
+                        label="All"
+                        onClick={() => setFilter({ category: 'all' })}
+                      />
+                      {categories.map((cat) => (
+                        <Chip
+                          key={cat.value}
+                          active={filters.category === cat.value}
+                          label={cat.label}
+                          onClick={() => setFilter({ category: filters.category === cat.value ? 'all' : cat.value })}
+                          onLongPress={() => setTagEditMode(true)}
+                        />
+                      ))}
 
-                {/* Urgency filters */}
-                <Chip
-                  active={filters.urgency === 'urgent'}
-                  label="⏱ Urgent"
-                  onClick={() => setFilter({ urgency: filters.urgency === 'urgent' ? 'all' : 'urgent' })}
-                />
-                <Chip
-                  active={filters.urgency === 'important'}
-                  label="! Important"
-                  onClick={() => setFilter({ urgency: filters.urgency === 'important' ? 'all' : 'important' })}
-                />
+                      {/* Add category chip */}
+                      {showNewCat ? (
+                        <input
+                          value={newCatName}
+                          onChange={(e) => setNewCatName(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') handleAddCategory(); if (e.key === 'Escape') setShowNewCat(false); }}
+                          onBlur={handleAddCategory}
+                          placeholder="Name…"
+                          className="shrink-0 w-20 bg-transparent text-[10px] font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none border-b border-primary/40 px-1 py-1"
+                          autoFocus
+                        />
+                      ) : (
+                        <button
+                          onClick={() => setShowNewCat(true)}
+                          className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wider text-primary/50 hover:text-primary border border-dashed border-primary/25 hover:border-primary/50 transition-colors min-h-[32px]"
+                        >
+                          <Tag size={10} />
+                          Add
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
 
-                <div className="w-px h-4 bg-border/40 shrink-0" />
-
-                {/* Due date filter */}
-                <Chip
-                  active={filters.hasDueDate === true}
-                  label="Has due"
-                  onClick={() => setFilter({ hasDueDate: filters.hasDueDate === true ? null : true })}
-                />
+                {/* Row 2: Urgency + Due date filters */}
+                <div className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-hide">
+                  <Chip
+                    active={filters.urgency === 'urgent'}
+                    label="⏱ Urgent"
+                    onClick={() => setFilter({ urgency: filters.urgency === 'urgent' ? 'all' : 'urgent' })}
+                  />
+                  <Chip
+                    active={filters.urgency === 'important'}
+                    label="! Important"
+                    onClick={() => setFilter({ urgency: filters.urgency === 'important' ? 'all' : 'important' })}
+                  />
+                  <div className="w-px h-4 bg-border/40 shrink-0" />
+                  <Chip
+                    active={filters.hasDueDate === true}
+                    label="Has due"
+                    onClick={() => setFilter({ hasDueDate: filters.hasDueDate === true ? null : true })}
+                  />
+                </div>
               </div>
             </div>
 
@@ -376,6 +568,26 @@ export function LibraryPanel() {
           onClose={() => setEditingItem(null)}
         />
       )}
+
+      {/* Delete tag confirmation dialog */}
+      <Dialog open={!!deletingTag} onOpenChange={(o) => { if (!o) setDeletingTag(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-mono text-[14px]">Delete "{deletingTag?.label}"?</DialogTitle>
+            <DialogDescription className="font-mono text-[12px]">
+              {deletingTag?.count} task{deletingTag?.count !== 1 ? 's' : ''} use{deletingTag?.count === 1 ? 's' : ''} this tag. They will be set to uncategorized.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" size="sm" onClick={() => setDeletingTag(null)} className="font-mono text-[11px]">
+              Cancel
+            </Button>
+            <Button variant="destructive" size="sm" onClick={confirmDeleteTag} className="font-mono text-[11px]">
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
