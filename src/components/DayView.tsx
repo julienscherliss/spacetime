@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useTrackpadSwipe } from '@/hooks/useTrackpadSwipe';
 import { motion } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
 import { useCalendarStore } from '@/store/calendarStore';
@@ -137,6 +138,16 @@ export function DayView() {
     return () => { cleanScroll?.(); cleanPinch?.(); };
   }, [bindScrollZoom, bindPinchZoom]);
 
+  // Trackpad horizontal swipe for day navigation
+  const dayContainerRef = useRef<HTMLDivElement>(null);
+  useTrackpadSwipe({
+    direction: 'horizontal',
+    containerRef: dayContainerRef,
+    threshold: 200,
+    onSwipePositive: useCallback(() => setSelectedDate(d => addDaysToDate(d, -1)), []),
+    onSwipeNegative: useCallback(() => setSelectedDate(d => addDaysToDate(d, 1)), []),
+  });
+
   // Swipe gesture handlers
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (e.touches.length !== 1) return;
@@ -181,6 +192,7 @@ export function DayView() {
 
   return (
     <div
+      ref={dayContainerRef}
       className="max-w-3xl mx-auto px-3 sm:px-4"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
