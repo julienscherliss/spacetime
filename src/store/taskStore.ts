@@ -601,22 +601,22 @@ export const useTaskStore = create<TaskState>()(
 
       moveOverdueToWaitingRoom: () => {
         const now = new Date();
-        // Use a 3 AM boundary: if it's before 3 AM, "today" is still yesterday
-        const boundaryHour = 3;
-        const effectiveNow = new Date(now);
-        if (effectiveNow.getHours() < boundaryHour) {
-          effectiveNow.setDate(effectiveNow.getDate() - 1);
-        }
-        const today = effectiveNow.toISOString().split('T')[0];
+        const nowMs = now.getTime();
 
         set((s) => ({
           tasks: s.tasks.map((t) => {
             if (t.completed || t.inWaitingRoom || t.archivedAt) return t;
             if (!t.time) return t;
-            // Only move tasks from days strictly before today (using 3 AM boundary)
-            // Tasks from today stay on the calendar even if overdue
-            const isOverdue = t.date < today;
-            if (!isOverdue) return t;
+
+            // Calculate when the task should have ended
+            const [h, m] = t.time.split(':').map(Number);
+            const taskEnd = new Date(`${t.date}T00:00:00`);
+            taskEnd.setHours(h, m + (t.duration || 30), 0, 0);
+
+            // Only move to waiting room 12 hours after scheduled end
+            const graceMs = 12 * 60 * 60 * 1000;
+            if (nowMs - taskEnd.getTime() < graceMs) return t;
+
             return {
               ...t,
               inWaitingRoom: true,
