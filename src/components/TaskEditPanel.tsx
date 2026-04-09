@@ -610,10 +610,28 @@ export function TaskEditPanel() {
               <textarea
                 value={description}
                 onChange={(e) => {
-                  setDescription(e.target.value);
+                  const val = e.target.value;
+                  setDescription(val);
                   const ta = e.target;
                   ta.style.height = 'auto';
                   ta.style.height = ta.scrollHeight + 'px';
+                  // Auto-detect links
+                  const newLinks = detectNewLinks(val, linkAttachments);
+                  if (newLinks.length > 0) {
+                    setLinkAttachments(prev => [...prev, ...newLinks]);
+                    setDescription(removeUrlsFromText(val, newLinks.map(l => l.url)));
+                  }
+                }}
+                onPaste={(e) => {
+                  const pasted = e.clipboardData.getData('text');
+                  // Defer to let onChange fire first, then detect
+                  setTimeout(() => {
+                    const newLinks = detectNewLinks(pasted, linkAttachments);
+                    if (newLinks.length > 0) {
+                      setLinkAttachments(prev => [...prev, ...newLinks]);
+                      setDescription(prev => removeUrlsFromText(prev, newLinks.map(l => l.url)));
+                    }
+                  }, 0);
                 }}
                 ref={(el) => {
                   if (el) {
@@ -623,8 +641,15 @@ export function TaskEditPanel() {
                 }}
                 placeholder="Add details, context, links…"
                 rows={2}
-                className="w-full bg-transparent text-[13px] font-mono text-foreground/60 placeholder:text-muted-foreground/20 focus:outline-none resize-none leading-relaxed mb-4"
+                className="w-full bg-transparent text-[13px] font-mono text-foreground/60 placeholder:text-muted-foreground/20 focus:outline-none resize-none leading-relaxed mb-2"
               />
+
+              {/* ─── Link Attachments ─── */}
+              {linkAttachments.length > 0 && (
+                <div className="mb-4">
+                  <LinkAttachmentList links={linkAttachments} onChange={setLinkAttachments} />
+                </div>
+              )}
 
               {/* ─── Recurrence expanded ─── */}
               <AnimatePresence>
