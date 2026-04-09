@@ -166,9 +166,9 @@ export function FocusView() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.4 }}
           onClick={() => setActivePanel('completed')}
-          className="absolute left-1/2 -translate-x-1/2 top-2 z-20 p-2 text-muted-foreground/15 hover:text-muted-foreground/30 transition-colors"
+          className="absolute left-1/2 -translate-x-1/2 top-2 z-20 p-2 text-muted-foreground/30 hover:text-muted-foreground/50 transition-colors"
         >
-          <ChevronUp size={20} strokeWidth={1.5} />
+          <ChevronUp size={40} strokeWidth={1.5} />
         </motion.button>
       )}
       {showDownArrow && (
@@ -177,9 +177,9 @@ export function FocusView() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.4 }}
           onClick={() => setActivePanel('detail')}
-          className="absolute left-1/2 -translate-x-1/2 bottom-2 z-20 p-2 text-muted-foreground/15 hover:text-muted-foreground/30 transition-colors"
+          className="absolute left-1/2 -translate-x-1/2 bottom-2 z-20 p-2 text-muted-foreground/30 hover:text-muted-foreground/50 transition-colors"
         >
-          <ChevronDown size={20} strokeWidth={1.5} />
+          <ChevronDown size={40} strokeWidth={1.5} />
         </motion.button>
       )}
 
@@ -531,7 +531,7 @@ function MainFocusPanel({
 
         {/* ── Center ── */}
         <div className="flex-1 flex flex-col items-center justify-center px-6">
-          <div className="font-mono text-[72px] sm:text-[96px] font-bold text-foreground/8 leading-none tabular-nums tracking-tight select-none">
+          <div className="font-display text-[72px] sm:text-[96px] font-bold text-foreground/8 leading-none tabular-nums tracking-tight select-none">
             --:--
           </div>
           <h1 className="mt-4 text-lg font-display font-medium text-foreground/40 leading-tight text-center">
@@ -623,7 +623,7 @@ function MainFocusPanel({
                 className="flex flex-col items-center"
               >
                 <motion.div
-                  className="font-mono text-[64px] sm:text-[80px] font-bold text-foreground leading-none tabular-nums tracking-tight select-none"
+                  className="font-display text-[64px] sm:text-[80px] font-bold text-foreground leading-none tabular-nums tracking-tight select-none"
                   animate={completing ? { scale: 0.95, opacity: 0.3 } : { scale: 1, opacity: 1 }}
                   transition={{ duration: 0.25, ease: 'easeOut' }}
                 >
@@ -639,80 +639,9 @@ function MainFocusPanel({
         </div>
       </div>
 
-      {/* ═══ ZONE 3: BOTTOM DETAILS ═══ */}
-      <div className="relative z-10 px-5 pb-5 -mt-6 overflow-y-auto" style={{ maxHeight: '40%' }}>
-        <div className="max-w-[320px] mx-auto flex flex-col gap-2">
-          {/* Description */}
-          {hasDescription && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setDescExpanded(!descExpanded);
-              }}
-              className="block w-full text-left"
-            >
-              <div className={`text-[11px] font-mono text-foreground/50 leading-relaxed ${!descExpanded ? 'line-clamp-2' : ''}`}>
-                {linkify(activeTask.description!)}
-              </div>
-            </button>
-          )}
-
-          {/* Attachments */}
-          {hasAttachments && (
-            <div className="flex flex-wrap gap-1.5">
-              {activeTask.attachments!.map((att, i) => (
-                <a
-                  key={i}
-                  href={att.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-2 py-1 border border-border/15 text-[10px] font-mono text-foreground/35 hover:text-foreground/55 hover:border-border/30 transition-colors"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Paperclip size={9} />
-                  <span className="truncate max-w-[100px]">{att.name}</span>
-                </a>
-              ))}
-            </div>
-          )}
-
-          {/* Subtasks */}
-          {hasSubtasks && (
-            <div className="space-y-2.5">
-              {activeTask.subtasks!.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const updated = activeTask.subtasks!.map(st =>
-                      st.id === s.id ? { ...st, completed: !st.completed } : st
-                    );
-                    onUpdateTask(activeTask.id, { subtasks: updated });
-                  }}
-                  className="flex items-center gap-3 w-full text-left group"
-                >
-                  <div className={`w-3.5 h-3.5 rounded-sm border flex items-center justify-center shrink-0 transition-colors ${
-                    s.completed
-                      ? 'bg-foreground/15 border-foreground/20'
-                      : 'border-muted-foreground/25 group-hover:border-muted-foreground/40'
-                  }`}>
-                    {s.completed && (
-                      <svg width="9" height="9" viewBox="0 0 8 8" className="text-foreground/50">
-                        <path d="M1.5 4L3.2 5.8L6.5 2.2" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    )}
-                  </div>
-                  <span className={`text-[12px] font-mono leading-snug ${
-                    s.completed ? 'line-through text-muted-foreground/35' : 'text-foreground/80'
-                  }`}>
-                    {s.title}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Next task hint */}
+      {/* ═══ ZONE 3: BOTTOM — next task hint only ═══ */}
+      <div className="relative z-10 px-5 pb-5">
+        <div className="max-w-[320px] mx-auto">
           {nextTask && (
             <div className="flex items-center gap-2 text-[9px] font-mono text-muted-foreground/20 tracking-[0.12em] uppercase pt-1">
               <ChevronRight size={9} strokeWidth={1.5} className="opacity-40" />
