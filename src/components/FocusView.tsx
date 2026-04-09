@@ -722,11 +722,12 @@ interface MainFocusPanelProps {
   onHoldStart: () => void;
   onHoldEnd: () => void;
   onUpdateTask: (id: string, updates: any) => void;
+  overdueTasks: ReturnType<typeof useTaskStore.getState>['tasks'];
 }
 
 function MainFocusPanel({
-  activeTask, nextTask, remaining,
-  holdProgress, isHolding, onHoldStart, onHoldEnd, onUpdateTask,
+  activeTask, nextTask, remaining, nowMinutes,
+  holdProgress, isHolding, onHoldStart, onHoldEnd, onUpdateTask, overdueTasks,
 }: MainFocusPanelProps) {
   const autoCompleteRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [completing, setCompleting] = useState(false);
