@@ -73,13 +73,34 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
   const catLabel = useLibraryStore.getState().categories.find(c => c.value === item.category)?.label;
   const dueBadge = getDueBadge(item.dueDate);
 
+  const getDueBorderClass = () => {
+    if (!item.dueDate) return 'border-border/30 opacity-60';
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const due = new Date(item.dueDate + 'T12:00:00');
+    due.setHours(0, 0, 0, 0);
+    const diffMs = due.getTime() - today.getTime();
+    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+    if (diffDays < 0) return 'border-destructive/60';
+    // Count business days
+    let bizDays = 0;
+    const d = new Date(today);
+    while (d < due && bizDays < 4) {
+      d.setDate(d.getDate() + 1);
+      const dow = d.getDay();
+      if (dow !== 0 && dow !== 6) bizDays++;
+    }
+    if (bizDays <= 3 && diffDays <= 7) return 'border-primary/50';
+    return 'border-border/30';
+  };
+
   return (
     <div
       onContextMenu={(e) => e.preventDefault()}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerMove={handlePointerMove}
-      className={`group flex items-center gap-3 rounded-md border border-border/30 bg-card/50 hover:border-border/60 hover:bg-card transition-all cursor-pointer select-none ${
+      className={`group flex items-center gap-3 rounded-md border bg-card/50 hover:bg-card transition-all cursor-pointer select-none ${getDueBorderClass()} ${
         isMobile ? 'py-4 px-3.5 min-h-[56px]' : 'py-3 px-3 min-h-[48px]'
       }`}
     >
