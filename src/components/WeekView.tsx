@@ -202,7 +202,7 @@ export function WeekView() {
               controls={headerControls}
             />
           </div>
-          <div className="flex items-center gap-1 pr-1 shrink-0">
+          <div className="flex items-center gap-1 pr-1 shrink-0 self-center">
             {clusterZoomed && (
               <button
                 onClick={handleExitClusterZoom}
