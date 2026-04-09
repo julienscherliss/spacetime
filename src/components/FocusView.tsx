@@ -411,13 +411,13 @@ function MainFocusPanel({
       {/* ═══ ZONE 2: CENTER FOCUS (ring + timer + title) ═══ */}
       <div className="relative z-10 flex-1 flex items-center justify-center px-6 min-h-0">
         {/* Progress ring container */}
-        <div className="relative" style={{ width: 300, height: 300 }}>
+        <div className="relative" style={{ width: 280, height: 280 }}>
           <SegmentedProgressRing
             progress={activeTask.duration ? (activeTask.duration - clampedRemaining) / activeTask.duration : 0}
-            size={300}
+            size={280}
             segments={60}
-            strokeWidth={3}
-            gap={2.5}
+            barWidth={4}
+            barLength={14}
           />
 
           {/* Content inside ring */}
