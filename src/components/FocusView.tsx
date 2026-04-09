@@ -109,13 +109,27 @@ export function FocusView() {
   }, [activeTask, completeTask]);
 
   const cancelHold = useCallback(() => {
-    setIsHolding(false);
-    setHoldProgress(0);
     if (holdTimerRef.current) {
       cancelAnimationFrame(holdTimerRef.current);
       holdTimerRef.current = null;
     }
-  }, []);
+    setIsHolding(false);
+    // Smooth reverse
+    const startVal = holdProgress;
+    const startTime = Date.now();
+    const reverseDuration = 300;
+    const reverseStep = () => {
+      const elapsed = Date.now() - startTime;
+      const p = Math.max(0, startVal * (1 - elapsed / reverseDuration));
+      setHoldProgress(p);
+      if (p > 0) {
+        holdTimerRef.current = requestAnimationFrame(reverseStep);
+      } else {
+        holdTimerRef.current = null;
+      }
+    };
+    holdTimerRef.current = requestAnimationFrame(reverseStep);
+  }, [holdProgress]);
 
   // Swipe handlers
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
@@ -418,6 +432,7 @@ function MainFocusPanel({
             segments={60}
             barWidth={4}
             barLength={14}
+            holdProgress={holdProgress}
           />
 
           {/* Content inside ring */}
@@ -434,7 +449,7 @@ function MainFocusPanel({
                 {/* Timer */}
                 <motion.div
                   className="font-mono text-[64px] sm:text-[80px] font-bold text-foreground leading-none tabular-nums tracking-tight select-none"
-                  animate={isHolding ? { scale: 1.04, opacity: 0.7 } : completing ? { scale: 0.95, opacity: 0.3 } : { scale: 1, opacity: 1 }}
+                  animate={completing ? { scale: 0.95, opacity: 0.3 } : { scale: 1, opacity: 1 }}
                   transition={{ duration: 0.25, ease: 'easeOut' }}
                 >
                   {remainingH}:{remainingM}
