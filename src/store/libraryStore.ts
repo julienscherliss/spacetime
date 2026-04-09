@@ -245,7 +245,9 @@ export const useLibraryStore = create<LibraryState>()(
         let filtered = items;
 
         // Category filter
-        if (filters.category !== 'all') {
+        if (filters.category === 'none') {
+          filtered = filtered.filter((i) => !i.category);
+        } else if (filters.category !== 'all') {
           filtered = filtered.filter((i) => i.category === filters.category);
         }
 
