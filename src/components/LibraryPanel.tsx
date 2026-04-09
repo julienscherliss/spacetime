@@ -488,10 +488,13 @@ export function LibraryPanel() {
                 <div className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-hide">
                   {tagEditMode ? (
                     <>
-                      {categories.map((cat) => (
+                      {categories.map((cat, idx) => (
                         <JiggleChip
                           key={cat.value}
                           label={cat.label}
+                          catValue={cat.value}
+                          index={idx}
+                          total={categories.length}
                           onDelete={() => handleDeleteTag(cat.value)}
                         />
                       ))}
