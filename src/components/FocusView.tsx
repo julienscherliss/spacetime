@@ -418,6 +418,7 @@ function MainFocusPanel({
             segments={60}
             barWidth={4}
             barLength={14}
+            holdProgress={holdProgress}
           />
 
           {/* Content inside ring */}

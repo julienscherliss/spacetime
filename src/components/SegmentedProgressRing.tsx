@@ -4,6 +4,7 @@ interface SegmentedProgressRingProps {
   segments?: number;
   barWidth?: number;
   barLength?: number;
+  holdProgress?: number; // 0 to 1, orange overlay
 }
 
 export function SegmentedProgressRing({
@@ -12,11 +13,13 @@ export function SegmentedProgressRing({
   segments = 60,
   barWidth = 4,
   barLength = 14,
+  holdProgress = 0,
 }: SegmentedProgressRingProps) {
   const cx = size / 2;
   const cy = size / 2;
   const radius = (size - barLength) / 2;
   const filledCount = Math.round(progress * segments);
+  const holdFilledCount = Math.round(holdProgress * segments);
 
   return (
     <svg
@@ -27,6 +30,7 @@ export function SegmentedProgressRing({
       {Array.from({ length: segments }).map((_, i) => {
         const angle = (i / segments) * 360 - 90;
         const rad = (angle * Math.PI) / 180;
+        const isHoldFilled = i < holdFilledCount;
         const isFilled = i < filledCount;
         const x1 = cx + (radius - barLength / 2) * Math.cos(rad);
         const y1 = cy + (radius - barLength / 2) * Math.sin(rad);
@@ -40,11 +44,14 @@ export function SegmentedProgressRing({
             y1={y1}
             x2={x2}
             y2={y2}
-            stroke="currentColor"
+            stroke={isHoldFilled ? 'hsl(var(--primary))' : 'currentColor'}
             strokeWidth={barWidth}
             strokeLinecap="butt"
-            className="text-foreground transition-opacity duration-150"
-            style={{ opacity: isFilled ? 0.55 : 0.08 }}
+            className={isHoldFilled ? '' : 'text-foreground'}
+            style={{
+              opacity: isHoldFilled ? 0.75 : isFilled ? 0.55 : 0.08,
+              transition: 'opacity 100ms ease, stroke 100ms ease',
+            }}
           />
         );
       })}
