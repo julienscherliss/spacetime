@@ -497,7 +497,6 @@ function MainFocusPanel({
   activeTask, nextTask, remaining,
   holdProgress, isHolding, onHoldStart, onHoldEnd, onUpdateTask,
 }: MainFocusPanelProps) {
-  const [descExpanded, setDescExpanded] = useState(false);
   const autoCompleteRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [completing, setCompleting] = useState(false);
   const { completeTask } = useTaskStore();
@@ -564,9 +563,6 @@ function MainFocusPanel({
   const timeStart = formatTime12h(activeTask.time!);
   const timeEnd = formatTime12h(timeToMinutes(activeTask.time!) + (activeTask.duration || 30));
 
-  const hasDescription = activeTask.description && activeTask.description.trim().length > 0;
-  const hasAttachments = activeTask.attachments && activeTask.attachments.length > 0;
-  const hasSubtasks = activeTask.subtasks && activeTask.subtasks.length > 0;
 
   return (
     <div
