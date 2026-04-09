@@ -351,15 +351,38 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
             ref={noteRef}
             value={note}
             onChange={(e) => {
-              setNote(e.target.value);
+              const val = e.target.value;
+              setNote(val);
               const ta = e.target;
               ta.style.height = 'auto';
               ta.style.height = ta.scrollHeight + 'px';
+              const newLinks = detectNewLinks(val, linkAttachments);
+              if (newLinks.length > 0) {
+                setLinkAttachments(prev => [...prev, ...newLinks]);
+                setNote(removeUrlsFromText(val, newLinks.map(l => l.url)));
+              }
+            }}
+            onPaste={(e) => {
+              const pasted = e.clipboardData.getData('text');
+              setTimeout(() => {
+                const newLinks = detectNewLinks(pasted, linkAttachments);
+                if (newLinks.length > 0) {
+                  setLinkAttachments(prev => [...prev, ...newLinks]);
+                  setNote(prev => removeUrlsFromText(prev, newLinks.map(l => l.url)));
+                }
+              }, 0);
             }}
             placeholder="Add details, context, links…"
             rows={2}
-            className="w-full bg-transparent text-[13px] font-mono text-foreground/60 placeholder:text-muted-foreground/20 focus:outline-none resize-none leading-relaxed mb-4"
+            className="w-full bg-transparent text-[13px] font-mono text-foreground/60 placeholder:text-muted-foreground/20 focus:outline-none resize-none leading-relaxed mb-2"
           />
+
+          {/* ─── Link Attachments ─── */}
+          {linkAttachments.length > 0 && (
+            <div className="mb-4">
+              <LinkAttachmentList links={linkAttachments} onChange={setLinkAttachments} />
+            </div>
+          )}
 
           {/* ─── Subtasks ─── */}
           {(subtasks.length > 0 || newSubtaskText) && (
