@@ -187,11 +187,14 @@ export function FocusView() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.4 }}
           onClick={() => setActivePanel('detail')}
-          className={`absolute left-1/2 -translate-x-1/2 bottom-2 z-20 p-2 transition-colors ${
-            activeTask?.subtasks && activeTask.subtasks.length > 0
-              ? 'text-primary hover:text-primary/70'
-              : 'text-muted-foreground/30 hover:text-muted-foreground/50'
+          className={`absolute left-1/2 -translate-x-1/2 bottom-2 z-20 p-2 transition-colors text-muted-foreground/30 hover:text-muted-foreground/50 ${
+            activeTask?.subtasks && activeTask.subtasks.length > 0 ? 'animate-[subtask-pulse_2s_ease-in-out_2]' : ''
           }`}
+          style={activeTask?.subtasks && activeTask.subtasks.length > 0 ? {
+            animationIterationCount: 2,
+            animationDelay: '0s',
+          } as React.CSSProperties : undefined}
+          key={activeTask?.id ? `chevron-${activeTask.id}-${Math.floor(Date.now() / 30000)}` : 'chevron'}
         >
           <ChevronDown size={40} strokeWidth={1.5} />
         </motion.button>

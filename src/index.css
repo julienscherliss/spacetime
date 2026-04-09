@@ -148,3 +148,8 @@
 .skip-btn {
   transition: opacity 0.6s ease 0.4s;
 }
+
+@keyframes subtask-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
