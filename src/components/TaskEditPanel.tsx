@@ -11,6 +11,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import { DurationPicker } from '@/components/ScrollWheelPicker';
 import { format } from 'date-fns';
+import { LinkAttachmentList } from '@/components/LinkAttachmentList';
+import { detectNewLinks, removeUrlsFromText, type LinkAttachment } from '@/utils/linkDetection';
 
 const PRIORITY_LABELS = ['Flex', 'Semi', 'Fixed', 'Lock'] as const;
 const PRIORITY_COLORS = [
@@ -140,7 +142,20 @@ export function TaskEditPanel() {
   const [showDuePicker, setShowDuePicker] = useState(false);
   const [showDurationPicker, setShowDurationPicker] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
-  const [attachments, setAttachments] = useState<{ name: string; url: string; type: string }[]>(task?.attachments || []);
+  const [attachments, setAttachments] = useState<{ name: string; url: string; type: string }[]>(
+    (task?.attachments || []).filter((a: any) => a.type !== 'link')
+  );
+  const [linkAttachments, setLinkAttachments] = useState<LinkAttachment[]>(() => {
+    return (task?.attachments || [])
+      .filter((a: any) => a.type === 'link')
+      .map((a: any) => ({
+        id: a.id || crypto.randomUUID(),
+        url: a.url,
+        displayName: a.name || a.url,
+        domain: a.domain || '',
+        createdAt: a.createdAt || new Date().toISOString(),
+      }));
+  });
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scopeTriggeredRef = useRef(false);
@@ -174,7 +189,18 @@ export function TaskEditPanel() {
       setShowDuePicker(false);
       setShowCatPicker(false);
       setSaveStatus('idle');
-      setAttachments(task.attachments || []);
+      setAttachments((task.attachments || []).filter((a: any) => a.type !== 'link'));
+      setLinkAttachments(
+        (task.attachments || [])
+          .filter((a: any) => a.type === 'link')
+          .map((a: any) => ({
+            id: a.id || crypto.randomUUID(),
+            url: a.url,
+            displayName: a.name || a.url,
+            domain: a.domain || '',
+            createdAt: a.createdAt || new Date().toISOString(),
+          }))
+      );
       setIsUploading(false);
       scopeTriggeredRef.current = false;
     }
@@ -230,7 +256,27 @@ export function TaskEditPanel() {
       detachedFromSeries: (recurrence && !isLinked && task?.recurrenceParentId) ? true : false,
       dueDate: dueDate || undefined,
       category: taskCategory || undefined,
-      attachments: attachments.length > 0 ? attachments : undefined,
+      attachments: [
+        ...attachments,
+        ...linkAttachments.map(l => ({
+          id: l.id,
+          name: l.displayName,
+          url: l.url,
+          type: 'link' as const,
+          domain: l.domain,
+          createdAt: l.createdAt,
+        })),
+      ].length > 0 ? [
+        ...attachments,
+        ...linkAttachments.map(l => ({
+          id: l.id,
+          name: l.displayName,
+          url: l.url,
+          type: 'link' as const,
+          domain: l.domain,
+          createdAt: l.createdAt,
+        })),
+      ] : undefined,
     };
   };
 
@@ -546,7 +592,15 @@ export function TaskEditPanel() {
                 <input
                   ref={titleInputRef}
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setTitle(val);
+                    const newLinks = detectNewLinks(val, linkAttachments);
+                    if (newLinks.length > 0) {
+                      setLinkAttachments(prev => [...prev, ...newLinks]);
+                      setTitle(removeUrlsFromText(val, newLinks.map(l => l.url)));
+                    }
+                  }}
                   placeholder="Task name…"
                   className="w-full bg-transparent font-display font-bold text-foreground text-lg leading-tight focus:outline-none placeholder:text-muted-foreground/20 mb-1"
                 />
@@ -564,10 +618,28 @@ export function TaskEditPanel() {
               <textarea
                 value={description}
                 onChange={(e) => {
-                  setDescription(e.target.value);
+                  const val = e.target.value;
+                  setDescription(val);
                   const ta = e.target;
                   ta.style.height = 'auto';
                   ta.style.height = ta.scrollHeight + 'px';
+                  // Auto-detect links
+                  const newLinks = detectNewLinks(val, linkAttachments);
+                  if (newLinks.length > 0) {
+                    setLinkAttachments(prev => [...prev, ...newLinks]);
+                    setDescription(removeUrlsFromText(val, newLinks.map(l => l.url)));
+                  }
+                }}
+                onPaste={(e) => {
+                  const pasted = e.clipboardData.getData('text');
+                  // Defer to let onChange fire first, then detect
+                  setTimeout(() => {
+                    const newLinks = detectNewLinks(pasted, linkAttachments);
+                    if (newLinks.length > 0) {
+                      setLinkAttachments(prev => [...prev, ...newLinks]);
+                      setDescription(prev => removeUrlsFromText(prev, newLinks.map(l => l.url)));
+                    }
+                  }, 0);
                 }}
                 ref={(el) => {
                   if (el) {
@@ -577,8 +649,15 @@ export function TaskEditPanel() {
                 }}
                 placeholder="Add details, context, links…"
                 rows={2}
-                className="w-full bg-transparent text-[13px] font-mono text-foreground/60 placeholder:text-muted-foreground/20 focus:outline-none resize-none leading-relaxed mb-4"
+                className="w-full bg-transparent text-[13px] font-mono text-foreground/60 placeholder:text-muted-foreground/20 focus:outline-none resize-none leading-relaxed mb-2"
               />
+
+              {/* ─── Link Attachments ─── */}
+              {linkAttachments.length > 0 && (
+                <div className="mb-4">
+                  <LinkAttachmentList links={linkAttachments} onChange={setLinkAttachments} />
+                </div>
+              )}
 
               {/* ─── Recurrence expanded ─── */}
               <AnimatePresence>
