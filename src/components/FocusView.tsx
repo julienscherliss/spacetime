@@ -109,13 +109,27 @@ export function FocusView() {
   }, [activeTask, completeTask]);
 
   const cancelHold = useCallback(() => {
-    setIsHolding(false);
-    setHoldProgress(0);
     if (holdTimerRef.current) {
       cancelAnimationFrame(holdTimerRef.current);
       holdTimerRef.current = null;
     }
-  }, []);
+    setIsHolding(false);
+    // Smooth reverse
+    const startVal = holdProgress;
+    const startTime = Date.now();
+    const reverseDuration = 300;
+    const reverseStep = () => {
+      const elapsed = Date.now() - startTime;
+      const p = Math.max(0, startVal * (1 - elapsed / reverseDuration));
+      setHoldProgress(p);
+      if (p > 0) {
+        holdTimerRef.current = requestAnimationFrame(reverseStep);
+      } else {
+        holdTimerRef.current = null;
+      }
+    };
+    holdTimerRef.current = requestAnimationFrame(reverseStep);
+  }, [holdProgress]);
 
   // Swipe handlers
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
