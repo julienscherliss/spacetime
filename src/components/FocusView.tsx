@@ -197,35 +197,68 @@ export function FocusView() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -40 }}
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute inset-0 flex flex-col items-center pt-12 pb-16 px-6 overflow-y-auto"
+            className="absolute inset-0 flex flex-col pt-8 pb-16 px-6 overflow-y-auto"
           >
-            <div className="text-[10px] font-mono tracking-[0.25em] text-muted-foreground/50 mb-6 uppercase">
-              Completed · {completedCount}
-            </div>
-            <div className="w-full max-w-sm space-y-1">
-              {completedToday.length === 0 ? (
-                <p className="text-center text-muted-foreground/40 font-mono text-[12px]">Nothing yet</p>
-              ) : (
-                completedToday.map((task) => (
-                  <div key={task.id} className="flex items-center gap-3 py-2.5 px-3">
-                    <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30 shrink-0" />
-                    <span className="text-[13px] font-mono text-muted-foreground/50 line-through truncate flex-1">
-                      {task.title}
-                    </span>
-                    {task.time && (
-                      <span className="text-[10px] font-mono text-muted-foreground/30 tabular-nums shrink-0">
-                        {formatTime12h(task.time)}
+            {/* Upcoming section */}
+            <div className="w-full max-w-sm mx-auto mb-6">
+              <div className="text-[10px] font-mono tracking-[0.25em] text-muted-foreground/50 mb-3 uppercase">
+                Upcoming · {upcomingTasks.length}
+              </div>
+              <div className="space-y-1">
+                {upcomingTasks.length === 0 ? (
+                  <p className="text-center text-muted-foreground/30 font-mono text-[12px] py-3">Nothing upcoming</p>
+                ) : (
+                  upcomingTasks.map((task) => (
+                    <div key={task.id} className="flex items-center gap-3 py-2.5 px-3">
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary/40 shrink-0" />
+                      <span className="text-[13px] font-mono text-foreground/70 truncate flex-1">
+                        {task.title}
                       </span>
-                    )}
-                  </div>
-                ))
-              )}
+                      {task.time && (
+                        <span className="text-[10px] font-mono text-muted-foreground/35 tabular-nums shrink-0">
+                          {formatTime12h(task.time)}
+                        </span>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
+
+            {/* Divider */}
+            <div className="w-full max-w-sm mx-auto h-px bg-foreground/[0.06] mb-6" />
+
+            {/* Completed section */}
+            <div className="w-full max-w-sm mx-auto">
+              <div className="text-[10px] font-mono tracking-[0.25em] text-muted-foreground/50 mb-3 uppercase">
+                Completed · {completedCount}
+              </div>
+              <div className="space-y-1">
+                {completedToday.length === 0 ? (
+                  <p className="text-center text-muted-foreground/30 font-mono text-[12px] py-3">Nothing yet</p>
+                ) : (
+                  completedToday.map((task) => (
+                    <div key={task.id} className="flex items-center gap-3 py-2.5 px-3">
+                      <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30 shrink-0" />
+                      <span className="text-[13px] font-mono text-muted-foreground/50 line-through truncate flex-1">
+                        {task.title}
+                      </span>
+                      {task.time && (
+                        <span className="text-[10px] font-mono text-muted-foreground/30 tabular-nums shrink-0">
+                          {formatTime12h(task.time)}
+                        </span>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
             <button
               onClick={() => setActivePanel('main')}
-              className="mt-8 p-2 text-muted-foreground/40 hover:text-muted-foreground/60 transition-colors"
+              className="self-center mt-8 p-2 text-muted-foreground/30 hover:text-muted-foreground/50 transition-colors"
             >
-              <ChevronDown size={20} strokeWidth={2} />
+              <ChevronDown size={40} strokeWidth={1.5} />
             </button>
           </motion.div>
         )}
