@@ -650,7 +650,7 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
         )}
         {task.dueDate && (
           <div className="flex items-center gap-2">
-            <Calendar size={10} className="text-muted-foreground/25" />
+            <CalendarIcon size={10} className="text-muted-foreground/25" />
             <span className="text-[10px] font-mono text-muted-foreground/35 tabular-nums tracking-wider">
               Due {new Date(task.dueDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </span>
