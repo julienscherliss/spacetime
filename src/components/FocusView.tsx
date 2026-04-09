@@ -414,10 +414,10 @@ function MainFocusPanel({
         <div className="relative" style={{ width: 300, height: 300 }}>
           <SegmentedProgressRing
             progress={activeTask.duration ? (activeTask.duration - clampedRemaining) / activeTask.duration : 0}
-            size={300}
+            size={280}
             segments={60}
-            strokeWidth={3}
-            gap={2.5}
+            barWidth={4}
+            barLength={14}
           />
 
           {/* Content inside ring */}
