@@ -197,26 +197,20 @@ function Chip({ active, label, onClick, onLongPress }: { active: boolean; label:
 }
 
 /* ── Jiggle chip for edit mode (drag to reorder) ── */
-function JiggleChip({ label, catValue, onDelete, onDragStart, onDragEnter, isDragging }: {
+function JiggleChip({ label, catValue, onDelete, isDragging, isHovered }: {
   label: string; catValue: string; onDelete: () => void;
-  onDragStart: () => void; onDragEnter: () => void; isDragging: boolean;
+  isDragging: boolean; isHovered: boolean;
 }) {
   return (
     <motion.div
-      animate={isDragging ? { scale: 1.1, rotate: 0, opacity: 0.7 } : { rotate: [0, -2, 2, -2, 0] }}
+      data-cat-value={catValue}
+      animate={isDragging ? { scale: 1.12, rotate: 0, opacity: 0.6 } : { rotate: [0, -2, 2, -2, 0] }}
       transition={isDragging ? { duration: 0.15 } : { duration: 0.4, repeat: Infinity, repeatDelay: 0.1 }}
       className="relative shrink-0 select-none touch-none"
       style={{ WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
-      onPointerDown={(e) => {
-        // Only start drag, not delete button
-        if ((e.target as HTMLElement).closest('[data-delete-btn]')) return;
-        e.preventDefault();
-        onDragStart();
-      }}
-      onPointerEnter={onDragEnter}
     >
-      <div className={`px-3 py-1.5 rounded-full text-[10px] font-mono tracking-wider border text-muted-foreground/60 min-h-[32px] flex items-center ${
-        isDragging ? 'border-primary/40 bg-primary/10' : 'border-border/50'
+      <div className={`px-3 py-1.5 rounded-full text-[10px] font-mono tracking-wider border text-muted-foreground/60 min-h-[32px] flex items-center transition-colors ${
+        isDragging ? 'border-primary/40 bg-primary/10' : isHovered ? 'border-primary/30 bg-primary/5' : 'border-border/50'
       }`}>
         {label}
       </div>
