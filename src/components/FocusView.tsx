@@ -298,9 +298,9 @@ export function FocusView() {
           >
             <button
               onClick={() => setActivePanel('main')}
-              className="self-center mb-4 p-2 text-muted-foreground/40 hover:text-muted-foreground/60 transition-colors"
+              className="self-center mb-4 p-2 text-muted-foreground/30 hover:text-muted-foreground/50 transition-colors"
             >
-              <ChevronUp size={20} strokeWidth={2} />
+              <ChevronUp size={40} strokeWidth={1.5} />
             </button>
 
             <TaskDetailPanel
