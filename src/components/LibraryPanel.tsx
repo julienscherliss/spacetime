@@ -299,7 +299,7 @@ function QuickDuePicker({ dueDate, setDueDate }: { dueDate: string; setDueDate: 
 
 export function LibraryPanel() {
   const {
-    panelOpen, setPanelOpen,
+    panelOpen, setPanelOpen, renameCategory,
     sortMode, setSortMode,
     filters, setFilter,
     addItem, getFilteredItems,
@@ -318,6 +318,8 @@ export function LibraryPanel() {
   const [draggingTag, setDraggingTag] = useState<string | null>(null);
   
   const [deletingTag, setDeletingTag] = useState<{ value: string; label: string; count: number } | null>(null);
+  const [editingTagValue, setEditingTagValue] = useState<string | null>(null);
+  const [editingTagLabel, setEditingTagLabel] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
 
