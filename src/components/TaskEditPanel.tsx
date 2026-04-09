@@ -592,7 +592,15 @@ export function TaskEditPanel() {
                 <input
                   ref={titleInputRef}
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setTitle(val);
+                    const newLinks = detectNewLinks(val, linkAttachments);
+                    if (newLinks.length > 0) {
+                      setLinkAttachments(prev => [...prev, ...newLinks]);
+                      setTitle(removeUrlsFromText(val, newLinks.map(l => l.url)));
+                    }
+                  }}
                   placeholder="Task name…"
                   className="w-full bg-transparent font-display font-bold text-foreground text-lg leading-tight focus:outline-none placeholder:text-muted-foreground/20 mb-1"
                 />
