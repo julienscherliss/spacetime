@@ -704,7 +704,7 @@ export function LibraryPanel() {
                 className="flex-1 overflow-y-auto px-4 py-3 space-y-1"
                 onPointerDown={(e) => {
                   const target = e.target as HTMLElement;
-                  if (target.closest('[data-delete-btn]')) return;
+                  if (target.closest('[data-delete-btn]') || target.closest('[data-tag-name]') || target.closest('input')) return;
                   const row = target.closest('[data-cat-value]') as HTMLElement | null;
                   if (row?.dataset.catValue) {
                     e.preventDefault();
@@ -730,7 +730,38 @@ export function LibraryPanel() {
                       >
                         <GripVertical size={14} className="text-muted-foreground/30 shrink-0" />
                         <Tag size={12} className="text-muted-foreground/30 shrink-0" />
-                        <span className="flex-1 font-mono text-[14px] text-foreground">{cat.label}</span>
+                        {editingTagValue === cat.value ? (
+                          <input
+                            data-tag-name
+                            autoFocus
+                            value={editingTagLabel}
+                            onChange={(e) => setEditingTagLabel(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                if (editingTagLabel.trim()) renameCategory(cat.value, editingTagLabel.trim());
+                                setEditingTagValue(null);
+                              }
+                              if (e.key === 'Escape') setEditingTagValue(null);
+                            }}
+                            onBlur={() => {
+                              if (editingTagLabel.trim()) renameCategory(cat.value, editingTagLabel.trim());
+                              setEditingTagValue(null);
+                            }}
+                            className="flex-1 font-mono text-[14px] text-foreground bg-transparent border-b border-primary/40 focus:outline-none py-0.5"
+                          />
+                        ) : (
+                          <button
+                            data-tag-name
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingTagValue(cat.value);
+                              setEditingTagLabel(cat.label);
+                            }}
+                            className="flex-1 text-left font-mono text-[14px] text-foreground hover:text-primary transition-colors"
+                          >
+                            {cat.label}
+                          </button>
+                        )}
                         <span className="text-[10px] font-mono text-muted-foreground/40 shrink-0 tabular-nums">{count}</span>
                         <button
                           data-delete-btn
