@@ -23,14 +23,18 @@ export function AddTaskModal() {
   const [time, setTime] = useState('09:00');
   const [duration] = useState(30);
   const [priority, setPriority] = useState<Priority>(0);
+  const [category, setCategory] = useState('');
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = () => {
-    if (!title.trim()) return;
-    addTask({ title: title.trim(), date, time, duration, priority, type: 'one-time' });
+    const cleanTitle = title.replace(/#\S*$/, '').trim();
+    if (!cleanTitle) return;
+    addTask({ title: cleanTitle, date, time, duration, priority, type: 'one-time', category: category || undefined });
     setTitle('');
     setDate(new Date().toISOString().split('T')[0]);
     setTime('09:00');
     setPriority(0);
+    setCategory('');
     setOpen(false);
   };
 
