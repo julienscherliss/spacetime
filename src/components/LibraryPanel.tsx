@@ -7,7 +7,6 @@ import {
 import {
   X, Plus, Trash2, Clock, AlertTriangle,
   ArrowDownAZ, CalendarClock, Tag, ChevronDown, GripVertical, CalendarDays,
-  ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { TagAutocomplete } from '@/components/TagAutocomplete';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -197,36 +196,32 @@ function Chip({ active, label, onClick, onLongPress }: { active: boolean; label:
   );
 }
 
-/* ── Jiggle chip for edit mode ── */
-function JiggleChip({ label, catValue, onDelete, index, total }: { label: string; catValue: string; onDelete: () => void; index: number; total: number }) {
-  const { reorderCategory } = useLibraryStore();
+/* ── Jiggle chip for edit mode (drag to reorder) ── */
+function JiggleChip({ label, catValue, onDelete, onDragStart, onDragEnter, isDragging }: {
+  label: string; catValue: string; onDelete: () => void;
+  onDragStart: () => void; onDragEnter: () => void; isDragging: boolean;
+}) {
   return (
     <motion.div
-      animate={{ rotate: [0, -2, 2, -2, 0] }}
-      transition={{ duration: 0.4, repeat: Infinity, repeatDelay: 0.1 }}
-      className="relative shrink-0 select-none"
+      animate={isDragging ? { scale: 1.1, rotate: 0, opacity: 0.7 } : { rotate: [0, -2, 2, -2, 0] }}
+      transition={isDragging ? { duration: 0.15 } : { duration: 0.4, repeat: Infinity, repeatDelay: 0.1 }}
+      className="relative shrink-0 select-none touch-none"
       style={{ WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
+      onPointerDown={(e) => {
+        // Only start drag, not delete button
+        if ((e.target as HTMLElement).closest('[data-delete-btn]')) return;
+        e.preventDefault();
+        onDragStart();
+      }}
+      onPointerEnter={onDragEnter}
     >
-      <div className="px-3 py-1.5 rounded-full text-[10px] font-mono tracking-wider border border-border/50 text-muted-foreground/60 min-h-[32px] flex items-center gap-1">
-        {index > 0 && (
-          <button
-            onClick={(e) => { e.stopPropagation(); reorderCategory(catValue, 'left'); }}
-            className="p-0.5 text-muted-foreground/40 hover:text-foreground"
-          >
-            <ChevronLeft size={10} />
-          </button>
-        )}
+      <div className={`px-3 py-1.5 rounded-full text-[10px] font-mono tracking-wider border text-muted-foreground/60 min-h-[32px] flex items-center ${
+        isDragging ? 'border-primary/40 bg-primary/10' : 'border-border/50'
+      }`}>
         {label}
-        {index < total - 1 && (
-          <button
-            onClick={(e) => { e.stopPropagation(); reorderCategory(catValue, 'right'); }}
-            className="p-0.5 text-muted-foreground/40 hover:text-foreground"
-          >
-            <ChevronRight size={10} />
-          </button>
-        )}
       </div>
       <button
+        data-delete-btn
         onClick={(e) => { e.stopPropagation(); onDelete(); }}
         className="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full bg-destructive flex items-center justify-center shadow-sm"
       >
@@ -321,6 +316,7 @@ export function LibraryPanel() {
   const [newCatName, setNewCatName] = useState('');
   const [editingItem, setEditingItem] = useState<LibraryTask | null>(null);
   const [tagEditMode, setTagEditMode] = useState(false);
+  const [draggingTag, setDraggingTag] = useState<string | null>(null);
   const [deletingTag, setDeletingTag] = useState<{ value: string; label: string; count: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
@@ -347,6 +343,18 @@ export function LibraryPanel() {
     document.addEventListener('pointerdown', handler);
     return () => document.removeEventListener('pointerdown', handler);
   }, [tagEditMode]);
+
+  // End tag drag on pointer up anywhere
+  useEffect(() => {
+    if (!draggingTag) return;
+    const handler = () => setDraggingTag(null);
+    document.addEventListener('pointerup', handler);
+    document.addEventListener('pointercancel', handler);
+    return () => {
+      document.removeEventListener('pointerup', handler);
+      document.removeEventListener('pointercancel', handler);
+    };
+  }, [draggingTag]);
 
   const handleAdd = () => {
     const titleText = input.replace(/#\S*$/, '').trim();
@@ -513,13 +521,18 @@ export function LibraryPanel() {
                 <div className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-hide">
                   {tagEditMode ? (
                     <>
-                      {categories.map((cat, idx) => (
+                      {categories.map((cat) => (
                         <JiggleChip
                           key={cat.value}
                           label={cat.label}
                           catValue={cat.value}
-                          index={idx}
-                          total={categories.length}
+                          isDragging={draggingTag === cat.value}
+                          onDragStart={() => setDraggingTag(cat.value)}
+                          onDragEnter={() => {
+                            if (draggingTag && draggingTag !== cat.value) {
+                              useLibraryStore.getState().moveCategory(draggingTag, cat.value);
+                            }
+                          }}
                           onDelete={() => handleDeleteTag(cat.value)}
                         />
                       ))}
