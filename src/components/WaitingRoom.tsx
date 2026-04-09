@@ -14,7 +14,9 @@ function WaitingRoomItem({ task, isMobile, onClosePanel }: { task: Task; isMobil
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFired = useRef(false);
 
-  const handlePointerDown = useCallback(() => {
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-touch-ignore]')) return;
     longPressFired.current = false;
     longPressTimer.current = setTimeout(() => {
       longPressFired.current = true;
@@ -31,10 +33,14 @@ function WaitingRoomItem({ task, isMobile, onClosePanel }: { task: Task; isMobil
     }, 250);
   }, [task, onClosePanel]);
 
-  const handlePointerUp = useCallback(() => {
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-touch-ignore]')) {
+      if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+      return;
+    }
     if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
     if (!longPressFired.current) {
-      // Tap = pick up into carry mode (same as long press)
       useCarryStore.getState().pickup({
         taskId: task.id,
         title: task.title,
@@ -100,28 +106,34 @@ function WaitingRoomItem({ task, isMobile, onClosePanel }: { task: Task; isMobil
       {/* Action buttons */}
       <div className={`flex items-center gap-0.5 ${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
         <button
+          onPointerDown={(e) => e.stopPropagation()}
+          onPointerUp={(e) => e.stopPropagation()}
           onClick={handleComplete}
           data-touch-ignore
-          className="p-1.5 text-muted-foreground/25 hover:text-green-600 transition-colors"
+          className="p-2 text-muted-foreground/30 hover:text-green-600 active:scale-110 transition-all duration-150"
           title="Mark Done"
         >
-          <Check size={isMobile ? 14 : 12} />
+          <Check size={isMobile ? 16 : 13} />
         </button>
         <button
+          onPointerDown={(e) => e.stopPropagation()}
+          onPointerUp={(e) => e.stopPropagation()}
           onClick={handleMoveToLibrary}
           data-touch-ignore
-          className="p-1.5 text-muted-foreground/25 hover:text-foreground transition-colors"
+          className="p-2 text-muted-foreground/30 hover:text-foreground active:translate-y-[-2px] transition-all duration-150"
           title="Move to Library"
         >
-          <Archive size={isMobile ? 14 : 12} />
+          <Archive size={isMobile ? 16 : 13} />
         </button>
         <button
+          onPointerDown={(e) => e.stopPropagation()}
+          onPointerUp={(e) => e.stopPropagation()}
           onClick={(e) => { e.stopPropagation(); deleteTask(task.id); }}
           data-touch-ignore
-          className="p-1.5 text-muted-foreground/25 hover:text-destructive transition-colors"
+          className="p-2 text-muted-foreground/30 hover:text-destructive active:rotate-90 transition-all duration-150"
           title="Delete"
         >
-          <X size={isMobile ? 14 : 12} />
+          <X size={isMobile ? 16 : 13} />
         </button>
       </div>
     </div>
