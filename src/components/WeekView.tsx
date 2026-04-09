@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useTrackpadSwipe } from '@/hooks/useTrackpadSwipe';
 import { motion } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
 import { useCalendarStore } from '@/store/calendarStore';
@@ -102,6 +103,16 @@ export function WeekView() {
     return () => { cleanScroll?.(); cleanPinch?.(); };
   }, [bindScrollZoom, bindPinchZoom]);
 
+  // Trackpad horizontal swipe for week navigation
+  const weekContainerRef = useRef<HTMLDivElement>(null);
+  useTrackpadSwipe({
+    direction: 'horizontal',
+    containerRef: weekContainerRef,
+    threshold: 200,
+    onSwipePositive: useCallback(() => setWeekOffset(o => o - 1), []),
+    onSwipeNegative: useCallback(() => setWeekOffset(o => o + 1), []),
+  });
+
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (e.touches.length !== 1) return;
     touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -178,6 +189,7 @@ export function WeekView() {
 
   return (
     <div
+      ref={weekContainerRef}
       className="w-full px-2 sm:px-3 lg:px-4"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}

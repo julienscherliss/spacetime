@@ -8,6 +8,7 @@ import { SegmentedProgressRing } from '@/components/SegmentedProgressRing';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
+import { useTrackpadSwipe } from '@/hooks/useTrackpadSwipe';
 
 type FocusPanel = 'completed' | 'main' | 'detail';
 
@@ -161,6 +162,22 @@ export function FocusView() {
     }
   }, [activePanel]);
 
+  // Trackpad vertical swipe for panel navigation
+  const focusContainerRef = useRef<HTMLDivElement>(null);
+  useTrackpadSwipe({
+    direction: 'vertical',
+    containerRef: focusContainerRef,
+    threshold: 120,
+    onSwipeNegative: useCallback(() => {
+      // Scroll down = swipe up
+      setActivePanel(p => p === 'main' ? 'detail' : p === 'completed' ? 'main' : p);
+    }, []),
+    onSwipePositive: useCallback(() => {
+      // Scroll up = swipe down
+      setActivePanel(p => p === 'main' ? 'completed' : p === 'detail' ? 'main' : p);
+    }, []),
+  });
+
   useEffect(() => {
     return () => {
       if (holdTimerRef.current) cancelAnimationFrame(holdTimerRef.current);
@@ -172,6 +189,7 @@ export function FocusView() {
 
   return (
     <div
+      ref={focusContainerRef}
       className="relative overflow-hidden"
       style={{ height: 'calc(100vh - 48px)' }}
       onTouchStart={handleTouchStart}
