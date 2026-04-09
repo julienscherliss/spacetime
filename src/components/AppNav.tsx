@@ -1,7 +1,7 @@
 /* nav v2 */
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useTaskStore, ViewMode } from '@/store/taskStore';
+import { useTaskStore, ViewMode, DaySubMode } from '@/store/taskStore';
 import { useLibraryStore } from '@/store/libraryStore';
 import { useTimezoneStore, getTzAbbr } from '@/store/timezoneStore';
 import { useAuth } from '@/hooks/useAuth';
@@ -19,7 +19,7 @@ const views: { mode: ViewMode; icon: typeof Focus; label: string }[] = [
 ];
 
 export function AppNav() {
-  const { viewMode, setViewMode, routinesEnabled, toggleRoutines, tasks } = useTaskStore();
+  const { viewMode, setViewMode, daySubMode, setDaySubMode, routinesEnabled, toggleRoutines, tasks } = useTaskStore();
   const { panelOpen: libPanelOpen, setPanelOpen: setLibPanelOpen } = useLibraryStore();
   const libCount = useLibraryStore((s) => s.items.length);
   const { signOut } = useAuth();
@@ -56,10 +56,37 @@ export function AppNav() {
 
             {/* View tabs — primary action */}
             <div className="flex items-center bg-muted/50 rounded-md p-0.5 gap-0.5">
-              {views.map(({ mode, icon: Icon, label }) => (
+              {views.map(({ mode, icon: Icon, label }) => {
+                const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+                const didLongPress = useRef(false);
+
+                const handlePointerDown = () => {
+                  if (mode !== 'day') return;
+                  didLongPress.current = false;
+                  longPressRef.current = setTimeout(() => {
+                    didLongPress.current = true;
+                    setDaySubMode(daySubMode === 'timeline' ? 'list' : 'timeline');
+                    setViewMode('day');
+                  }, 500);
+                };
+                const handlePointerUp = () => {
+                  if (longPressRef.current) clearTimeout(longPressRef.current);
+                  longPressRef.current = null;
+                };
+
+                return (
                 <button
                   key={mode}
-                  onClick={() => setViewMode(mode)}
+                  onClick={() => {
+                    if (mode === 'day' && didLongPress.current) {
+                      didLongPress.current = false;
+                      return;
+                    }
+                    setViewMode(mode);
+                  }}
+                  onPointerDown={handlePointerDown}
+                  onPointerUp={handlePointerUp}
+                  onPointerLeave={handlePointerUp}
                   className={`relative flex flex-col items-center justify-center min-w-[48px] h-[44px] rounded-md transition-colors ${
                     viewMode === mode ? 'text-foreground' : 'text-muted-foreground'
                   }`}
@@ -76,7 +103,8 @@ export function AppNav() {
                     <span className="text-[8px] font-mono tracking-[0.08em] leading-none">{label}</span>
                   </span>
                 </button>
-              ))}
+                );
+              })}
             </div>
 
             {/* More button */}
