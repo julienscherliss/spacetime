@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
 import { useCurrentTime, timeToMinutes, formatTime12h } from '@/hooks/useCurrentTime';
 import { ChevronUp, ChevronDown, ChevronRight, Paperclip, ExternalLink } from 'lucide-react';
+import { SegmentedProgressRing } from '@/components/SegmentedProgressRing';
 
 type FocusPanel = 'completed' | 'main' | 'upcoming';
 
@@ -407,49 +408,46 @@ function MainFocusPanel({
         </span>
       </div>
 
-      {/* ═══ ZONE 2: CENTER FOCUS (timer + title) ═══ */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 min-h-0">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTask.id}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="flex flex-col items-center w-full"
-          >
-            {/* Timer — dominant element */}
-            <motion.div
-              className="font-mono text-[80px] sm:text-[104px] font-bold text-foreground leading-none tabular-nums tracking-tight select-none"
-              animate={isHolding ? { scale: 1.04, opacity: 0.7 } : completing ? { scale: 0.95, opacity: 0.3 } : { scale: 1, opacity: 1 }}
-              transition={{ duration: 0.25, ease: 'easeOut' }}
-            >
-              {remainingH}:{remainingM}
-            </motion.div>
+      {/* ═══ ZONE 2: CENTER FOCUS (ring + timer + title) ═══ */}
+      <div className="relative z-10 flex-1 flex items-center justify-center px-6 min-h-0">
+        {/* Progress ring container */}
+        <div className="relative" style={{ width: 300, height: 300 }}>
+          <SegmentedProgressRing
+            progress={activeTask.duration ? (activeTask.duration - clampedRemaining) / activeTask.duration : 0}
+            size={300}
+            segments={60}
+            strokeWidth={3}
+            gap={2.5}
+          />
 
-            {/* Task title — directly under timer */}
-            <h1 className="mt-3 text-base sm:text-lg font-display font-medium text-foreground/80 leading-snug text-center max-w-[300px]">
-              {activeTask.title}
-            </h1>
-
-            {/* Hold progress — inline, no reserved space */}
-            <AnimatePresence>
-              {isHolding && (
+          {/* Content inside ring */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTask.id}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                className="flex flex-col items-center"
+              >
+                {/* Timer */}
                 <motion.div
-                  initial={{ opacity: 0, scaleX: 0 }}
-                  animate={{ opacity: 1, scaleX: 1 }}
-                  exit={{ opacity: 0, scaleX: 0 }}
-                  className="mt-3 w-16 h-[2px] bg-muted-foreground/10 overflow-hidden origin-left"
+                  className="font-mono text-[64px] sm:text-[80px] font-bold text-foreground leading-none tabular-nums tracking-tight select-none"
+                  animate={isHolding ? { scale: 1.04, opacity: 0.7 } : completing ? { scale: 0.95, opacity: 0.3 } : { scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.25, ease: 'easeOut' }}
                 >
-                  <motion.div
-                    className="h-full bg-foreground/50"
-                    style={{ width: `${holdProgress * 100}%` }}
-                  />
+                  {remainingH}:{remainingM}
                 </motion.div>
-              )}
+
+                {/* Task title */}
+                <h1 className="mt-2 text-sm sm:text-base font-display font-medium text-foreground/80 leading-snug text-center max-w-[220px]">
+                  {activeTask.title}
+                </h1>
+              </motion.div>
             </AnimatePresence>
-          </motion.div>
-        </AnimatePresence>
+          </div>
+        </div>
       </div>
 
       {/* ═══ ZONE 3: BOTTOM DETAILS ═══ */}
