@@ -332,7 +332,7 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
   const [subtaskDraft, setSubtaskDraft] = useState('');
   const [addingSubtask, setAddingSubtask] = useState(false);
   const [newSubtaskDraft, setNewSubtaskDraft] = useState('');
-  const { minutes: nowMinutes } = useCurrentTime(1000);
+  const { now: detailNow, minutes: nowMinutes } = useCurrentTime(1000);
 
   useEffect(() => {
     if (!editingNote || !noteEditorRef.current) return;
