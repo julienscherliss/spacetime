@@ -344,6 +344,18 @@ export function LibraryPanel() {
     return () => document.removeEventListener('pointerdown', handler);
   }, [tagEditMode]);
 
+  // End tag drag on pointer up anywhere
+  useEffect(() => {
+    if (!draggingTag) return;
+    const handler = () => setDraggingTag(null);
+    document.addEventListener('pointerup', handler);
+    document.addEventListener('pointercancel', handler);
+    return () => {
+      document.removeEventListener('pointerup', handler);
+      document.removeEventListener('pointercancel', handler);
+    };
+  }, [draggingTag]);
+
   const handleAdd = () => {
     const titleText = input.replace(/#\S*$/, '').trim();
     if (!titleText) return;
