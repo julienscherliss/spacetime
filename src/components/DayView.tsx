@@ -50,20 +50,22 @@ export function DayView() {
   const preClusterScrollRef = useRef<number | null>(null);
 
   const handleZoomToCluster = useCallback((cluster: TaskCluster, targetHourHeight: number, scrollToMin: number) => {
-    const el = scrollRef.current ?? document.scrollingElement ?? document.documentElement;
     preClusterScaleRef.current = hourHeight;
-    preClusterScrollRef.current = el.scrollTop;
+    preClusterScrollRef.current = window.scrollY;
 
     const clamped = Math.min(SCALE_MAX, Math.max(SCALE_MIN, targetHourHeight));
-    const viewportH = window.innerHeight;
+    const stickyOffset = 96;
+    const viewportH = window.innerHeight - stickyOffset;
     const clusterCenterMin = (cluster.startMin + cluster.endMin) / 2;
+    const timelineTop = scrollRef.current
+      ? scrollRef.current.getBoundingClientRect().top + window.scrollY
+      : 0;
 
     setScale(clamped);
     setClusterZoomed(true);
 
-    const targetScrollTop = Math.max(0,
-      ((clusterCenterMin - START_HOUR * 60) / 60) * clamped - viewportH / 2
-    );
+    const centerDocY = timelineTop + ((clusterCenterMin - START_HOUR * 60) / 60) * clamped;
+    const targetScrollTop = Math.max(0, centerDocY - stickyOffset - viewportH / 2);
 
     queueMicrotask(() => {
       window.scrollTo({ top: targetScrollTop, behavior: 'auto' });
@@ -104,20 +106,24 @@ export function DayView() {
     const [h, m] = taskTime.split(':').map(Number);
     const taskStartMin = h * 60 + m;
     const taskEndMin = taskStartMin + taskDuration;
-    // 2 hours before start, 2 hours after end
     const windowStartMin = Math.max(0, taskStartMin - 120);
     const windowEndMin = Math.min(24 * 60, taskEndMin + 120);
     const windowHours = (windowEndMin - windowStartMin) / 60;
-    const viewportH = window.innerHeight - 100; // approx usable height
+    const stickyOffset = 96;
+    const viewportH = window.innerHeight - stickyOffset;
     const targetHourHeight = Math.min(SCALE_MAX, Math.max(SCALE_MIN, viewportH / windowHours));
 
     setScale(targetHourHeight);
     setListReturnZoom(null);
 
-    queueMicrotask(() => {
-      const scrollTarget = Math.max(0,
-        ((windowStartMin - START_HOUR * 60) / 60) * targetHourHeight
-      );
+    // Wait for layout with new scale, then scroll
+    requestAnimationFrame(() => {
+      const timelineTop = scrollRef.current
+        ? scrollRef.current.getBoundingClientRect().top + window.scrollY
+        : 0;
+      const windowCenterMin = (windowStartMin + windowEndMin) / 2;
+      const centerDocY = timelineTop + ((windowCenterMin - START_HOUR * 60) / 60) * targetHourHeight;
+      const scrollTarget = Math.max(0, centerDocY - stickyOffset - viewportH / 2);
       window.scrollTo({ top: scrollTarget, behavior: 'auto' });
     });
   }, [listReturnZoom, setListReturnZoom, setScale]);

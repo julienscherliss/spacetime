@@ -40,15 +40,18 @@ export function WeekView() {
     preClusterScrollRef.current = window.scrollY;
 
     const clamped = Math.min(SCALE_MAX, Math.max(SCALE_MIN, targetHourHeight));
-    const viewportH = window.innerHeight;
+    const stickyOffset = 96;
+    const viewportH = window.innerHeight - stickyOffset;
     const clusterCenterMin = (cluster.startMin + cluster.endMin) / 2;
+    const timelineTop = scrollRef.current
+      ? scrollRef.current.getBoundingClientRect().top + window.scrollY
+      : 0;
 
     setScale(clamped);
     setClusterZoomed(true);
 
-    const targetScrollTop = Math.max(0,
-      ((clusterCenterMin - START_HOUR * 60) / 60) * clamped - viewportH / 2
-    );
+    const centerDocY = timelineTop + ((clusterCenterMin - START_HOUR * 60) / 60) * clamped;
+    const targetScrollTop = Math.max(0, centerDocY - stickyOffset - viewportH / 2);
 
     queueMicrotask(() => {
       window.scrollTo({ top: targetScrollTop, behavior: 'auto' });
