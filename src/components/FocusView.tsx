@@ -332,7 +332,7 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
   const [subtaskDraft, setSubtaskDraft] = useState('');
   const [addingSubtask, setAddingSubtask] = useState(false);
   const [newSubtaskDraft, setNewSubtaskDraft] = useState('');
-  const { minutes: nowMinutes } = useCurrentTime(1000);
+  const { now: detailNow, minutes: nowMinutes } = useCurrentTime(1000);
 
   useEffect(() => {
     if (!editingNote || !noteEditorRef.current) return;
@@ -371,13 +371,14 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
   const totalSubtasks = task.subtasks?.length ?? 0;
   const priorityLabel = PRIORITY_LABELS[task.priority] || 'FLEX';
 
-  // Lightweight countdown
-  const taskRemaining = task.time
-    ? Math.max(0, (timeToMinutes(task.time) + (task.duration || 30)) - nowMinutes)
-    : 0;
-  const countdownH = Math.floor(taskRemaining / 60);
-  const countdownM = taskRemaining % 60;
-  const countdownLabel = `${String(countdownH).padStart(2, '0')}:${String(countdownM).padStart(2, '0')}`;
+  // Lightweight countdown with seconds
+  const taskEndMinutes = task.time ? timeToMinutes(task.time) + (task.duration || 30) : 0;
+  const taskEndMs = task.time ? new Date(detailNow).setHours(Math.floor(taskEndMinutes / 60), taskEndMinutes % 60, 0, 0) : 0;
+  const remainingSec = task.time ? Math.max(0, Math.floor((taskEndMs - detailNow.getTime()) / 1000)) : 0;
+  const countdownH = Math.floor(remainingSec / 3600);
+  const countdownM = Math.floor((remainingSec % 3600) / 60);
+  const countdownS = remainingSec % 60;
+  const countdownLabel = `${String(countdownH).padStart(2, '0')}:${String(countdownM).padStart(2, '0')}:${String(countdownS).padStart(2, '0')}`;
 
   // Due date label
   const dueDateLabel = task.dueDate
