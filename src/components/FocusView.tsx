@@ -382,16 +382,16 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
   const countdownS = remainingSec % 60;
   const countdownLabel = `${String(countdownH).padStart(2, '0')}:${String(countdownM).padStart(2, '0')}:${String(countdownS).padStart(2, '0')}`;
 
-  // Due date label — show day name if within a week
+  // Due date label — no date = Today, tomorrow = Tomorrow, within week = day name, else date
   const dueDateLabel = (() => {
-    if (!task.dueDate) return null;
+    if (!task.dueDate) return 'Today';
     const due = new Date(task.dueDate + 'T12:00:00');
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const diffDays = Math.round((due.getTime() - todayStart.getTime()) / (1000 * 60 * 60 * 24));
-    if (diffDays === 0) return 'Due Today';
-    if (diffDays === 1) return 'Due Tomorrow';
-    if (diffDays > 1 && diffDays <= 6) return `Due ${due.toLocaleDateString('en-US', { weekday: 'long' })}`;
+    if (diffDays <= 0) return 'Today';
+    if (diffDays === 1) return 'Tomorrow';
+    if (diffDays <= 6) return due.toLocaleDateString('en-US', { weekday: 'long' });
     return `Due ${due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
   })();
 
