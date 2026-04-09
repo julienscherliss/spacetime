@@ -466,8 +466,8 @@ function MainFocusPanel({
       </div>
 
       {/* ═══ ZONE 3: BOTTOM DETAILS ═══ */}
-      <div className="relative z-10 px-5 pb-5 overflow-y-auto" style={{ maxHeight: '35%' }}>
-        <div className="max-w-[320px] mx-auto flex flex-col gap-3">
+      <div className="relative z-10 px-5 pb-5 -mt-6 overflow-y-auto" style={{ maxHeight: '40%' }}>
+        <div className="max-w-[320px] mx-auto flex flex-col gap-2">
           {/* Description */}
           {hasDescription && (
             <button
