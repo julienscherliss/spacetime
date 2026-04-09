@@ -716,12 +716,10 @@ export function LibraryPanel() {
                   categories.map((cat) => {
                     const count = allItems.filter(i => i.category === cat.value).length;
                     return (
-                      <motion.div
+                      <div
                         key={cat.value}
                         data-cat-value={cat.value}
-                        layout
-                        transition={{ duration: 0.2, ease: 'easeInOut' }}
-                        className={`flex items-center gap-3 px-3 py-3.5 rounded-lg border select-none touch-none ${
+                        className={`flex items-center gap-3 px-3 py-3.5 rounded-lg border select-none touch-none transition-colors duration-150 ${
                           draggingTag === cat.value
                             ? 'border-primary/40 bg-primary/5 scale-[1.02]'
                             : 'border-border/30 bg-card/50'
@@ -741,7 +739,7 @@ export function LibraryPanel() {
                         >
                           <Trash2 size={14} />
                         </button>
-                      </motion.div>
+                      </div>
                     );
                   })
                 )}
