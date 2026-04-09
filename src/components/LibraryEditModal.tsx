@@ -77,6 +77,7 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
   const [dueDate, setDueDate] = useState(item.dueDate || '');
   const [subtasks, setSubtasks] = useState<LibrarySubtask[]>(item.subtasks || []);
   const [newSubtaskText, setNewSubtaskText] = useState('');
+  const [linkAttachments, setLinkAttachments] = useState<LinkAttachment[]>([]);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved'>('idle');
   const [showCatPicker, setShowCatPicker] = useState(false);
   const [newCatInline, setNewCatInline] = useState('');
