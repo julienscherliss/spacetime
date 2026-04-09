@@ -556,6 +556,11 @@ export function LibraryPanel() {
                         label="All"
                         onClick={() => setFilter({ category: 'all' })}
                       />
+                      <Chip
+                        active={filters.category === 'none'}
+                        label="Untagged"
+                        onClick={() => setFilter({ category: filters.category === 'none' ? 'all' : 'none' })}
+                      />
                       {categories.map((cat) => (
                         <Chip
                           key={cat.value}
