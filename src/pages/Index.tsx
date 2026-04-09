@@ -3,6 +3,7 @@ import { useTaskStore } from '@/store/taskStore';
 import { AppNav } from '@/components/AppNav';
 import { FocusView } from '@/components/FocusView';
 import { DayView } from '@/components/DayView';
+import { DayListView } from '@/components/DayListView';
 import { WeekView } from '@/components/WeekView';
 import { CalendarView } from '@/components/CalendarView';
 import { TaskEditPanel } from '@/components/TaskEditPanel';
@@ -18,7 +19,7 @@ import { CarryIndicator } from '@/components/CarryIndicator';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Index = () => {
-  const { viewMode, routinesEnabled, moveOverdueToWaitingRoom } = useTaskStore();
+  const { viewMode, daySubMode, routinesEnabled, moveOverdueToWaitingRoom } = useTaskStore();
   const [waitingOpen, setWaitingOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
@@ -66,7 +67,7 @@ const Index = () => {
           style={{ willChange: 'opacity' }}
         >
           {viewMode === 'focus' && <FocusView />}
-          {viewMode === 'day' && <DayView />}
+          {viewMode === 'day' && (daySubMode === 'list' ? <DayListView /> : <DayView />)}
           {viewMode === 'week' && <WeekView />}
           {viewMode === 'calendar' && <CalendarView />}
         </motion.div>
