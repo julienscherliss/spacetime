@@ -184,40 +184,44 @@ export function WeekView() {
       onTouchEnd={handleTouchEnd}
     >
       {/* Bold title row — scrolls away naturally */}
-      <div className="pt-3 pb-2 flex items-center justify-between">
+      <div className="pt-3 pb-2">
         <h2 className="text-lg sm:text-xl font-display font-bold text-foreground tracking-tight">
           {monthLabel}
         </h2>
-        <div className="flex items-center gap-1">
-          {clusterZoomed && (
-            <button
-              onClick={handleExitClusterZoom}
-              className="flex items-center gap-1 px-2 py-1 rounded-md bg-muted/60 border border-border/40 text-[10px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              <X size={10} />
-              <span className="tracking-wider">EXIT ZOOM</span>
-            </button>
-          )}
-          <FitViewButton
-            tasks={visibleTasks}
-            scrollRef={scrollRef as React.RefObject<HTMLElement>}
-            hourHeight={hourHeight}
-            setScale={setScale}
-            resetZoom={resetZoom}
-            nowMinutes={nowMinutes}
-          />
-        </div>
       </div>
 
-      {/* Sticky weekday/date header — the only sticky row */}
+      {/* Sticky weekday/date header with controls */}
       <div className="sticky top-12 z-30 bg-background border-b border-border/30">
-        <WeekDayHeaders
-          weekOffset={weekOffset}
-          today={today}
-          compact={isMobile}
-          dayCount={dayCount}
-          controls={headerControls}
-        />
+        <div className="flex items-center justify-between">
+          <div className="flex-1 min-w-0">
+            <WeekDayHeaders
+              weekOffset={weekOffset}
+              today={today}
+              compact={isMobile}
+              dayCount={dayCount}
+              controls={headerControls}
+            />
+          </div>
+          <div className="flex items-center gap-1 pr-1 shrink-0">
+            {clusterZoomed && (
+              <button
+                onClick={handleExitClusterZoom}
+                className="flex items-center gap-1 px-2 py-1 rounded-md bg-muted/60 border border-border/40 text-[10px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <X size={10} />
+                <span className="tracking-wider">EXIT ZOOM</span>
+              </button>
+            )}
+            <FitViewButton
+              tasks={visibleTasks}
+              scrollRef={scrollRef as React.RefObject<HTMLElement>}
+              hourHeight={hourHeight}
+              setScale={setScale}
+              resetZoom={resetZoom}
+              nowMinutes={nowMinutes}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Calendar grid — flows naturally, no inner scroll */}
