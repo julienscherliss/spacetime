@@ -547,7 +547,6 @@ export function LibraryPanel() {
                           label={cat.label}
                           catValue={cat.value}
                           isDragging={draggingTag === cat.value}
-                          isHovered={hoveredTag === cat.value && draggingTag !== cat.value}
                           onDelete={() => handleDeleteTag(cat.value)}
                         />
                       ))}
