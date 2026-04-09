@@ -155,7 +155,7 @@ export function FocusView() {
     };
   }, []);
 
-  const showUpArrow = activePanel === 'main' && completedToday.length > 0;
+  const showUpArrow = activePanel === 'main' && (completedToday.length > 0 || upcomingTasks.length > 0);
   const showDownArrow = activePanel === 'main';
 
   return (
