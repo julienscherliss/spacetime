@@ -315,6 +315,7 @@ export function LibraryPanel() {
 
   const [input, setInput] = useState('');
   const [quickDueDate, setQuickDueDate] = useState('');
+  const [quickCategory, setQuickCategory] = useState('');
   const [showSort, setShowSort] = useState(false);
   const [showNewCat, setShowNewCat] = useState(false);
   const [newCatName, setNewCatName] = useState('');
@@ -348,18 +349,19 @@ export function LibraryPanel() {
   }, [tagEditMode]);
 
   const handleAdd = () => {
-    if (!input.trim()) return;
+    const titleText = input.replace(/#\S*$/, '').trim();
+    if (!titleText) return;
     const store = useLibraryStore.getState();
-    // Use addItem then update due date if set
-    store.addItem(input.trim());
+    store.addItem(titleText, quickCategory || undefined);
     if (quickDueDate) {
-      const newItem = store.items[0]; // just added at front
+      const newItem = store.items[0];
       if (newItem) {
         store.updateItem(newItem.id, { dueDate: quickDueDate });
       }
     }
     setInput('');
     setQuickDueDate('');
+    setQuickCategory('');
     inputRef.current?.focus();
   };
 
