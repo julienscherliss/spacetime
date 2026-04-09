@@ -104,15 +104,33 @@ function WaitingRoomItem({ task, isMobile, onClosePanel }: { task: Task; isMobil
 
       <PriorityBadge priority={task.priority} />
 
-      {/* Move to library */}
-      <button
-        onClick={handleMoveToLibrary}
-        data-touch-ignore
-        className={`p-1.5 text-muted-foreground/25 hover:text-foreground transition-colors ${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
-        title="Move to Library"
-      >
-        <Archive size={isMobile ? 14 : 12} />
-      </button>
+      {/* Action buttons */}
+      <div className={`flex items-center gap-0.5 ${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+        <button
+          onClick={handleComplete}
+          data-touch-ignore
+          className="p-1.5 text-muted-foreground/25 hover:text-green-600 transition-colors"
+          title="Mark Done"
+        >
+          <Check size={isMobile ? 14 : 12} />
+        </button>
+        <button
+          onClick={handleMoveToLibrary}
+          data-touch-ignore
+          className="p-1.5 text-muted-foreground/25 hover:text-foreground transition-colors"
+          title="Move to Library"
+        >
+          <Archive size={isMobile ? 14 : 12} />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); deleteTask(task.id); }}
+          data-touch-ignore
+          className="p-1.5 text-muted-foreground/25 hover:text-destructive transition-colors"
+          title="Delete"
+        >
+          <X size={isMobile ? 14 : 12} />
+        </button>
+      </div>
     </div>
   );
 }
