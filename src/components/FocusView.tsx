@@ -210,7 +210,7 @@ export function FocusView() {
                   <p className="text-center text-muted-foreground/30 font-mono text-[12px] py-3">Nothing yet</p>
                 ) : (
                   <>
-                    {(completedExpanded ? completedToday : completedToday.slice(0, 5)).map((task) => (
+                    {(completedExpanded ? completedToday : completedToday.slice(-5)).map((task) => (
                       <div key={task.id} className="flex items-center gap-3 py-2.5 px-3">
                         <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30 shrink-0" />
                         <span className="text-[13px] font-mono text-muted-foreground/50 line-through truncate flex-1">
