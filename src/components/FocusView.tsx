@@ -326,6 +326,7 @@ export function FocusView() {
               onHoldStart={startHold}
               onHoldEnd={cancelHold}
               onUpdateTask={updateTask}
+              overdueTasks={overdueTasks}
             />
           </motion.div>
         )}
