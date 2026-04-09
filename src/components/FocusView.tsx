@@ -70,7 +70,7 @@ export function FocusView() {
       }
       return false;
     })
-    .sort((a, b) => (b.time || '').localeCompare(a.time || ''));
+    .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
 
   const activeTask = todayTasks.find((t) => {
     if (!t.time) return false;
