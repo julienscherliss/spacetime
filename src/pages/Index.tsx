@@ -16,6 +16,7 @@ import { TouchDragGhost } from '@/components/TouchDragGhost';
 import { SettingsPanel } from '@/components/SettingsPanel';
 import { InventoryDropZones } from '@/components/InventoryDropZones';
 import { CarryIndicator } from '@/components/CarryIndicator';
+import { AnalyticsPanel } from '@/components/analytics/AnalyticsPanel';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Index = () => {
@@ -23,6 +24,7 @@ const Index = () => {
   const [waitingOpen, setWaitingOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
 
   // Move overdue tasks to waiting room periodically
   useEffect(() => {
@@ -50,6 +52,13 @@ const Index = () => {
     const handler = () => setArchiveOpen((o) => !o);
     window.addEventListener('toggle-archive', handler);
     return () => window.removeEventListener('toggle-archive', handler);
+  }, []);
+
+  // Listen for analytics toggle from nav
+  useEffect(() => {
+    const handler = () => setAnalyticsOpen((o) => !o);
+    window.addEventListener('toggle-analytics', handler);
+    return () => window.removeEventListener('toggle-analytics', handler);
   }, []);
 
   return (
@@ -83,6 +92,7 @@ const Index = () => {
       <InventoryDropZones />
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <ArchivePanel open={archiveOpen} onClose={() => setArchiveOpen(false)} />
+      <AnalyticsPanel open={analyticsOpen} onClose={() => setAnalyticsOpen(false)} />
     </div>
   );
 };

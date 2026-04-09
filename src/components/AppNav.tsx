@@ -8,7 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Focus, List, CalendarDays, Grid3X3, Repeat,
-  Archive, Clock, LogOut, Settings, MoreHorizontal, X, ArchiveRestore
+  Archive, Clock, LogOut, Settings, MoreHorizontal, X, ArchiveRestore, BarChart3
 } from 'lucide-react';
 
 const views: { mode: ViewMode; icon: typeof Focus; label: string }[] = [
@@ -138,6 +138,11 @@ export function AppNav() {
                         label="Archive"
                         onClick={() => { window.dispatchEvent(new CustomEvent('toggle-archive')); setMoreOpen(false); }}
                       />
+                      <OverflowItem
+                        icon={<BarChart3 size={18} strokeWidth={1.5} />}
+                        label="Analytics"
+                        onClick={() => { window.dispatchEvent(new CustomEvent('toggle-analytics')); setMoreOpen(false); }}
+                      />
 
                       <div className="border-t border-border/40 my-1" />
 
@@ -258,6 +263,13 @@ export function AppNav() {
           >
             <ArchiveRestore size={13} strokeWidth={1.5} />
             <span>ARCHIVE</span>
+          </button>
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('toggle-analytics'))}
+            className={`${navItemBase} ${navItemInactive}`}
+          >
+            <BarChart3 size={13} strokeWidth={1.5} />
+            <span>ANALYTICS</span>
           </button>
 
           {/* Utility separator */}
