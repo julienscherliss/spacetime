@@ -324,6 +324,18 @@ export const useLibraryStore = create<LibraryState>()(
           return { categories: cats };
         });
       },
+
+      moveCategory: (fromValue, toValue) => {
+        set((s) => {
+          const cats = [...s.categories];
+          const fromIdx = cats.findIndex(c => c.value === fromValue);
+          const toIdx = cats.findIndex(c => c.value === toValue);
+          if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return s;
+          const [moved] = cats.splice(fromIdx, 1);
+          cats.splice(toIdx, 0, moved);
+          return { categories: cats };
+        });
+      },
     }),
     {
       name: 'do-library-store',
