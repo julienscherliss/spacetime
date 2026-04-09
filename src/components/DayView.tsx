@@ -97,7 +97,32 @@ export function DayView() {
   useEffect(() => {
     if (connected) fetchEvents(selectedDate, selectedDate);
   }, [selectedDate, connected]);
+  // Zoom to task time when coming from list view
+  useEffect(() => {
+    if (!listReturnZoom) return;
+    const { taskTime, taskDuration } = listReturnZoom;
+    const [h, m] = taskTime.split(':').map(Number);
+    const taskStartMin = h * 60 + m;
+    const taskEndMin = taskStartMin + taskDuration;
+    // 2 hours before start, 2 hours after end
+    const windowStartMin = Math.max(0, taskStartMin - 120);
+    const windowEndMin = Math.min(24 * 60, taskEndMin + 120);
+    const windowHours = (windowEndMin - windowStartMin) / 60;
+    const viewportH = window.innerHeight - 100; // approx usable height
+    const targetHourHeight = Math.min(SCALE_MAX, Math.max(SCALE_MIN, viewportH / windowHours));
 
+    setScale(targetHourHeight);
+    setListReturnZoom(null);
+
+    queueMicrotask(() => {
+      const scrollTarget = Math.max(0,
+        ((windowStartMin - START_HOUR * 60) / 60) * targetHourHeight
+      );
+      window.scrollTo({ top: scrollTarget, behavior: 'auto' });
+    });
+  }, [listReturnZoom, setListReturnZoom, setScale]);
+
+  
   // Bind zoom gestures to the page-level scroll container
   useEffect(() => {
     const el = document.documentElement;
