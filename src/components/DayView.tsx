@@ -201,7 +201,7 @@ export function DayView() {
       </div>
 
       {/* Sticky compact control row */}
-      <div className="sticky top-0 z-30 bg-background py-1.5 flex items-center justify-between border-b border-border/30">
+      <div className="sticky top-12 z-30 bg-background py-1.5 flex items-center justify-between border-b border-border/30">
         <div className="flex items-center gap-0.5">
           <button
             onClick={() => setSelectedDate(d => addDaysToDate(d, -1))}
