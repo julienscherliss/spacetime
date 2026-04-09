@@ -327,6 +327,7 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
   const [titleDraft, setTitleDraft] = useState('');
   const [editingNote, setEditingNote] = useState(false);
   const [noteDraft, setNoteDraft] = useState('');
+  const { minutes: nowMinutes } = useCurrentTime(1000);
 
   // Empty state
   if (!task) {
@@ -350,22 +351,31 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
   const totalSubtasks = task.subtasks?.length ?? 0;
   const priorityLabel = PRIORITY_LABELS[task.priority] || 'FLEX';
 
-  const timeLabel = task.time
-    ? `${formatTime12h(task.time)} – ${formatTime12h(timeToMinutes(task.time) + (task.duration || 30))}`
-    : '';
+  // Lightweight countdown
+  const taskRemaining = task.time
+    ? Math.max(0, (timeToMinutes(task.time) + (task.duration || 30)) - nowMinutes)
+    : 0;
+  const countdownH = Math.floor(taskRemaining / 60);
+  const countdownM = taskRemaining % 60;
+  const countdownLabel = countdownH > 0
+    ? `${countdownH}h ${String(countdownM).padStart(2, '0')}m`
+    : `${countdownM}m`;
+
+  // Due date label
+  const dueDateLabel = task.dueDate
+    ? `Due ${new Date(task.dueDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+    : null;
 
   return (
     <div className="w-full max-w-sm mx-auto flex flex-col gap-5">
-      {/* ── Header: time + priority ── */}
+      {/* ── Header: countdown (left) + due date or priority (right) ── */}
       <div className="flex items-center justify-between">
-        <span className="text-[9px] font-mono tracking-[0.2em] text-muted-foreground/35 uppercase">
-          {priorityLabel}
+        <span className="text-[10px] font-mono tabular-nums tracking-wider text-muted-foreground/40">
+          {task.time ? countdownLabel : '—'}
         </span>
-        {timeLabel && (
-          <span className="text-[9px] font-mono text-muted-foreground/25 tabular-nums tracking-wider">
-            {timeLabel}
-          </span>
-        )}
+        <span className="text-[9px] font-mono tracking-[0.2em] text-muted-foreground/35 uppercase">
+          {dueDateLabel || priorityLabel}
+        </span>
       </div>
 
       {/* ── Title ── */}
