@@ -327,11 +327,27 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
   const [titleDraft, setTitleDraft] = useState('');
   const [editingNote, setEditingNote] = useState(false);
   const [noteDraft, setNoteDraft] = useState('');
+  const noteEditorRef = useRef<HTMLDivElement | null>(null);
   const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
   const [subtaskDraft, setSubtaskDraft] = useState('');
   const [addingSubtask, setAddingSubtask] = useState(false);
   const [newSubtaskDraft, setNewSubtaskDraft] = useState('');
   const { minutes: nowMinutes } = useCurrentTime(1000);
+
+  useEffect(() => {
+    if (!editingNote || !noteEditorRef.current) return;
+    const editor = noteEditorRef.current;
+    editor.textContent = noteDraft;
+    requestAnimationFrame(() => {
+      editor.focus();
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(editor);
+      range.collapse(false);
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+    });
+  }, [editingNote]);
 
   // Empty state
   if (!task) {
