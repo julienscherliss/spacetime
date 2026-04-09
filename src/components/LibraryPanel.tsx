@@ -5,7 +5,7 @@ import {
   LibraryTask,
 } from '@/store/libraryStore';
 import {
-  X, Plus, Check, Clock, AlertTriangle, Trash2, ChevronUp, ChevronDown as ChevronDownIcon,
+  X, Plus, Check, Clock, AlertTriangle, Trash2,
   ArrowDownAZ, CalendarClock, Tag, ChevronDown, GripVertical, CalendarDays,
 } from 'lucide-react';
 import { TagAutocomplete } from '@/components/TagAutocomplete';
@@ -683,42 +683,45 @@ export function LibraryPanel() {
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-1">
+              <div
+                className="flex-1 overflow-y-auto px-4 py-3 space-y-1"
+                onPointerDown={(e) => {
+                  const target = e.target as HTMLElement;
+                  if (target.closest('[data-delete-btn]')) return;
+                  const row = target.closest('[data-cat-value]') as HTMLElement | null;
+                  if (row?.dataset.catValue) {
+                    e.preventDefault();
+                    setDraggingTag(row.dataset.catValue);
+                  }
+                }}
+              >
                 {categories.length === 0 ? (
                   <p className="text-center text-[12px] font-mono text-muted-foreground/40 py-8">No tags yet</p>
                 ) : (
-                  categories.map((cat, idx) => {
+                  categories.map((cat) => {
                     const count = allItems.filter(i => i.category === cat.value).length;
                     return (
                       <motion.div
                         key={cat.value}
+                        data-cat-value={cat.value}
                         layout
                         transition={{ duration: 0.2, ease: 'easeInOut' }}
-                        className="flex items-center gap-2 px-3 py-3 rounded-lg border border-border/30 bg-card/50"
+                        className={`flex items-center gap-3 px-3 py-3.5 rounded-lg border select-none touch-none ${
+                          draggingTag === cat.value
+                            ? 'border-primary/40 bg-primary/5 scale-[1.02]'
+                            : 'border-border/30 bg-card/50'
+                        }`}
+                        style={{ WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
                       >
-                        {/* Reorder buttons */}
-                        <div className="flex flex-col gap-0.5 shrink-0">
-                          <button
-                            onClick={() => { if (idx > 0) useLibraryStore.getState().reorderCategory(cat.value, 'left'); }}
-                            disabled={idx === 0}
-                            className="p-0.5 text-muted-foreground/40 hover:text-foreground disabled:opacity-20 transition-colors"
-                          >
-                            <ChevronUp size={12} />
-                          </button>
-                          <button
-                            onClick={() => { if (idx < categories.length - 1) useLibraryStore.getState().reorderCategory(cat.value, 'right'); }}
-                            disabled={idx === categories.length - 1}
-                            className="p-0.5 text-muted-foreground/40 hover:text-foreground disabled:opacity-20 transition-colors"
-                          >
-                            <ChevronDownIcon size={12} />
-                          </button>
-                        </div>
-
+                        <GripVertical size={14} className="text-muted-foreground/30 shrink-0" />
                         <Tag size={12} className="text-muted-foreground/30 shrink-0" />
                         <span className="flex-1 font-mono text-[14px] text-foreground">{cat.label}</span>
                         <span className="text-[10px] font-mono text-muted-foreground/40 shrink-0 tabular-nums">{count}</span>
                         <button
-                          onClick={() => { handleDeleteTag(cat.value); }}
+                          data-delete-btn
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onPointerUp={(e) => e.stopPropagation()}
+                          onClick={(e) => { e.stopPropagation(); handleDeleteTag(cat.value); }}
                           className="p-2 text-muted-foreground/30 hover:text-destructive transition-colors -mr-1"
                         >
                           <Trash2 size={14} />
