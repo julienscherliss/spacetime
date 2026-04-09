@@ -5,7 +5,7 @@ import {
   LibraryTask,
 } from '@/store/libraryStore';
 import {
-  X, Plus, Check, Clock, AlertTriangle, Trash2,
+  X, Plus, Check, Clock, AlertTriangle, Trash2, ChevronUp, ChevronDown as ChevronDownIcon,
   ArrowDownAZ, CalendarClock, Tag, ChevronDown, GripVertical, CalendarDays,
 } from 'lucide-react';
 import { TagAutocomplete } from '@/components/TagAutocomplete';
@@ -671,50 +671,55 @@ export function LibraryPanel() {
               className="bg-card border-t border-border rounded-t-xl w-full max-h-[70vh] flex flex-col shadow-lg"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between px-5 py-4 border-b border-border/40">
+              {/* Handle bar */}
+              <div className="flex justify-center pt-2 pb-1">
+                <div className="w-8 h-1 rounded-full bg-muted-foreground/20" />
+              </div>
+
+              <div className="flex items-center justify-between px-5 py-3 border-b border-border/40">
                 <span className="text-[12px] font-mono tracking-[0.14em] text-foreground font-semibold">MANAGE TAGS</span>
-                <button onClick={() => setTagModalOpen(false)} className="text-[11px] font-mono tracking-wider text-foreground/60 hover:text-foreground">
+                <button onClick={() => setTagModalOpen(false)} className="text-[11px] font-mono tracking-wider text-foreground/60 hover:text-foreground px-2 py-1">
                   Done
                 </button>
               </div>
-              <div
-                className="flex-1 overflow-y-auto px-4 py-3 space-y-1.5"
-                onPointerDown={(e) => {
-                  const target = e.target as HTMLElement;
-                  if (target.closest('[data-delete-btn]')) return;
-                  const row = target.closest('[data-cat-value]') as HTMLElement | null;
-                  if (row?.dataset.catValue) {
-                    e.preventDefault();
-                    setDraggingTag(row.dataset.catValue);
-                  }
-                }}
-              >
+
+              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-1">
                 {categories.length === 0 ? (
                   <p className="text-center text-[12px] font-mono text-muted-foreground/40 py-8">No tags yet</p>
                 ) : (
-                  categories.map((cat) => {
+                  categories.map((cat, idx) => {
                     const count = allItems.filter(i => i.category === cat.value).length;
                     return (
                       <motion.div
                         key={cat.value}
-                        data-cat-value={cat.value}
                         layout
-                        className={`flex items-center gap-3 px-4 py-3.5 rounded-lg border select-none touch-none ${
-                          draggingTag === cat.value
-                            ? 'border-primary/40 bg-primary/5 scale-[1.02]'
-                            : 'border-border/40 bg-card/50'
-                        }`}
-                        style={{ WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
+                        transition={{ duration: 0.2, ease: 'easeInOut' }}
+                        className="flex items-center gap-2 px-3 py-3 rounded-lg border border-border/30 bg-card/50"
                       >
-                        <GripVertical size={14} className="text-muted-foreground/30 shrink-0" />
+                        {/* Reorder buttons */}
+                        <div className="flex flex-col gap-0.5 shrink-0">
+                          <button
+                            onClick={() => { if (idx > 0) useLibraryStore.getState().reorderCategory(cat.value, 'left'); }}
+                            disabled={idx === 0}
+                            className="p-0.5 text-muted-foreground/40 hover:text-foreground disabled:opacity-20 transition-colors"
+                          >
+                            <ChevronUp size={12} />
+                          </button>
+                          <button
+                            onClick={() => { if (idx < categories.length - 1) useLibraryStore.getState().reorderCategory(cat.value, 'right'); }}
+                            disabled={idx === categories.length - 1}
+                            className="p-0.5 text-muted-foreground/40 hover:text-foreground disabled:opacity-20 transition-colors"
+                          >
+                            <ChevronDownIcon size={12} />
+                          </button>
+                        </div>
+
+                        <Tag size={12} className="text-muted-foreground/30 shrink-0" />
                         <span className="flex-1 font-mono text-[14px] text-foreground">{cat.label}</span>
-                        <span className="text-[10px] font-mono text-muted-foreground/40 shrink-0">{count}</span>
+                        <span className="text-[10px] font-mono text-muted-foreground/40 shrink-0 tabular-nums">{count}</span>
                         <button
-                          data-delete-btn
-                          onPointerDown={(e) => e.stopPropagation()}
-                          onPointerUp={(e) => e.stopPropagation()}
-                          onClick={(e) => { e.stopPropagation(); handleDeleteTag(cat.value); }}
-                          className="p-1.5 text-muted-foreground/30 hover:text-destructive transition-colors"
+                          onClick={() => { handleDeleteTag(cat.value); }}
+                          className="p-2 text-muted-foreground/30 hover:text-destructive transition-colors -mr-1"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -723,6 +728,9 @@ export function LibraryPanel() {
                   })
                 )}
               </div>
+
+              {/* Safe area padding for bottom */}
+              <div className="h-6" />
             </motion.div>
           </motion.div>
         )}
