@@ -311,7 +311,7 @@ export function LibraryPanel() {
   const [editingItem, setEditingItem] = useState<LibraryTask | null>(null);
   const [tagEditMode, setTagEditMode] = useState(false);
   const [draggingTag, setDraggingTag] = useState<string | null>(null);
-  const [hoveredTag, setHoveredTag] = useState<string | null>(null);
+  
   const [deletingTag, setDeletingTag] = useState<{ value: string; label: string; count: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
@@ -346,14 +346,12 @@ export function LibraryPanel() {
       const el = document.elementFromPoint(e.clientX, e.clientY);
       const chip = el?.closest('[data-cat-value]') as HTMLElement | null;
       const targetVal = chip?.dataset.catValue || null;
-      setHoveredTag(targetVal);
       if (targetVal && targetVal !== draggingTag) {
         useLibraryStore.getState().moveCategory(draggingTag, targetVal);
       }
     };
     const handleEnd = () => {
       setDraggingTag(null);
-      setHoveredTag(null);
     };
     document.addEventListener('pointermove', handleMove);
     document.addEventListener('pointerup', handleEnd);
