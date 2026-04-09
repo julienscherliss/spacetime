@@ -311,6 +311,18 @@ export const useLibraryStore = create<LibraryState>()(
           ),
         }));
       },
+
+      reorderCategory: (value, direction) => {
+        set((s) => {
+          const cats = [...s.categories];
+          const idx = cats.findIndex(c => c.value === value);
+          if (idx < 0) return s;
+          const swapIdx = direction === 'left' ? idx - 1 : idx + 1;
+          if (swapIdx < 0 || swapIdx >= cats.length) return s;
+          [cats[idx], cats[swapIdx]] = [cats[swapIdx], cats[idx]];
+          return { categories: cats };
+        });
+      },
     }),
     {
       name: 'do-library-store',
