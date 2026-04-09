@@ -626,7 +626,7 @@ function MainFocusPanel({
                   {remainingH}:{remainingM}
                 </motion.div>
 
-                <h1 className="mt-2 text-sm sm:text-base font-display font-medium text-foreground/80 leading-snug text-center max-w-[220px]">
+                <h1 className="mt-2 text-sm sm:text-base font-display font-medium text-foreground/80 leading-snug text-center max-w-[220px] uppercase">
                   {activeTask.title}
                 </h1>
               </motion.div>
