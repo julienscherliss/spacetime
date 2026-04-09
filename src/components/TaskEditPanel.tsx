@@ -542,13 +542,23 @@ export function TaskEditPanel() {
 
             <div className="px-5 pb-5">
               {/* ─── Title ─── */}
-              <input
-                ref={titleInputRef}
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Task name…"
-                className="w-full bg-transparent font-display font-bold text-foreground text-lg leading-tight focus:outline-none placeholder:text-muted-foreground/20 mb-1"
-              />
+              <div className="relative">
+                <input
+                  ref={titleInputRef}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Task name…"
+                  className="w-full bg-transparent font-display font-bold text-foreground text-lg leading-tight focus:outline-none placeholder:text-muted-foreground/20 mb-1"
+                />
+                <TagAutocomplete
+                  inputValue={title}
+                  inputRef={titleInputRef as React.RefObject<HTMLInputElement>}
+                  onSelectTag={(cat, cleaned) => {
+                    setTitle(cleaned);
+                    setTaskCategory(cat.value);
+                  }}
+                />
+              </div>
 
               {/* ─── Subtitle / Description (always fully visible) ─── */}
               <textarea

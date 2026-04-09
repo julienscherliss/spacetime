@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Priority } from '@/store/taskStore';
 import { useCarryStore } from '@/store/carryStore';
 import { Plus, X, ChevronDown } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { TagAutocomplete } from '@/components/TagAutocomplete';
 
 const PRIORITY_LABELS = ['Flex', 'Semi', 'Fixed', 'Lock'] as const;
 const PRIORITY_COLORS = [
