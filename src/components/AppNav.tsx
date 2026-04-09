@@ -56,37 +56,16 @@ export function AppNav() {
 
             {/* View tabs — primary action */}
             <div className="flex items-center bg-muted/50 rounded-md p-0.5 gap-0.5">
-              {views.map(({ mode, icon: Icon, label }) => {
-                const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-                const didLongPress = useRef(false);
-
-                const handlePointerDown = () => {
-                  if (mode !== 'day') return;
-                  didLongPress.current = false;
-                  longPressRef.current = setTimeout(() => {
-                    didLongPress.current = true;
-                    setDaySubMode(daySubMode === 'timeline' ? 'list' : 'timeline');
-                    setViewMode('day');
-                  }, 500);
-                };
-                const handlePointerUp = () => {
-                  if (longPressRef.current) clearTimeout(longPressRef.current);
-                  longPressRef.current = null;
-                };
-
-                return (
+              {views.map(({ mode, icon: Icon, label }) => (
                 <button
                   key={mode}
                   onClick={() => {
-                    if (mode === 'day' && didLongPress.current) {
-                      didLongPress.current = false;
+                    if (mode === 'day' && viewMode === 'day') {
+                      setDaySubMode(daySubMode === 'timeline' ? 'list' : 'timeline');
                       return;
                     }
                     setViewMode(mode);
                   }}
-                  onPointerDown={handlePointerDown}
-                  onPointerUp={handlePointerUp}
-                  onPointerLeave={handlePointerUp}
                   className={`relative flex flex-col items-center justify-center min-w-[48px] h-[44px] rounded-md transition-colors ${
                     viewMode === mode ? 'text-foreground' : 'text-muted-foreground'
                   }`}
@@ -199,34 +178,16 @@ export function AppNav() {
 
         {/* LEFT GROUP — View tabs */}
         <div className="flex items-center bg-muted/30 rounded-md p-0.5 gap-0.5">
-          {views.map(({ mode, icon: Icon, label }) => {
-            const lpRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-            const didLP = useRef(false);
-
-            const handlePD = () => {
-              if (mode !== 'day') return;
-              didLP.current = false;
-              lpRef.current = setTimeout(() => {
-                didLP.current = true;
-                setDaySubMode(daySubMode === 'timeline' ? 'list' : 'timeline');
-                setViewMode('day');
-              }, 500);
-            };
-            const handlePU = () => {
-              if (lpRef.current) clearTimeout(lpRef.current);
-              lpRef.current = null;
-            };
-
-            return (
+          {views.map(({ mode, icon: Icon, label }) => (
             <button
               key={mode}
               onClick={() => {
-                if (mode === 'day' && didLP.current) { didLP.current = false; return; }
+                if (mode === 'day' && viewMode === 'day') {
+                  setDaySubMode(daySubMode === 'timeline' ? 'list' : 'timeline');
+                  return;
+                }
                 setViewMode(mode);
               }}
-              onPointerDown={handlePD}
-              onPointerUp={handlePU}
-              onPointerLeave={handlePU}
               className={`${navItemBase} ${
                 viewMode === mode
                   ? 'text-foreground'
