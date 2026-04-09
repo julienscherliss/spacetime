@@ -532,7 +532,7 @@ export function LibraryPanel() {
                 {/* Row 1: Category chips */}
                 <div
                   className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-hide"
-                  onPointerDown={(e) => {
+                  onPointerDown={tagEditMode ? (e) => {
                     const target = e.target as HTMLElement;
                     if (target.closest('[data-delete-btn]')) return;
                     const chip = target.closest('[data-cat-value]') as HTMLElement | null;
@@ -540,7 +540,7 @@ export function LibraryPanel() {
                       e.preventDefault();
                       setDraggingTag(chip.dataset.catValue);
                     }
-                  }}
+                  } : undefined}
                 >
                   {tagEditMode ? (
                     <>
