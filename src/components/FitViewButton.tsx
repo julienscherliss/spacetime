@@ -6,6 +6,11 @@ import { timeToMinutes } from '@/hooks/useCurrentTime';
 import { START_HOUR, END_HOUR } from '@/components/TimelineColumn';
 import { SCALE_MIN, SCALE_MAX } from '@/hooks/useTimeScale';
 
+/** Approximate height of sticky elements (nav bar + sticky controls) */
+const STICKY_OFFSET = 96;
+/** Padding (px) above and below the framed area */
+const FRAME_PADDING = 40;
+
 interface FitViewButtonProps {
   tasks: Task[];
   scrollRef: React.RefObject<HTMLElement>;
@@ -33,7 +38,6 @@ function getTaskBounds(tasks: Task[]): { earliest: number; latest: number } | nu
 }
 
 function getActiveTaskCenter(tasks: Task[], nowMinutes: number): number {
-  // Find task that is currently active (now falls within its time range)
   const active = tasks.find(t => {
     if (!t.time || t.completed) return false;
     const start = timeToMinutes(t.time);
@@ -49,13 +53,32 @@ function getActiveTaskCenter(tasks: Task[], nowMinutes: number): number {
   return nowMinutes;
 }
 
+/**
+ * Returns the document-level top offset of the timeline content area.
+ * This is where minute 0 of START_HOUR lives in document coordinates.
+ */
+function getTimelineDocTop(scrollRef: React.RefObject<HTMLElement>): number {
+  if (!scrollRef.current) return 0;
+  const rect = scrollRef.current.getBoundingClientRect();
+  return rect.top + window.scrollY;
+}
+
+/** Convert a minute value to a document Y position given hourHeight and timeline origin */
+function minToDocY(min: number, hourHeight: number, timelineTop: number): number {
+  return timelineTop + ((min - START_HOUR * 60) / 60) * hourHeight;
+}
+
+/** Usable viewport height below sticky elements */
+function usableViewport(): number {
+  return window.innerHeight - STICKY_OFFSET;
+}
+
 function animateZoom(
-  el: HTMLElement,
   fromScale: number,
   toScale: number,
   fromScroll: number,
   toScroll: number,
-  duration: number = 250,
+  duration: number,
   onFrame: (scale: number) => void,
 ) {
   const startTime = performance.now();
@@ -73,7 +96,7 @@ function animateZoom(
     const currentScroll = fromScroll + (toScroll - fromScroll) * eased;
 
     onFrame(currentScale);
-    el.scrollTop = currentScroll;
+    window.scrollTo({ top: currentScroll, behavior: 'auto' });
 
     if (progress < 1) {
       requestAnimationFrame(tick);
@@ -91,77 +114,74 @@ export function FitViewButton({ tasks, scrollRef, hourHeight, setScale, resetZoo
   const startPos = useRef<{ x: number; y: number } | null>(null);
 
   const fitToTasks = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-
     const bounds = getTaskBounds(tasks);
+    const viewH = usableViewport();
+    const timelineTop = getTimelineDocTop(scrollRef);
+
     if (!bounds) {
       // No tasks — center on current time
-      const targetScroll = Math.max(0,
-        ((nowMinutes - START_HOUR * 60) / 60) * hourHeight - el.clientHeight / 2
-      );
-      animateZoom(el, hourHeight, hourHeight, el.scrollTop, targetScroll, 250, () => {});
+      const nowDocY = minToDocY(nowMinutes, hourHeight, timelineTop);
+      const targetScroll = Math.max(0, nowDocY - STICKY_OFFSET - viewH / 2);
+      animateZoom(hourHeight, hourHeight, window.scrollY, targetScroll, 250, () => {});
       return;
     }
 
     const { earliest, latest } = bounds;
     const spanMinutes = latest - earliest;
-    const padding = 40;
-    const viewportH = el.clientHeight - padding * 2;
-
     const spanHours = spanMinutes / 60;
-    let targetScale = viewportH / spanHours;
+
+    // Calculate scale to fit the task span within usable viewport with padding
+    let targetScale = (viewH - FRAME_PADDING * 2) / spanHours;
     targetScale = Math.max(SCALE_MIN, Math.min(SCALE_MAX, targetScale));
 
-    const midMin = (earliest + latest) / 2;
-    const targetScroll = Math.max(0,
-      ((midMin - START_HOUR * 60) / 60) * targetScale - el.clientHeight / 2
-    );
+    // Guard against absurd over-zoom for very few/short tasks
+    if (spanMinutes <= 30) {
+      targetScale = Math.min(targetScale, SCALE_MAX * 0.6);
+    }
 
-    el.style.scrollBehavior = 'auto';
-    animateZoom(el, hourHeight, targetScale, el.scrollTop, targetScroll, 250, (scale) => {
+    // Recalculate positions with new scale — timeline top stays the same
+    const midMin = (earliest + latest) / 2;
+    const midDocY = timelineTop + ((midMin - START_HOUR * 60) / 60) * targetScale;
+    const targetScroll = Math.max(0, midDocY - STICKY_OFFSET - viewH / 2);
+
+    animateZoom(hourHeight, targetScale, window.scrollY, targetScroll, 250, (scale) => {
       setScale(scale);
     });
   }, [tasks, scrollRef, hourHeight, setScale, nowMinutes]);
 
   const focusCurrent = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-
+    const viewH = usableViewport();
+    const timelineTop = getTimelineDocTop(scrollRef);
     const centerMin = getActiveTaskCenter(tasks, nowMinutes);
 
     // Fixed 5-hour window
     const windowHours = 5;
-    const targetScale = el.clientHeight / windowHours;
-    const clampedScale = Math.max(SCALE_MIN, Math.min(SCALE_MAX, targetScale));
+    let targetScale = viewH / windowHours;
+    targetScale = Math.max(SCALE_MIN, Math.min(SCALE_MAX, targetScale));
 
-    const targetScroll = Math.max(0,
-      ((centerMin - START_HOUR * 60) / 60) * clampedScale - el.clientHeight / 2
-    );
+    const centerDocY = timelineTop + ((centerMin - START_HOUR * 60) / 60) * targetScale;
+    const targetScroll = Math.max(0, centerDocY - STICKY_OFFSET - viewH / 2);
 
-    el.style.scrollBehavior = 'auto';
-    animateZoom(el, hourHeight, clampedScale, el.scrollTop, targetScroll, 250, (scale) => {
+    animateZoom(hourHeight, targetScale, window.scrollY, targetScroll, 250, (scale) => {
       setScale(scale);
     });
     setMenuOpen(false);
   }, [scrollRef, hourHeight, nowMinutes, tasks, setScale]);
 
   const frameAll = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
+    const viewH = usableViewport();
+    const timelineTop = getTimelineDocTop(scrollRef);
 
-    // Zoom out to show full timeline
+    // Show full timeline
     const totalHours = END_HOUR - START_HOUR;
-    let targetScale = el.clientHeight / totalHours;
+    let targetScale = (viewH - FRAME_PADDING) / totalHours;
     targetScale = Math.max(SCALE_MIN, Math.min(SCALE_MAX, targetScale));
 
     const midMin = ((START_HOUR + END_HOUR) / 2) * 60;
-    const targetScroll = Math.max(0,
-      ((midMin - START_HOUR * 60) / 60) * targetScale - el.clientHeight / 2
-    );
+    const midDocY = timelineTop + ((midMin - START_HOUR * 60) / 60) * targetScale;
+    const targetScroll = Math.max(0, midDocY - STICKY_OFFSET - viewH / 2);
 
-    el.style.scrollBehavior = 'auto';
-    animateZoom(el, hourHeight, targetScale, el.scrollTop, targetScroll, 250, (scale) => {
+    animateZoom(hourHeight, targetScale, window.scrollY, targetScroll, 250, (scale) => {
       setScale(scale);
     });
     setMenuOpen(false);
