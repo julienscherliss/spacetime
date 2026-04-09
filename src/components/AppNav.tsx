@@ -199,10 +199,34 @@ export function AppNav() {
 
         {/* LEFT GROUP — View tabs */}
         <div className="flex items-center bg-muted/30 rounded-md p-0.5 gap-0.5">
-          {views.map(({ mode, icon: Icon, label }) => (
+          {views.map(({ mode, icon: Icon, label }) => {
+            const lpRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+            const didLP = useRef(false);
+
+            const handlePD = () => {
+              if (mode !== 'day') return;
+              didLP.current = false;
+              lpRef.current = setTimeout(() => {
+                didLP.current = true;
+                setDaySubMode(daySubMode === 'timeline' ? 'list' : 'timeline');
+                setViewMode('day');
+              }, 500);
+            };
+            const handlePU = () => {
+              if (lpRef.current) clearTimeout(lpRef.current);
+              lpRef.current = null;
+            };
+
+            return (
             <button
               key={mode}
-              onClick={() => setViewMode(mode)}
+              onClick={() => {
+                if (mode === 'day' && didLP.current) { didLP.current = false; return; }
+                setViewMode(mode);
+              }}
+              onPointerDown={handlePD}
+              onPointerUp={handlePU}
+              onPointerLeave={handlePU}
               className={`${navItemBase} ${
                 viewMode === mode
                   ? 'text-foreground'
@@ -221,7 +245,8 @@ export function AppNav() {
                 <span className={viewMode === mode ? 'font-medium' : ''}>{label}</span>
               </span>
             </button>
-          ))}
+            );
+          })}
         </div>
 
         {/* Flexible spacer */}
