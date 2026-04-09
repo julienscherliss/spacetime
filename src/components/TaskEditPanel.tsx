@@ -5,6 +5,7 @@ import { SubtaskList, Subtask } from '@/components/SubtaskList';
 import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar, Inbox, CalendarCheck, XCircle, Paperclip, ExternalLink, Check, AlertTriangle, Tag, Upload, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLibraryStore } from '@/store/libraryStore';
+import { TagAutocomplete } from '@/components/TagAutocomplete';
 import { formatTime12h } from '@/hooks/useCurrentTime';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
