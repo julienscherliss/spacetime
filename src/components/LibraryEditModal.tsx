@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLibraryStore, LibraryTask, LibrarySubtask } from '@/store/libraryStore';
 import { X, Trash2, Clock, AlertTriangle, Tag, CalendarDays, Plus, Check } from 'lucide-react';
+import { TagAutocomplete } from '@/components/TagAutocomplete';
 import { DurationPicker } from '@/components/ScrollWheelPicker';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -324,13 +325,23 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
 
         <div className="px-5 pb-5">
           {/* ─── Title ─── */}
-          <input
-            ref={titleRef}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="What needs doing…"
-            className="w-full bg-transparent font-display font-bold text-foreground text-lg leading-tight focus:outline-none placeholder:text-muted-foreground/25 mb-2"
-          />
+          <div className="relative">
+            <input
+              ref={titleRef}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="What needs doing…"
+              className="w-full bg-transparent font-display font-bold text-foreground text-lg leading-tight focus:outline-none placeholder:text-muted-foreground/25 mb-2"
+            />
+            <TagAutocomplete
+              inputValue={title}
+              inputRef={titleRef as React.RefObject<HTMLInputElement>}
+              onSelectTag={(cat, cleaned) => {
+                setTitle(cleaned);
+                setCategory(cat.value);
+              }}
+            />
+          </div>
 
           {/* ─── Subtitle / Notes (always fully visible) ─── */}
           <textarea

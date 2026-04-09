@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
 import { useCurrentTime, timeToMinutes, formatTime12h } from '@/hooks/useCurrentTime';
 import { ChevronUp, ChevronDown, ChevronRight, Paperclip, ExternalLink, Check, Calendar as CalendarIcon, Tag } from 'lucide-react';
+import { TagAutocomplete } from '@/components/TagAutocomplete';
 import { SegmentedProgressRing } from '@/components/SegmentedProgressRing';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -485,22 +486,32 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
 
       {/* ── Title ── */}
       {editingTitle ? (
-        <input
-          autoFocus
-          value={titleDraft}
-          onChange={(e) => setTitleDraft(e.target.value)}
-          onBlur={() => {
-            if (titleDraft.trim() && titleDraft !== task.title) {
-              onUpdateTask(task.id, { title: titleDraft.trim() });
-            }
-            setEditingTitle(false);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-            if (e.key === 'Escape') setEditingTitle(false);
-          }}
-          className="text-xl font-display font-bold text-foreground leading-tight bg-transparent border-b border-foreground/10 focus:border-foreground/30 outline-none pb-1 w-full"
-        />
+        <div className="relative">
+          <input
+            autoFocus
+            value={titleDraft}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            onBlur={() => {
+              const clean = titleDraft.replace(/#\S*$/, '').trim();
+              if (clean && clean !== task.title) {
+                onUpdateTask(task.id, { title: clean });
+              }
+              setEditingTitle(false);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !titleDraft.match(/#\S+$/)) (e.target as HTMLInputElement).blur();
+              if (e.key === 'Escape') setEditingTitle(false);
+            }}
+            className="text-xl font-display font-bold text-foreground leading-tight bg-transparent border-b border-foreground/10 focus:border-foreground/30 outline-none pb-1 w-full"
+          />
+          <TagAutocomplete
+            inputValue={titleDraft}
+            onSelectTag={(cat, cleaned) => {
+              setTitleDraft(cleaned);
+              onUpdateTask(task.id, { category: cat.value });
+            }}
+          />
+        </div>
       ) : (
         <button
           onClick={() => { setTitleDraft(task.title); setEditingTitle(true); }}
