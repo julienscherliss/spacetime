@@ -77,6 +77,7 @@ interface LibraryState {
   removeCategory: (value: string) => void;
   renameCategory: (value: string, newLabel: string) => void;
   reorderCategory: (value: string, direction: 'left' | 'right') => void;
+  moveCategory: (fromValue: string, toValue: string) => void;
 }
 
 const generateId = () => crypto.randomUUID();
