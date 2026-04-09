@@ -329,7 +329,7 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
   const [noteDraft, setNoteDraft] = useState('');
   const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
   const [subtaskDraft, setSubtaskDraft] = useState('');
-  const [showNewSubtask, setShowNewSubtask] = useState(false);
+  const [addingSubtask, setAddingSubtask] = useState(false);
   const [newSubtaskDraft, setNewSubtaskDraft] = useState('');
   const { minutes: nowMinutes } = useCurrentTime(1000);
 
@@ -415,7 +415,7 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
         <div className="space-y-1">
           {(task.subtasks || []).map((s) => (
             <div key={s.id} className="flex items-center gap-3 w-full py-2.5 px-3 rounded-md hover:bg-muted/30 transition-colors group">
-              {/* Checkbox — only toggles completion */}
+              {/* Checkbox */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -437,14 +437,18 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
                 )}
               </button>
 
-              {/* Title — tap to edit */}
+              {/* Title — tap to edit inline */}
               {editingSubtaskId === s.id ? (
                 <input
                   autoFocus
                   value={subtaskDraft}
                   onChange={(e) => setSubtaskDraft(e.target.value)}
                   onBlur={() => {
-                    if (subtaskDraft.trim() && subtaskDraft !== s.title) {
+                    if (!subtaskDraft.trim()) {
+                      // Empty = delete subtask
+                      const updated = task.subtasks!.filter(st => st.id !== s.id);
+                      onUpdateTask(task.id, { subtasks: updated });
+                    } else if (subtaskDraft.trim() !== s.title) {
                       const updated = task.subtasks!.map(st =>
                         st.id === s.id ? { ...st, title: subtaskDraft.trim() } : st
                       );
@@ -463,7 +467,6 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
                   onClick={() => {
                     setEditingSubtaskId(s.id);
                     setSubtaskDraft(s.title);
-                    setShowNewSubtask(true);
                   }}
                   className={`flex-1 text-left text-[13px] font-mono leading-snug ${
                     s.completed ? 'line-through text-muted-foreground/35' : 'text-foreground/85'
@@ -475,8 +478,8 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
             </div>
           ))}
 
-          {/* Phantom new subtask row */}
-          {showNewSubtask && editingSubtaskId === null && (
+          {/* New subtask input */}
+          {addingSubtask ? (
             <div className="flex items-center gap-3 w-full py-2.5 px-3 rounded-md">
               <div className="w-4 h-4 rounded-sm border-2 border-muted-foreground/15 shrink-0" />
               <input
@@ -490,15 +493,32 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
                     onUpdateTask(task.id, { subtasks: [...(task.subtasks || []), newSub] });
                   }
                   setNewSubtaskDraft('');
-                  setShowNewSubtask(false);
+                  setAddingSubtask(false);
                 }}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-                  if (e.key === 'Escape') { setNewSubtaskDraft(''); setShowNewSubtask(false); }
+                  if (e.key === 'Enter' && newSubtaskDraft.trim()) {
+                    const newSub = { id: crypto.randomUUID(), title: newSubtaskDraft.trim(), completed: false };
+                    onUpdateTask(task.id, { subtasks: [...(task.subtasks || []), newSub] });
+                    setNewSubtaskDraft('');
+                    // Stay in adding mode for chain-add
+                  } else if (e.key === 'Enter' || e.key === 'Escape') {
+                    setNewSubtaskDraft('');
+                    setAddingSubtask(false);
+                  }
                 }}
                 className="flex-1 text-[13px] font-mono leading-snug text-foreground/85 bg-transparent border-b border-foreground/10 focus:border-foreground/30 outline-none placeholder:text-muted-foreground/20"
               />
             </div>
+          ) : (
+            <button
+              onClick={() => setAddingSubtask(true)}
+              className="flex items-center gap-3 w-full py-2.5 px-3 rounded-md text-muted-foreground/30 hover:text-muted-foreground/50 transition-colors"
+            >
+              <div className="w-4 h-4 rounded-sm border-2 border-dashed border-current flex items-center justify-center shrink-0">
+                <span className="text-[10px] leading-none">+</span>
+              </div>
+              <span className="text-[12px] font-mono">Add subtask</span>
+            </button>
           )}
         </div>
       </div>
