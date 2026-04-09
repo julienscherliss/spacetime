@@ -9,7 +9,7 @@ import { useCurrentTime } from '@/hooks/useCurrentTime';
 import { TimelineColumn, START_HOUR } from '@/components/TimelineColumn';
 import { BlockedModal } from '@/components/BlockedModal';
 import { useTimeScale, SCALE_MIN, SCALE_MAX } from '@/hooks/useTimeScale';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, CornerUpLeft } from 'lucide-react';
 import { FitViewButton } from '@/components/FitViewButton';
 import { TaskCluster } from '@/utils/taskClustering';
 
