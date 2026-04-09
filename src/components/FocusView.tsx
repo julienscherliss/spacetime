@@ -35,7 +35,7 @@ function linkify(text: string) {
 const PRIORITY_LABELS = ['FLEX', 'SEMI', 'FIXED', 'LOCK'] as const;
 
 export function FocusView() {
-  const { tasks, routinesEnabled, getNextTask, updateTask, completeTask } = useTaskStore();
+  const { tasks, routinesEnabled, getNextTask, updateTask, completeTask, setEditingTask, setViewMode, setDaySubMode, setListReturnZoom, setShowListReturn } = useTaskStore();
   const { minutes: nowMinutes, dateStr: today } = useCurrentTime(1000);
   const [activePanel, setActivePanel] = useState<FocusPanel>('main');
   const [completedExpanded, setCompletedExpanded] = useState(false);
@@ -210,16 +210,27 @@ export function FocusView() {
                   <p className="text-center text-muted-foreground/30 font-mono text-[12px] py-3">Nothing yet</p>
                 ) : (
                   <>
-                    {(completedExpanded ? completedToday : completedToday.slice(0, 5)).map((task) => (
+                    {(completedExpanded ? completedToday : completedToday.slice(-5)).map((task) => (
                       <div key={task.id} className="flex items-center gap-3 py-2.5 px-3">
                         <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30 shrink-0" />
-                        <span className="text-[13px] font-mono text-muted-foreground/50 line-through truncate flex-1">
+                        <button
+                          onClick={() => setEditingTask(task.id)}
+                          className="text-[13px] font-mono text-muted-foreground/50 line-through truncate flex-1 text-left"
+                        >
                           {task.title}
-                        </span>
+                        </button>
                         {task.time && (
-                          <span className="text-[10px] font-mono text-muted-foreground/30 tabular-nums shrink-0">
+                          <button
+                            onClick={() => {
+                              setListReturnZoom({ taskTime: task.time!, taskDuration: task.duration || 30 });
+                              setShowListReturn(true);
+                              setDaySubMode('timeline');
+                              setViewMode('day');
+                            }}
+                            className="text-[10px] font-mono text-muted-foreground/30 tabular-nums shrink-0 active:text-muted-foreground/60"
+                          >
                             {formatTime12h(task.time)}
-                          </span>
+                          </button>
                         )}
                       </div>
                     ))}
@@ -251,13 +262,24 @@ export function FocusView() {
                   upcomingTasks.map((task) => (
                     <div key={task.id} className="flex items-center gap-3 py-2.5 px-3">
                       <div className="w-1.5 h-1.5 rounded-full bg-primary/40 shrink-0" />
-                      <span className="text-[13px] font-mono text-foreground/70 truncate flex-1">
+                      <button
+                        onClick={() => setEditingTask(task.id)}
+                        className="text-[13px] font-mono text-foreground/70 truncate flex-1 text-left"
+                      >
                         {task.title}
-                      </span>
+                      </button>
                       {task.time && (
-                        <span className="text-[10px] font-mono text-muted-foreground/35 tabular-nums shrink-0">
+                        <button
+                          onClick={() => {
+                            setListReturnZoom({ taskTime: task.time!, taskDuration: task.duration || 30 });
+                            setShowListReturn(true);
+                            setDaySubMode('timeline');
+                            setViewMode('day');
+                          }}
+                          className="text-[10px] font-mono text-muted-foreground/35 tabular-nums shrink-0 active:text-muted-foreground/60"
+                        >
                           {formatTime12h(task.time)}
-                        </span>
+                        </button>
                       )}
                     </div>
                   ))
