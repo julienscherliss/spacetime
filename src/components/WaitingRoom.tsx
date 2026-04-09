@@ -81,14 +81,7 @@ function WaitingRoomItem({ task, isMobile, onClosePanel }: { task: Task; isMobil
       onPointerMove={handlePointerMove}
       onContextMenu={(e) => e.preventDefault()}
     >
-      {/* Complete button */}
-      <button
-        onClick={handleComplete}
-        data-touch-ignore
-        className="p-1.5 rounded-sm text-muted-foreground/25 hover:text-primary hover:bg-primary/5 transition-all shrink-0"
-      >
-        <Check size={isMobile ? 16 : 14} />
-      </button>
+      <div className="w-1 shrink-0" />
 
       <div className="flex-1 min-w-0">
         <div className={`font-mono text-foreground/80 truncate leading-tight ${
