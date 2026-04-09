@@ -332,10 +332,14 @@ export const useTaskStore = create<TaskState>()(
       showCompletionStats: false,
       dailyStats: null,
       navigateToDate: null,
+      listReturnZoom: null,
+      showListReturn: false,
 
       setViewMode: (mode) => set({ viewMode: mode }),
       setDaySubMode: (mode) => set({ daySubMode: mode }),
       setNavigateToDate: (date) => set({ navigateToDate: date }),
+      setListReturnZoom: (zoom) => set({ listReturnZoom: zoom }),
+      setShowListReturn: (show) => set({ showListReturn: show }),
       toggleRoutines: () => set((s) => ({ routinesEnabled: !s.routinesEnabled })),
 
       addTask: (taskData) => {
