@@ -29,6 +29,7 @@ export function DayListView() {
   const {
     tasks, routinesEnabled, generateRecurringInstances,
     navigateToDate, setNavigateToDate, setEditingTask, setDaySubMode,
+    setListReturnZoom, setShowListReturn,
   } = useTaskStore();
   const { dateStr: today } = useCurrentTime(15000);
   const [selectedDate, setSelectedDate] = useState(navigateToDate || today);
@@ -69,6 +70,13 @@ export function DayListView() {
 
   const handleTaskTap = (taskId: string) => {
     setEditingTask(taskId);
+  };
+
+  const handleTimeTap = (task: { time?: string; duration?: number }) => {
+    if (!task.time) return;
+    setListReturnZoom({ taskTime: task.time, taskDuration: task.duration || 30 });
+    setShowListReturn(true);
+    setDaySubMode('timeline');
   };
 
   const handleAddTask = () => {
