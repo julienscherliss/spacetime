@@ -82,7 +82,7 @@ export function AppNav() {
                     <span className="text-[8px] font-mono tracking-[0.08em] leading-none">{label}</span>
                   </span>
                 </button>
-                );
+
               })}
             </div>
 
