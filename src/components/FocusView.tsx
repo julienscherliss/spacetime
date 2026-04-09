@@ -38,6 +38,7 @@ export function FocusView() {
   const { tasks, routinesEnabled, getNextTask, updateTask, completeTask } = useTaskStore();
   const { minutes: nowMinutes, dateStr: today } = useCurrentTime(1000);
   const [activePanel, setActivePanel] = useState<FocusPanel>('main');
+  const [completedExpanded, setCompletedExpanded] = useState(false);
 
   // Hold-to-complete state
   const [holdProgress, setHoldProgress] = useState(0);
@@ -208,19 +209,29 @@ export function FocusView() {
                 {completedToday.length === 0 ? (
                   <p className="text-center text-muted-foreground/30 font-mono text-[12px] py-3">Nothing yet</p>
                 ) : (
-                  completedToday.map((task) => (
-                    <div key={task.id} className="flex items-center gap-3 py-2.5 px-3">
-                      <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30 shrink-0" />
-                      <span className="text-[13px] font-mono text-muted-foreground/50 line-through truncate flex-1">
-                        {task.title}
-                      </span>
-                      {task.time && (
-                        <span className="text-[10px] font-mono text-muted-foreground/30 tabular-nums shrink-0">
-                          {formatTime12h(task.time)}
+                  <>
+                    {(completedExpanded ? completedToday : completedToday.slice(0, 5)).map((task) => (
+                      <div key={task.id} className="flex items-center gap-3 py-2.5 px-3">
+                        <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30 shrink-0" />
+                        <span className="text-[13px] font-mono text-muted-foreground/50 line-through truncate flex-1">
+                          {task.title}
                         </span>
-                      )}
-                    </div>
-                  ))
+                        {task.time && (
+                          <span className="text-[10px] font-mono text-muted-foreground/30 tabular-nums shrink-0">
+                            {formatTime12h(task.time)}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                    {completedToday.length > 5 && (
+                      <button
+                        onClick={() => setCompletedExpanded(!completedExpanded)}
+                        className="w-full text-center py-2 text-[10px] font-mono tracking-[0.15em] text-muted-foreground/35 hover:text-muted-foreground/55 transition-colors uppercase"
+                      >
+                        {completedExpanded ? 'Show less' : `+ ${completedToday.length - 5} more`}
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </div>
