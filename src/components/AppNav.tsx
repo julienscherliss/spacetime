@@ -82,8 +82,8 @@ export function AppNav() {
                     <span className="text-[8px] font-mono tracking-[0.08em] leading-none">{label}</span>
                   </span>
                 </button>
+              ))}
 
-              })}
             </div>
 
             {/* More button */}
@@ -206,8 +206,8 @@ export function AppNav() {
                 <span className={viewMode === mode ? 'font-medium' : ''}>{label}</span>
               </span>
             </button>
-            );
-          })}
+          ))}
+
         </div>
 
         {/* Flexible spacer */}
