@@ -372,7 +372,8 @@ export function LibraryPanel() {
     const titleText = input.replace(/#\S*$/, '').trim();
     if (!titleText) return;
     const store = useLibraryStore.getState();
-    store.addItem(titleText, quickCategory || undefined);
+    const autoCategory = quickCategory || (filters.category !== 'all' && filters.category !== 'none' ? filters.category : '');
+    store.addItem(titleText, autoCategory || undefined);
     if (quickDueDate) {
       const newItem = store.items[0];
       if (newItem) {
