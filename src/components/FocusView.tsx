@@ -2,8 +2,11 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
 import { useCurrentTime, timeToMinutes, formatTime12h } from '@/hooks/useCurrentTime';
-import { ChevronUp, ChevronDown, ChevronRight, Paperclip, ExternalLink, Check, Calendar, Tag } from 'lucide-react';
+import { ChevronUp, ChevronDown, ChevronRight, Paperclip, ExternalLink, Check, Calendar as CalendarIcon, Tag } from 'lucide-react';
 import { SegmentedProgressRing } from '@/components/SegmentedProgressRing';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 
 type FocusPanel = 'completed' | 'main' | 'detail';
 
