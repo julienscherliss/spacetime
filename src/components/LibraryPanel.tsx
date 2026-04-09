@@ -7,7 +7,9 @@ import {
 import {
   X, Plus, Trash2, Clock, AlertTriangle,
   ArrowDownAZ, CalendarClock, Tag, ChevronDown, GripVertical, CalendarDays,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react';
+import { TagAutocomplete } from '@/components/TagAutocomplete';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useCarryStore } from '@/store/carryStore';
 import { useTaskStore } from '@/store/taskStore';
@@ -183,11 +185,12 @@ function Chip({ active, label, onClick, onLongPress }: { active: boolean; label:
       onPointerUp={onLongPress ? handlePointerUp : undefined}
       onPointerMove={onLongPress ? handlePointerMove : undefined}
       onClick={onLongPress ? undefined : onClick}
-      className={`shrink-0 px-3 py-1.5 rounded-full text-[10px] font-mono tracking-wider transition-colors min-h-[32px] border ${
+      className={`shrink-0 px-3 py-1.5 rounded-full text-[10px] font-mono tracking-wider transition-colors min-h-[32px] border select-none ${
         active
           ? 'border-foreground/25 bg-foreground/8 text-foreground font-medium'
           : 'border-border/50 text-muted-foreground/60 hover:text-foreground hover:border-border'
       }`}
+      style={{ WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
     >
       {label}
     </button>
@@ -195,15 +198,33 @@ function Chip({ active, label, onClick, onLongPress }: { active: boolean; label:
 }
 
 /* ── Jiggle chip for edit mode ── */
-function JiggleChip({ label, onDelete }: { label: string; onDelete: () => void }) {
+function JiggleChip({ label, catValue, onDelete, index, total }: { label: string; catValue: string; onDelete: () => void; index: number; total: number }) {
+  const { reorderCategory } = useLibraryStore();
   return (
     <motion.div
       animate={{ rotate: [0, -2, 2, -2, 0] }}
       transition={{ duration: 0.4, repeat: Infinity, repeatDelay: 0.1 }}
-      className="relative shrink-0"
+      className="relative shrink-0 select-none"
+      style={{ WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
     >
-      <div className="px-3 py-1.5 rounded-full text-[10px] font-mono tracking-wider border border-border/50 text-muted-foreground/60 min-h-[32px] flex items-center">
+      <div className="px-3 py-1.5 rounded-full text-[10px] font-mono tracking-wider border border-border/50 text-muted-foreground/60 min-h-[32px] flex items-center gap-1">
+        {index > 0 && (
+          <button
+            onClick={(e) => { e.stopPropagation(); reorderCategory(catValue, 'left'); }}
+            className="p-0.5 text-muted-foreground/40 hover:text-foreground"
+          >
+            <ChevronLeft size={10} />
+          </button>
+        )}
         {label}
+        {index < total - 1 && (
+          <button
+            onClick={(e) => { e.stopPropagation(); reorderCategory(catValue, 'right'); }}
+            className="p-0.5 text-muted-foreground/40 hover:text-foreground"
+          >
+            <ChevronRight size={10} />
+          </button>
+        )}
       </div>
       <button
         onClick={(e) => { e.stopPropagation(); onDelete(); }}
