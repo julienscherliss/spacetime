@@ -256,7 +256,27 @@ export function TaskEditPanel() {
       detachedFromSeries: (recurrence && !isLinked && task?.recurrenceParentId) ? true : false,
       dueDate: dueDate || undefined,
       category: taskCategory || undefined,
-      attachments: attachments.length > 0 ? attachments : undefined,
+      attachments: [
+        ...attachments,
+        ...linkAttachments.map(l => ({
+          id: l.id,
+          name: l.displayName,
+          url: l.url,
+          type: 'link' as const,
+          domain: l.domain,
+          createdAt: l.createdAt,
+        })),
+      ].length > 0 ? [
+        ...attachments,
+        ...linkAttachments.map(l => ({
+          id: l.id,
+          name: l.displayName,
+          url: l.url,
+          type: 'link' as const,
+          domain: l.domain,
+          createdAt: l.createdAt,
+        })),
+      ] : undefined,
     };
   };
 
