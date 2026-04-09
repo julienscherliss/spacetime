@@ -234,6 +234,7 @@ export function DayView() {
               <span className="tracking-wider">LIST</span>
             </button>
           )}
+          {clusterZoomed && (
             <button
               onClick={handleExitClusterZoom}
               className="flex items-center gap-1 px-2 py-1 rounded-md bg-muted/60 border border-border/40 text-[10px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
