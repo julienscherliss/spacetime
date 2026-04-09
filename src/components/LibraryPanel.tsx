@@ -314,6 +314,7 @@ export function LibraryPanel() {
   const [newCatName, setNewCatName] = useState('');
   const [editingItem, setEditingItem] = useState<LibraryTask | null>(null);
   const [tagEditMode, setTagEditMode] = useState(false);
+  const [tagModalOpen, setTagModalOpen] = useState(false);
   const [draggingTag, setDraggingTag] = useState<string | null>(null);
   
   const [deletingTag, setDeletingTag] = useState<{ value: string; label: string; count: number } | null>(null);
@@ -571,7 +572,7 @@ export function LibraryPanel() {
                           active={filters.category === cat.value}
                           label={cat.label}
                           onClick={() => setFilter({ category: filters.category === cat.value ? 'all' : cat.value })}
-                          onLongPress={() => setTagEditMode(true)}
+                          onLongPress={() => { isMobile ? setTagModalOpen(true) : setTagEditMode(true); }}
                         />
                       ))}
 
