@@ -439,14 +439,33 @@ export function TaskEditPanel() {
                     }}
                     className="p-3 pointer-events-auto"
                   />
-                  {dueDate && (
-                    <div className="px-3 pb-2">
-                      <button onClick={() => { setDueDate(''); setShowDuePicker(false); }}
-                        className="text-[10px] font-mono text-muted-foreground/40 hover:text-destructive/60">
-                        Remove due date
+                  <div className="flex items-center gap-1.5 px-3 pb-2">
+                    {[
+                      { label: '1w', days: 7 },
+                      { label: '1m', days: 30 },
+                      { label: '6m', days: 182 },
+                      { label: '1y', days: 365 },
+                    ].map((opt) => (
+                      <button
+                        key={opt.label}
+                        onClick={() => {
+                          const d = new Date();
+                          d.setDate(d.getDate() + opt.days);
+                          setDueDate(d.toISOString().split('T')[0]);
+                          setShowDuePicker(false);
+                        }}
+                        className="px-2.5 py-1 rounded-sm text-[10px] font-mono tracking-wider text-muted-foreground/60 bg-muted/30 hover:bg-muted/60 hover:text-foreground/70 transition-colors"
+                      >
+                        {opt.label}
                       </button>
-                    </div>
-                  )}
+                    ))}
+                    {dueDate && (
+                      <button onClick={() => { setDueDate(''); setShowDuePicker(false); }}
+                        className="ml-auto text-[10px] font-mono text-muted-foreground/40 hover:text-destructive/60">
+                        Clear
+                      </button>
+                    )}
+                  </div>
                 </PopoverContent>
               </Popover>
 
