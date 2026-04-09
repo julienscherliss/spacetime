@@ -345,23 +345,37 @@ export function LibraryPanel() {
   }, [tagEditMode]);
 
   // Handle tag drag via pointermove + elementFromPoint
+  const lastDragTarget = useRef<string | null>(null);
   useEffect(() => {
-    if (!draggingTag) return;
+    if (!draggingTag) { lastDragTarget.current = null; return; }
+    let rafId = 0;
+    let lastX = 0, lastY = 0;
+
     const handleMove = (e: PointerEvent) => {
-      const el = document.elementFromPoint(e.clientX, e.clientY);
-      const chip = el?.closest('[data-cat-value]') as HTMLElement | null;
-      const targetVal = chip?.dataset.catValue || null;
-      if (targetVal && targetVal !== draggingTag) {
-        useLibraryStore.getState().moveCategory(draggingTag, targetVal);
+      lastX = e.clientX;
+      lastY = e.clientY;
+      if (!rafId) {
+        rafId = requestAnimationFrame(() => {
+          rafId = 0;
+          const el = document.elementFromPoint(lastX, lastY);
+          const chip = el?.closest('[data-cat-value]') as HTMLElement | null;
+          const targetVal = chip?.dataset.catValue || null;
+          if (targetVal && targetVal !== draggingTag && targetVal !== lastDragTarget.current) {
+            lastDragTarget.current = targetVal;
+            useLibraryStore.getState().moveCategory(draggingTag, targetVal);
+          }
+        });
       }
     };
     const handleEnd = () => {
+      if (rafId) cancelAnimationFrame(rafId);
       setDraggingTag(null);
     };
-    document.addEventListener('pointermove', handleMove);
+    document.addEventListener('pointermove', handleMove, { passive: true });
     document.addEventListener('pointerup', handleEnd);
     document.addEventListener('pointercancel', handleEnd);
     return () => {
+      if (rafId) cancelAnimationFrame(rafId);
       document.removeEventListener('pointermove', handleMove);
       document.removeEventListener('pointerup', handleEnd);
       document.removeEventListener('pointercancel', handleEnd);
