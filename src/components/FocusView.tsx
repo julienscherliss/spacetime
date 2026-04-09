@@ -54,6 +54,12 @@ export function FocusView() {
       !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring'))
     .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
 
+  const upcomingTasks = todayTasks.filter((t) => {
+    if (!t.time) return false;
+    const start = timeToMinutes(t.time);
+    return start > nowMinutes;
+  });
+
   const completedToday = tasks
     .filter((t) => {
       if (!t.completed || t.archiveReason === 'deleted') return false;
