@@ -371,10 +371,12 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
   const totalSubtasks = task.subtasks?.length ?? 0;
   const priorityLabel = PRIORITY_LABELS[task.priority] || 'FLEX';
 
-  // Lightweight countdown with seconds
+  // Lightweight countdown with seconds — use minute-level remaining + current seconds offset
   const taskEndMinutes = task.time ? timeToMinutes(task.time) + (task.duration || 30) : 0;
-  const taskEndMs = task.time ? new Date(detailNow).setHours(Math.floor(taskEndMinutes / 60), taskEndMinutes % 60, 0, 0) : 0;
-  const remainingSec = task.time ? Math.max(0, Math.floor((taskEndMs - detailNow.getTime()) / 1000)) : 0;
+  const remainingWholeMinutes = task.time ? Math.max(0, taskEndMinutes - nowMinutes) : 0;
+  const currentSeconds = detailNow.getSeconds();
+  // Total remaining seconds = (remaining full minutes * 60) minus elapsed seconds in current minute
+  const remainingSec = task.time ? Math.max(0, remainingWholeMinutes * 60 - currentSeconds) : 0;
   const countdownH = Math.floor(remainingSec / 3600);
   const countdownM = Math.floor((remainingSec % 3600) / 60);
   const countdownS = remainingSec % 60;
