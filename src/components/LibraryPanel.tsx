@@ -7,7 +7,6 @@ import {
 import {
   X, Plus, Trash2, Clock, AlertTriangle,
   ArrowDownAZ, CalendarClock, Tag, ChevronDown, GripVertical, CalendarDays,
-  ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { TagAutocomplete } from '@/components/TagAutocomplete';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -197,36 +196,32 @@ function Chip({ active, label, onClick, onLongPress }: { active: boolean; label:
   );
 }
 
-/* ── Jiggle chip for edit mode ── */
-function JiggleChip({ label, catValue, onDelete, index, total }: { label: string; catValue: string; onDelete: () => void; index: number; total: number }) {
-  const { reorderCategory } = useLibraryStore();
+/* ── Jiggle chip for edit mode (drag to reorder) ── */
+function JiggleChip({ label, catValue, onDelete, onDragStart, onDragEnter, isDragging }: {
+  label: string; catValue: string; onDelete: () => void;
+  onDragStart: () => void; onDragEnter: () => void; isDragging: boolean;
+}) {
   return (
     <motion.div
-      animate={{ rotate: [0, -2, 2, -2, 0] }}
-      transition={{ duration: 0.4, repeat: Infinity, repeatDelay: 0.1 }}
-      className="relative shrink-0 select-none"
+      animate={isDragging ? { scale: 1.1, rotate: 0, opacity: 0.7 } : { rotate: [0, -2, 2, -2, 0] }}
+      transition={isDragging ? { duration: 0.15 } : { duration: 0.4, repeat: Infinity, repeatDelay: 0.1 }}
+      className="relative shrink-0 select-none touch-none"
       style={{ WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
+      onPointerDown={(e) => {
+        // Only start drag, not delete button
+        if ((e.target as HTMLElement).closest('[data-delete-btn]')) return;
+        e.preventDefault();
+        onDragStart();
+      }}
+      onPointerEnter={onDragEnter}
     >
-      <div className="px-3 py-1.5 rounded-full text-[10px] font-mono tracking-wider border border-border/50 text-muted-foreground/60 min-h-[32px] flex items-center gap-1">
-        {index > 0 && (
-          <button
-            onClick={(e) => { e.stopPropagation(); reorderCategory(catValue, 'left'); }}
-            className="p-0.5 text-muted-foreground/40 hover:text-foreground"
-          >
-            <ChevronLeft size={10} />
-          </button>
-        )}
+      <div className={`px-3 py-1.5 rounded-full text-[10px] font-mono tracking-wider border text-muted-foreground/60 min-h-[32px] flex items-center ${
+        isDragging ? 'border-primary/40 bg-primary/10' : 'border-border/50'
+      }`}>
         {label}
-        {index < total - 1 && (
-          <button
-            onClick={(e) => { e.stopPropagation(); reorderCategory(catValue, 'right'); }}
-            className="p-0.5 text-muted-foreground/40 hover:text-foreground"
-          >
-            <ChevronRight size={10} />
-          </button>
-        )}
       </div>
       <button
+        data-delete-btn
         onClick={(e) => { e.stopPropagation(); onDelete(); }}
         className="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full bg-destructive flex items-center justify-center shadow-sm"
       >
