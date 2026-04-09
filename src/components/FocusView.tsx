@@ -361,9 +361,7 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
     : 0;
   const countdownH = Math.floor(taskRemaining / 60);
   const countdownM = taskRemaining % 60;
-  const countdownLabel = countdownH > 0
-    ? `${countdownH}h ${String(countdownM).padStart(2, '0')}m`
-    : `${countdownM}m`;
+  const countdownLabel = `${String(countdownH).padStart(2, '0')}:${String(countdownM).padStart(2, '0')}`;
 
   // Due date label
   const dueDateLabel = task.dueDate
