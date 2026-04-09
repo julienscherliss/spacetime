@@ -460,7 +460,7 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
                     if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
                     if (e.key === 'Escape') setEditingSubtaskId(null);
                   }}
-                  className="flex-1 text-[13px] font-mono leading-snug text-foreground/85 bg-transparent border-b border-foreground/10 focus:border-foreground/30 outline-none"
+                  className="flex-1 text-[13px] font-mono leading-snug text-foreground/85 bg-transparent outline-none caret-foreground/50"
                 />
               ) : (
                 <button
@@ -512,12 +512,11 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
           ) : (
             <button
               onClick={() => setAddingSubtask(true)}
-              className="flex items-center gap-3 w-full py-2.5 px-3 rounded-md text-muted-foreground/30 hover:text-muted-foreground/50 transition-colors"
+              className="flex items-center justify-center w-full py-2.5 px-3 rounded-md text-muted-foreground/30 hover:text-muted-foreground/50 transition-colors"
             >
               <div className="w-4 h-4 rounded-sm border-2 border-dashed border-current flex items-center justify-center shrink-0">
                 <span className="text-[10px] leading-none">+</span>
               </div>
-              <span className="text-[12px] font-mono">Add subtask</span>
             </button>
           )}
         </div>
@@ -538,7 +537,7 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
               setEditingNote(false);
             }}
             rows={3}
-            className="text-[12px] font-mono text-foreground/60 leading-relaxed bg-transparent border border-border/20 rounded-md px-3 py-2 outline-none focus:border-border/40 resize-none"
+            className="text-[12px] font-mono text-foreground/60 leading-relaxed bg-transparent border-none px-3 py-2 outline-none resize-none w-full"
           />
         ) : (
           <button
