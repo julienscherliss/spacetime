@@ -189,7 +189,18 @@ export function TaskEditPanel() {
       setShowDuePicker(false);
       setShowCatPicker(false);
       setSaveStatus('idle');
-      setAttachments(task.attachments || []);
+      setAttachments((task.attachments || []).filter((a: any) => a.type !== 'link'));
+      setLinkAttachments(
+        (task.attachments || [])
+          .filter((a: any) => a.type === 'link')
+          .map((a: any) => ({
+            id: a.id || crypto.randomUUID(),
+            url: a.url,
+            displayName: a.name || a.url,
+            domain: a.domain || '',
+            createdAt: a.createdAt || new Date().toISOString(),
+          }))
+      );
       setIsUploading(false);
       scopeTriggeredRef.current = false;
     }
