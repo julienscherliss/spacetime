@@ -512,7 +512,7 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
           ) : (
             <button
               onClick={() => setAddingSubtask(true)}
-              className="flex items-center justify-center w-full py-2.5 px-3 rounded-md text-muted-foreground/30 hover:text-muted-foreground/50 transition-colors"
+              className="flex items-center gap-3 w-full py-2.5 px-3 rounded-md text-muted-foreground/30 hover:text-muted-foreground/50 transition-colors"
             >
               <div className="w-4 h-4 rounded-sm border-2 border-dashed border-current flex items-center justify-center shrink-0">
                 <span className="text-[10px] leading-none">+</span>
@@ -537,7 +537,7 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
               setEditingNote(false);
             }}
             rows={3}
-            className="text-[12px] font-mono text-foreground/60 leading-relaxed bg-transparent border-none px-3 py-2 outline-none resize-none w-full"
+            className="text-[12px] font-mono text-foreground/50 leading-relaxed bg-transparent border-none px-3 py-2 outline-none resize-none w-full min-h-[40px]"
           />
         ) : (
           <button
@@ -549,7 +549,7 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
                 {linkify(task.description!)}
               </div>
             ) : (
-              <span className="text-[11px] font-mono text-muted-foreground/25 italic">Tap to add notes…</span>
+              <span className="text-[12px] font-mono text-muted-foreground/25 italic">Tap to add notes…</span>
             )}
           </button>
         )}
