@@ -316,6 +316,7 @@ export function LibraryPanel() {
   const [newCatName, setNewCatName] = useState('');
   const [editingItem, setEditingItem] = useState<LibraryTask | null>(null);
   const [tagEditMode, setTagEditMode] = useState(false);
+  const [draggingTag, setDraggingTag] = useState<string | null>(null);
   const [deletingTag, setDeletingTag] = useState<{ value: string; label: string; count: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
@@ -508,13 +509,18 @@ export function LibraryPanel() {
                 <div className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-hide">
                   {tagEditMode ? (
                     <>
-                      {categories.map((cat, idx) => (
+                      {categories.map((cat) => (
                         <JiggleChip
                           key={cat.value}
                           label={cat.label}
                           catValue={cat.value}
-                          index={idx}
-                          total={categories.length}
+                          isDragging={draggingTag === cat.value}
+                          onDragStart={() => setDraggingTag(cat.value)}
+                          onDragEnter={() => {
+                            if (draggingTag && draggingTag !== cat.value) {
+                              useLibraryStore.getState().moveCategory(draggingTag, cat.value);
+                            }
+                          }}
                           onDelete={() => handleDeleteTag(cat.value)}
                         />
                       ))}
