@@ -372,10 +372,10 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
     <div className="w-full max-w-sm mx-auto flex flex-col gap-5">
       {/* ── Header: countdown (left) + due date or priority (right) ── */}
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-mono tabular-nums tracking-wider text-muted-foreground/40">
+        <span className="text-sm font-mono tabular-nums tracking-wider text-foreground/60 font-medium">
           {task.time ? countdownLabel : '—'}
         </span>
-        <span className="text-[9px] font-mono tracking-[0.2em] text-muted-foreground/35 uppercase">
+        <span className="text-xs font-mono tracking-[0.15em] text-foreground/50 uppercase font-medium">
           {dueDateLabel || priorityLabel}
         </span>
       </div>
