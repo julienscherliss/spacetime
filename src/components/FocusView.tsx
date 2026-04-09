@@ -327,6 +327,10 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
   const [titleDraft, setTitleDraft] = useState('');
   const [editingNote, setEditingNote] = useState(false);
   const [noteDraft, setNoteDraft] = useState('');
+  const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
+  const [subtaskDraft, setSubtaskDraft] = useState('');
+  const [showNewSubtask, setShowNewSubtask] = useState(false);
+  const [newSubtaskDraft, setNewSubtaskDraft] = useState('');
   const { minutes: nowMinutes } = useCurrentTime(1000);
 
   // Empty state
