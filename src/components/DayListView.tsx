@@ -29,6 +29,7 @@ export function DayListView() {
   const {
     tasks, routinesEnabled, generateRecurringInstances,
     navigateToDate, setNavigateToDate, setEditingTask, setDaySubMode,
+    setListReturnZoom, setShowListReturn,
   } = useTaskStore();
   const { dateStr: today } = useCurrentTime(15000);
   const [selectedDate, setSelectedDate] = useState(navigateToDate || today);
@@ -69,6 +70,13 @@ export function DayListView() {
 
   const handleTaskTap = (taskId: string) => {
     setEditingTask(taskId);
+  };
+
+  const handleTimeTap = (task: { time?: string; duration?: number }) => {
+    if (!task.time) return;
+    setListReturnZoom({ taskTime: task.time, taskDuration: task.duration || 30 });
+    setShowListReturn(true);
+    setDaySubMode('timeline');
   };
 
   const handleAddTask = () => {
@@ -173,19 +181,24 @@ export function DayListView() {
                 : null;
 
               return (
-                <motion.button
+                <motion.div
                   key={task.id}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.03 }}
-                  onClick={() => handleTaskTap(task.id)}
-                  className={`w-full text-left px-3 py-4 border-b border-border/20 transition-colors active:bg-muted/40 ${
+                  className={`w-full text-left px-3 py-4 border-b border-border/20 transition-colors ${
                     task.completed ? 'opacity-40' : ''
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    {/* Time column */}
-                    <div className="w-16 flex-shrink-0 pt-0.5">
+                    {/* Time column — tappable to zoom timeline */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleTimeTap(task);
+                      }}
+                      className="w-16 flex-shrink-0 pt-0.5 text-left active:bg-muted/40 rounded-sm -m-1 p-1 transition-colors"
+                    >
                       {task.time ? (
                         <div>
                           <p className="text-[11px] font-mono text-foreground/80 leading-tight">
@@ -202,10 +215,13 @@ export function DayListView() {
                           ANYTIME
                         </p>
                       )}
-                    </div>
+                    </button>
 
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
+                    {/* Content — tappable to edit */}
+                    <button
+                      onClick={() => handleTaskTap(task.id)}
+                      className="flex-1 min-w-0 text-left active:bg-muted/40 rounded-sm -m-1 p-1 transition-colors"
+                    >
                       <p className={`text-sm font-display font-medium text-foreground leading-snug ${
                         task.completed ? 'line-through' : ''
                       }`}>
@@ -221,7 +237,7 @@ export function DayListView() {
                           {task.subtasks.filter((s: any) => s.completed).length}/{task.subtasks.length} SUBTASKS
                         </p>
                       )}
-                    </div>
+                    </button>
 
                     {/* Priority dot */}
                     <div
@@ -232,7 +248,7 @@ export function DayListView() {
                       }}
                     />
                   </div>
-                </motion.button>
+                </motion.div>
               );
             })}
           </div>

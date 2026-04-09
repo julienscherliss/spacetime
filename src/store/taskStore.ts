@@ -59,6 +59,12 @@ export type MoveValidation =
   | { allowed: true }
   | { allowed: false; reason: string };
 
+/** Info for zooming timeline to a specific time window when coming from list view */
+export interface ListReturnZoom {
+  taskTime: string; // HH:MM
+  taskDuration: number; // minutes
+}
+
 interface TaskState {
   tasks: Task[];
   viewMode: ViewMode;
@@ -70,10 +76,16 @@ interface TaskState {
   dailyStats: DailyStats | null;
   /** When set, DayView should open to this date and then clear it */
   navigateToDate: string | null;
+  /** When set, DayView should zoom to this time window and show return button */
+  listReturnZoom: ListReturnZoom | null;
+  /** Whether to show the return-to-list button in DayView */
+  showListReturn: boolean;
 
   setViewMode: (mode: ViewMode) => void;
   setDaySubMode: (mode: DaySubMode) => void;
   setNavigateToDate: (date: string | null) => void;
+  setListReturnZoom: (zoom: ListReturnZoom | null) => void;
+  setShowListReturn: (show: boolean) => void;
   toggleRoutines: () => void;
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'completed' | 'moveCount' | 'originalPriority'> & { isRoutine?: boolean }) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
@@ -320,10 +332,14 @@ export const useTaskStore = create<TaskState>()(
       showCompletionStats: false,
       dailyStats: null,
       navigateToDate: null,
+      listReturnZoom: null,
+      showListReturn: false,
 
       setViewMode: (mode) => set({ viewMode: mode }),
       setDaySubMode: (mode) => set({ daySubMode: mode }),
       setNavigateToDate: (date) => set({ navigateToDate: date }),
+      setListReturnZoom: (zoom) => set({ listReturnZoom: zoom }),
+      setShowListReturn: (show) => set({ showListReturn: show }),
       toggleRoutines: () => set((s) => ({ routinesEnabled: !s.routinesEnabled })),
 
       addTask: (taskData) => {

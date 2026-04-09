@@ -9,7 +9,7 @@ import { useCurrentTime } from '@/hooks/useCurrentTime';
 import { TimelineColumn, START_HOUR } from '@/components/TimelineColumn';
 import { BlockedModal } from '@/components/BlockedModal';
 import { useTimeScale, SCALE_MIN, SCALE_MAX } from '@/hooks/useTimeScale';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, CornerUpLeft } from 'lucide-react';
 import { FitViewButton } from '@/components/FitViewButton';
 import { TaskCluster } from '@/utils/taskClustering';
 
@@ -20,7 +20,8 @@ function addDaysToDate(dateStr: string, days: number): string {
 }
 
 export function DayView() {
-  const { tasks, routinesEnabled, generateRecurringInstances, navigateToDate, setNavigateToDate } = useTaskStore();
+  const { tasks, routinesEnabled, generateRecurringInstances, navigateToDate, setNavigateToDate,
+    listReturnZoom, setListReturnZoom, showListReturn, setShowListReturn, setDaySubMode } = useTaskStore();
   const { minutes: nowMinutes, dateStr: today } = useCurrentTime(15000);
   const [selectedDate, setSelectedDate] = useState(navigateToDate || today);
 
@@ -96,7 +97,32 @@ export function DayView() {
   useEffect(() => {
     if (connected) fetchEvents(selectedDate, selectedDate);
   }, [selectedDate, connected]);
+  // Zoom to task time when coming from list view
+  useEffect(() => {
+    if (!listReturnZoom) return;
+    const { taskTime, taskDuration } = listReturnZoom;
+    const [h, m] = taskTime.split(':').map(Number);
+    const taskStartMin = h * 60 + m;
+    const taskEndMin = taskStartMin + taskDuration;
+    // 2 hours before start, 2 hours after end
+    const windowStartMin = Math.max(0, taskStartMin - 120);
+    const windowEndMin = Math.min(24 * 60, taskEndMin + 120);
+    const windowHours = (windowEndMin - windowStartMin) / 60;
+    const viewportH = window.innerHeight - 100; // approx usable height
+    const targetHourHeight = Math.min(SCALE_MAX, Math.max(SCALE_MIN, viewportH / windowHours));
 
+    setScale(targetHourHeight);
+    setListReturnZoom(null);
+
+    queueMicrotask(() => {
+      const scrollTarget = Math.max(0,
+        ((windowStartMin - START_HOUR * 60) / 60) * targetHourHeight
+      );
+      window.scrollTo({ top: scrollTarget, behavior: 'auto' });
+    });
+  }, [listReturnZoom, setListReturnZoom, setScale]);
+
+  
   // Bind zoom gestures to the page-level scroll container
   useEffect(() => {
     const el = document.documentElement;
@@ -196,6 +222,18 @@ export function DayView() {
         </div>
 
         <div className="flex items-center gap-1">
+          {showListReturn && (
+            <button
+              onClick={() => {
+                setShowListReturn(false);
+                setDaySubMode('list');
+              }}
+              className="flex items-center gap-1 px-2 py-1 rounded-md bg-muted/60 border border-border/40 text-[10px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <CornerUpLeft size={10} />
+              <span className="tracking-wider">LIST</span>
+            </button>
+          )}
           {clusterZoomed && (
             <button
               onClick={handleExitClusterZoom}
