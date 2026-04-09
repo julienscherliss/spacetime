@@ -197,26 +197,20 @@ function Chip({ active, label, onClick, onLongPress }: { active: boolean; label:
 }
 
 /* ── Jiggle chip for edit mode (drag to reorder) ── */
-function JiggleChip({ label, catValue, onDelete, onDragStart, onDragEnter, isDragging }: {
+function JiggleChip({ label, catValue, onDelete, isDragging, isHovered }: {
   label: string; catValue: string; onDelete: () => void;
-  onDragStart: () => void; onDragEnter: () => void; isDragging: boolean;
+  isDragging: boolean; isHovered: boolean;
 }) {
   return (
     <motion.div
-      animate={isDragging ? { scale: 1.1, rotate: 0, opacity: 0.7 } : { rotate: [0, -2, 2, -2, 0] }}
+      data-cat-value={catValue}
+      animate={isDragging ? { scale: 1.12, rotate: 0, opacity: 0.6 } : { rotate: [0, -2, 2, -2, 0] }}
       transition={isDragging ? { duration: 0.15 } : { duration: 0.4, repeat: Infinity, repeatDelay: 0.1 }}
       className="relative shrink-0 select-none touch-none"
       style={{ WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
-      onPointerDown={(e) => {
-        // Only start drag, not delete button
-        if ((e.target as HTMLElement).closest('[data-delete-btn]')) return;
-        e.preventDefault();
-        onDragStart();
-      }}
-      onPointerEnter={onDragEnter}
     >
-      <div className={`px-3 py-1.5 rounded-full text-[10px] font-mono tracking-wider border text-muted-foreground/60 min-h-[32px] flex items-center ${
-        isDragging ? 'border-primary/40 bg-primary/10' : 'border-border/50'
+      <div className={`px-3 py-1.5 rounded-full text-[10px] font-mono tracking-wider border text-muted-foreground/60 min-h-[32px] flex items-center transition-colors ${
+        isDragging ? 'border-primary/40 bg-primary/10' : isHovered ? 'border-primary/30 bg-primary/5' : 'border-border/50'
       }`}>
         {label}
       </div>
@@ -317,6 +311,7 @@ export function LibraryPanel() {
   const [editingItem, setEditingItem] = useState<LibraryTask | null>(null);
   const [tagEditMode, setTagEditMode] = useState(false);
   const [draggingTag, setDraggingTag] = useState<string | null>(null);
+  const [hoveredTag, setHoveredTag] = useState<string | null>(null);
   const [deletingTag, setDeletingTag] = useState<{ value: string; label: string; count: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
@@ -344,15 +339,29 @@ export function LibraryPanel() {
     return () => document.removeEventListener('pointerdown', handler);
   }, [tagEditMode]);
 
-  // End tag drag on pointer up anywhere
+  // Handle tag drag via pointermove + elementFromPoint
   useEffect(() => {
     if (!draggingTag) return;
-    const handler = () => setDraggingTag(null);
-    document.addEventListener('pointerup', handler);
-    document.addEventListener('pointercancel', handler);
+    const handleMove = (e: PointerEvent) => {
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const chip = el?.closest('[data-cat-value]') as HTMLElement | null;
+      const targetVal = chip?.dataset.catValue || null;
+      setHoveredTag(targetVal);
+      if (targetVal && targetVal !== draggingTag) {
+        useLibraryStore.getState().moveCategory(draggingTag, targetVal);
+      }
+    };
+    const handleEnd = () => {
+      setDraggingTag(null);
+      setHoveredTag(null);
+    };
+    document.addEventListener('pointermove', handleMove);
+    document.addEventListener('pointerup', handleEnd);
+    document.addEventListener('pointercancel', handleEnd);
     return () => {
-      document.removeEventListener('pointerup', handler);
-      document.removeEventListener('pointercancel', handler);
+      document.removeEventListener('pointermove', handleMove);
+      document.removeEventListener('pointerup', handleEnd);
+      document.removeEventListener('pointercancel', handleEnd);
     };
   }, [draggingTag]);
 
@@ -518,7 +527,18 @@ export function LibraryPanel() {
               {/* Filter chips — two rows */}
               <div data-tag-edit-zone className="space-y-2">
                 {/* Row 1: Category chips */}
-                <div className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-hide">
+                <div
+                  className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-hide"
+                  onPointerDown={(e) => {
+                    const target = e.target as HTMLElement;
+                    if (target.closest('[data-delete-btn]')) return;
+                    const chip = target.closest('[data-cat-value]') as HTMLElement | null;
+                    if (chip?.dataset.catValue) {
+                      e.preventDefault();
+                      setDraggingTag(chip.dataset.catValue);
+                    }
+                  }}
+                >
                   {tagEditMode ? (
                     <>
                       {categories.map((cat) => (
@@ -527,12 +547,7 @@ export function LibraryPanel() {
                           label={cat.label}
                           catValue={cat.value}
                           isDragging={draggingTag === cat.value}
-                          onDragStart={() => setDraggingTag(cat.value)}
-                          onDragEnter={() => {
-                            if (draggingTag && draggingTag !== cat.value) {
-                              useLibraryStore.getState().moveCategory(draggingTag, cat.value);
-                            }
-                          }}
+                          isHovered={hoveredTag === cat.value && draggingTag !== cat.value}
                           onDelete={() => handleDeleteTag(cat.value)}
                         />
                       ))}
