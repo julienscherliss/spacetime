@@ -387,7 +387,7 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
     if (!task.dueDate) return 'Today';
     const due = new Date(task.dueDate + 'T12:00:00');
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0);
     const diffDays = Math.round((due.getTime() - todayStart.getTime()) / (1000 * 60 * 60 * 24));
     if (diffDays <= 0) return 'Today';
     if (diffDays === 1) return 'Due Tomorrow';
