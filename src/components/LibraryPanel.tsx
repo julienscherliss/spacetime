@@ -197,9 +197,9 @@ function Chip({ active, label, onClick, onLongPress }: { active: boolean; label:
 }
 
 /* ── Jiggle chip for edit mode (drag to reorder) ── */
-function JiggleChip({ label, catValue, onDelete, isDragging, isHovered }: {
+function JiggleChip({ label, catValue, onDelete, isDragging }: {
   label: string; catValue: string; onDelete: () => void;
-  isDragging: boolean; isHovered: boolean;
+  isDragging: boolean;
 }) {
   return (
     <motion.div
@@ -209,8 +209,8 @@ function JiggleChip({ label, catValue, onDelete, isDragging, isHovered }: {
       className="relative shrink-0 select-none touch-none"
       style={{ WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
     >
-      <div className={`px-3 py-1.5 rounded-full text-[10px] font-mono tracking-wider border text-muted-foreground/60 min-h-[32px] flex items-center transition-colors ${
-        isDragging ? 'border-primary/40 bg-primary/10' : isHovered ? 'border-primary/30 bg-primary/5' : 'border-border/50'
+      <div className={`px-3 py-1.5 rounded-full text-[10px] font-mono tracking-wider border text-muted-foreground/60 min-h-[32px] flex items-center ${
+        isDragging ? 'border-primary/40 bg-primary/10' : 'border-border/50'
       }`}>
         {label}
       </div>
