@@ -20,7 +20,8 @@ function addDaysToDate(dateStr: string, days: number): string {
 }
 
 export function DayView() {
-  const { tasks, routinesEnabled, generateRecurringInstances, navigateToDate, setNavigateToDate } = useTaskStore();
+  const { tasks, routinesEnabled, generateRecurringInstances, navigateToDate, setNavigateToDate,
+    listReturnZoom, setListReturnZoom, showListReturn, setShowListReturn, setDaySubMode } = useTaskStore();
   const { minutes: nowMinutes, dateStr: today } = useCurrentTime(15000);
   const [selectedDate, setSelectedDate] = useState(navigateToDate || today);
 
