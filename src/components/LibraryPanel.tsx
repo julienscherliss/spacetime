@@ -653,6 +653,81 @@ export function LibraryPanel() {
         />
       )}
 
+      {/* Mobile tag management modal */}
+      <AnimatePresence>
+        {tagModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-end justify-center bg-background/60 backdrop-blur-[2px]"
+            onClick={() => setTagModalOpen(false)}
+          >
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+              className="bg-card border-t border-border rounded-t-xl w-full max-h-[70vh] flex flex-col shadow-lg"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-5 py-4 border-b border-border/40">
+                <span className="text-[12px] font-mono tracking-[0.14em] text-foreground font-semibold">MANAGE TAGS</span>
+                <button onClick={() => setTagModalOpen(false)} className="text-[11px] font-mono tracking-wider text-foreground/60 hover:text-foreground">
+                  Done
+                </button>
+              </div>
+              <div
+                className="flex-1 overflow-y-auto px-4 py-3 space-y-1.5"
+                onPointerDown={(e) => {
+                  const target = e.target as HTMLElement;
+                  if (target.closest('[data-delete-btn]')) return;
+                  const row = target.closest('[data-cat-value]') as HTMLElement | null;
+                  if (row?.dataset.catValue) {
+                    e.preventDefault();
+                    setDraggingTag(row.dataset.catValue);
+                  }
+                }}
+              >
+                {categories.length === 0 ? (
+                  <p className="text-center text-[12px] font-mono text-muted-foreground/40 py-8">No tags yet</p>
+                ) : (
+                  categories.map((cat) => {
+                    const count = allItems.filter(i => i.category === cat.value).length;
+                    return (
+                      <motion.div
+                        key={cat.value}
+                        data-cat-value={cat.value}
+                        layout
+                        className={`flex items-center gap-3 px-4 py-3.5 rounded-lg border select-none touch-none ${
+                          draggingTag === cat.value
+                            ? 'border-primary/40 bg-primary/5 scale-[1.02]'
+                            : 'border-border/40 bg-card/50'
+                        }`}
+                        style={{ WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
+                      >
+                        <GripVertical size={14} className="text-muted-foreground/30 shrink-0" />
+                        <span className="flex-1 font-mono text-[14px] text-foreground">{cat.label}</span>
+                        <span className="text-[10px] font-mono text-muted-foreground/40 shrink-0">{count}</span>
+                        <button
+                          data-delete-btn
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onPointerUp={(e) => e.stopPropagation()}
+                          onClick={(e) => { e.stopPropagation(); handleDeleteTag(cat.value); }}
+                          className="p-1.5 text-muted-foreground/30 hover:text-destructive transition-colors"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </motion.div>
+                    );
+                  })
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Delete tag confirmation dialog */}
       <Dialog open={!!deletingTag} onOpenChange={(o) => { if (!o) setDeletingTag(null); }}>
         <DialogContent className="max-w-sm">
