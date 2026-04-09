@@ -327,6 +327,10 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
   const [titleDraft, setTitleDraft] = useState('');
   const [editingNote, setEditingNote] = useState(false);
   const [noteDraft, setNoteDraft] = useState('');
+  const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
+  const [subtaskDraft, setSubtaskDraft] = useState('');
+  const [showNewSubtask, setShowNewSubtask] = useState(false);
+  const [newSubtaskDraft, setNewSubtaskDraft] = useState('');
   const { minutes: nowMinutes } = useCurrentTime(1000);
 
   // Empty state
@@ -357,9 +361,7 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
     : 0;
   const countdownH = Math.floor(taskRemaining / 60);
   const countdownM = taskRemaining % 60;
-  const countdownLabel = countdownH > 0
-    ? `${countdownH}h ${String(countdownM).padStart(2, '0')}m`
-    : `${countdownM}m`;
+  const countdownLabel = `${String(countdownH).padStart(2, '0')}:${String(countdownM).padStart(2, '0')}`;
 
   // Due date label
   const dueDateLabel = task.dueDate
@@ -370,10 +372,10 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
     <div className="w-full max-w-sm mx-auto flex flex-col gap-5">
       {/* ── Header: countdown (left) + due date or priority (right) ── */}
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-mono tabular-nums tracking-wider text-muted-foreground/40">
+        <span className="text-sm font-mono tabular-nums tracking-wider text-foreground/60 font-medium">
           {task.time ? countdownLabel : '—'}
         </span>
-        <span className="text-[9px] font-mono tracking-[0.2em] text-muted-foreground/35 uppercase">
+        <span className="text-xs font-mono tracking-[0.15em] text-foreground/50 uppercase font-medium">
           {dueDateLabel || priorityLabel}
         </span>
       </div>
@@ -405,45 +407,101 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
         </button>
       )}
 
-      {/* ── Subtasks (primary focus) ── */}
-      {hasSubtasks && (
-        <div className="flex flex-col gap-0.5">
-          <div className="text-[9px] font-mono tracking-[0.2em] text-muted-foreground/30 uppercase mb-2">
-            Subtasks · {completedSubtasks}/{totalSubtasks}
-          </div>
-          <div className="space-y-1">
-            {task.subtasks!.map((s) => (
+      {/* ── Subtasks (editable) ── */}
+      <div className="flex flex-col gap-0.5">
+        <div className="text-[9px] font-mono tracking-[0.2em] text-muted-foreground/30 uppercase mb-2">
+          Subtasks · {completedSubtasks}/{totalSubtasks}
+        </div>
+        <div className="space-y-1">
+          {(task.subtasks || []).map((s) => (
+            <div key={s.id} className="flex items-center gap-3 w-full py-2.5 px-3 rounded-md hover:bg-muted/30 transition-colors group">
+              {/* Checkbox — only toggles completion */}
               <button
-                key={s.id}
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   const updated = task.subtasks!.map(st =>
                     st.id === s.id ? { ...st, completed: !st.completed } : st
                   );
                   onUpdateTask(task.id, { subtasks: updated });
                 }}
-                className="flex items-center gap-3 w-full text-left py-2.5 px-3 rounded-md hover:bg-muted/30 transition-colors group"
-              >
-                <div className={`w-4 h-4 rounded-sm border-2 flex items-center justify-center shrink-0 transition-all ${
+                className={`w-4 h-4 rounded-sm border-2 flex items-center justify-center shrink-0 transition-all ${
                   s.completed
                     ? 'bg-foreground/15 border-foreground/25'
                     : 'border-muted-foreground/25 group-hover:border-muted-foreground/45'
-                }`}>
-                  {s.completed && (
-                    <svg width="10" height="10" viewBox="0 0 8 8" className="text-foreground/60">
-                      <path d="M1.5 4L3.2 5.8L6.5 2.2" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                </div>
-                <span className={`text-[13px] font-mono leading-snug ${
-                  s.completed ? 'line-through text-muted-foreground/35' : 'text-foreground/85'
-                }`}>
-                  {s.title}
-                </span>
+                }`}
+              >
+                {s.completed && (
+                  <svg width="10" height="10" viewBox="0 0 8 8" className="text-foreground/60">
+                    <path d="M1.5 4L3.2 5.8L6.5 2.2" stroke="currentColor" strokeWidth="1.3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
               </button>
-            ))}
-          </div>
+
+              {/* Title — tap to edit */}
+              {editingSubtaskId === s.id ? (
+                <input
+                  autoFocus
+                  value={subtaskDraft}
+                  onChange={(e) => setSubtaskDraft(e.target.value)}
+                  onBlur={() => {
+                    if (subtaskDraft.trim() && subtaskDraft !== s.title) {
+                      const updated = task.subtasks!.map(st =>
+                        st.id === s.id ? { ...st, title: subtaskDraft.trim() } : st
+                      );
+                      onUpdateTask(task.id, { subtasks: updated });
+                    }
+                    setEditingSubtaskId(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                    if (e.key === 'Escape') setEditingSubtaskId(null);
+                  }}
+                  className="flex-1 text-[13px] font-mono leading-snug text-foreground/85 bg-transparent border-b border-foreground/10 focus:border-foreground/30 outline-none"
+                />
+              ) : (
+                <button
+                  onClick={() => {
+                    setEditingSubtaskId(s.id);
+                    setSubtaskDraft(s.title);
+                    setShowNewSubtask(true);
+                  }}
+                  className={`flex-1 text-left text-[13px] font-mono leading-snug ${
+                    s.completed ? 'line-through text-muted-foreground/35' : 'text-foreground/85'
+                  }`}
+                >
+                  {s.title}
+                </button>
+              )}
+            </div>
+          ))}
+
+          {/* Phantom new subtask row */}
+          {showNewSubtask && editingSubtaskId === null && (
+            <div className="flex items-center gap-3 w-full py-2.5 px-3 rounded-md">
+              <div className="w-4 h-4 rounded-sm border-2 border-muted-foreground/15 shrink-0" />
+              <input
+                autoFocus
+                value={newSubtaskDraft}
+                onChange={(e) => setNewSubtaskDraft(e.target.value)}
+                placeholder="New subtask…"
+                onBlur={() => {
+                  if (newSubtaskDraft.trim()) {
+                    const newSub = { id: crypto.randomUUID(), title: newSubtaskDraft.trim(), completed: false };
+                    onUpdateTask(task.id, { subtasks: [...(task.subtasks || []), newSub] });
+                  }
+                  setNewSubtaskDraft('');
+                  setShowNewSubtask(false);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                  if (e.key === 'Escape') { setNewSubtaskDraft(''); setShowNewSubtask(false); }
+                }}
+                className="flex-1 text-[13px] font-mono leading-snug text-foreground/85 bg-transparent border-b border-foreground/10 focus:border-foreground/30 outline-none placeholder:text-muted-foreground/20"
+              />
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* ── Description / Notes ── */}
       <div className="flex flex-col gap-1">
