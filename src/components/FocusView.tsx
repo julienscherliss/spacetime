@@ -87,6 +87,13 @@ export function FocusView() {
   const remaining = activeTask ? (activeTask.duration || 30) - elapsed : 0;
   const nextTask = activeTask ? getNextTask(activeTask.id) : todayTasks[0];
 
+  // Overdue tasks: ended but not completed, not the active task
+  const overdueTasks = todayTasks.filter((t) => {
+    if (!t.time || t.id === activeTask?.id) return false;
+    const end = timeToMinutes(t.time) + (t.duration || 30);
+    return nowMinutes >= end;
+  });
+
   const completedCount = completedToday.length;
 
   // Hold-to-complete handlers
