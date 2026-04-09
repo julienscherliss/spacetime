@@ -61,9 +61,11 @@ export function useTimeScale(view: 'day' | 'week') {
     if (!container) return;
     const handler = (e: WheelEvent) => {
       if (isDraggingRef.current) return;
-      if (!e.altKey) return;
+      // Support both Alt+scroll (explicit) and Ctrl+scroll (Mac trackpad pinch)
+      if (!e.altKey && !e.ctrlKey) return;
       e.preventDefault();
-      const delta = -e.deltaY * SCROLL_SENSITIVITY;
+      const sensitivity = e.ctrlKey ? SCROLL_SENSITIVITY * 2.5 : SCROLL_SENSITIVITY;
+      const delta = -e.deltaY * sensitivity;
       setHourHeight(h => clamp(h + delta, SCALE_MIN, SCALE_MAX));
     };
     container.addEventListener('wheel', handler, { passive: false });
