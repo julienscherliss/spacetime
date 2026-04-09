@@ -5,7 +5,7 @@ import {
   LibraryTask,
 } from '@/store/libraryStore';
 import {
-  X, Plus, Trash2, Clock, AlertTriangle,
+  X, Plus, Check, Clock, AlertTriangle,
   ArrowDownAZ, CalendarClock, Tag, ChevronDown, GripVertical, CalendarDays,
 } from 'lucide-react';
 import { TagAutocomplete } from '@/components/TagAutocomplete';
@@ -52,7 +52,8 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFired = useRef(false);
 
-  const handlePointerDown = useCallback(() => {
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    if ((e.target as HTMLElement).closest('[data-touch-ignore]')) return;
     longPressFired.current = false;
     longPressTimer.current = setTimeout(() => {
       longPressFired.current = true;
@@ -69,7 +70,8 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
     }, 400);
   }, [item]);
 
-  const handlePointerUp = useCallback(() => {
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    if ((e.target as HTMLElement).closest('[data-touch-ignore]')) return;
     if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
     if (!longPressFired.current) onEdit();
   }, [onEdit]);
@@ -145,11 +147,13 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
       <UrgencyIcons item={item} />
 
       <button
+        onPointerDown={(e) => e.stopPropagation()}
+        onPointerUp={(e) => e.stopPropagation()}
         onClick={(e) => { e.stopPropagation(); deleteItem(item.id); }}
         data-touch-ignore
-        className={`p-1.5 text-muted-foreground/30 hover:text-destructive transition-colors ${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+        className={`p-1.5 text-muted-foreground/30 hover:text-primary transition-colors ${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
       >
-        <Trash2 size={13} />
+        <Check size={13} strokeWidth={2} />
       </button>
     </div>
   );
