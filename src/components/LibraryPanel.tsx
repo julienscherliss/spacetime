@@ -587,7 +587,7 @@ export function LibraryPanel() {
                           active={filters.category === cat.value}
                           label={cat.label}
                           onClick={() => setFilter({ category: filters.category === cat.value ? 'all' : cat.value })}
-                          onLongPress={() => { isMobile ? setTagModalOpen(true) : setTagEditMode(true); }}
+                          onLongPress={() => setTagModalOpen(true)}
                         />
                       ))}
 
