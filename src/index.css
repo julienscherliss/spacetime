@@ -150,6 +150,10 @@
 }
 
 @keyframes subtask-pulse {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 1; }
+  0% { opacity: 0.3; }
+  3.33% { opacity: 1; }
+  6.67% { opacity: 0.3; }
+  10% { opacity: 1; }
+  13.33% { opacity: 0.3; }
+  100% { opacity: 0.3; }
 }

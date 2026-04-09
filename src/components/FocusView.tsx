@@ -187,9 +187,9 @@ export function FocusView() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.4 }}
           onClick={() => setActivePanel('detail')}
-          className="absolute left-1/2 -translate-x-1/2 bottom-2 z-20 p-2 transition-colors text-muted-foreground/30 hover:text-muted-foreground/50"
+          className={`absolute left-1/2 -translate-x-1/2 bottom-2 z-20 p-2 transition-colors text-muted-foreground/30 hover:text-muted-foreground/50`}
         >
-          <ChevronDown size={40} strokeWidth={1.5} />
+          <ChevronDown size={40} strokeWidth={1.5} className={activeTask?.subtasks && activeTask.subtasks.length > 0 ? 'animate-[subtask-pulse_30s_ease-in-out_infinite]' : ''} />
         </motion.button>
       )}
 
