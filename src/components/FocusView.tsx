@@ -327,11 +327,27 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
   const [titleDraft, setTitleDraft] = useState('');
   const [editingNote, setEditingNote] = useState(false);
   const [noteDraft, setNoteDraft] = useState('');
+  const noteEditorRef = useRef<HTMLDivElement | null>(null);
   const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
   const [subtaskDraft, setSubtaskDraft] = useState('');
   const [addingSubtask, setAddingSubtask] = useState(false);
   const [newSubtaskDraft, setNewSubtaskDraft] = useState('');
   const { minutes: nowMinutes } = useCurrentTime(1000);
+
+  useEffect(() => {
+    if (!editingNote || !noteEditorRef.current) return;
+    const editor = noteEditorRef.current;
+    editor.textContent = noteDraft;
+    requestAnimationFrame(() => {
+      editor.focus();
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(editor);
+      range.collapse(false);
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+    });
+  }, [editingNote]);
 
   // Empty state
   if (!task) {
@@ -528,24 +544,26 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
           Notes
         </div>
         {editingNote ? (
-          <textarea
-            autoFocus
-            value={noteDraft}
-            onChange={(e) => setNoteDraft(e.target.value)}
+          <div
+            ref={noteEditorRef}
+            contentEditable
+            suppressContentEditableWarning
+            onInput={(e) => setNoteDraft(e.currentTarget.innerText)}
             onBlur={() => {
-              onUpdateTask(task.id, { description: noteDraft.trim() || undefined });
+              const value = noteEditorRef.current?.innerText ?? '';
+              onUpdateTask(task.id, { description: value.trim() || undefined });
+              setNoteDraft(value);
               setEditingNote(false);
             }}
-            rows={3}
-            className="text-[12px] font-mono text-foreground/50 leading-relaxed bg-transparent border-none px-3 py-2 outline-none resize-none w-full min-h-[40px]"
+            className="min-h-[40px] px-3 py-2 text-[12px] font-mono text-foreground/50 leading-relaxed whitespace-pre-wrap break-words outline-none"
           />
         ) : (
           <button
             onClick={() => { setNoteDraft(task.description || ''); setEditingNote(true); }}
-            className="text-left min-h-[40px] px-3 py-2 rounded-md border border-transparent hover:border-border/15 transition-colors"
+            className="text-left min-h-[40px] px-3 py-2 w-full"
           >
             {hasDescription ? (
-              <div className="text-[12px] font-mono text-foreground/50 leading-relaxed">
+              <div className="text-[12px] font-mono text-foreground/50 leading-relaxed whitespace-pre-wrap break-words">
                 {linkify(task.description!)}
               </div>
             ) : (
