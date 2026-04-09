@@ -76,6 +76,7 @@ interface LibraryState {
   addCategory: (name: string) => void;
   removeCategory: (value: string) => void;
   renameCategory: (value: string, newLabel: string) => void;
+  reorderCategory: (value: string, direction: 'left' | 'right') => void;
 }
 
 const generateId = () => crypto.randomUUID();
@@ -309,6 +310,18 @@ export const useLibraryStore = create<LibraryState>()(
             s.categories.map(c => c.value === value ? { ...c, label: newLabel.trim() || c.label } : c)
           ),
         }));
+      },
+
+      reorderCategory: (value, direction) => {
+        set((s) => {
+          const cats = [...s.categories];
+          const idx = cats.findIndex(c => c.value === value);
+          if (idx < 0) return s;
+          const swapIdx = direction === 'left' ? idx - 1 : idx + 1;
+          if (swapIdx < 0 || swapIdx >= cats.length) return s;
+          [cats[idx], cats[swapIdx]] = [cats[swapIdx], cats[idx]];
+          return { categories: cats };
+        });
       },
     }),
     {

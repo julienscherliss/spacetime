@@ -7,7 +7,9 @@ import {
 import {
   X, Plus, Trash2, Clock, AlertTriangle,
   ArrowDownAZ, CalendarClock, Tag, ChevronDown, GripVertical, CalendarDays,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react';
+import { TagAutocomplete } from '@/components/TagAutocomplete';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useCarryStore } from '@/store/carryStore';
 import { useTaskStore } from '@/store/taskStore';
@@ -183,11 +185,12 @@ function Chip({ active, label, onClick, onLongPress }: { active: boolean; label:
       onPointerUp={onLongPress ? handlePointerUp : undefined}
       onPointerMove={onLongPress ? handlePointerMove : undefined}
       onClick={onLongPress ? undefined : onClick}
-      className={`shrink-0 px-3 py-1.5 rounded-full text-[10px] font-mono tracking-wider transition-colors min-h-[32px] border ${
+      className={`shrink-0 px-3 py-1.5 rounded-full text-[10px] font-mono tracking-wider transition-colors min-h-[32px] border select-none ${
         active
           ? 'border-foreground/25 bg-foreground/8 text-foreground font-medium'
           : 'border-border/50 text-muted-foreground/60 hover:text-foreground hover:border-border'
       }`}
+      style={{ WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
     >
       {label}
     </button>
@@ -195,15 +198,33 @@ function Chip({ active, label, onClick, onLongPress }: { active: boolean; label:
 }
 
 /* ── Jiggle chip for edit mode ── */
-function JiggleChip({ label, onDelete }: { label: string; onDelete: () => void }) {
+function JiggleChip({ label, catValue, onDelete, index, total }: { label: string; catValue: string; onDelete: () => void; index: number; total: number }) {
+  const { reorderCategory } = useLibraryStore();
   return (
     <motion.div
       animate={{ rotate: [0, -2, 2, -2, 0] }}
       transition={{ duration: 0.4, repeat: Infinity, repeatDelay: 0.1 }}
-      className="relative shrink-0"
+      className="relative shrink-0 select-none"
+      style={{ WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
     >
-      <div className="px-3 py-1.5 rounded-full text-[10px] font-mono tracking-wider border border-border/50 text-muted-foreground/60 min-h-[32px] flex items-center">
+      <div className="px-3 py-1.5 rounded-full text-[10px] font-mono tracking-wider border border-border/50 text-muted-foreground/60 min-h-[32px] flex items-center gap-1">
+        {index > 0 && (
+          <button
+            onClick={(e) => { e.stopPropagation(); reorderCategory(catValue, 'left'); }}
+            className="p-0.5 text-muted-foreground/40 hover:text-foreground"
+          >
+            <ChevronLeft size={10} />
+          </button>
+        )}
         {label}
+        {index < total - 1 && (
+          <button
+            onClick={(e) => { e.stopPropagation(); reorderCategory(catValue, 'right'); }}
+            className="p-0.5 text-muted-foreground/40 hover:text-foreground"
+          >
+            <ChevronRight size={10} />
+          </button>
+        )}
       </div>
       <button
         onClick={(e) => { e.stopPropagation(); onDelete(); }}
@@ -294,6 +315,7 @@ export function LibraryPanel() {
 
   const [input, setInput] = useState('');
   const [quickDueDate, setQuickDueDate] = useState('');
+  const [quickCategory, setQuickCategory] = useState('');
   const [showSort, setShowSort] = useState(false);
   const [showNewCat, setShowNewCat] = useState(false);
   const [newCatName, setNewCatName] = useState('');
@@ -327,18 +349,19 @@ export function LibraryPanel() {
   }, [tagEditMode]);
 
   const handleAdd = () => {
-    if (!input.trim()) return;
+    const titleText = input.replace(/#\S*$/, '').trim();
+    if (!titleText) return;
     const store = useLibraryStore.getState();
-    // Use addItem then update due date if set
-    store.addItem(input.trim());
+    store.addItem(titleText, quickCategory || undefined);
     if (quickDueDate) {
-      const newItem = store.items[0]; // just added at front
+      const newItem = store.items[0];
       if (newItem) {
         store.updateItem(newItem.id, { dueDate: quickDueDate });
       }
     }
     setInput('');
     setQuickDueDate('');
+    setQuickCategory('');
     inputRef.current?.focus();
   };
 
@@ -395,16 +418,39 @@ export function LibraryPanel() {
 
             {/* ── Add input ── */}
             <div className="px-4 py-3 border-b border-border/40">
-              <div className="flex items-center gap-2.5">
+              <div className="relative flex items-center gap-2.5">
                 <button onClick={handleAdd} className="p-1 text-muted-foreground/40 hover:text-foreground transition-colors shrink-0"><Plus size={16} /></button>
-                <input
-                  ref={inputRef}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
-                  placeholder="Add to library…"
-                  className="flex-1 bg-transparent font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none min-h-[44px] text-[14px]"
-                />
+                <div className="relative flex-1">
+                  <input
+                    ref={inputRef}
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      // Let TagAutocomplete handle Enter/Tab when suggestions visible
+                      if (e.key === 'Enter' && !input.match(/#\S+$/)) handleAdd();
+                    }}
+                    placeholder="Add to library…"
+                    className="w-full bg-transparent font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none min-h-[44px] text-[14px]"
+                  />
+                  <TagAutocomplete
+                    inputValue={input}
+                    inputRef={inputRef as React.RefObject<HTMLInputElement>}
+                    onSelectTag={(cat, cleaned) => {
+                      setInput(cleaned);
+                      setQuickCategory(cat.value);
+                    }}
+                  />
+                </div>
+                {quickCategory && (
+                  <button
+                    onClick={() => setQuickCategory('')}
+                    className="flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-mono tracking-wider text-primary/70 bg-primary/10 border border-primary/20 shrink-0"
+                  >
+                    <Tag size={8} />
+                    {categories.find(c => c.value === quickCategory)?.label || quickCategory}
+                    <X size={8} />
+                  </button>
+                )}
                 {quickDueDate && (
                   <span className="text-[10px] font-mono text-primary/70 shrink-0">{quickDueDate}</span>
                 )}
@@ -467,10 +513,13 @@ export function LibraryPanel() {
                 <div className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-hide">
                   {tagEditMode ? (
                     <>
-                      {categories.map((cat) => (
+                      {categories.map((cat, idx) => (
                         <JiggleChip
                           key={cat.value}
                           label={cat.label}
+                          catValue={cat.value}
+                          index={idx}
+                          total={categories.length}
                           onDelete={() => handleDeleteTag(cat.value)}
                         />
                       ))}

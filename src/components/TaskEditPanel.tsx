@@ -5,6 +5,7 @@ import { SubtaskList, Subtask } from '@/components/SubtaskList';
 import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar, Inbox, CalendarCheck, XCircle, Paperclip, ExternalLink, Check, AlertTriangle, Tag, Upload, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLibraryStore } from '@/store/libraryStore';
+import { TagAutocomplete } from '@/components/TagAutocomplete';
 import { formatTime12h } from '@/hooks/useCurrentTime';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
@@ -541,13 +542,23 @@ export function TaskEditPanel() {
 
             <div className="px-5 pb-5">
               {/* ─── Title ─── */}
-              <input
-                ref={titleInputRef}
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Task name…"
-                className="w-full bg-transparent font-display font-bold text-foreground text-lg leading-tight focus:outline-none placeholder:text-muted-foreground/20 mb-1"
-              />
+              <div className="relative">
+                <input
+                  ref={titleInputRef}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Task name…"
+                  className="w-full bg-transparent font-display font-bold text-foreground text-lg leading-tight focus:outline-none placeholder:text-muted-foreground/20 mb-1"
+                />
+                <TagAutocomplete
+                  inputValue={title}
+                  inputRef={titleInputRef as React.RefObject<HTMLInputElement>}
+                  onSelectTag={(cat, cleaned) => {
+                    setTitle(cleaned);
+                    setTaskCategory(cat.value);
+                  }}
+                />
+              </div>
 
               {/* ─── Subtitle / Description (always fully visible) ─── */}
               <textarea
