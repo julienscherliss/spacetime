@@ -10,6 +10,8 @@ import { TimelineTaskBlock } from '@/components/TimelineTaskBlock';
 import { CondensedTaskBlock } from '@/components/CondensedTaskBlock';
 import { timeToMinutes, minutesToTime, snapTo15, formatTime12h, formatHour12h } from '@/hooks/useCurrentTime';
 import { Calendar as CalIcon, Check } from 'lucide-react';
+import { useRef, useState as useStateLocal } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { getOccupiedSlots, findValidPosition, clampResize, wouldOverlap, getRoutineConflicts } from '@/utils/collisionDetection';
 import { clusterTasks, TaskCluster, getZoomForCluster } from '@/utils/taskClustering';
 
@@ -45,8 +47,27 @@ function CalendarEventBlocks({ date, hourHeight, showTimeLabels }: { date: strin
   const setEditingEvent = useCalendarStore((s) => s.setEditingEvent);
   const events = allEvents.filter(e => e.date === date);
   const timeLabelsLeft = showTimeLabels ? '3.25rem' : '2px';
+  const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [flashId, setFlashId] = useStateLocal<string | null>(null);
 
   if (events.length === 0) return null;
+
+  const handleClick = (eventId: string) => {
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+      // Double click — complete
+      completeEvent(eventId);
+      setFlashId(eventId);
+      if (navigator.vibrate) navigator.vibrate(20);
+      setTimeout(() => setFlashId(null), 600);
+    } else {
+      clickTimerRef.current = setTimeout(() => {
+        clickTimerRef.current = null;
+        setEditingEvent(eventId);
+      }, 250);
+    }
+  };
 
   return (
     <>
@@ -65,7 +86,7 @@ function CalendarEventBlocks({ date, hourHeight, showTimeLabels }: { date: strin
             data-task-block
             className="absolute right-1 z-[5] cursor-default group select-none"
             style={{ top, height, left: timeLabelsLeft }}
-            onClick={() => setEditingEvent(event.id)}
+            onClick={() => handleClick(event.id)}
           >
             <div
               className={`h-full rounded-[2px] border border-border/30 overflow-hidden transition-colors ${
@@ -73,7 +94,7 @@ function CalendarEventBlocks({ date, hourHeight, showTimeLabels }: { date: strin
               }`}
               style={{ borderLeftWidth: '3px', borderLeftColor: color }}
             >
-              <div className="flex items-start justify-between h-full px-2 py-0.5 overflow-hidden">
+              <div className="flex items-start h-full px-2 py-0.5 overflow-hidden relative">
                 <div className="flex-1 min-w-0">
                   <div className={`text-[11px] font-mono leading-tight truncate ${
                     isCompleted ? 'line-through text-muted-foreground/30' : 'text-muted-foreground/70'
@@ -94,18 +115,18 @@ function CalendarEventBlocks({ date, hourHeight, showTimeLabels }: { date: strin
                     </div>
                   )}
                 </div>
-                <button
-                  data-touch-ignore
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    completeEvent(event.id);
-                  }}
-                  className={`p-1 rounded-sm hover:text-primary hover:bg-primary/5 transition-all shrink-0 ml-1.5 ${
-                    isCompleted ? 'text-primary' : 'text-muted-foreground/25'
-                  }`}
-                >
-                  <Check size={14} />
-                </button>
+                <AnimatePresence>
+                  {flashId === event.id && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.5 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.5 }}
+                      className="absolute inset-0 flex items-center justify-center bg-primary/10 rounded-[2px]"
+                    >
+                      <Check size={18} className="text-primary" strokeWidth={2.5} />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
           </div>
