@@ -387,13 +387,7 @@ export function LibraryPanel() {
     if (!titleText) return;
     const store = useLibraryStore.getState();
     const autoCategory = quickCategory || (filters.category !== 'all' && filters.category !== 'none' ? filters.category : '');
-    store.addItem(titleText, autoCategory || undefined);
-    if (quickDueDate) {
-      const newItem = store.items[0];
-      if (newItem) {
-        store.updateItem(newItem.id, { dueDate: quickDueDate });
-      }
-    }
+    store.addItem(titleText, autoCategory || undefined, quickDueDate || null);
     setInput('');
     setQuickDueDate('');
     setQuickCategory('');
