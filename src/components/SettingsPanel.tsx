@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useTimezoneStore, getTzAbbr, TIMEZONES } from '@/store/timezoneStore';
 import { useCalendarStore } from '@/store/calendarStore';
-import { X, Search, Globe, Repeat, MapPin, Calendar as CalIcon, RefreshCw, Unplug } from 'lucide-react';
+import { X, Search, Globe, Repeat, MapPin, Calendar as CalIcon, RefreshCw, Unplug, HelpCircle } from 'lucide-react';
+import { HelpPanel } from './HelpPanel';
 
 interface SettingsPanelProps {
   open: boolean;
@@ -12,6 +13,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const { timezone, setTimezone, routinesFixedTime, setRoutinesFixedTime, autoDetect, setAutoDetect } = useTimezoneStore();
   const { connected, email, calendars, loading, checkStatus, startAuth, refreshCalendarData, toggleCalendar, disconnect } = useCalendarStore();
   const [search, setSearch] = useState('');
+  const [helpOpen, setHelpOpen] = useState(false);
 
   useEffect(() => {
     if (open) checkStatus();
@@ -28,6 +30,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const detectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   return (
+    <>
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/20" onClick={onClose} />
       <div className="relative bg-card border border-border rounded-t-lg sm:rounded-lg shadow-lg w-full sm:max-w-sm max-h-[80vh] flex flex-col">
@@ -220,8 +223,21 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               </div>
             )}
           </div>
+          {/* Help */}
+          <div className="border-t border-border/30 pt-4">
+            <button
+              onClick={() => setHelpOpen(true)}
+              className="w-full flex items-center justify-center gap-2 bg-muted/30 border border-border/50 rounded-sm p-3 min-h-[48px] text-[12px] font-mono tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            >
+              <HelpCircle size={14} strokeWidth={1.5} />
+              <span>HELP & TIPS</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
+
+    <HelpPanel open={helpOpen} onClose={() => setHelpOpen(false)} />
+    </>
   );
 }
