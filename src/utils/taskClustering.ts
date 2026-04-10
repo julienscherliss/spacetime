@@ -20,8 +20,8 @@ export interface TaskCluster {
   endMin: number;
 }
 
-const MIN_READABLE_PX = 22; // minimum height for a task to be readable — lowered to break apart earlier
-const CLUSTER_PROXIMITY_PX = 2; // if gap between tasks is less than this in px, cluster them
+const MIN_READABLE_PX = 18; // minimum height for text to fit inside a task block
+const CLUSTER_PROXIMITY_PX = 0; // only cluster when tasks literally overlap in pixels
 
 /**
  * Given a list of timed tasks and the current hourHeight,
@@ -84,8 +84,7 @@ export function clusterTasks(
     const tooClose = gapPx < CLUSTER_PROXIMITY_PX;
 
     const shouldCluster =
-      (prevTooSmall && currTooSmall && tooClose) || // both tiny and close
-      (tooClose && (prevTooSmall || currTooSmall));  // one tiny and touching
+      prevTooSmall && currTooSmall && tooClose; // only cluster when BOTH are too small to read AND overlapping
 
     if (shouldCluster) {
       currentGroup.push(curr);
