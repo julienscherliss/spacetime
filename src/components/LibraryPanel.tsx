@@ -687,10 +687,6 @@ export function LibraryPanel() {
                                       setFilter({ category: filters.category === cat.value ? 'all' : cat.value });
                                     }
                                   }}
-
-
-
-                                  }}
                                   onLongPress={() => setTagModalOpen(true)}
                                 />
                               );
