@@ -682,11 +682,10 @@ export function LibraryPanel() {
                                   active={filters.category === cat.value}
                                   label={cat.label}
                                   onClick={() => {
-                                    if (hasSubs) {
+                                    if (filters.category === cat.value) {
                                       setDrilldownParent(cat.value);
-                                      setFilter({ category: cat.value });
                                     } else {
-                                      setFilter({ category: filters.category === cat.value ? 'all' : cat.value });
+                                      setFilter({ category: cat.value });
                                     }
                                   }}
                                   onLongPress={() => setTagModalOpen(true)}
