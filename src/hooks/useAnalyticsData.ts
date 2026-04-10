@@ -153,11 +153,46 @@ export function useAnalyticsData(filters: AnalyticsFilters): AnalyticsData {
   const eventCategories = useCalendarStore(s => s.eventCategories);
 
   return useMemo(() => {
+    // Convert completed+tagged calendar events into synthetic task entries
+    const calendarAsTasks: Task[] = calendarEvents
+      .filter(e => completedEventIds.includes(e.id) && eventCategories[e.id])
+      .map(e => ({
+        id: `cal-${e.id}`,
+        title: e.title,
+        date: e.date,
+        time: e.time || null,
+        duration: e.duration || 30,
+        completed: true,
+        category: eventCategories[e.id] || '',
+        priority: 0,
+        originalPriority: 0,
+        moveCount: 0,
+        type: 'one-time' as const,
+        subtasks: [],
+        description: null,
+        isRoutine: false,
+        isRecurrenceInstance: false,
+        recurrence: null,
+        recurrenceParentId: null,
+        seriesId: null,
+        linked: false,
+        linkedGroupId: null,
+        detachedFromSeries: false,
+        inWaitingRoom: false,
+        waitingRoomCount: 0,
+        dueDate: null,
+        archivedAt: null,
+        archiveReason: null,
+        attachments: [],
+      }));
+
+    const combinedTasks = [...allTasks, ...calendarAsTasks];
+
     const range = getDateRange(filters);
     const prevRange = getPreviousPeriodRange(range.start, range.end);
 
-    const tasks = filterTasks(allTasks, filters, range.start, range.end);
-    const prevTasks = filterTasks(allTasks, filters, prevRange.start, prevRange.end);
+    const tasks = filterTasks(combinedTasks, filters, range.start, range.end);
+    const prevTasks = filterTasks(combinedTasks, filters, prevRange.start, prevRange.end);
 
     // All unique tags from all tasks
     const allTags = [...new Set(allTasks.map(t => t.category || '').filter(Boolean))];
