@@ -459,7 +459,7 @@ export function TimelineTaskBlock({
           </div>
         )}
 
-          <div className={`h-full overflow-hidden ${isCompact ? 'flex items-center px-1' : 'flex flex-col justify-between px-2 py-1'}`}>
+        <div className={`h-full overflow-hidden ${isCompact ? 'flex items-center px-1' : 'flex flex-col justify-between px-2 py-1'}`}>
           {isCompact ? (
             <div className="h-[2px] w-full rounded-full bg-foreground/20" title={task.title} />
           ) : (

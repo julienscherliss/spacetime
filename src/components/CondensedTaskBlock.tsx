@@ -86,7 +86,6 @@ export function CondensedTaskBlock({
             )}
           </div>
         )}
-        </div>
       </div>
     </motion.div>
   );
