@@ -55,10 +55,18 @@ export function FocusView() {
   // Swipe state
   const touchStartY = useRef(0);
 
-  const todayTasks = tasks
-    .filter((t) => !t.completed && !t.inWaitingRoom && !t.archivedAt && t.date === today && t.time &&
+  // All today tasks (for top panel day-list view)
+  const allTodayTasks = tasks
+    .filter((t) => !t.inWaitingRoom && !t.archivedAt && t.date === today &&
       !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring'))
-    .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+    .sort((a, b) => {
+      if (!a.time && !b.time) return 0;
+      if (!a.time) return 1;
+      if (!b.time) return -1;
+      return a.time.localeCompare(b.time);
+    });
+
+  const todayTasks = allTodayTasks.filter(t => !t.completed && t.time);
 
   const upcomingTasks = todayTasks.filter((t) => {
     if (!t.time) return false;
@@ -66,34 +74,70 @@ export function FocusView() {
     return start > nowMinutes;
   });
 
-  const completedToday = tasks
-    .filter((t) => {
-      if (!t.completed || t.archiveReason === 'deleted') return false;
-      if (t.date === today) return true;
-      if (t.archivedAt) {
-        const archivedDate = t.archivedAt.slice(0, 10);
-        if (archivedDate === today) return true;
-      }
-      return false;
-    })
-    .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+  const completedToday = allTodayTasks.filter(t => t.completed);
 
-  const activeTask = todayTasks.find((t) => {
+  // Grace period: keep overdue task in focus for 5 minutes
+  const GRACE_MINUTES = 5;
+  const overdueGraceRef = useRef<{ taskId: string; expiredAt: number } | null>(null);
+  const [hasExpiredOverdue, setHasExpiredOverdue] = useState(false);
+
+  // Find naturally active task (within its scheduled window)
+  const naturalActiveTask = todayTasks.find((t) => {
     if (!t.time) return false;
     const start = timeToMinutes(t.time);
     const end = start + (t.duration || 30);
     return nowMinutes >= start && nowMinutes < end;
   });
 
+  // Find grace-period task: a task whose time ended but is within 5-min grace
+  const graceTask = (() => {
+    if (naturalActiveTask) return null; // natural task takes priority after grace expires
+    // Find most recent task that just ended
+    const justEnded = todayTasks
+      .filter((t) => {
+        if (!t.time) return false;
+        const end = timeToMinutes(t.time) + (t.duration || 30);
+        return nowMinutes >= end && nowMinutes < end + GRACE_MINUTES;
+      })
+      .sort((a, b) => {
+        const endA = timeToMinutes(a.time!) + (a.duration || 30);
+        const endB = timeToMinutes(b.time!) + (b.duration || 30);
+        return endB - endA; // most recent first
+      });
+    return justEnded[0] || null;
+  })();
+
+  // Track when an overdue task's grace expires
+  useEffect(() => {
+    if (graceTask) {
+      if (!overdueGraceRef.current || overdueGraceRef.current.taskId !== graceTask.id) {
+        const endMin = timeToMinutes(graceTask.time!) + (graceTask.duration || 30);
+        overdueGraceRef.current = { taskId: graceTask.id, expiredAt: endMin };
+      }
+      setHasExpiredOverdue(false);
+    } else if (overdueGraceRef.current) {
+      // Grace just expired — mark red arrow
+      setHasExpiredOverdue(true);
+    }
+  }, [graceTask?.id]);
+
+  // Clear expired overdue flag when user navigates to completed panel
+  useEffect(() => {
+    if (activePanel === 'completed') setHasExpiredOverdue(false);
+  }, [activePanel]);
+
+  const activeTask = naturalActiveTask || graceTask;
+  const isGracePeriod = !naturalActiveTask && !!graceTask;
+
   const elapsed = activeTask?.time ? nowMinutes - timeToMinutes(activeTask.time) : 0;
   const remaining = activeTask ? (activeTask.duration || 30) - elapsed : 0;
   const nextTask = activeTask ? getNextTask(activeTask.id) : todayTasks[0];
 
-  // Overdue tasks: ended but not completed, not the active task
+  // Overdue tasks: ended but not completed, not the active task, past grace
   const overdueTasks = todayTasks.filter((t) => {
     if (!t.time || t.id === activeTask?.id) return false;
     const end = timeToMinutes(t.time) + (t.duration || 30);
-    return nowMinutes >= end;
+    return nowMinutes >= end + GRACE_MINUTES;
   });
 
   const completedCount = completedToday.length;
@@ -184,8 +228,27 @@ export function FocusView() {
     };
   }, []);
 
-  const showUpArrow = activePanel === 'main' && (completedToday.length > 0 || upcomingTasks.length > 0);
+  const showUpArrow = activePanel === 'main';
   const showDownArrow = activePanel === 'main';
+
+  // Double-tap handler for top panel
+  const lastTapRef = useRef<{ id: string; time: number } | null>(null);
+  const handleDayListTap = useCallback((taskId: string) => {
+    const now = Date.now();
+    if (lastTapRef.current && lastTapRef.current.id === taskId && now - lastTapRef.current.time < 400) {
+      lastTapRef.current = null;
+      completeTask(taskId);
+      if (navigator.vibrate) navigator.vibrate(20);
+      return;
+    }
+    lastTapRef.current = { id: taskId, time: now };
+    setTimeout(() => {
+      if (lastTapRef.current && lastTapRef.current.id === taskId && Date.now() - lastTapRef.current.time >= 380) {
+        setEditingTask(taskId);
+        lastTapRef.current = null;
+      }
+    }, 400);
+  }, [completeTask, setEditingTask]);
 
   return (
     <div
@@ -202,7 +265,11 @@ export function FocusView() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.4 }}
           onClick={() => setActivePanel('completed')}
-          className="absolute left-1/2 -translate-x-1/2 top-2 z-20 p-2 text-muted-foreground/30 hover:text-muted-foreground/50 transition-colors"
+          className={`absolute left-1/2 -translate-x-1/2 top-2 z-20 p-2 transition-colors ${
+            hasExpiredOverdue
+              ? 'text-red-500/70 hover:text-red-500'
+              : 'text-muted-foreground/30 hover:text-muted-foreground/50'
+          }`}
         >
           <ChevronUp size={40} strokeWidth={1.5} />
         </motion.button>
@@ -227,93 +294,106 @@ export function FocusView() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -40 }}
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute inset-0 flex flex-col pt-8 pb-16 px-6 overflow-y-auto"
+            className="absolute inset-0 flex flex-col pt-8 pb-16 px-3 sm:px-4 overflow-y-auto"
           >
-            {/* Completed section */}
-            <div className="w-full max-w-sm mx-auto mb-6">
-              <div className="text-[10px] font-mono tracking-[0.25em] text-muted-foreground/50 mb-3 uppercase">
-                Completed · {completedCount}
-              </div>
-              <div className="space-y-1">
-                {completedToday.length === 0 ? (
-                  <p className="text-center text-muted-foreground/30 font-mono text-[12px] py-3">Nothing yet</p>
-                ) : (
-                  <>
-                    {(completedExpanded ? completedToday : completedToday.slice(-5)).map((task) => (
-                      <div key={task.id} className="flex items-center gap-3 py-2.5 px-3">
-                        <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30 shrink-0" />
-                        <button
-                          onClick={() => setEditingTask(task.id)}
-                          className="text-[13px] font-mono text-muted-foreground/50 line-through truncate flex-1 text-left"
-                        >
-                          {task.title}
-                        </button>
-                        {task.time && (
-                          <button
-                            onClick={() => {
-                              setListReturnZoom({ taskTime: task.time!, taskDuration: task.duration || 30 });
-                              setShowListReturn(true);
-                              setDaySubMode('timeline');
-                              setViewMode('day');
-                            }}
-                            className="text-[10px] font-mono text-muted-foreground/30 tabular-nums shrink-0 active:text-muted-foreground/60"
-                          >
-                            {formatTime12h(task.time)}
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                    {completedToday.length > 5 && (
-                      <button
-                        onClick={() => setCompletedExpanded(!completedExpanded)}
-                        className="w-full text-center py-2 text-[10px] font-mono tracking-[0.15em] text-muted-foreground/35 hover:text-muted-foreground/55 transition-colors uppercase"
-                      >
-                        {completedExpanded ? 'Show less' : `+ ${completedToday.length - 5} more`}
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
+            {/* Header */}
+            <div className="max-w-sm mx-auto w-full mb-2">
+              <h2 className="text-lg font-display font-bold text-foreground tracking-tight">
+                {new Date(today + 'T12:00:00').toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </h2>
+              <p className="text-[10px] font-mono text-muted-foreground/50 mt-0.5 tracking-widest">
+                {completedCount}/{allTodayTasks.length} COMPLETED
+              </p>
             </div>
 
-            {/* Divider */}
-            <div className="w-full max-w-sm mx-auto h-px bg-foreground/[0.06] mb-6" />
+            {/* Task list */}
+            <div className="max-w-sm mx-auto w-full flex flex-col">
+              {allTodayTasks.length === 0 ? (
+                <div className="text-center py-20">
+                  <p className="text-muted-foreground/30 font-mono text-sm tracking-wider">NO TASKS</p>
+                </div>
+              ) : (
+                allTodayTasks.map((task) => {
+                  const isOverdue = !task.completed && task.time &&
+                    nowMinutes >= timeToMinutes(task.time) + (task.duration || 30);
 
-            {/* Upcoming section */}
-            <div className="w-full max-w-sm mx-auto">
-              <div className="text-[10px] font-mono tracking-[0.25em] text-muted-foreground/50 mb-3 uppercase">
-                Upcoming · {upcomingTasks.length}
-              </div>
-              <div className="space-y-1">
-                {upcomingTasks.length === 0 ? (
-                  <p className="text-center text-muted-foreground/30 font-mono text-[12px] py-3">Nothing upcoming</p>
-                ) : (
-                  upcomingTasks.map((task) => (
-                    <div key={task.id} className="flex items-center gap-3 py-2.5 px-3">
-                      <div className="w-1.5 h-1.5 rounded-full bg-primary/40 shrink-0" />
-                      <button
-                        onClick={() => setEditingTask(task.id)}
-                        className="text-[13px] font-mono text-foreground/70 truncate flex-1 text-left"
-                      >
-                        {task.title}
-                      </button>
-                      {task.time && (
+                  return (
+                    <div
+                      key={task.id}
+                      className={`w-full text-left px-3 py-4 border-b border-border/20 transition-colors ${
+                        task.completed ? 'opacity-50' : ''
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        {/* Time column */}
+                        <div className="w-16 flex-shrink-0 pt-0.5">
+                          {task.time ? (
+                            <div>
+                              <p className={`text-[11px] font-mono leading-tight ${
+                                isOverdue ? 'text-red-500/80' : 'text-foreground/80'
+                              }`}>
+                                {formatTime12h(task.time)}
+                              </p>
+                              {task.duration && (
+                                <p className={`text-[9px] font-mono mt-0.5 ${
+                                  isOverdue ? 'text-red-500/40' : 'text-muted-foreground/40'
+                                }`}>
+                                  {Math.floor(task.duration / 60) > 0 ? `${Math.floor(task.duration / 60)}h ` : ''}{task.duration % 60 > 0 ? `${task.duration % 60}m` : ''}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-[9px] font-mono text-muted-foreground/30 tracking-wider">
+                              ANYTIME
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Content — double tap to complete */}
                         <button
-                          onClick={() => {
-                            setListReturnZoom({ taskTime: task.time!, taskDuration: task.duration || 30 });
-                            setShowListReturn(true);
-                            setDaySubMode('timeline');
-                            setViewMode('day');
-                          }}
-                          className="text-[10px] font-mono text-muted-foreground/35 tabular-nums shrink-0 active:text-muted-foreground/60"
+                          onClick={() => handleDayListTap(task.id)}
+                          className="flex-1 min-w-0 text-left active:bg-muted/40 rounded-sm -m-1 p-1 transition-colors"
                         >
-                          {formatTime12h(task.time)}
+                          <p className={`text-sm font-display font-medium leading-snug ${
+                            task.completed
+                              ? 'line-through text-muted-foreground/50'
+                              : isOverdue
+                                ? 'text-red-500'
+                                : 'text-foreground'
+                          }`}>
+                            {task.title}
+                          </p>
+                          {task.description && (
+                            <p className={`text-[11px] mt-0.5 line-clamp-1 ${
+                              isOverdue ? 'text-red-500/40' : 'text-muted-foreground/50'
+                            }`}>
+                              {task.description}
+                            </p>
+                          )}
+                          {task.subtasks && task.subtasks.length > 0 && (
+                            <p className="text-[9px] font-mono text-muted-foreground/40 mt-1 tracking-wider">
+                              {task.subtasks.filter((s: any) => s.completed).length}/{task.subtasks.length} SUBTASKS
+                            </p>
+                          )}
                         </button>
-                      )}
+
+                        {/* Priority dot */}
+                        <div
+                          className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
+                          style={{
+                            backgroundColor: `hsl(var(--priority-${task.priority}))`,
+                            opacity: 0.6,
+                          }}
+                        />
+                      </div>
                     </div>
-                  ))
-                )}
-              </div>
+                  );
+                })
+              )}
             </div>
 
             <button
@@ -346,6 +426,7 @@ export function FocusView() {
               onHoldEnd={cancelHold}
               onUpdateTask={updateTask}
               overdueTasks={overdueTasks}
+              isGracePeriod={isGracePeriod}
             />
           </motion.div>
         )}
@@ -752,28 +833,15 @@ interface MainFocusPanelProps {
   onHoldEnd: () => void;
   onUpdateTask: (id: string, updates: any) => void;
   overdueTasks: ReturnType<typeof useTaskStore.getState>['tasks'];
+  isGracePeriod: boolean;
 }
 
 function MainFocusPanel({
   activeTask, nextTask, remaining, nowMinutes,
-  holdProgress, isHolding, onHoldStart, onHoldEnd, onUpdateTask, overdueTasks,
+  holdProgress, isHolding, onHoldStart, onHoldEnd, onUpdateTask, overdueTasks, isGracePeriod,
 }: MainFocusPanelProps) {
-  const autoCompleteRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [completing, setCompleting] = useState(false);
   const { completeTask } = useTaskStore();
-
-  useEffect(() => {
-    if (remaining <= 0 && activeTask && !completing) {
-      setCompleting(true);
-      autoCompleteRef.current = setTimeout(() => {
-        completeTask(activeTask.id);
-        setCompleting(false);
-      }, 500);
-    }
-    return () => {
-      if (autoCompleteRef.current) clearTimeout(autoCompleteRef.current);
-    };
-  }, [remaining, activeTask?.id, completing, completeTask]);
 
   useEffect(() => {
     setCompleting(false);
@@ -852,8 +920,14 @@ function MainFocusPanel({
   }
 
   const clampedRemaining = Math.max(0, remaining);
-  const remainingH = String(Math.floor(clampedRemaining / 60)).padStart(2, '0');
-  const remainingM = String(clampedRemaining % 60).padStart(2, '0');
+  // In grace period, show how long overdue
+  const overdueMinutes = isGracePeriod ? Math.abs(remaining) : 0;
+  const displayH = isGracePeriod
+    ? String(Math.floor(overdueMinutes / 60)).padStart(2, '0')
+    : String(Math.floor(clampedRemaining / 60)).padStart(2, '0');
+  const displayM = isGracePeriod
+    ? String(overdueMinutes % 60).padStart(2, '0')
+    : String(clampedRemaining % 60).padStart(2, '0');
   const priorityLabel = PRIORITY_LABELS[activeTask.priority] || 'FLEX';
   const timeStart = formatTime12h(activeTask.time!);
   const timeEnd = formatTime12h(timeToMinutes(activeTask.time!) + (activeTask.duration || 30));
@@ -914,16 +988,25 @@ function MainFocusPanel({
                 className="flex flex-col items-center"
               >
                 <motion.div
-                  className="font-display text-[64px] sm:text-[80px] font-bold text-foreground leading-none tabular-nums tracking-tight select-none"
+                  className={`font-display text-[64px] sm:text-[80px] font-bold leading-none tabular-nums tracking-tight select-none ${
+                    isGracePeriod ? 'text-red-500/70' : 'text-foreground'
+                  }`}
                   animate={completing ? { scale: 0.95, opacity: 0.3 } : { scale: 1, opacity: 1 }}
                   transition={{ duration: 0.25, ease: 'easeOut' }}
                 >
-                  {remainingH}:{remainingM}
+                  {isGracePeriod ? '+' : ''}{displayH}:{displayM}
                 </motion.div>
 
-                <h1 className="mt-2 text-sm sm:text-base font-display font-medium text-foreground/80 leading-snug text-center max-w-[220px] uppercase">
+                <h1 className={`mt-2 text-sm sm:text-base font-display font-medium leading-snug text-center max-w-[220px] uppercase ${
+                  isGracePeriod ? 'text-red-500/60' : 'text-foreground/80'
+                }`}>
                   {activeTask.title}
                 </h1>
+                {isGracePeriod && (
+                  <span className="mt-1 text-[10px] font-mono text-red-500/40 tracking-[0.15em] uppercase">
+                    Overdue
+                  </span>
+                )}
               </motion.div>
             </AnimatePresence>
           </div>
