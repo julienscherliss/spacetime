@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
 import { useCalendarStore } from '@/store/calendarStore';
 import { useCurrentTime, formatTime12h } from '@/hooks/useCurrentTime';
-import { ChevronLeft, ChevronRight, Plus, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 
 function addDaysToDate(dateStr: string, days: number): string {
   const d = new Date(dateStr + 'T12:00:00');
@@ -68,8 +68,26 @@ export function DayListView() {
   const completedCount = dayTasks.filter((t) => t.completed).length;
   const isToday = selectedDate === today;
 
+  // Double-tap to complete
+  const lastTapRef = useRef<{ id: string; time: number } | null>(null);
+
   const handleTaskTap = (taskId: string) => {
-    setEditingTask(taskId);
+    const now = Date.now();
+    if (lastTapRef.current && lastTapRef.current.id === taskId && now - lastTapRef.current.time < 400) {
+      // Double tap → complete
+      lastTapRef.current = null;
+      completeTask(taskId);
+      if (navigator.vibrate) navigator.vibrate(20);
+      return;
+    }
+    lastTapRef.current = { id: taskId, time: now };
+    // Single tap → edit (delayed to distinguish from double)
+    setTimeout(() => {
+      if (lastTapRef.current && lastTapRef.current.id === taskId && Date.now() - lastTapRef.current.time >= 380) {
+        setEditingTask(taskId);
+        lastTapRef.current = null;
+      }
+    }, 400);
   };
 
   const handleTimeTap = (task: { time?: string; duration?: number }) => {
@@ -191,21 +209,6 @@ export function DayListView() {
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    {/* Completion checkbox */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        completeTask(task.id);
-                      }}
-                      className={`mt-1 w-5 h-5 rounded-full border flex-shrink-0 flex items-center justify-center transition-all ${
-                        task.completed
-                          ? 'border-primary/40 bg-primary/20'
-                          : 'border-muted-foreground/25 hover:border-primary/40 active:bg-primary/10'
-                      }`}
-                    >
-                      {task.completed && <Check size={10} className="text-primary" strokeWidth={2.5} />}
-                    </button>
-
                     {/* Time column — tappable to zoom timeline */}
                     <button
                       onClick={(e) => {
