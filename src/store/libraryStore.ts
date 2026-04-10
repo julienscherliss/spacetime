@@ -73,7 +73,7 @@ interface LibraryState {
   removeItem: (id: string) => void;
   addFromSchedule: (source: LibraryScheduleSource, duration?: number) => void;
   getFilteredItems: () => LibraryTask[];
-  addCategory: (name: string) => void;
+  addCategory: (name: string, customValue?: string) => void;
   removeCategory: (value: string) => void;
   renameCategory: (value: string, newLabel: string) => void;
   reorderCategory: (value: string, direction: 'left' | 'right') => void;
@@ -291,9 +291,9 @@ export const useLibraryStore = create<LibraryState>()(
         return filtered;
       },
 
-      addCategory: (name) => {
+      addCategory: (name, customValue) => {
         const trimmed = name.trim();
-        const value = normalizeCategoryValue(trimmed);
+        const value = customValue || normalizeCategoryValue(trimmed);
         set((s) => {
           if (!value || s.categories.some(c => c.value === value)) return s;
           return { categories: mergeCategories(s.items, [...s.categories, { value, label: trimmed }]) };
