@@ -251,10 +251,10 @@ export const useLibraryStore = create<LibraryState>()(
         if (filters.category === 'none') {
           filtered = filtered.filter((i) => !i.category);
         } else if (filters.category !== 'all') {
-          // Include subtags: if filtering by "work", also show "work--polyphia"
+          // Include subtags: if filtering by "work", also show "work/design"
           filtered = filtered.filter((i) => 
             i.category === filters.category || 
-            (i.category && i.category.startsWith(filters.category + '--'))
+            (i.category && i.category.startsWith(filters.category + '/'))
           );
         }
 
