@@ -84,8 +84,7 @@ export function clusterTasks(
     const tooClose = gapPx < CLUSTER_PROXIMITY_PX;
 
     const shouldCluster =
-      (prevTooSmall && currTooSmall && tooClose) || // both tiny and close
-      (tooClose && (prevTooSmall || currTooSmall));  // one tiny and touching
+      prevTooSmall && currTooSmall && tooClose; // only cluster when BOTH are too small to read AND overlapping
 
     if (shouldCluster) {
       currentGroup.push(curr);
