@@ -231,69 +231,64 @@ function JiggleChip({ label, catValue, onDelete, isDragging }: {
 
 /* ── Quick due-date picker for add input ── */
 function QuickDuePicker({ dueDate, setDueDate }: { dueDate: string; setDueDate: (d: string) => void }) {
-  const [open, setOpen] = useState(false);
-
   return (
-    <div className="relative shrink-0">
-      <button
-        onClick={() => setOpen(!open)}
-        className={`p-2 transition-colors ${
-          dueDate ? 'text-primary' : 'text-muted-foreground/40 hover:text-muted-foreground'
-        }`}
-      >
-        <CalendarDays size={16} />
-      </button>
-      {open && (
-        <div className="absolute right-0 top-full mt-1 z-50 bg-card border border-border rounded-md shadow-lg p-2">
-          <Calendar
-            mode="single"
-            selected={dueDate ? new Date(dueDate + 'T12:00:00') : undefined}
-            onSelect={(d) => {
-              if (d) {
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          className={`p-2 transition-colors shrink-0 ${
+            dueDate ? 'text-primary' : 'text-muted-foreground/40 hover:text-muted-foreground'
+          }`}
+        >
+          <CalendarDays size={16} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0 z-[60]" align="end" side="top">
+        <Calendar
+          mode="single"
+          selected={dueDate ? new Date(dueDate + 'T12:00:00') : undefined}
+          onSelect={(d) => {
+            if (d) {
+              const y = d.getFullYear();
+              const m = String(d.getMonth() + 1).padStart(2, '0');
+              const day = String(d.getDate()).padStart(2, '0');
+              setDueDate(`${y}-${m}-${day}`);
+            }
+          }}
+          className="p-3 pointer-events-auto"
+        />
+        <div className="flex items-center gap-1.5 px-3 pb-2">
+          {[
+            { label: '1w', days: 7 },
+            { label: '1m', days: 30 },
+            { label: '6m', days: 182 },
+            { label: '1y', days: 365 },
+          ].map((opt) => (
+            <button
+              key={opt.label}
+              onClick={() => {
+                const d = new Date();
+                d.setDate(d.getDate() + opt.days);
                 const y = d.getFullYear();
                 const m = String(d.getMonth() + 1).padStart(2, '0');
                 const day = String(d.getDate()).padStart(2, '0');
                 setDueDate(`${y}-${m}-${day}`);
-              }
-              setOpen(false);
-            }}
-            className="pointer-events-auto"
-          />
-          <div className="flex items-center gap-1.5 px-1 pb-1 pt-1">
-            {[
-              { label: '1w', days: 7 },
-              { label: '1m', days: 30 },
-              { label: '6m', days: 182 },
-              { label: '1y', days: 365 },
-            ].map((opt) => (
-              <button
-                key={opt.label}
-                onClick={() => {
-                  const d = new Date();
-                  d.setDate(d.getDate() + opt.days);
-                  const y = d.getFullYear();
-                  const m = String(d.getMonth() + 1).padStart(2, '0');
-                  const day = String(d.getDate()).padStart(2, '0');
-                  setDueDate(`${y}-${m}-${day}`);
-                  setOpen(false);
-                }}
-                className="flex-1 py-1.5 text-[10px] font-mono tracking-wider text-muted-foreground/60 hover:text-foreground hover:bg-muted/30 rounded transition-colors"
-              >
-                {opt.label}
-              </button>
-            ))}
-            {dueDate && (
-              <button
-                onClick={() => { setDueDate(''); setOpen(false); }}
-                className="text-[10px] font-mono tracking-wider text-destructive/60 hover:text-destructive ml-auto px-2 py-1.5"
-              >
-                Clear
-              </button>
-            )}
-          </div>
+              }}
+              className="flex-1 py-1.5 text-[10px] font-mono tracking-wider text-muted-foreground/60 hover:text-foreground hover:bg-muted/30 rounded transition-colors"
+            >
+              {opt.label}
+            </button>
+          ))}
+          {dueDate && (
+            <button
+              onClick={() => setDueDate('')}
+              className="text-[10px] font-mono tracking-wider text-destructive/60 hover:text-destructive ml-auto px-2 py-1.5"
+            >
+              Clear
+            </button>
+          )}
         </div>
-      )}
-    </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
