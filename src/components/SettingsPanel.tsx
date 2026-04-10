@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useTimezoneStore, getTzAbbr, TIMEZONES } from '@/store/timezoneStore';
 import { useCalendarStore } from '@/store/calendarStore';
-import { X, Search, Globe, Repeat, MapPin, Calendar as CalIcon, RefreshCw, Unplug } from 'lucide-react';
+import { X, Search, Globe, Repeat, MapPin, Calendar as CalIcon, RefreshCw, Unplug, HelpCircle } from 'lucide-react';
+import { HelpPanel } from './HelpPanel';
 
 interface SettingsPanelProps {
   open: boolean;
