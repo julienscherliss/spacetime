@@ -31,6 +31,7 @@ interface CalendarState {
   loading: boolean;
   panelOpen: boolean;
   deviceId: string;
+  lastFetchedRange: { startDate: string; endDate: string } | null;
   completedEventIds: string[];
   eventCategories: Record<string, string>;
   editingEventId: string | null;
@@ -41,6 +42,7 @@ interface CalendarState {
   handleAuthCallback: (code: string) => Promise<void>;
   fetchCalendars: () => Promise<void>;
   fetchEvents: (startDate: string, endDate: string) => Promise<void>;
+  refreshCalendarData: () => Promise<void>;
   toggleCalendar: (calendarId: string, visible: boolean) => void;
   disconnect: () => Promise<void>;
   completeEvent: (eventId: string) => void;
@@ -78,6 +80,7 @@ export const useCalendarStore = create<CalendarState>()(
       loading: false,
       panelOpen: false,
       deviceId: getDeviceId(),
+      lastFetchedRange: null,
       completedEventIds: [] as string[],
       eventCategories: {} as Record<string, string>,
       editingEventId: null,
@@ -144,6 +147,7 @@ export const useCalendarStore = create<CalendarState>()(
       fetchEvents: async (startDate, endDate) => {
         const { calendars, deviceId } = get();
         const visibleCalIds = calendars.filter(c => c.visible).map(c => c.google_calendar_id);
+        set({ lastFetchedRange: { startDate, endDate } });
         if (visibleCalIds.length === 0) {
           set({ events: [] });
           return;
@@ -160,6 +164,14 @@ export const useCalendarStore = create<CalendarState>()(
           }
         } catch (e) {
           console.error('Fetch events error:', e);
+        }
+      },
+
+      refreshCalendarData: async () => {
+        await get().fetchCalendars();
+        const range = get().lastFetchedRange;
+        if (range) {
+          await get().fetchEvents(range.startDate, range.endDate);
         }
       },
 

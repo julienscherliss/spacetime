@@ -10,6 +10,7 @@ import { useTimeScale, SCALE_MIN, SCALE_MAX } from '@/hooks/useTimeScale';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { FitViewButton } from '@/components/FitViewButton';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { AllDayEventStrip } from '@/components/AllDayEventStrip';
 import { START_HOUR } from '@/components/TimelineColumn';
 import { TaskCluster } from '@/utils/taskClustering';
 
@@ -235,6 +236,8 @@ export function WeekView() {
           </div>
         </div>
       </div>
+
+      <AllDayEventStrip dates={week.map((day) => day.date)} compact={isMobile} />
 
       {/* Calendar grid — flows naturally, no inner scroll */}
       <div

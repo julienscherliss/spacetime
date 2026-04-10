@@ -12,6 +12,7 @@ import { BlockedModal } from '@/components/BlockedModal';
 import { useTimeScale, SCALE_MIN, SCALE_MAX } from '@/hooks/useTimeScale';
 import { ChevronLeft, ChevronRight, X, CornerUpLeft } from 'lucide-react';
 import { FitViewButton } from '@/components/FitViewButton';
+import { AllDayEventStrip } from '@/components/AllDayEventStrip';
 import { TaskCluster } from '@/utils/taskClustering';
 
 function addDaysToDate(dateStr: string, days: number): string {
@@ -271,6 +272,8 @@ export function DayView() {
           />
         </div>
       </div>
+
+      <AllDayEventStrip dates={[selectedDate]} />
 
       {/* Calendar grid — flows naturally, no inner scroll */}
       <div

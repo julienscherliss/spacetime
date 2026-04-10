@@ -10,7 +10,7 @@ interface SettingsPanelProps {
 
 export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const { timezone, setTimezone, routinesFixedTime, setRoutinesFixedTime, autoDetect, setAutoDetect } = useTimezoneStore();
-  const { connected, email, calendars, loading, checkStatus, startAuth, fetchCalendars, toggleCalendar, disconnect } = useCalendarStore();
+  const { connected, email, calendars, loading, checkStatus, startAuth, refreshCalendarData, toggleCalendar, disconnect } = useCalendarStore();
   const [search, setSearch] = useState('');
 
   useEffect(() => {
@@ -175,9 +175,9 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                   </div>
                   <div className="flex items-center gap-1.5">
                     <button
-                      onClick={fetchCalendars}
+                      onClick={refreshCalendarData}
                       className="p-2 text-muted-foreground/40 hover:text-foreground transition-colors rounded-sm hover:bg-muted/40"
-                      title="Refresh calendars"
+                      title="Sync calendars and events"
                     >
                       <RefreshCw size={14} strokeWidth={1.5} />
                     </button>
