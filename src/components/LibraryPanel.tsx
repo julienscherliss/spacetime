@@ -9,6 +9,7 @@ import {
   ArrowDownAZ, CalendarClock, Tag, ChevronDown, GripVertical, CalendarDays,
 } from 'lucide-react';
 import { TagAutocomplete, isSubtagOf, hasSubtags, getParentValue } from '@/components/TagAutocomplete';
+import { DateAutocomplete } from '@/components/DateAutocomplete';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useCarryStore } from '@/store/carryStore';
 import { useTaskStore } from '@/store/taskStore';
@@ -382,7 +383,7 @@ export function LibraryPanel() {
   }, [draggingTag]);
 
   const handleAdd = () => {
-    const titleText = input.replace(/#\S*$/, '').trim();
+    const titleText = input.replace(/#\S*$/, '').replace(/@\S*$/, '').trim();
     if (!titleText) return;
     const store = useLibraryStore.getState();
     const autoCategory = quickCategory || (filters.category !== 'all' && filters.category !== 'none' ? filters.category : '');
@@ -460,8 +461,8 @@ export function LibraryPanel() {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => {
-                      // Let TagAutocomplete handle Enter/Tab when suggestions visible
-                      if (e.key === 'Enter' && !input.match(/#\S+$/)) handleAdd();
+                      // Let TagAutocomplete or DateAutocomplete handle Enter/Tab when suggestions visible
+                      if (e.key === 'Enter' && !input.match(/#\S+$/) && !input.match(/@\S*$/)) handleAdd();
                     }}
                     placeholder="Add to library…"
                     className="w-full bg-transparent font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none min-h-[44px] text-[14px]"
@@ -472,6 +473,14 @@ export function LibraryPanel() {
                     onSelectTag={(cat, cleaned) => {
                       setInput(cleaned);
                       setQuickCategory(cat.value);
+                    }}
+                  />
+                  <DateAutocomplete
+                    inputValue={input}
+                    inputRef={inputRef as React.RefObject<HTMLInputElement>}
+                    onSelectDate={(dateStr, cleaned) => {
+                      setInput(cleaned);
+                      setQuickDueDate(dateStr);
                     }}
                   />
                 </div>
@@ -486,7 +495,21 @@ export function LibraryPanel() {
                   </button>
                 )}
                 {quickDueDate && (
-                  <span className="text-[10px] font-mono text-primary/70 shrink-0">{quickDueDate}</span>
+                  <button
+                    onClick={() => setQuickDueDate('')}
+                    className="flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-mono tracking-wider text-foreground/60 bg-muted/50 border border-border/40 shrink-0"
+                  >
+                    <CalendarDays size={8} />
+                    {(() => {
+                      const d = new Date(quickDueDate + 'T12:00:00');
+                      const today = new Date(); today.setHours(0,0,0,0);
+                      const diff = Math.round((d.getTime() - today.getTime()) / 86400000);
+                      if (diff === 0) return 'Today';
+                      if (diff === 1) return 'Tomorrow';
+                      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    })()}
+                    <X size={8} />
+                  </button>
                 )}
                 <QuickDuePicker dueDate={quickDueDate} setDueDate={setQuickDueDate} />
               </div>

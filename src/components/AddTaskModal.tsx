@@ -7,6 +7,7 @@ import { Plus, X, Clock, Tag, CalendarDays } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { TagAutocomplete } from '@/components/TagAutocomplete';
+import { DateAutocomplete } from '@/components/DateAutocomplete';
 
 const PRIORITY_LABELS = ['Flex', 'Semi', 'Fixed', 'Lock'] as const;
 const PRIORITY_COLORS = [
@@ -35,7 +36,7 @@ export function AddTaskModal() {
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = () => {
-    const cleanTitle = title.replace(/#\S*$/, '').trim();
+    const cleanTitle = title.replace(/#\S*$/, '').replace(/@\S*$/, '').trim();
     if (!cleanTitle) return;
     addTask({ title: cleanTitle, date, time, duration, priority, type: 'one-time', category: category || undefined });
     setTitle('');
@@ -217,7 +218,7 @@ export function AddTaskModal() {
                     className="w-full bg-transparent font-display font-bold text-foreground text-lg leading-tight focus:outline-none placeholder:text-muted-foreground/25"
                     autoFocus
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !title.match(/#\S+$/)) handleSubmit();
+                      if (e.key === 'Enter' && !title.match(/#\S+$/) && !title.match(/@\S*$/)) handleSubmit();
                     }}
                   />
                   <TagAutocomplete
@@ -226,6 +227,14 @@ export function AddTaskModal() {
                     onSelectTag={(cat, cleaned) => {
                       setTitle(cleaned);
                       setCategory(cat.value);
+                    }}
+                  />
+                  <DateAutocomplete
+                    inputValue={title}
+                    inputRef={titleInputRef as React.RefObject<HTMLInputElement>}
+                    onSelectDate={(dateStr, cleaned) => {
+                      setTitle(cleaned);
+                      setDate(dateStr);
                     }}
                   />
                 </div>
