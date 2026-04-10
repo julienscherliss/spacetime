@@ -680,13 +680,21 @@ export function LibraryPanel() {
                                   active={filters.category === cat.value}
                                   label={cat.label}
                                   onClick={() => {
-                                    if (filters.category === cat.value && hasSubs) {
-                                      // Second click on active parent with subtags → drill down
+                                    if (hasSubs) {
                                       setDrilldownParent(cat.value);
-                                      setFilter({ category: 'all' });
+                                      setFilter({ category: cat.value });
                                     } else {
                                       setFilter({ category: filters.category === cat.value ? 'all' : cat.value });
                                     }
+                                  }}
+
+
+
+
+
+
+
+
                                   }}
                                   onLongPress={() => setTagModalOpen(true)}
                                 />
