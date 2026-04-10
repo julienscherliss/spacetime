@@ -18,6 +18,8 @@ export interface ScheduledDragState {
   unlinkMode: boolean;
   /** Whether the current drag position is blocked by collision */
   blocked: boolean;
+  /** Whether the drop should copy instead of move */
+  copyMode: boolean;
 }
 
 interface ScheduledDragActions {
