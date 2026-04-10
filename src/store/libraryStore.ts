@@ -84,12 +84,15 @@ const generateId = () => crypto.randomUUID();
 
 const normalizeCategoryValue = (value: string) => value.trim().toLowerCase().replace(/\s+/g, '-');
 
-const humanizeCategoryValue = (value: string) =>
-  value
-    .split('-')
-    .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
+const humanizeCategoryValue = (value: string) => {
+  const humanizePart = (part: string) =>
+    part.split('-').filter(Boolean).map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  if (value.includes('/')) {
+    const parts = value.split('/');
+    return parts.map(humanizePart).join(' / ');
+  }
+  return humanizePart(value);
+};
 
 const mergeCategories = (items: LibraryTask[], categories: CategoryDef[]) => {
   const map = new Map<string, CategoryDef>();
