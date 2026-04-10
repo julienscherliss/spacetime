@@ -6,6 +6,7 @@ import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar,
 import { supabase } from '@/integrations/supabase/client';
 import { useLibraryStore } from '@/store/libraryStore';
 import { TagAutocomplete } from '@/components/TagAutocomplete';
+import { TagPickerMenu } from '@/components/TagPickerMenu';
 import { formatTime12h } from '@/hooks/useCurrentTime';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';

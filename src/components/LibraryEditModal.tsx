@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useLibraryStore, LibraryTask, LibrarySubtask } from '@/store/libraryStore';
 import { X, Trash2, Clock, AlertTriangle, Tag, CalendarDays, Plus, Check } from 'lucide-react';
 import { TagAutocomplete } from '@/components/TagAutocomplete';
+import { TagPickerMenu } from '@/components/TagPickerMenu';
 import { DurationPicker } from '@/components/ScrollWheelPicker';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
