@@ -9,7 +9,7 @@ import { PriorityBadge } from '@/components/PriorityBadge';
 import { TimelineTaskBlock } from '@/components/TimelineTaskBlock';
 import { CondensedTaskBlock } from '@/components/CondensedTaskBlock';
 import { timeToMinutes, minutesToTime, snapTo15, formatTime12h, formatHour12h } from '@/hooks/useCurrentTime';
-import { Calendar as CalIcon, Check } from 'lucide-react';
+import { Calendar as CalIcon, Check, Copy } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getOccupiedSlots, findValidPosition, clampResize, wouldOverlap, getRoutineConflicts } from '@/utils/collisionDetection';
 import { clusterTasks, TaskCluster, getZoomForCluster } from '@/utils/taskClustering';
@@ -769,6 +769,7 @@ export function TimelineColumn({
   const scheduledDragUnlinkMode = useScheduledDragStore((s) => s.unlinkMode);
   const scheduledDragIsLinked = useScheduledDragStore((s) => s.isLinkedTask);
   const scheduledDragBlocked = useScheduledDragStore((s) => s.blocked);
+  const scheduledDragCopyMode = useScheduledDragStore((s) => s.copyMode);
 
   // Scheduled drag: single global drop handler — only the column matching targetDate processes it
   useEffect(() => {
