@@ -5,9 +5,11 @@ interface TimezoneState {
   timezone: string;
   routinesFixedTime: boolean;
   autoDetect: boolean;
+  darkMode: boolean;
   setTimezone: (tz: string) => void;
   setRoutinesFixedTime: (v: boolean) => void;
   setAutoDetect: (v: boolean) => void;
+  setDarkMode: (v: boolean) => void;
 }
 
 export const useTimezoneStore = create<TimezoneState>()(
@@ -16,9 +18,14 @@ export const useTimezoneStore = create<TimezoneState>()(
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       routinesFixedTime: true,
       autoDetect: true,
+      darkMode: false,
       setTimezone: (tz: string) => set({ timezone: tz }),
       setRoutinesFixedTime: (v: boolean) => set({ routinesFixedTime: v }),
       setAutoDetect: (v: boolean) => set({ autoDetect: v }),
+      setDarkMode: (v: boolean) => {
+        document.documentElement.classList.toggle('dark', v);
+        set({ darkMode: v });
+      },
     }),
     { name: 'do-timezone' }
   )
