@@ -338,7 +338,17 @@ export function TimelineTaskBlock({
       const s = useScheduledDragStore.getState();
       if (!s.active) {
         useScheduledDragStore.getState().cancel();
-        handleTaskClick(task.id);
+        // Defer single click to allow double-click detection
+        if (clickTimerRef.current) {
+          clearTimeout(clickTimerRef.current);
+          clickTimerRef.current = null;
+          handleDoubleComplete();
+        } else {
+          clickTimerRef.current = setTimeout(() => {
+            clickTimerRef.current = null;
+            handleTaskClick(task.id);
+          }, 250);
+        }
       }
       pointerStartRef.current = null;
       setTimeout(() => { didDragRef.current = false; }, 50);
@@ -458,18 +468,6 @@ export function TimelineTaskBlock({
                   </span>
                 </div>
               )}
-            </div>
-            <div
-              data-touch-ignore
-              onClick={(e) => {
-                e.stopPropagation();
-                completeTask(task.id);
-              }}
-              className={`absolute right-0 top-[16px] bottom-[16px] w-1/4 z-[18] flex items-center justify-center cursor-pointer rounded-r-sm transition-colors hover:bg-primary/5 ${
-                task.completed ? 'text-primary' : 'text-muted-foreground/25 hover:text-primary'
-              }`}
-            >
-              <Check size={14} />
             </div>
           </div>
           {height > 28 && (
