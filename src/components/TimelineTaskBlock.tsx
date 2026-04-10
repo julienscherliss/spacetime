@@ -372,6 +372,19 @@ export function TimelineTaskBlock({
 
   const showHoldRing = pickupProgress > 0 && !dragActivated.current && !isLocked;
 
+  // Double-click/tap to complete
+  const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [completionFlash, setCompletionFlash] = useState(false);
+
+  const handleDoubleComplete = useCallback(() => {
+    setCompletionFlash(true);
+    if (navigator.vibrate) navigator.vibrate(20);
+    setTimeout(() => {
+      completeTask(task.id);
+      setCompletionFlash(false);
+    }, 400);
+  }, [completeTask, task.id]);
+
   return (
     <div
       ref={elRef}
