@@ -197,7 +197,7 @@ export function useAnalyticsData(filters: AnalyticsFilters): AnalyticsData {
     const prevTasks = filterTasks(combinedTasks, filters, prevRange.start, prevRange.end);
 
     // All unique tags from all tasks
-    const allTags = [...new Set(allTasks.map(t => t.category || '').filter(Boolean))];
+    const allTags = [...new Set(combinedTasks.map(t => t.category || '').filter(Boolean))];
 
     // Tag breakdown
     const tagMap = new Map<string, TagBreakdown>();
