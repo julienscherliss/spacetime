@@ -37,7 +37,7 @@ function CategorySelect({ value, onChange }: { value: string; onChange: (val: st
   );
 }
 
-
+export function CalendarEventEditPanel() {
   const editingEventId = useCalendarStore((s) => s.editingEventId);
   const events = useCalendarStore((s) => s.events);
   const calendars = useCalendarStore((s) => s.calendars);
