@@ -184,9 +184,9 @@ export function useAnalyticsData(filters: AnalyticsFilters): AnalyticsData {
         archivedAt: null,
         archiveReason: null,
         attachments: [],
-      }));
-
-    const combinedTasks = [...allTasks, ...calendarAsTasks];
+        createdAt: e.date,
+        updatedAt: e.date,
+      } as Task));
 
     const range = getDateRange(filters);
     const prevRange = getPreviousPeriodRange(range.start, range.end);
