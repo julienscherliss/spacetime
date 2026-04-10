@@ -34,9 +34,9 @@ interface TimelineTaskBlockProps {
 }
 
 const DRAG_THRESHOLD = 8;
-const LOCK_MS = 500;        // 0–0.5s: no movement allowed
-const PICKUP_START_MS = 1000; // 1.0s after press: pickup ring begins
-const PICKUP_FILL_MS = 1000;  // ring fills over 1s (completes at 2.0s)
+const LOCK_MS = 250;        // 0–0.25s: no movement allowed
+const PICKUP_START_MS = 500; // 0.5s after press: pickup ring begins
+const PICKUP_FILL_MS = 500;  // ring fills over 0.5s (completes at 1.0s)
 const STILLNESS_THRESHOLD = 8; // px — movement under this counts as "still"
 
 function findColumnAtPoint(x: number, y: number): { date: string; element: HTMLElement } | null {
