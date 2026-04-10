@@ -521,6 +521,25 @@ export function TimelineTaskBlock({
           </div>
         </div>
       )}
+      <AnimatePresence>
+        {completionFlash && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.1 }}
+            transition={{ duration: 0.35, ease: 'easeOut' }}
+            className="absolute inset-0 flex items-center justify-center z-40 pointer-events-none rounded-[2px] bg-primary/10"
+          >
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+            >
+              <Check size={24} className="text-primary" strokeWidth={3} />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
