@@ -276,5 +276,5 @@ export function useAnalyticsData(filters: AnalyticsFilters): AnalyticsData {
       prevTotals: calcTotals(prevTasks),
       allTags,
     };
-  }, [allTasks, categories, filters]);
+  }, [allTasks, categories, filters, calendarEvents, completedEventIds, eventCategories]);
 }
