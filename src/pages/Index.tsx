@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTaskStore } from '@/store/taskStore';
+import { useCalendarStore } from '@/store/calendarStore';
 import { AppNav } from '@/components/AppNav';
 import { FocusView } from '@/components/FocusView';
 import { DayView } from '@/components/DayView';
@@ -27,10 +28,25 @@ const Index = () => {
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
 
+  // Handle Google Calendar OAuth callback
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    if (code) {
+      window.history.replaceState({}, '', window.location.pathname);
+      useCalendarStore.getState().handleAuthCallback(code);
+    }
+  }, []);
+
+  // Check calendar connection status on mount
+  useEffect(() => {
+    useCalendarStore.getState().checkStatus();
+  }, []);
+
   // Move overdue tasks to waiting room periodically
   useEffect(() => {
     moveOverdueToWaitingRoom();
-    const interval = setInterval(moveOverdueToWaitingRoom, 60000); // every minute
+    const interval = setInterval(moveOverdueToWaitingRoom, 60000);
     return () => clearInterval(interval);
   }, [moveOverdueToWaitingRoom]);
 
