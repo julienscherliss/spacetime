@@ -13,6 +13,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const { timezone, setTimezone, routinesFixedTime, setRoutinesFixedTime, autoDetect, setAutoDetect } = useTimezoneStore();
   const { connected, email, calendars, loading, checkStatus, startAuth, refreshCalendarData, toggleCalendar, disconnect } = useCalendarStore();
   const [search, setSearch] = useState('');
+  const [helpOpen, setHelpOpen] = useState(false);
 
   useEffect(() => {
     if (open) checkStatus();
