@@ -833,28 +833,15 @@ interface MainFocusPanelProps {
   onHoldEnd: () => void;
   onUpdateTask: (id: string, updates: any) => void;
   overdueTasks: ReturnType<typeof useTaskStore.getState>['tasks'];
+  isGracePeriod: boolean;
 }
 
 function MainFocusPanel({
   activeTask, nextTask, remaining, nowMinutes,
-  holdProgress, isHolding, onHoldStart, onHoldEnd, onUpdateTask, overdueTasks,
+  holdProgress, isHolding, onHoldStart, onHoldEnd, onUpdateTask, overdueTasks, isGracePeriod,
 }: MainFocusPanelProps) {
-  const autoCompleteRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [completing, setCompleting] = useState(false);
   const { completeTask } = useTaskStore();
-
-  useEffect(() => {
-    if (remaining <= 0 && activeTask && !completing) {
-      setCompleting(true);
-      autoCompleteRef.current = setTimeout(() => {
-        completeTask(activeTask.id);
-        setCompleting(false);
-      }, 500);
-    }
-    return () => {
-      if (autoCompleteRef.current) clearTimeout(autoCompleteRef.current);
-    };
-  }, [remaining, activeTask?.id, completing, completeTask]);
 
   useEffect(() => {
     setCompleting(false);
