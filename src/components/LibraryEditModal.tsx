@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useLibraryStore, LibraryTask, LibrarySubtask } from '@/store/libraryStore';
 import { X, Trash2, Clock, AlertTriangle, Tag, CalendarDays, Plus, Check } from 'lucide-react';
 import { TagAutocomplete } from '@/components/TagAutocomplete';
+import { TagPickerMenu } from '@/components/TagPickerMenu';
 import { DurationPicker } from '@/components/ScrollWheelPicker';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -258,44 +259,12 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
                 {catLabel || 'Tag'}
               </button>
             </PopoverTrigger>
-            <PopoverContent className="w-40 p-1 z-[70]" align="start" onClick={(e) => e.stopPropagation()}>
-              <button
-                onClick={() => { setCategory(''); setShowCatPicker(false); }}
-                className={`w-full text-left px-3 py-2 text-[11px] font-mono rounded-sm ${!category ? 'text-foreground bg-muted/50' : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30'}`}
-              >
-                No tag
-              </button>
-              {categories.map((cat) => (
-                <button
-                  key={cat.value}
-                  onClick={() => { setCategory(cat.value); setShowCatPicker(false); }}
-                  className={`w-full text-left px-3 py-2 text-[11px] font-mono rounded-sm ${category === cat.value ? 'text-foreground bg-muted/50' : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30'}`}
-                >
-                  {cat.label}
-                </button>
-              ))}
-              <div className="border-t border-border/30 mt-1 pt-1">
-                {showNewCatInput ? (
-                  <div className="px-3 py-1.5">
-                    <input
-                      value={newCatInline}
-                      onChange={(e) => setNewCatInline(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') handleAddCatInline(); if (e.key === 'Escape') setShowNewCatInput(false); }}
-                      onBlur={handleAddCatInline}
-                      placeholder="New tag…"
-                      className="w-full bg-transparent text-[11px] font-mono text-foreground placeholder:text-muted-foreground/30 focus:outline-none border-b border-primary/30"
-                      autoFocus
-                    />
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setShowNewCatInput(true)}
-                    className="w-full text-left px-3 py-2 text-[11px] font-mono text-primary/60 hover:text-primary flex items-center gap-1.5"
-                  >
-                    <Plus size={10} /> New…
-                  </button>
-                )}
-              </div>
+            <PopoverContent className="w-44 p-1 z-[70]" align="start" onClick={(e) => e.stopPropagation()}>
+              <TagPickerMenu
+                value={category}
+                onChange={(v) => setCategory(v)}
+                onClose={() => setShowCatPicker(false)}
+              />
             </PopoverContent>
           </Popover>
 
