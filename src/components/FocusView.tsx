@@ -55,9 +55,9 @@ export function FocusView() {
   // Swipe state
   const touchStartY = useRef(0);
 
-  // All today tasks (for top panel day-list view)
+  // All today tasks (for top panel day-list view) — include completed tasks (even if archived)
   const allTodayTasks = tasks
-    .filter((t) => !t.inWaitingRoom && !t.archivedAt && t.date === today &&
+    .filter((t) => !t.inWaitingRoom && t.date === today && t.archiveReason !== 'deleted' &&
       !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring'))
     .sort((a, b) => {
       if (!a.time && !b.time) return 0;
