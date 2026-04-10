@@ -15,6 +15,7 @@ import { useCarryStore } from '@/store/carryStore';
 import { useTaskStore } from '@/store/taskStore';
 import { LibraryEditModal } from '@/components/LibraryEditModal';
 import { Calendar } from '@/components/ui/calendar';
+import { TagManagerPanel } from '@/components/TagManagerPanel';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Dialog,
