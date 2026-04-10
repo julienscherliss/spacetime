@@ -31,6 +31,9 @@ interface CalendarState {
   loading: boolean;
   panelOpen: boolean;
   deviceId: string;
+  completedEventIds: string[];
+  eventCategories: Record<string, string>;
+  editingEventId: string | null;
 
   setPanelOpen: (open: boolean) => void;
   checkStatus: () => Promise<void>;
@@ -40,7 +43,10 @@ interface CalendarState {
   fetchEvents: (startDate: string, endDate: string) => Promise<void>;
   toggleCalendar: (calendarId: string, visible: boolean) => void;
   disconnect: () => Promise<void>;
-  
+  completeEvent: (eventId: string) => void;
+  setEventCategory: (eventId: string, category: string) => void;
+  setEditingEvent: (eventId: string | null) => void;
+  isEventCompleted: (eventId: string) => boolean;
 }
 
 function getDeviceId(): string {
