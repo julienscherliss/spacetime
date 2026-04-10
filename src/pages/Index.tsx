@@ -7,6 +7,7 @@ import { DayListView } from '@/components/DayListView';
 import { WeekView } from '@/components/WeekView';
 import { CalendarView } from '@/components/CalendarView';
 import { TaskEditPanel } from '@/components/TaskEditPanel';
+import { CalendarEventEditPanel } from '@/components/CalendarEventEditPanel';
 import { DailyCompletionModal } from '@/components/DailyCompletionModal';
 
 import { LibraryPanel } from '@/components/LibraryPanel';
@@ -83,6 +84,7 @@ const Index = () => {
       </AnimatePresence>
 
       <TaskEditPanel />
+      <CalendarEventEditPanel />
       <DailyCompletionModal />
       
       <LibraryPanel />
