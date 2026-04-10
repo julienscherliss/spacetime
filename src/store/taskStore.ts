@@ -76,6 +76,8 @@ interface TaskState {
   dailyStats: DailyStats | null;
   /** When set, DayView should open to this date and then clear it */
   navigateToDate: string | null;
+  /** Persisted current date for day/list views — survives view switches */
+  currentDate: string | null;
   /** When set, DayView should zoom to this time window and show return button */
   listReturnZoom: ListReturnZoom | null;
   /** Whether to show the return-to-list button in DayView */
@@ -84,6 +86,7 @@ interface TaskState {
   setViewMode: (mode: ViewMode) => void;
   setDaySubMode: (mode: DaySubMode) => void;
   setNavigateToDate: (date: string | null) => void;
+  setCurrentDate: (date: string | null) => void;
   setListReturnZoom: (zoom: ListReturnZoom | null) => void;
   setShowListReturn: (show: boolean) => void;
   toggleRoutines: () => void;
@@ -332,12 +335,14 @@ export const useTaskStore = create<TaskState>()(
       showCompletionStats: false,
       dailyStats: null,
       navigateToDate: null,
+      currentDate: null,
       listReturnZoom: null,
       showListReturn: false,
 
       setViewMode: (mode) => set({ viewMode: mode }),
       setDaySubMode: (mode) => set({ daySubMode: mode }),
       setNavigateToDate: (date) => set({ navigateToDate: date }),
+      setCurrentDate: (date) => set({ currentDate: date }),
       setListReturnZoom: (zoom) => set({ listReturnZoom: zoom }),
       setShowListReturn: (show) => set({ showListReturn: show }),
       toggleRoutines: () => set((s) => ({ routinesEnabled: !s.routinesEnabled })),
