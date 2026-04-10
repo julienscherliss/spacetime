@@ -671,7 +671,7 @@ export function LibraryPanel() {
                             onClick={() => setFilter({ category: filters.category === 'none' ? 'all' : 'none' })}
                           />
                           {categories
-                            .filter(c => !c.value.includes('--'))  // Only top-level tags
+                            .filter(c => !c.value.includes('/'))  // Only top-level tags
                             .map((cat) => {
                               const hasSubs = hasSubtags(cat.value, categories);
                               return (
