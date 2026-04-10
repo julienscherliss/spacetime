@@ -7,7 +7,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 export function CalendarPanel() {
   const {
     connected, email, calendars, loading, panelOpen,
-    setPanelOpen, checkStatus, startAuth, fetchCalendars,
+    setPanelOpen, checkStatus, startAuth, refreshCalendarData,
     toggleCalendar, disconnect,
   } = useCalendarStore();
   const isMobile = useIsMobile();
@@ -84,9 +84,9 @@ export function CalendarPanel() {
                     </span>
                     <div className="flex items-center gap-1.5">
                       <button
-                        onClick={fetchCalendars}
+                        onClick={refreshCalendarData}
                         className="p-1.5 text-muted-foreground/30 hover:text-foreground transition-colors"
-                        title="Refresh calendars"
+                        title="Sync calendars and events"
                       >
                         <RefreshCw size={12} strokeWidth={1.5} />
                       </button>
