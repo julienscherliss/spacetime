@@ -78,6 +78,7 @@ interface LibraryState {
   renameCategory: (value: string, newLabel: string) => void;
   reorderCategory: (value: string, direction: 'left' | 'right') => void;
   moveCategory: (fromValue: string, toValue: string) => void;
+  reparentTag: (tagValue: string, newParent: string | null) => void;
 }
 
 const generateId = () => crypto.randomUUID();
