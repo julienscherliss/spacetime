@@ -31,6 +31,9 @@ interface CalendarState {
   loading: boolean;
   panelOpen: boolean;
   deviceId: string;
+  completedEventIds: string[];
+  eventCategories: Record<string, string>;
+  editingEventId: string | null;
 
   setPanelOpen: (open: boolean) => void;
   checkStatus: () => Promise<void>;
@@ -40,7 +43,10 @@ interface CalendarState {
   fetchEvents: (startDate: string, endDate: string) => Promise<void>;
   toggleCalendar: (calendarId: string, visible: boolean) => void;
   disconnect: () => Promise<void>;
-  
+  completeEvent: (eventId: string) => void;
+  setEventCategory: (eventId: string, category: string) => void;
+  setEditingEvent: (eventId: string | null) => void;
+  isEventCompleted: (eventId: string) => boolean;
 }
 
 function getDeviceId(): string {
@@ -72,6 +78,9 @@ export const useCalendarStore = create<CalendarState>()(
       loading: false,
       panelOpen: false,
       deviceId: getDeviceId(),
+      completedEventIds: [] as string[],
+      eventCategories: {} as Record<string, string>,
+      editingEventId: null,
 
       setPanelOpen: (open) => set({ panelOpen: open }),
 
@@ -173,6 +182,24 @@ export const useCalendarStore = create<CalendarState>()(
         }
       },
 
+      completeEvent: (eventId) => {
+        set((s) => ({
+          completedEventIds: s.completedEventIds.includes(eventId)
+            ? s.completedEventIds
+            : [...s.completedEventIds, eventId],
+        }));
+      },
+
+      setEventCategory: (eventId, category) => {
+        set((s) => ({
+          eventCategories: { ...s.eventCategories, [eventId]: category },
+        }));
+      },
+
+      setEditingEvent: (eventId) => set({ editingEventId: eventId }),
+
+      isEventCompleted: (eventId) => get().completedEventIds.includes(eventId),
+
     }),
     {
       name: 'do-calendar-store',
@@ -181,6 +208,8 @@ export const useCalendarStore = create<CalendarState>()(
         connected: state.connected,
         email: state.email,
         calendars: state.calendars,
+        completedEventIds: state.completedEventIds,
+        eventCategories: state.eventCategories,
       }),
     }
   )

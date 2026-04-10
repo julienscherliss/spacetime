@@ -9,7 +9,7 @@ import { PriorityBadge } from '@/components/PriorityBadge';
 import { TimelineTaskBlock } from '@/components/TimelineTaskBlock';
 import { CondensedTaskBlock } from '@/components/CondensedTaskBlock';
 import { timeToMinutes, minutesToTime, snapTo15, formatTime12h, formatHour12h } from '@/hooks/useCurrentTime';
-import { Calendar as CalIcon } from 'lucide-react';
+import { Calendar as CalIcon, Check } from 'lucide-react';
 import { getOccupiedSlots, findValidPosition, clampResize, wouldOverlap, getRoutineConflicts } from '@/utils/collisionDetection';
 import { clusterTasks, TaskCluster, getZoomForCluster } from '@/utils/taskClustering';
 
@@ -39,6 +39,10 @@ function formatDuration(mins: number): string {
 function CalendarEventBlocks({ date, hourHeight, showTimeLabels }: { date: string; hourHeight: number; showTimeLabels: boolean }) {
   const allEvents = useCalendarStore((s) => s.events);
   const calendars = useCalendarStore((s) => s.calendars);
+  const completedEventIds = useCalendarStore((s) => s.completedEventIds);
+  const eventCategories = useCalendarStore((s) => s.eventCategories);
+  const completeEvent = useCalendarStore((s) => s.completeEvent);
+  const setEditingEvent = useCalendarStore((s) => s.setEditingEvent);
   const events = allEvents.filter(e => e.date === date);
   const timeLabelsLeft = showTimeLabels ? '3.25rem' : '2px';
 
@@ -52,20 +56,28 @@ function CalendarEventBlocks({ date, hourHeight, showTimeLabels }: { date: strin
         const height = Math.max(((event.duration || 30) / 60) * hourHeight, 14);
         const cal = calendars.find(c => c.google_calendar_id === event.calendarId);
         const color = cal?.color || '#4285f4';
+        const isCompleted = completedEventIds.includes(event.id);
+        const category = eventCategories[event.id];
 
         return (
           <div
             key={`gcal-${event.id}`}
-            className="absolute right-1 z-[5] pointer-events-none"
+            data-task-block
+            className="absolute right-1 z-[5] cursor-default group select-none"
             style={{ top, height, left: timeLabelsLeft }}
+            onClick={() => setEditingEvent(event.id)}
           >
             <div
-              className="h-full rounded-[2px] border border-border/30 bg-muted/30 overflow-hidden"
-              style={{ borderLeftWidth: '2px', borderLeftColor: color }}
+              className={`h-full rounded-[2px] border border-border/30 overflow-hidden transition-colors ${
+                isCompleted ? 'bg-muted/15 opacity-50' : 'bg-muted/30 hover:bg-muted/40'
+              }`}
+              style={{ borderLeftWidth: '3px', borderLeftColor: color }}
             >
-              <div className="flex items-start h-full px-2 py-0.5 overflow-hidden">
+              <div className="flex items-start justify-between h-full px-2 py-0.5 overflow-hidden">
                 <div className="flex-1 min-w-0">
-                  <div className="text-[11px] font-mono leading-tight truncate text-muted-foreground/60">
+                  <div className={`text-[11px] font-mono leading-tight truncate ${
+                    isCompleted ? 'line-through text-muted-foreground/30' : 'text-muted-foreground/70'
+                  }`}>
                     {event.title}
                   </div>
                   {height > 24 && (
@@ -74,9 +86,26 @@ function CalendarEventBlocks({ date, hourHeight, showTimeLabels }: { date: strin
                         {formatTime12h(event.time!)}
                       </span>
                       <CalIcon size={8} className="text-muted-foreground/25" />
+                      {category && (
+                        <span className="text-[8px] font-mono text-muted-foreground/40 tracking-wider uppercase">
+                          {category}
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
+                <button
+                  data-touch-ignore
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    completeEvent(event.id);
+                  }}
+                  className={`p-1 rounded-sm hover:text-primary hover:bg-primary/5 transition-all shrink-0 ml-1.5 ${
+                    isCompleted ? 'text-primary' : 'text-muted-foreground/25'
+                  }`}
+                >
+                  <Check size={14} />
+                </button>
               </div>
             </div>
           </div>
