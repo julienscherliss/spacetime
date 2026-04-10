@@ -241,7 +241,7 @@ export function useAnalyticsData(filters: AnalyticsFilters): AnalyticsData {
       .filter(d => d >= firstMonday)
       .map(d => {
         const dateStr = format(d, 'yyyy-MM-dd');
-        const dayTasks = allTasks.filter(t => t.date === dateStr && t.archiveReason !== 'deleted');
+        const dayTasks = combinedTasks.filter(t => t.date === dateStr && t.archiveReason !== 'deleted');
         return {
           date: dateStr,
           value: dayTasks.reduce((sum, t) => sum + (t.duration || 30), 0),
