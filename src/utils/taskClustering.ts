@@ -18,9 +18,10 @@ export interface TaskCluster {
   tasks: ClusterableTask[];
   startMin: number;
   endMin: number;
+  displayHeightPx?: number;
+  titleFits?: boolean;
 }
 
-const TASK_MIN_RENDERED_PX = 22; // matches single-task minimum rendered height
 const TASK_TEXT_FIT_PX = 23; // title line + vertical padding in TimelineTaskBlock
 
 /**
@@ -43,15 +44,14 @@ export function clusterTasks(
       const duration = t.duration || 30;
       const endMin = startMin + duration;
       const naturalHeightPx = (duration / 60) * hourHeight;
-      const renderedHeightPx = Math.max(naturalHeightPx, TASK_MIN_RENDERED_PX);
 
       return {
         task: t,
         startMin,
         endMin,
         startPx: (startMin / 60) * hourHeight,
-        renderedHeightPx,
-        titleFits: renderedHeightPx >= TASK_TEXT_FIT_PX,
+        naturalHeightPx,
+        titleFits: naturalHeightPx >= TASK_TEXT_FIT_PX,
       };
     })
     .sort((a, b) => a.startMin - b.startMin);
@@ -62,6 +62,8 @@ export function clusterTasks(
         task: t,
         startMin: timeToMinutes(t.time!),
         endMin: timeToMinutes(t.time!) + (t.duration || 30),
+        naturalHeightPx: ((t.duration || 30) / 60) * hourHeight,
+        titleFits: (((t.duration || 30) / 60) * hourHeight) >= TASK_TEXT_FIT_PX,
       }))
     : [];
 
@@ -71,7 +73,14 @@ export function clusterTasks(
 
   // Add excluded tasks as individual single clusters
   for (const ex of excludedTasks) {
-    clusters.push({ type: 'single', tasks: [ex.task], startMin: ex.startMin, endMin: ex.endMin });
+    clusters.push({
+      type: 'single',
+      tasks: [ex.task],
+      startMin: ex.startMin,
+      endMin: ex.endMin,
+      displayHeightPx: ex.naturalHeightPx,
+      titleFits: ex.titleFits,
+    });
   }
 
   if (timed.length === 0) return clusters;
@@ -81,7 +90,7 @@ export function clusterTasks(
     const prev = currentGroup[currentGroup.length - 1];
     const curr = timed[i];
 
-    const prevBottomPx = prev.startPx + prev.renderedHeightPx;
+    const prevBottomPx = prev.startPx + prev.naturalHeightPx;
     const gapPx = curr.startPx - prevBottomPx;
 
     const shouldCluster =
@@ -101,7 +110,14 @@ export function clusterTasks(
   return clusters;
 }
 
-function buildCluster(group: Array<{ task: ClusterableTask; startMin: number; endMin: number }>): TaskCluster {
+function buildCluster(group: Array<{
+  task: ClusterableTask;
+  startMin: number;
+  endMin: number;
+  startPx: number;
+  naturalHeightPx: number;
+  titleFits: boolean;
+}>): TaskCluster {
   // Single task always renders as single
   if (group.length === 1) {
     return {
@@ -109,18 +125,24 @@ function buildCluster(group: Array<{ task: ClusterableTask; startMin: number; en
       tasks: [group[0].task],
       startMin: group[0].startMin,
       endMin: group[0].endMin,
+      displayHeightPx: group[0].naturalHeightPx,
+      titleFits: group[0].titleFits,
     };
   }
 
   // Multiple tasks
   const startMin = Math.min(...group.map(g => g.startMin));
   const endMin = Math.max(...group.map(g => g.endMin));
+  const startPx = Math.min(...group.map(g => g.startPx));
+  const endPx = Math.max(...group.map(g => g.startPx + g.naturalHeightPx));
 
   return {
     type: 'condensed',
     tasks: group.map(g => g.task),
     startMin,
     endMin,
+    displayHeightPx: endPx - startPx,
+    titleFits: false,
   };
 }
 

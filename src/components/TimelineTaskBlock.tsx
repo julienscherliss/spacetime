@@ -31,6 +31,7 @@ interface TimelineTaskBlockProps {
   hourHeight: number;
   startHour: number;
   hasRoutineConflict?: boolean;
+  isCompact?: boolean;
 }
 
 const DRAG_THRESHOLD = 8;
@@ -72,6 +73,7 @@ export function TimelineTaskBlock({
   hourHeight,
   startHour,
   hasRoutineConflict = false,
+  isCompact = false,
 }: TimelineTaskBlockProps) {
   const taskMinutes = task.time ? parseInt(task.time.split(':')[0], 10) * 60 + parseInt(task.time.split(':')[1], 10) : 0;
   const taskEndMinutes = taskMinutes + (task.duration || 30);
@@ -382,6 +384,10 @@ export function TimelineTaskBlock({
   }, [dragTaskId, task.id]);
 
   const showHoldRing = pickupProgress > 0 && !dragActivated.current && !isLocked;
+  const canShowTitle = !isCompact && height >= 23;
+  const canShowActiveMeta = !isCompact && height > 36;
+  const canShowFooter = !isCompact && height > 28;
+  const canShowResizeHandles = !isCompact && height >= 18;
 
   // Double-click/tap to complete
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -438,7 +444,7 @@ export function TimelineTaskBlock({
           borderLeftWidth: task.priority >= 2 ? '3px' : '2px',
         }}
       >
-        {!isLocked && (
+        {!isLocked && canShowResizeHandles && (
           <div
             data-touch-ignore
             onMouseDown={(e) => handleResizeStart(e, task, 'top')}
@@ -453,31 +459,39 @@ export function TimelineTaskBlock({
           </div>
         )}
 
-          <div className="flex flex-col justify-between h-full px-2 py-1 overflow-hidden">
-          <div className="flex items-start justify-between">
-            <div className="flex-1 min-w-0">
-              <div className={`text-[12px] font-mono leading-tight truncate ${
-                task.completed ? 'line-through text-muted-foreground/40' : isOverdue ? 'text-destructive/70 font-medium' : isActive ? 'text-foreground font-medium' : 'text-foreground/75'
-              }`}>
-                {task.title}
+          <div className={`h-full overflow-hidden ${isCompact ? 'flex items-center px-1' : 'flex flex-col justify-between px-2 py-1'}`}>
+          {isCompact ? (
+            <div className="h-[2px] w-full rounded-full bg-foreground/20" title={task.title} />
+          ) : (
+            <>
+              <div className="flex items-start justify-between">
+                <div className="flex-1 min-w-0">
+                  {canShowTitle && (
+                    <div className={`text-[12px] font-mono leading-tight truncate ${
+                      task.completed ? 'line-through text-muted-foreground/40' : isOverdue ? 'text-destructive/70 font-medium' : isActive ? 'text-foreground font-medium' : 'text-foreground/75'
+                    }`}>
+                      {task.title}
+                    </div>
+                  )}
+                  {canShowActiveMeta && isActive && (
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[10px] font-mono text-primary/70">
+                        {formatDuration(Math.max(0, taskMinutes + (task.duration || 30) - nowMinutes))} left
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
-              {height > 36 && isActive && (
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="text-[10px] font-mono text-primary/70">
-                    {formatDuration(Math.max(0, taskMinutes + (task.duration || 30) - nowMinutes))} left
-                  </span>
+              {canShowFooter && (
+                <div className="flex items-center gap-1 mt-auto">
+                  {hasRoutineConflict && (
+                    <span className="text-[8px] font-mono tracking-wider uppercase text-[hsl(var(--routine-conflict-foreground))]" title="Conflicts with routine">
+                      ⚠ CONFLICT
+                    </span>
+                  )}
                 </div>
               )}
-            </div>
-          </div>
-          {height > 28 && (
-            <div className="flex items-center gap-1 mt-auto">
-              {hasRoutineConflict && (
-                <span className="text-[8px] font-mono tracking-wider uppercase text-[hsl(var(--routine-conflict-foreground))]" title="Conflicts with routine">
-                  ⚠ CONFLICT
-                </span>
-              )}
-            </div>
+            </>
           )}
         </div>
 
@@ -498,7 +512,7 @@ export function TimelineTaskBlock({
           />
         )}
 
-        {!isLocked && (
+        {!isLocked && canShowResizeHandles && (
           <div
             data-touch-ignore
             onMouseDown={(e) => handleResizeStart(e, task, 'bottom')}

@@ -1000,7 +1000,7 @@ export function TimelineColumn({
             if (!task.time) return null;
             const taskMinutes = timeToMinutes(task.time);
             const top = ((taskMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT;
-            const height = Math.max(((task.duration || 30) / 60) * HOUR_HEIGHT, 22);
+            const height = cluster.displayHeightPx ?? ((task.duration || 30) / 60) * HOUR_HEIGHT;
             const isActive = task.id === activeTaskId;
             const isResizingThis = resizing?.id === task.id;
             const isLocked = task.priority >= 3;
@@ -1030,6 +1030,7 @@ export function TimelineColumn({
                 hourHeight={HOUR_HEIGHT}
                 startHour={START_HOUR}
                 hasRoutineConflict={hasConflict}
+                isCompact={cluster.titleFits === false}
               />
             );
           });
