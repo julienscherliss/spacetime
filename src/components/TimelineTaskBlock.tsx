@@ -1,5 +1,6 @@
 import { MutableRefObject, useRef, useCallback, useEffect, useState } from 'react';
 import { Check } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useTimezoneStore, getTodayInTz } from '@/store/timezoneStore';
 import { Task, useTaskStore } from '@/store/taskStore';
 import { HoldToConfirmRing } from '@/components/HoldToConfirmRing';
@@ -337,7 +338,17 @@ export function TimelineTaskBlock({
       const s = useScheduledDragStore.getState();
       if (!s.active) {
         useScheduledDragStore.getState().cancel();
-        handleTaskClick(task.id);
+        // Defer single click to allow double-click detection
+        if (clickTimerRef.current) {
+          clearTimeout(clickTimerRef.current);
+          clickTimerRef.current = null;
+          handleDoubleComplete();
+        } else {
+          clickTimerRef.current = setTimeout(() => {
+            clickTimerRef.current = null;
+            handleTaskClick(task.id);
+          }, 250);
+        }
       }
       pointerStartRef.current = null;
       setTimeout(() => { didDragRef.current = false; }, 50);
@@ -371,6 +382,19 @@ export function TimelineTaskBlock({
   }, [dragTaskId, task.id]);
 
   const showHoldRing = pickupProgress > 0 && !dragActivated.current && !isLocked;
+
+  // Double-click/tap to complete
+  const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [completionFlash, setCompletionFlash] = useState(false);
+
+  const handleDoubleComplete = useCallback(() => {
+    setCompletionFlash(true);
+    if (navigator.vibrate) navigator.vibrate(20);
+    setTimeout(() => {
+      completeTask(task.id);
+      setCompletionFlash(false);
+    }, 400);
+  }, [completeTask, task.id]);
 
   return (
     <div
@@ -445,18 +469,6 @@ export function TimelineTaskBlock({
                 </div>
               )}
             </div>
-            <div
-              data-touch-ignore
-              onClick={(e) => {
-                e.stopPropagation();
-                completeTask(task.id);
-              }}
-              className={`absolute right-0 top-[16px] bottom-[16px] w-1/4 z-[18] flex items-center justify-center cursor-pointer rounded-r-sm transition-colors hover:bg-primary/5 ${
-                task.completed ? 'text-primary' : 'text-muted-foreground/25 hover:text-primary'
-              }`}
-            >
-              <Check size={14} />
-            </div>
           </div>
           {height > 28 && (
             <div className="flex items-center gap-1 mt-auto">
@@ -509,6 +521,25 @@ export function TimelineTaskBlock({
           </div>
         </div>
       )}
+      <AnimatePresence>
+        {completionFlash && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.1 }}
+            transition={{ duration: 0.35, ease: 'easeOut' }}
+            className="absolute inset-0 flex items-center justify-center z-40 pointer-events-none rounded-[2px] bg-primary/10"
+          >
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+            >
+              <Check size={24} className="text-primary" strokeWidth={3} />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
