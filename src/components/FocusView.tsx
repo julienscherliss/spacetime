@@ -228,8 +228,27 @@ export function FocusView() {
     };
   }, []);
 
-  const showUpArrow = activePanel === 'main' && (completedToday.length > 0 || upcomingTasks.length > 0);
+  const showUpArrow = activePanel === 'main';
   const showDownArrow = activePanel === 'main';
+
+  // Double-tap handler for top panel
+  const lastTapRef = useRef<{ id: string; time: number } | null>(null);
+  const handleDayListTap = useCallback((taskId: string) => {
+    const now = Date.now();
+    if (lastTapRef.current && lastTapRef.current.id === taskId && now - lastTapRef.current.time < 400) {
+      lastTapRef.current = null;
+      completeTask(taskId);
+      if (navigator.vibrate) navigator.vibrate(20);
+      return;
+    }
+    lastTapRef.current = { id: taskId, time: now };
+    setTimeout(() => {
+      if (lastTapRef.current && lastTapRef.current.id === taskId && Date.now() - lastTapRef.current.time >= 380) {
+        setEditingTask(taskId);
+        lastTapRef.current = null;
+      }
+    }, 400);
+  }, [completeTask, setEditingTask]);
 
   return (
     <div
@@ -246,7 +265,11 @@ export function FocusView() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.4 }}
           onClick={() => setActivePanel('completed')}
-          className="absolute left-1/2 -translate-x-1/2 top-2 z-20 p-2 text-muted-foreground/30 hover:text-muted-foreground/50 transition-colors"
+          className={`absolute left-1/2 -translate-x-1/2 top-2 z-20 p-2 transition-colors ${
+            hasExpiredOverdue
+              ? 'text-red-500/70 hover:text-red-500'
+              : 'text-muted-foreground/30 hover:text-muted-foreground/50'
+          }`}
         >
           <ChevronUp size={40} strokeWidth={1.5} />
         </motion.button>
