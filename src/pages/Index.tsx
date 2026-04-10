@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTaskStore } from '@/store/taskStore';
+import { useCalendarStore } from '@/store/calendarStore';
 import { AppNav } from '@/components/AppNav';
 import { FocusView } from '@/components/FocusView';
 import { DayView } from '@/components/DayView';
