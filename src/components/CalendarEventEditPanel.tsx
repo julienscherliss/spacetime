@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCalendarStore } from '@/store/calendarStore';
 import { X, Calendar as CalIcon, MapPin, Clock, Check, Tag } from 'lucide-react';
-import { TagAutocomplete } from '@/components/TagAutocomplete';
 import { formatTime12h } from '@/hooks/useCurrentTime';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useLibraryStore } from '@/store/libraryStore';
 
 function formatDuration(mins: number): string {
   if (mins < 60) return `${mins}m`;
