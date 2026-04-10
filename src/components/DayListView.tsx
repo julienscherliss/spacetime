@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
 import { useCalendarStore } from '@/store/calendarStore';
 import { useCurrentTime, formatTime12h } from '@/hooks/useCurrentTime';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Check } from 'lucide-react';
 
 function addDaysToDate(dateStr: string, days: number): string {
   const d = new Date(dateStr + 'T12:00:00');
@@ -29,7 +29,7 @@ export function DayListView() {
   const {
     tasks, routinesEnabled, generateRecurringInstances,
     navigateToDate, setNavigateToDate, setEditingTask, setDaySubMode,
-    setListReturnZoom, setShowListReturn,
+    setListReturnZoom, setShowListReturn, completeTask,
   } = useTaskStore();
   const { dateStr: today } = useCurrentTime(15000);
   const [selectedDate, setSelectedDate] = useState(navigateToDate || today);
@@ -191,6 +191,21 @@ export function DayListView() {
                   }`}
                 >
                   <div className="flex items-start gap-3">
+                    {/* Completion checkbox */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        completeTask(task.id);
+                      }}
+                      className={`mt-1 w-5 h-5 rounded-full border flex-shrink-0 flex items-center justify-center transition-all ${
+                        task.completed
+                          ? 'border-primary/40 bg-primary/20'
+                          : 'border-muted-foreground/25 hover:border-primary/40 active:bg-primary/10'
+                      }`}
+                    >
+                      {task.completed && <Check size={10} className="text-primary" strokeWidth={2.5} />}
+                    </button>
+
                     {/* Time column — tappable to zoom timeline */}
                     <button
                       onClick={(e) => {
