@@ -188,6 +188,8 @@ export function useAnalyticsData(filters: AnalyticsFilters): AnalyticsData {
         updatedAt: e.date,
       } as Task));
 
+    const combinedTasks = [...allTasks, ...calendarAsTasks];
+
     const range = getDateRange(filters);
     const prevRange = getPreviousPeriodRange(range.start, range.end);
 
