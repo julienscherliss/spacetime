@@ -8,7 +8,7 @@ import {
   X, Plus, Check, Clock, AlertTriangle, Trash2,
   ArrowDownAZ, CalendarClock, Tag, ChevronDown, GripVertical, CalendarDays,
 } from 'lucide-react';
-import { TagAutocomplete } from '@/components/TagAutocomplete';
+import { TagAutocomplete, isSubtagOf, hasSubtags, getParentValue } from '@/components/TagAutocomplete';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useCarryStore } from '@/store/carryStore';
 import { useTaskStore } from '@/store/taskStore';
@@ -312,6 +312,7 @@ export function LibraryPanel() {
   const [tagEditMode, setTagEditMode] = useState(false);
   const [tagModalOpen, setTagModalOpen] = useState(false);
   const [draggingTag, setDraggingTag] = useState<string | null>(null);
+  const [drilldownParent, setDrilldownParent] = useState<string | null>(null);
   
   const [deletingTag, setDeletingTag] = useState<{ value: string; label: string; count: number } | null>(null);
   const [editingTagValue, setEditingTagValue] = useState<string | null>(null);
