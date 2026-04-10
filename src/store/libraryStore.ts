@@ -346,6 +346,66 @@ export const useLibraryStore = create<LibraryState>()(
           return { categories: cats };
         });
       },
+
+      reparentTag: (tagValue, newParent) => {
+        set((s) => {
+          const cat = s.categories.find(c => c.value === tagValue);
+          if (!cat) return s;
+
+          // Get the leaf segment of the tag
+          const segments = tagValue.split('/');
+          const leafSegment = segments[segments.length - 1];
+          const leafLabel = cat.label.split(' / ').pop() || cat.label;
+
+          // Build new value and label
+          const newValue = newParent ? `${newParent}/${leafSegment}` : leafSegment;
+          const parentCat = newParent ? s.categories.find(c => c.value === newParent) : null;
+          const newLabel = newParent
+            ? `${parentCat?.label || humanizeCategoryValue(newParent)} / ${leafLabel}`
+            : leafLabel;
+
+          if (newValue === tagValue) return s;
+
+          // Check depth limit (max 4 segments = 3 subtag levels)
+          if (newValue.split('/').length > 4) return s;
+
+          // Also reparent any children of this tag
+          const updatedCats = s.categories.map(c => {
+            if (c.value === tagValue) {
+              return { ...c, value: newValue, label: newLabel };
+            }
+            if (c.value.startsWith(tagValue + '/')) {
+              const suffix = c.value.slice(tagValue.length);
+              const labelSuffix = c.label.includes(' / ')
+                ? c.label.slice(c.label.indexOf(' / ', cat.label.length > 0 ? cat.label.lastIndexOf(' / ') : 0))
+                : '';
+              const childNewValue = newValue + suffix;
+              // Rebuild label from new value
+              const childNewLabel = childNewValue.split('/').map(seg =>
+                seg.split('-').filter(Boolean).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+              ).join(' / ');
+              return { ...c, value: childNewValue, label: childNewLabel };
+            }
+            return c;
+          });
+
+          // Update items that used the old tag or its children
+          const updatedItems = s.items.map(item => {
+            if (item.category === tagValue) {
+              return { ...item, category: newValue };
+            }
+            if (item.category && item.category.startsWith(tagValue + '/')) {
+              return { ...item, category: newValue + item.category.slice(tagValue.length) };
+            }
+            return item;
+          });
+
+          return {
+            categories: mergeCategories(updatedItems, updatedCats),
+            items: updatedItems,
+          };
+        });
+      },
     }),
     {
       name: 'do-library-store',
