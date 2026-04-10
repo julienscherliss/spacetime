@@ -35,9 +35,12 @@ export function DayListView() {
   const { dateStr: today } = useCurrentTime(15000);
   const [selectedDate, _setSelectedDate] = useState(navigateToDate || currentDate || today);
 
-  const setSelectedDate = useCallback((date: string) => {
-    _setSelectedDate(date);
-    setCurrentDate(date);
+  const setSelectedDate = useCallback((dateOrFn: string | ((prev: string) => string)) => {
+    _setSelectedDate(prev => {
+      const next = typeof dateOrFn === 'function' ? dateOrFn(prev) : dateOrFn;
+      setCurrentDate(next);
+      return next;
+    });
   }, [setCurrentDate]);
 
   // Swipe
