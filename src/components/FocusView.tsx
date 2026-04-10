@@ -55,9 +55,9 @@ export function FocusView() {
   // Swipe state
   const touchStartY = useRef(0);
 
-  // All today tasks (for top panel day-list view)
+  // All today tasks (for top panel day-list view) — include completed tasks (even if archived)
   const allTodayTasks = tasks
-    .filter((t) => !t.inWaitingRoom && !t.archivedAt && t.date === today &&
+    .filter((t) => !t.inWaitingRoom && t.date === today && t.archiveReason !== 'deleted' &&
       !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring'))
     .sort((a, b) => {
       if (!a.time && !b.time) return 0;
@@ -298,14 +298,7 @@ export function FocusView() {
           >
             {/* Header */}
             <div className="max-w-sm mx-auto w-full mb-2">
-              <h2 className="text-lg font-display font-bold text-foreground tracking-tight">
-                {new Date(today + 'T12:00:00').toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  month: 'long',
-                  day: 'numeric',
-                })}
-              </h2>
-              <p className="text-[10px] font-mono text-muted-foreground/50 mt-0.5 tracking-widest">
+              <p className="text-[10px] font-mono text-muted-foreground/50 tracking-widest">
                 {completedCount}/{allTodayTasks.length} COMPLETED
               </p>
             </div>
