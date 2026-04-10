@@ -30,6 +30,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const detectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   return (
+    <>
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/20" onClick={onClose} />
       <div className="relative bg-card border border-border rounded-t-lg sm:rounded-lg shadow-lg w-full sm:max-w-sm max-h-[80vh] flex flex-col">
