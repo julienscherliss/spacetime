@@ -288,14 +288,15 @@ export function FocusView() {
 
       <AnimatePresence mode="wait">
         {activePanel === 'completed' && (
-          <motion.div
-            key="completed"
-            initial={{ opacity: 0, y: -40 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -40 }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute inset-0 flex flex-col pt-8 pb-16 px-3 sm:px-4 overflow-y-auto"
-          >
+          <FocusDayListPanel
+            allTodayTasks={allTodayTasks}
+            completedCount={completedCount}
+            nowMinutes={nowMinutes}
+            activeTaskId={activeTask?.id}
+            onTaskTap={handleDayListTap}
+            onBack={() => setActivePanel('main')}
+          />
+        )}
             {/* Header */}
             <div className="max-w-sm mx-auto w-full mb-2">
               <p className="text-[10px] font-mono text-muted-foreground/50 tracking-widest">
