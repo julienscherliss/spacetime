@@ -20,16 +20,16 @@ export interface TaskCluster {
   endMin: number;
 }
 
-const MIN_READABLE_PX = 18; // minimum height for text to fit inside a task block
-const CLUSTER_PROXIMITY_PX = 0; // only cluster when tasks literally overlap in pixels
+const TASK_MIN_RENDERED_PX = 22; // matches single-task minimum rendered height
+const TASK_TEXT_FIT_PX = 23; // title line + vertical padding in TimelineTaskBlock
 
 /**
  * Given a list of timed tasks and the current hourHeight,
  * produce an array of clusters — either single tasks or condensed groups.
  *
- * Clustering is purely visual: tasks cluster when they would be
- * unreadable at the current zoom level (too small or too close together).
- * At sufficient zoom, all tasks render individually.
+ * Clustering is purely visual: tasks cluster only when their rendered boxes
+ * are too short to fit the title text and those unreadable boxes would touch
+ * or overlap on screen.
  */
 export function clusterTasks(
   tasks: ClusterableTask[],
@@ -38,12 +38,22 @@ export function clusterTasks(
 ): TaskCluster[] {
   const timed = tasks
     .filter(t => t.time && !(excludeIds?.has(t.id)))
-    .map(t => ({
-      task: t,
-      startMin: timeToMinutes(t.time!),
-      endMin: timeToMinutes(t.time!) + (t.duration || 30),
-      heightPx: ((t.duration || 30) / 60) * hourHeight,
-    }))
+    .map(t => {
+      const startMin = timeToMinutes(t.time!);
+      const duration = t.duration || 30;
+      const endMin = startMin + duration;
+      const naturalHeightPx = (duration / 60) * hourHeight;
+      const renderedHeightPx = Math.max(naturalHeightPx, TASK_MIN_RENDERED_PX);
+
+      return {
+        task: t,
+        startMin,
+        endMin,
+        startPx: (startMin / 60) * hourHeight,
+        renderedHeightPx,
+        titleFits: renderedHeightPx >= TASK_TEXT_FIT_PX,
+      };
+    })
     .sort((a, b) => a.startMin - b.startMin);
 
   // Also produce single-task clusters for excluded (conflict) tasks
@@ -71,20 +81,13 @@ export function clusterTasks(
     const prev = currentGroup[currentGroup.length - 1];
     const curr = timed[i];
 
-    // Visual gap: how much pixel space exists between the end of prev and start of curr
-    const gapMin = curr.startMin - prev.endMin;
-    const gapPx = (gapMin / 60) * hourHeight;
-
-    // Only cluster based on VISUAL density, not time overlap
-    // Two conditions to cluster:
-    // 1. Both tasks are too short to read AND they're close together
-    // 2. Gap between them is negative or near-zero in pixels
-    const prevTooSmall = prev.heightPx < MIN_READABLE_PX;
-    const currTooSmall = curr.heightPx < MIN_READABLE_PX;
-    const tooClose = gapPx < CLUSTER_PROXIMITY_PX;
+    const prevBottomPx = prev.startPx + prev.renderedHeightPx;
+    const gapPx = curr.startPx - prevBottomPx;
 
     const shouldCluster =
-      prevTooSmall && currTooSmall && tooClose; // only cluster when BOTH are too small to read AND overlapping
+      !prev.titleFits &&
+      !curr.titleFits &&
+      gapPx <= 0;
 
     if (shouldCluster) {
       currentGroup.push(curr);
@@ -98,7 +101,7 @@ export function clusterTasks(
   return clusters;
 }
 
-function buildCluster(group: Array<{ task: ClusterableTask; startMin: number; endMin: number; heightPx: number }>): TaskCluster {
+function buildCluster(group: Array<{ task: ClusterableTask; startMin: number; endMin: number }>): TaskCluster {
   // Single task always renders as single
   if (group.length === 1) {
     return {
