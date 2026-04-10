@@ -294,93 +294,106 @@ export function FocusView() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -40 }}
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute inset-0 flex flex-col pt-8 pb-16 px-6 overflow-y-auto"
+            className="absolute inset-0 flex flex-col pt-8 pb-16 px-3 sm:px-4 overflow-y-auto"
           >
-            {/* Completed section */}
-            <div className="w-full max-w-sm mx-auto mb-6">
-              <div className="text-[10px] font-mono tracking-[0.25em] text-muted-foreground/50 mb-3 uppercase">
-                Completed · {completedCount}
-              </div>
-              <div className="space-y-1">
-                {completedToday.length === 0 ? (
-                  <p className="text-center text-muted-foreground/30 font-mono text-[12px] py-3">Nothing yet</p>
-                ) : (
-                  <>
-                    {(completedExpanded ? completedToday : completedToday.slice(-5)).map((task) => (
-                      <div key={task.id} className="flex items-center gap-3 py-2.5 px-3">
-                        <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30 shrink-0" />
-                        <button
-                          onClick={() => setEditingTask(task.id)}
-                          className="text-[13px] font-mono text-muted-foreground/50 line-through truncate flex-1 text-left"
-                        >
-                          {task.title}
-                        </button>
-                        {task.time && (
-                          <button
-                            onClick={() => {
-                              setListReturnZoom({ taskTime: task.time!, taskDuration: task.duration || 30 });
-                              setShowListReturn(true);
-                              setDaySubMode('timeline');
-                              setViewMode('day');
-                            }}
-                            className="text-[10px] font-mono text-muted-foreground/30 tabular-nums shrink-0 active:text-muted-foreground/60"
-                          >
-                            {formatTime12h(task.time)}
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                    {completedToday.length > 5 && (
-                      <button
-                        onClick={() => setCompletedExpanded(!completedExpanded)}
-                        className="w-full text-center py-2 text-[10px] font-mono tracking-[0.15em] text-muted-foreground/35 hover:text-muted-foreground/55 transition-colors uppercase"
-                      >
-                        {completedExpanded ? 'Show less' : `+ ${completedToday.length - 5} more`}
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
+            {/* Header */}
+            <div className="max-w-sm mx-auto w-full mb-2">
+              <h2 className="text-lg font-display font-bold text-foreground tracking-tight">
+                {new Date(today + 'T12:00:00').toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </h2>
+              <p className="text-[10px] font-mono text-muted-foreground/50 mt-0.5 tracking-widest">
+                {completedCount}/{allTodayTasks.length} COMPLETED
+              </p>
             </div>
 
-            {/* Divider */}
-            <div className="w-full max-w-sm mx-auto h-px bg-foreground/[0.06] mb-6" />
+            {/* Task list */}
+            <div className="max-w-sm mx-auto w-full flex flex-col">
+              {allTodayTasks.length === 0 ? (
+                <div className="text-center py-20">
+                  <p className="text-muted-foreground/30 font-mono text-sm tracking-wider">NO TASKS</p>
+                </div>
+              ) : (
+                allTodayTasks.map((task) => {
+                  const isOverdue = !task.completed && task.time &&
+                    nowMinutes >= timeToMinutes(task.time) + (task.duration || 30);
 
-            {/* Upcoming section */}
-            <div className="w-full max-w-sm mx-auto">
-              <div className="text-[10px] font-mono tracking-[0.25em] text-muted-foreground/50 mb-3 uppercase">
-                Upcoming · {upcomingTasks.length}
-              </div>
-              <div className="space-y-1">
-                {upcomingTasks.length === 0 ? (
-                  <p className="text-center text-muted-foreground/30 font-mono text-[12px] py-3">Nothing upcoming</p>
-                ) : (
-                  upcomingTasks.map((task) => (
-                    <div key={task.id} className="flex items-center gap-3 py-2.5 px-3">
-                      <div className="w-1.5 h-1.5 rounded-full bg-primary/40 shrink-0" />
-                      <button
-                        onClick={() => setEditingTask(task.id)}
-                        className="text-[13px] font-mono text-foreground/70 truncate flex-1 text-left"
-                      >
-                        {task.title}
-                      </button>
-                      {task.time && (
+                  return (
+                    <div
+                      key={task.id}
+                      className={`w-full text-left px-3 py-4 border-b border-border/20 transition-colors ${
+                        task.completed ? 'opacity-50' : ''
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        {/* Time column */}
+                        <div className="w-16 flex-shrink-0 pt-0.5">
+                          {task.time ? (
+                            <div>
+                              <p className={`text-[11px] font-mono leading-tight ${
+                                isOverdue ? 'text-red-500/80' : 'text-foreground/80'
+                              }`}>
+                                {formatTime12h(task.time)}
+                              </p>
+                              {task.duration && (
+                                <p className={`text-[9px] font-mono mt-0.5 ${
+                                  isOverdue ? 'text-red-500/40' : 'text-muted-foreground/40'
+                                }`}>
+                                  {Math.floor(task.duration / 60) > 0 ? `${Math.floor(task.duration / 60)}h ` : ''}{task.duration % 60 > 0 ? `${task.duration % 60}m` : ''}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-[9px] font-mono text-muted-foreground/30 tracking-wider">
+                              ANYTIME
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Content — double tap to complete */}
                         <button
-                          onClick={() => {
-                            setListReturnZoom({ taskTime: task.time!, taskDuration: task.duration || 30 });
-                            setShowListReturn(true);
-                            setDaySubMode('timeline');
-                            setViewMode('day');
-                          }}
-                          className="text-[10px] font-mono text-muted-foreground/35 tabular-nums shrink-0 active:text-muted-foreground/60"
+                          onClick={() => handleDayListTap(task.id)}
+                          className="flex-1 min-w-0 text-left active:bg-muted/40 rounded-sm -m-1 p-1 transition-colors"
                         >
-                          {formatTime12h(task.time)}
+                          <p className={`text-sm font-display font-medium leading-snug ${
+                            task.completed
+                              ? 'line-through text-muted-foreground/50'
+                              : isOverdue
+                                ? 'text-red-500'
+                                : 'text-foreground'
+                          }`}>
+                            {task.title}
+                          </p>
+                          {task.description && (
+                            <p className={`text-[11px] mt-0.5 line-clamp-1 ${
+                              isOverdue ? 'text-red-500/40' : 'text-muted-foreground/50'
+                            }`}>
+                              {task.description}
+                            </p>
+                          )}
+                          {task.subtasks && task.subtasks.length > 0 && (
+                            <p className="text-[9px] font-mono text-muted-foreground/40 mt-1 tracking-wider">
+                              {task.subtasks.filter((s: any) => s.completed).length}/{task.subtasks.length} SUBTASKS
+                            </p>
+                          )}
                         </button>
-                      )}
+
+                        {/* Priority dot */}
+                        <div
+                          className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
+                          style={{
+                            backgroundColor: `hsl(var(--priority-${task.priority}))`,
+                            opacity: 0.6,
+                          }}
+                        />
+                      </div>
                     </div>
-                  ))
-                )}
-              </div>
+                  );
+                })
+              )}
             </div>
 
             <button
