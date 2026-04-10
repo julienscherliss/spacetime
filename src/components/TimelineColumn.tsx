@@ -47,7 +47,7 @@ function CalendarEventBlocks({ date, hourHeight, showTimeLabels }: { date: strin
   const events = allEvents.filter(e => e.date === date);
   const timeLabelsLeft = showTimeLabels ? '3.25rem' : '2px';
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [flashId, setFlashId] = useStateLocal<string | null>(null);
+  const [flashId, setFlashId] = useState<string | null>(null);
 
   if (events.length === 0) return null;
 
