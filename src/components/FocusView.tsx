@@ -411,9 +411,9 @@ function FocusDayListPanel({ allTodayTasks, completedCount, nowMinutes, activeTa
               <div
                 key={task.id}
                 ref={isCurrent ? activeRowRef : undefined}
-                className={`w-full text-left px-3 py-4 border-b border-border/20 transition-colors ${
+                className={`w-full text-left px-3 py-4 transition-colors ${
                   task.completed ? 'opacity-50' : ''
-                } ${isCurrent ? 'bg-primary/5 border-l-2 border-l-primary/40' : ''}`}
+                } ${isCurrent ? 'border border-foreground/15 rounded-md my-1' : 'border-b border-border/20'}`}
               >
                 <div className="flex items-start gap-3">
                   {/* Time column */}
