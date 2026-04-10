@@ -35,6 +35,7 @@ interface ScheduledDragActions {
   setTargetDate: (date: string) => void;
   setUnlinkMode: (unlink: boolean) => void;
   setBlocked: (blocked: boolean) => void;
+  setCopyMode: (copy: boolean) => void;
   endDrag: () => ScheduledDragState;
   cancel: () => void;
 }
@@ -51,6 +52,7 @@ const initial: ScheduledDragState = {
   isLinkedTask: false,
   unlinkMode: false,
   blocked: false,
+  copyMode: false,
 };
 
 export const useScheduledDragStore = create<ScheduledDragState & ScheduledDragActions>((set, get) => ({
@@ -73,6 +75,7 @@ export const useScheduledDragStore = create<ScheduledDragState & ScheduledDragAc
   setTargetDate: (date) => set({ targetDate: date }),
   setUnlinkMode: (unlink) => set({ unlinkMode: unlink }),
   setBlocked: (blocked) => set({ blocked }),
+  setCopyMode: (copyMode) => set({ copyMode }),
   endDrag: () => {
     const state = { ...get() };
     set(initial);
