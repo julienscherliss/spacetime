@@ -67,7 +67,7 @@ interface LibraryState {
   setSortMode: (mode: SortMode) => void;
   setFilterCategory: (cat: FilterCategory) => void;
   setFilter: (patch: Partial<FilterState>) => void;
-  addItem: (title: string, category?: LibraryCategory) => void;
+  addItem: (title: string, category?: LibraryCategory, dueDate?: string | null) => void;
   updateItem: (id: string, updates: Partial<Pick<LibraryTask, 'title' | 'note' | 'category' | 'defaultDuration' | 'isUrgent' | 'isImportant' | 'dueDate' | 'subtasks'>>) => void;
   deleteItem: (id: string) => void;
   removeItem: (id: string) => void;
@@ -137,7 +137,7 @@ export const useLibraryStore = create<LibraryState>()(
         filterCategory: patch.category ?? s.filters.category,
       })),
 
-      addItem: (title, category = '') => {
+      addItem: (title, category = '', dueDate = null) => {
         set((s) => ({
           items: [
             {
@@ -149,7 +149,7 @@ export const useLibraryStore = create<LibraryState>()(
               createdAt: new Date().toISOString(),
               isUrgent: false,
               isImportant: false,
-              dueDate: null,
+              dueDate: dueDate || null,
               subtasks: [],
             },
             ...s.items,
