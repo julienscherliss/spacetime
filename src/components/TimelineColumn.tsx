@@ -792,6 +792,29 @@ export function TimelineColumn({
 
       const newTime = minutesToTime(state.currentMinutes);
 
+      // Copy mode: duplicate the task at the new position instead of moving
+      if (state.copyMode) {
+        const sourceTask = useTaskStore.getState().tasks.find(t => t.id === state.taskId);
+        if (sourceTask) {
+          addTask({
+            title: sourceTask.title,
+            date: state.targetDate || sourceTask.date,
+            time: newTime,
+            duration: sourceTask.duration || 30,
+            priority: sourceTask.priority as any,
+            type: sourceTask.type,
+            category: sourceTask.category,
+            description: sourceTask.description,
+            subtasks: sourceTask.subtasks,
+            recurrence: sourceTask.recurrence,
+            isRoutine: sourceTask.isRoutine,
+            dueDate: sourceTask.dueDate,
+          });
+        }
+        useScheduledDragStore.getState().endDrag();
+        return;
+      }
+
       // If unlink mode is active, detach this single occurrence before moving
       if (state.unlinkMode) {
         const { updateTask } = useTaskStore.getState();
