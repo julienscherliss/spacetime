@@ -988,16 +988,25 @@ function MainFocusPanel({
                 className="flex flex-col items-center"
               >
                 <motion.div
-                  className="font-display text-[64px] sm:text-[80px] font-bold text-foreground leading-none tabular-nums tracking-tight select-none"
+                  className={`font-display text-[64px] sm:text-[80px] font-bold leading-none tabular-nums tracking-tight select-none ${
+                    isGracePeriod ? 'text-red-500/70' : 'text-foreground'
+                  }`}
                   animate={completing ? { scale: 0.95, opacity: 0.3 } : { scale: 1, opacity: 1 }}
                   transition={{ duration: 0.25, ease: 'easeOut' }}
                 >
-                  {remainingH}:{remainingM}
+                  {isGracePeriod ? '+' : ''}{displayH}:{displayM}
                 </motion.div>
 
-                <h1 className="mt-2 text-sm sm:text-base font-display font-medium text-foreground/80 leading-snug text-center max-w-[220px] uppercase">
+                <h1 className={`mt-2 text-sm sm:text-base font-display font-medium leading-snug text-center max-w-[220px] uppercase ${
+                  isGracePeriod ? 'text-red-500/60' : 'text-foreground/80'
+                }`}>
                   {activeTask.title}
                 </h1>
+                {isGracePeriod && (
+                  <span className="mt-1 text-[10px] font-mono text-red-500/40 tracking-[0.15em] uppercase">
+                    Overdue
+                  </span>
+                )}
               </motion.div>
             </AnimatePresence>
           </div>
