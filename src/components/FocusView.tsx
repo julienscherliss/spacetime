@@ -379,117 +379,128 @@ function FocusDayListPanel({ allTodayTasks, completedCount, nowMinutes, activeTa
   }, []);
 
   return (
-    <motion.div
-      key="completed"
-      ref={scrollRef}
-      initial={{ opacity: 0, y: -40 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -40 }}
-      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-      className="absolute inset-0 flex flex-col pt-8 pb-16 px-3 sm:px-4 overflow-y-auto"
-    >
-      {/* Header */}
-      <div className="max-w-sm mx-auto w-full mb-2">
-        <p className="text-[10px] font-mono text-muted-foreground/50 tracking-widest">
-          {completedCount}/{allTodayTasks.length} COMPLETED
-        </p>
-      </div>
-
-      {/* Task list */}
-      <div className="max-w-sm mx-auto w-full flex flex-col">
-        {allTodayTasks.length === 0 ? (
-          <div className="text-center py-20">
-            <p className="text-muted-foreground/30 font-mono text-sm tracking-wider">NO TASKS</p>
-          </div>
-        ) : (
-          allTodayTasks.map((task) => {
-            const isOverdue = !task.completed && task.time &&
-              nowMinutes >= timeToMinutes(task.time) + (task.duration || 30);
-            const isCurrent = task.id === activeTaskId;
-
-            return (
-              <div
-                key={task.id}
-                ref={isCurrent ? activeRowRef : undefined}
-                className={`w-full text-left px-3 py-4 transition-colors ${
-                  task.completed ? 'opacity-50' : ''
-                } ${isCurrent ? 'border border-foreground/15 rounded-md my-1' : 'border-b border-border/20'}`}
-              >
-                <div className="flex items-start gap-3">
-                  {/* Time column */}
-                  <div className="w-16 flex-shrink-0 pt-0.5">
-                    {task.time ? (
-                      <div>
-                        <p className={`text-[11px] font-mono leading-tight ${
-                          isOverdue ? 'text-red-500/80' : 'text-foreground/80'
-                        }`}>
-                          {formatTime12h(task.time)}
-                        </p>
-                        {task.duration && (
-                          <p className={`text-[9px] font-mono mt-0.5 ${
-                            isOverdue ? 'text-red-500/40' : 'text-muted-foreground/40'
-                          }`}>
-                            {Math.floor(task.duration / 60) > 0 ? `${Math.floor(task.duration / 60)}h ` : ''}{task.duration % 60 > 0 ? `${task.duration % 60}m` : ''}
-                          </p>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-[9px] font-mono text-muted-foreground/30 tracking-wider">
-                        ANYTIME
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Content — double tap to complete */}
-                  <button
-                    onClick={() => onTaskTap(task.id)}
-                    className="flex-1 min-w-0 text-left active:bg-muted/40 rounded-sm -m-1 p-1 transition-colors"
-                  >
-                    <p className={`text-sm font-display font-medium leading-snug ${
-                      task.completed
-                        ? 'line-through text-muted-foreground/50'
-                        : isOverdue
-                          ? 'text-red-500'
-                          : 'text-foreground'
-                    }`}>
-                      {task.title}
-                    </p>
-                    {task.description && (
-                      <p className={`text-[11px] mt-0.5 line-clamp-1 ${
-                        isOverdue ? 'text-red-500/40' : 'text-muted-foreground/50'
-                      }`}>
-                        {task.description}
-                      </p>
-                    )}
-                    {task.subtasks && task.subtasks.length > 0 && (
-                      <p className="text-[9px] font-mono text-muted-foreground/40 mt-1 tracking-wider">
-                        {task.subtasks.filter((s: any) => s.completed).length}/{task.subtasks.length} SUBTASKS
-                      </p>
-                    )}
-                  </button>
-
-                  {/* Priority dot */}
-                  <div
-                    className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
-                    style={{
-                      backgroundColor: `hsl(var(--priority-${task.priority}))`,
-                      opacity: 0.6,
-                    }}
-                  />
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-
-      <button
-        onClick={onBack}
-        className="self-center mt-8 p-2 text-muted-foreground/30 hover:text-muted-foreground/50 transition-colors"
+    <div className="absolute inset-0">
+      <motion.div
+        key="completed"
+        ref={scrollRef}
+        initial={{ opacity: 0, y: -40 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -40 }}
+        transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+        className="absolute inset-0 flex flex-col pt-8 pb-16 px-3 sm:px-4 overflow-y-auto"
       >
-        <ChevronDown size={40} strokeWidth={1.5} />
-      </button>
-    </motion.div>
+        {/* Header */}
+        <div className="max-w-sm mx-auto w-full mb-2">
+          <p className="text-[10px] font-mono text-muted-foreground/50 tracking-widest">
+            {completedCount}/{allTodayTasks.length} COMPLETED
+          </p>
+        </div>
+
+        {/* Task list */}
+        <div className="max-w-sm mx-auto w-full flex flex-col">
+          {allTodayTasks.length === 0 ? (
+            <div className="text-center py-20">
+              <p className="text-muted-foreground/30 font-mono text-sm tracking-wider">NO TASKS</p>
+            </div>
+          ) : (
+            allTodayTasks.map((task) => {
+              const isOverdue = !task.completed && task.time &&
+                nowMinutes >= timeToMinutes(task.time) + (task.duration || 30);
+              const isCurrent = task.id === activeTaskId;
+
+              return (
+                <div
+                  key={task.id}
+                  ref={isCurrent ? activeRowRef : undefined}
+                  className={`w-full text-left px-3 py-4 transition-colors ${
+                    task.completed ? 'opacity-50' : ''
+                  } ${isCurrent ? 'border border-foreground/15 rounded-md my-1' : 'border-b border-border/20'}`}
+                >
+                  <div className="flex items-start gap-3">
+                    {/* Time column */}
+                    <div className="w-16 flex-shrink-0 pt-0.5">
+                      {task.time ? (
+                        <div>
+                          <p className={`text-[11px] font-mono leading-tight ${
+                            isOverdue ? 'text-red-500/80' : 'text-foreground/80'
+                          }`}>
+                            {formatTime12h(task.time)}
+                          </p>
+                          {task.duration && (
+                            <p className={`text-[9px] font-mono mt-0.5 ${
+                              isOverdue ? 'text-red-500/40' : 'text-muted-foreground/40'
+                            }`}>
+                              {Math.floor(task.duration / 60) > 0 ? `${Math.floor(task.duration / 60)}h ` : ''}{task.duration % 60 > 0 ? `${task.duration % 60}m` : ''}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-[9px] font-mono text-muted-foreground/30 tracking-wider">
+                          ANYTIME
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Content — double tap to complete */}
+                    <button
+                      onClick={() => onTaskTap(task.id)}
+                      className="flex-1 min-w-0 text-left active:bg-muted/40 rounded-sm -m-1 p-1 transition-colors"
+                    >
+                      <p className={`text-sm font-display font-medium leading-snug ${
+                        task.completed
+                          ? 'line-through text-muted-foreground/50'
+                          : isOverdue
+                            ? 'text-red-500'
+                            : 'text-foreground'
+                      }`}>
+                        {task.title}
+                      </p>
+                      {task.description && (
+                        <p className={`text-[11px] mt-0.5 line-clamp-1 ${
+                          isOverdue ? 'text-red-500/40' : 'text-muted-foreground/50'
+                        }`}>
+                          {task.description}
+                        </p>
+                      )}
+                      {task.subtasks && task.subtasks.length > 0 && (
+                        <p className="text-[9px] font-mono text-muted-foreground/40 mt-1 tracking-wider">
+                          {task.subtasks.filter((s: any) => s.completed).length}/{task.subtasks.length} SUBTASKS
+                        </p>
+                      )}
+                    </button>
+
+                    {/* Priority dot */}
+                    <div
+                      className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
+                      style={{
+                        backgroundColor: `hsl(var(--priority-${task.priority}))`,
+                        opacity: 0.6,
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        <button
+          onClick={onBack}
+          className="self-center mt-8 p-2 text-muted-foreground/30 hover:text-muted-foreground/50 transition-colors"
+        >
+          <ChevronDown size={40} strokeWidth={1.5} />
+        </button>
+      </motion.div>
+
+      {/* Top vignette fade */}
+      <div className="absolute top-0 left-0 right-0 h-16 pointer-events-none z-10"
+        style={{ background: 'linear-gradient(to bottom, hsl(var(--background)), hsl(var(--background) / 0.6) 50%, transparent)' }}
+      />
+      {/* Bottom vignette fade */}
+      <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none z-10"
+        style={{ background: 'linear-gradient(to top, hsl(var(--background)), hsl(var(--background) / 0.6) 50%, transparent)' }}
+      />
+    </div>
   );
 }
 
