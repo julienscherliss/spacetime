@@ -148,6 +148,9 @@ export interface AnalyticsData {
 export function useAnalyticsData(filters: AnalyticsFilters): AnalyticsData {
   const allTasks = useTaskStore(s => s.tasks);
   const categories = useLibraryStore(s => s.categories);
+  const calendarEvents = useCalendarStore(s => s.events);
+  const completedEventIds = useCalendarStore(s => s.completedEventIds);
+  const eventCategories = useCalendarStore(s => s.eventCategories);
 
   return useMemo(() => {
     const range = getDateRange(filters);
