@@ -603,7 +603,7 @@ export function LibraryPanel() {
                           />
                           {/* Subtags of this parent */}
                           {categories.filter(c => isSubtagOf(c.value, drilldownParent)).map((cat) => {
-                            const subLabel = cat.label.includes(' – ') ? cat.label.split(' – ').slice(1).join(' – ') : cat.label;
+                            const subLabel = cat.label.includes(' / ') ? cat.label.split(' / ').slice(1).join(' / ') : cat.label;
                             return (
                               <Chip
                                 key={cat.value}
@@ -614,6 +614,49 @@ export function LibraryPanel() {
                               />
                             );
                           })}
+                          {/* Add subtag inline */}
+                          {showNewCat ? (
+                            <input
+                              value={newCatName}
+                              onChange={(e) => setNewCatName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  if (newCatName.trim()) {
+                                    const parentCat = categories.find(c => c.value === drilldownParent);
+                                    const parentLabel = parentCat?.label || drilldownParent;
+                                    const subValue = `${drilldownParent}/${newCatName.trim().toLowerCase().replace(/\s+/g, '-')}`;
+                                    const subLabel = `${parentLabel} / ${newCatName.trim()}`;
+                                    addCategory(subLabel, subValue);
+                                  }
+                                  setNewCatName('');
+                                  setShowNewCat(false);
+                                }
+                                if (e.key === 'Escape') setShowNewCat(false);
+                              }}
+                              onBlur={() => {
+                                if (newCatName.trim()) {
+                                  const parentCat = categories.find(c => c.value === drilldownParent);
+                                  const parentLabel = parentCat?.label || drilldownParent;
+                                  const subValue = `${drilldownParent}/${newCatName.trim().toLowerCase().replace(/\s+/g, '-')}`;
+                                  const subLabel = `${parentLabel} / ${newCatName.trim()}`;
+                                  addCategory(subLabel, subValue);
+                                }
+                                setNewCatName('');
+                                setShowNewCat(false);
+                              }}
+                              placeholder="Subtag…"
+                              className="shrink-0 w-20 bg-transparent text-[10px] font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none border-b border-primary/40 px-1 py-1"
+                              autoFocus
+                            />
+                          ) : (
+                            <button
+                              onClick={() => setShowNewCat(true)}
+                              className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wider text-primary/50 hover:text-primary border border-dashed border-primary/25 hover:border-primary/50 transition-colors min-h-[32px]"
+                            >
+                              <Plus size={10} />
+                              Add
+                            </button>
+                          )}
                         </>
                       ) : (
                         <>
@@ -628,7 +671,7 @@ export function LibraryPanel() {
                             onClick={() => setFilter({ category: filters.category === 'none' ? 'all' : 'none' })}
                           />
                           {categories
-                            .filter(c => !c.value.includes('--'))  // Only top-level tags
+                            .filter(c => !c.value.includes('/'))  // Only top-level tags
                             .map((cat) => {
                               const hasSubs = hasSubtags(cat.value, categories);
                               return (
@@ -637,10 +680,9 @@ export function LibraryPanel() {
                                   active={filters.category === cat.value}
                                   label={cat.label}
                                   onClick={() => {
-                                    if (filters.category === cat.value && hasSubs) {
-                                      // Second click on active parent with subtags → drill down
+                                    if (hasSubs) {
                                       setDrilldownParent(cat.value);
-                                      setFilter({ category: 'all' });
+                                      setFilter({ category: cat.value });
                                     } else {
                                       setFilter({ category: filters.category === cat.value ? 'all' : cat.value });
                                     }

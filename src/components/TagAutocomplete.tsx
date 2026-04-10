@@ -13,48 +13,70 @@ export function TagAutocomplete({ inputValue, onSelectTag, inputRef }: TagAutoco
   const [suggestions, setSuggestions] = useState<CategoryDef[]>([]);
   const [selectedIdx, setSelectedIdx] = useState(0);
 
-  // Detect #tag or ##subtag pattern
+  // Detect #tag or #tag/subtag pattern
   useEffect(() => {
-    // Match ##subtag (subtag of current parent) or #tag
-    const subMatch = inputValue.match(/##(\S*)$/);
+    // Match #parent/subtag (subtag mode)
+    const subMatch = inputValue.match(/#([^/\s]+)\/(\S*)$/);
+    // Match #tag (tag mode)
     const match = inputValue.match(/#(\S*)$/);
 
     if (subMatch) {
-      // Subtag mode: show categories that are subtags (contain --)
-      // or suggest creating a new subtag under a parent
-      const query = subMatch[1].toLowerCase();
-      // Find parent tag from the existing category in the input context
-      const parentMatch = inputValue.match(/#(\S+)##/);
-      if (parentMatch) {
-        const parentQuery = parentMatch[1].toLowerCase();
-        const parent = categories.find(c => 
-          c.label.toLowerCase() === parentQuery || c.value === parentQuery
-        );
-        if (parent) {
-          // Show existing subtags of this parent
-          const subtags = categories.filter(c => c.value.startsWith(parent.value + '--'));
-          const filtered = query
-            ? subtags.filter(c => c.label.toLowerCase().includes(query) || c.value.includes(query))
-            : subtags;
-          
-          // Add "create new" option
-          if (query && !filtered.some(c => getSubtagLabel(c.label).toLowerCase() === query)) {
-            const newValue = `${parent.value}--${query.replace(/\s+/g, '-')}`;
-            const newLabel = `${parent.label} – ${query.charAt(0).toUpperCase() + query.slice(1)}`;
-            filtered.push({ value: newValue, label: newLabel });
-          }
-          
-          setSuggestions(filtered.slice(0, 6));
-          setSelectedIdx(0);
-          return;
+      const parentQuery = subMatch[1].toLowerCase();
+      const subQuery = subMatch[2].toLowerCase();
+      
+      // Find parent tag
+      const parent = categories.find(c =>
+        c.label.toLowerCase() === parentQuery || c.value === parentQuery
+      );
+
+      if (parent) {
+        // Show existing subtags of this parent
+        const subtags = categories.filter(c => isSubtagOf(c.value, parent.value));
+        const filtered = subQuery
+          ? subtags.filter(c =>
+              getSubtagLabel(c.label).toLowerCase().includes(subQuery) ||
+              c.value.split('/').pop()?.includes(subQuery)
+            )
+          : subtags;
+
+        // Add "create new" option if query doesn't match existing
+        if (subQuery && !filtered.some(c => getSubtagLabel(c.label).toLowerCase() === subQuery)) {
+          const newValue = `${parent.value}/${subQuery.replace(/\s+/g, '-')}`;
+          const newLabel = `${parent.label} / ${subQuery.charAt(0).toUpperCase() + subQuery.slice(1)}`;
+          filtered.push({ value: newValue, label: newLabel });
         }
+
+        setSuggestions(filtered.slice(0, 6));
+        setSelectedIdx(0);
+        return;
       }
+
+      // Parent not found — offer to create both
+      if (parentQuery) {
+        const newParentValue = parentQuery.replace(/\s+/g, '-');
+        const newSubValue = subQuery ? `${newParentValue}/${subQuery.replace(/\s+/g, '-')}` : newParentValue;
+        const newSubLabel = subQuery
+          ? `${parentQuery.charAt(0).toUpperCase() + parentQuery.slice(1)} / ${subQuery.charAt(0).toUpperCase() + subQuery.slice(1)}`
+          : parentQuery.charAt(0).toUpperCase() + parentQuery.slice(1);
+        setSuggestions([{ value: newSubValue, label: newSubLabel }]);
+        setSelectedIdx(0);
+        return;
+      }
+
       setSuggestions([]);
     } else if (match) {
       const query = match[1].toLowerCase();
+      // Don't show suggestions if we're mid-slash (handled above)
+      if (query.includes('/')) {
+        setSuggestions([]);
+        return;
+      }
       const filtered = query
-        ? categories.filter((c) => c.label.toLowerCase().includes(query) || c.value.includes(query))
-        : categories;
+        ? categories.filter((c) =>
+            (c.label.toLowerCase().includes(query) || c.value.includes(query)) &&
+            !c.value.includes('/')  // Only show top-level tags in # mode
+          )
+        : categories.filter(c => !c.value.includes('/'));  // Only top-level
       setSuggestions(filtered.slice(0, 6));
       setSelectedIdx(0);
     } else {
@@ -77,12 +99,10 @@ export function TagAutocomplete({ inputValue, onSelectTag, inputRef }: TagAutoco
         e.preventDefault();
         setSelectedIdx((i) => Math.max(i - 1, 0));
       } else if (e.key === 'Tab' || (e.key === 'Enter' && suggestions.length > 0)) {
-        // Check if we're in subtag mode or tag mode
-        const subMatch = inputValue.match(/#\S+##\S*$/);
         const tagMatch = inputValue.match(/#\S*$/);
-        if ((subMatch || tagMatch) && suggestions[selectedIdx]) {
+        if (tagMatch && suggestions[selectedIdx]) {
           e.preventDefault();
-          const cleaned = inputValue.replace(/#\S*(?:##\S*)?$/, '').trim();
+          const cleaned = inputValue.replace(/#\S*$/, '').trim();
           onSelectTag(suggestions[selectedIdx], cleaned);
           setSuggestions([]);
         }
@@ -103,7 +123,7 @@ export function TagAutocomplete({ inputValue, onSelectTag, inputRef }: TagAutoco
           key={cat.value}
           onPointerDown={(e) => {
             e.preventDefault(); // prevent blur
-            const cleaned = inputValue.replace(/#\S*(?:##\S*)?$/, '').trim();
+            const cleaned = inputValue.replace(/#\S*$/, '').trim();
             onSelectTag(cat, cleaned);
           }}
           className={`w-full text-left px-3 py-2 text-[12px] font-mono tracking-wider transition-colors ${
@@ -113,9 +133,9 @@ export function TagAutocomplete({ inputValue, onSelectTag, inputRef }: TagAutoco
           }`}
         >
           <span className="text-primary/50">#</span>
-          {cat.value.includes('--') ? (
+          {cat.value.includes('/') ? (
             <>
-              <span className="text-muted-foreground/40">{getParentLabel(cat.label)} – </span>
+              <span className="text-muted-foreground/40">{getParentLabel(cat.label)} / </span>
               {getSubtagLabel(cat.label)}
             </>
           ) : (
@@ -127,26 +147,26 @@ export function TagAutocomplete({ inputValue, onSelectTag, inputRef }: TagAutoco
   );
 }
 
-/** Extract parent part from "Parent – Subtag" label */
+/** Extract parent part from "Parent / Subtag" label */
 function getParentLabel(label: string): string {
-  const parts = label.split(' – ');
+  const parts = label.split(' / ');
   return parts[0] || label;
 }
 
-/** Extract subtag part from "Parent – Subtag" label */
+/** Extract subtag part from "Parent / Subtag" label */
 function getSubtagLabel(label: string): string {
-  const parts = label.split(' – ');
-  return parts.length > 1 ? parts.slice(1).join(' – ') : label;
+  const parts = label.split(' / ');
+  return parts.length > 1 ? parts.slice(1).join(' / ') : label;
 }
 
 /** Check if a category value is a subtag of a parent value */
 export function isSubtagOf(childValue: string, parentValue: string): boolean {
-  return childValue.startsWith(parentValue + '--');
+  return childValue.startsWith(parentValue + '/');
 }
 
 /** Get parent value from a subtag value */
 export function getParentValue(value: string): string | null {
-  const idx = value.indexOf('--');
+  const idx = value.indexOf('/');
   if (idx === -1) return null;
   return value.substring(0, idx);
 }
