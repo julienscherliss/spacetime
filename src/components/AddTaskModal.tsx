@@ -7,6 +7,7 @@ import { Plus, X, Clock, Tag, CalendarDays } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { TagAutocomplete } from '@/components/TagAutocomplete';
+import { DateAutocomplete } from '@/components/DateAutocomplete';
 
 const PRIORITY_LABELS = ['Flex', 'Semi', 'Fixed', 'Lock'] as const;
 const PRIORITY_COLORS = [
@@ -226,6 +227,14 @@ export function AddTaskModal() {
                     onSelectTag={(cat, cleaned) => {
                       setTitle(cleaned);
                       setCategory(cat.value);
+                    }}
+                  />
+                  <DateAutocomplete
+                    inputValue={title}
+                    inputRef={titleInputRef as React.RefObject<HTMLInputElement>}
+                    onSelectDate={(dateStr, cleaned) => {
+                      setTitle(cleaned);
+                      setDate(dateStr);
                     }}
                   />
                 </div>
