@@ -570,45 +570,90 @@ export function LibraryPanel() {
                     </>
                   ) : (
                     <>
-                      <Chip
-                        active={filters.category === 'all'}
-                        label="All"
-                        onClick={() => setFilter({ category: 'all' })}
-                      />
-                      <Chip
-                        active={filters.category === 'none'}
-                        label="Untagged"
-                        onClick={() => setFilter({ category: filters.category === 'none' ? 'all' : 'none' })}
-                      />
-                      {categories.map((cat) => (
-                        <Chip
-                          key={cat.value}
-                          active={filters.category === cat.value}
-                          label={cat.label}
-                          onClick={() => setFilter({ category: filters.category === cat.value ? 'all' : cat.value })}
-                          onLongPress={() => setTagModalOpen(true)}
-                        />
-                      ))}
-
-                      {/* Add category chip */}
-                      {showNewCat ? (
-                        <input
-                          value={newCatName}
-                          onChange={(e) => setNewCatName(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === 'Enter') handleAddCategory(); if (e.key === 'Escape') setShowNewCat(false); }}
-                          onBlur={handleAddCategory}
-                          placeholder="Name…"
-                          className="shrink-0 w-20 bg-transparent text-[10px] font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none border-b border-primary/40 px-1 py-1"
-                          autoFocus
-                        />
+                      {drilldownParent ? (
+                        <>
+                          {/* Back to parent level */}
+                          <Chip
+                            active={false}
+                            label="← Back"
+                            onClick={() => { setDrilldownParent(null); setFilter({ category: 'all' }); }}
+                          />
+                          {/* Parent tag */}
+                          <Chip
+                            active={filters.category === drilldownParent}
+                            label={categories.find(c => c.value === drilldownParent)?.label || drilldownParent}
+                            onClick={() => setFilter({ category: filters.category === drilldownParent ? 'all' : drilldownParent })}
+                          />
+                          {/* Subtags of this parent */}
+                          {categories.filter(c => isSubtagOf(c.value, drilldownParent)).map((cat) => {
+                            const subLabel = cat.label.includes(' – ') ? cat.label.split(' – ').slice(1).join(' – ') : cat.label;
+                            return (
+                              <Chip
+                                key={cat.value}
+                                active={filters.category === cat.value}
+                                label={subLabel}
+                                onClick={() => setFilter({ category: filters.category === cat.value ? 'all' : cat.value })}
+                                onLongPress={() => setTagModalOpen(true)}
+                              />
+                            );
+                          })}
+                        </>
                       ) : (
-                        <button
-                          onClick={() => setShowNewCat(true)}
-                          className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wider text-primary/50 hover:text-primary border border-dashed border-primary/25 hover:border-primary/50 transition-colors min-h-[32px]"
-                        >
-                          <Tag size={10} />
-                          Add
-                        </button>
+                        <>
+                          <Chip
+                            active={filters.category === 'all'}
+                            label="All"
+                            onClick={() => setFilter({ category: 'all' })}
+                          />
+                          <Chip
+                            active={filters.category === 'none'}
+                            label="Untagged"
+                            onClick={() => setFilter({ category: filters.category === 'none' ? 'all' : 'none' })}
+                          />
+                          {categories
+                            .filter(c => !c.value.includes('--'))  // Only top-level tags
+                            .map((cat) => {
+                              const hasSubs = hasSubtags(cat.value, categories);
+                              return (
+                                <Chip
+                                  key={cat.value}
+                                  active={filters.category === cat.value}
+                                  label={cat.label}
+                                  onClick={() => {
+                                    if (filters.category === cat.value && hasSubs) {
+                                      // Second click on active parent with subtags → drill down
+                                      setDrilldownParent(cat.value);
+                                      setFilter({ category: 'all' });
+                                    } else {
+                                      setFilter({ category: filters.category === cat.value ? 'all' : cat.value });
+                                    }
+                                  }}
+                                  onLongPress={() => setTagModalOpen(true)}
+                                />
+                              );
+                            })}
+
+                          {/* Add category chip */}
+                          {showNewCat ? (
+                            <input
+                              value={newCatName}
+                              onChange={(e) => setNewCatName(e.target.value)}
+                              onKeyDown={(e) => { if (e.key === 'Enter') handleAddCategory(); if (e.key === 'Escape') setShowNewCat(false); }}
+                              onBlur={handleAddCategory}
+                              placeholder="Name…"
+                              className="shrink-0 w-20 bg-transparent text-[10px] font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none border-b border-primary/40 px-1 py-1"
+                              autoFocus
+                            />
+                          ) : (
+                            <button
+                              onClick={() => setShowNewCat(true)}
+                              className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wider text-primary/50 hover:text-primary border border-dashed border-primary/25 hover:border-primary/50 transition-colors min-h-[32px]"
+                            >
+                              <Tag size={10} />
+                              Add
+                            </button>
+                          )}
+                        </>
                       )}
                     </>
                   )}
