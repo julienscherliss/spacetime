@@ -1137,28 +1137,32 @@ export function TimelineColumn({
             left: showTimeLabels ? '3.25rem' : '2px',
           }}
         >
-          <div className={`h-full rounded-[2px] border-2 border-dashed transition-colors duration-200 ${
+          <div className={`h-full rounded-[2px] border-2 border-dashed transition-colors duration-200 relative ${
             scheduledDragBlocked
               ? 'border-destructive/50 bg-destructive/[0.06]'
-              : scheduledDragUnlinkMode
-                ? 'border-destructive/60 bg-destructive/[0.04]'
-                : scheduledDragIsLinked
-                  ? 'border-primary/50 bg-primary/[0.06]'
-                  : 'border-muted-foreground/30 bg-muted/[0.06]'
+              : scheduledDragCopyMode
+                ? 'border-primary/50 bg-primary/[0.08]'
+                : scheduledDragUnlinkMode
+                  ? 'border-destructive/60 bg-destructive/[0.04]'
+                  : scheduledDragIsLinked
+                    ? 'border-primary/50 bg-primary/[0.06]'
+                    : 'border-muted-foreground/30 bg-muted/[0.06]'
           }`}>
             <div className="px-2 py-1 flex items-center gap-1.5">
               <span className={`text-[10px] font-mono transition-colors duration-200 ${
                 scheduledDragBlocked
                   ? 'text-destructive/70'
-                  : scheduledDragUnlinkMode
-                    ? 'text-destructive/70'
-                    : scheduledDragIsLinked
-                      ? 'text-primary/60'
-                      : 'text-muted-foreground/50'
+                  : scheduledDragCopyMode
+                    ? 'text-primary/70'
+                    : scheduledDragUnlinkMode
+                      ? 'text-destructive/70'
+                      : scheduledDragIsLinked
+                        ? 'text-primary/60'
+                        : 'text-muted-foreground/50'
               }`}>
-                {scheduledDragBlocked ? 'BLOCKED' : formatTime12h(minutesToTime(scheduledDragMinutes))}
+                {scheduledDragBlocked ? 'BLOCKED' : scheduledDragCopyMode ? 'COPY HERE' : formatTime12h(minutesToTime(scheduledDragMinutes))}
               </span>
-              {!scheduledDragBlocked && scheduledDragIsLinked && (
+              {!scheduledDragBlocked && !scheduledDragCopyMode && scheduledDragIsLinked && (
                 <span className={`text-[8px] font-mono tracking-wider uppercase transition-colors duration-200 ${
                   scheduledDragUnlinkMode
                     ? 'text-destructive/50'
@@ -1168,6 +1172,14 @@ export function TimelineColumn({
                 </span>
               )}
             </div>
+            {/* Copy icon on far right */}
+            {!scheduledDragBlocked && (
+              <div className={`absolute right-1.5 top-1/2 -translate-y-1/2 transition-colors duration-150 ${
+                scheduledDragCopyMode ? 'text-primary/70' : 'text-muted-foreground/25'
+              }`}>
+                <Copy size={14} />
+              </div>
+            )}
           </div>
         </div>
       )}
