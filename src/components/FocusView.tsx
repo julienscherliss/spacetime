@@ -426,6 +426,7 @@ export function FocusView() {
               onHoldEnd={cancelHold}
               onUpdateTask={updateTask}
               overdueTasks={overdueTasks}
+              isGracePeriod={isGracePeriod}
             />
           </motion.div>
         )}
