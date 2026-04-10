@@ -106,34 +106,25 @@ export function CalendarEventEditPanel() {
             </div>
 
             <div className="p-4 space-y-4 overflow-y-auto">
-              {/* Title + completion */}
-              <div className="flex items-start gap-3">
-                <button
-                  onClick={() => completeEvent(event.id)}
-                  className={`mt-0.5 p-1 rounded-sm transition-all shrink-0 ${
-                    isCompleted
-                      ? 'text-primary bg-primary/10'
-                      : 'text-muted-foreground/25 hover:text-primary hover:bg-primary/5'
-                  }`}
-                >
-                  <Check size={16} />
-                </button>
-                <div className="flex-1 min-w-0">
-                  <h3 className={`text-[14px] font-mono font-medium leading-snug ${
-                    isCompleted ? 'line-through text-muted-foreground/40' : 'text-foreground'
-                  }`}>
-                    {event.title}
-                  </h3>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <div
-                      className="w-2 h-2 rounded-full shrink-0"
-                      style={{ backgroundColor: color }}
-                    />
-                    <span className="text-[10px] font-mono text-muted-foreground/40 truncate">
-                      {cal?.name || 'Calendar'}
-                    </span>
-                  </div>
+              {/* Title */}
+              <div>
+                <h3 className={`text-[14px] font-mono font-medium leading-snug ${
+                  isCompleted ? 'line-through text-muted-foreground/40' : 'text-foreground'
+                }`}>
+                  {event.title}
+                </h3>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <div
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ backgroundColor: color }}
+                  />
+                  <span className="text-[10px] font-mono text-muted-foreground/40 truncate">
+                    {cal?.name || 'Calendar'}
+                  </span>
                 </div>
+                {isCompleted && (
+                  <span className="text-[9px] font-mono text-primary/60 tracking-wider mt-1 block">COMPLETED</span>
+                )}
               </div>
 
               {/* Time info */}
