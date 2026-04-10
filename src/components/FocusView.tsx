@@ -920,8 +920,14 @@ function MainFocusPanel({
   }
 
   const clampedRemaining = Math.max(0, remaining);
-  const remainingH = String(Math.floor(clampedRemaining / 60)).padStart(2, '0');
-  const remainingM = String(clampedRemaining % 60).padStart(2, '0');
+  // In grace period, show how long overdue
+  const overdueMinutes = isGracePeriod ? Math.abs(remaining) : 0;
+  const displayH = isGracePeriod
+    ? String(Math.floor(overdueMinutes / 60)).padStart(2, '0')
+    : String(Math.floor(clampedRemaining / 60)).padStart(2, '0');
+  const displayM = isGracePeriod
+    ? String(overdueMinutes % 60).padStart(2, '0')
+    : String(clampedRemaining % 60).padStart(2, '0');
   const priorityLabel = PRIORITY_LABELS[activeTask.priority] || 'FLEX';
   const timeStart = formatTime12h(activeTask.time!);
   const timeEnd = formatTime12h(timeToMinutes(activeTask.time!) + (activeTask.duration || 30));
