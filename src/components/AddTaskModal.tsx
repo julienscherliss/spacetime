@@ -218,7 +218,7 @@ export function AddTaskModal() {
                     className="w-full bg-transparent font-display font-bold text-foreground text-lg leading-tight focus:outline-none placeholder:text-muted-foreground/25"
                     autoFocus
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !title.match(/#\S+$/)) handleSubmit();
+                      if (e.key === 'Enter' && !title.match(/#\S+$/) && !title.match(/@\S*$/)) handleSubmit();
                     }}
                   />
                   <TagAutocomplete
