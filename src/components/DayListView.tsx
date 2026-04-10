@@ -28,11 +28,17 @@ function getEndTime(time: string, duration: number): string {
 export function DayListView() {
   const {
     tasks, routinesEnabled, generateRecurringInstances,
-    navigateToDate, setNavigateToDate, setEditingTask, setDaySubMode,
+    navigateToDate, setNavigateToDate, currentDate, setCurrentDate,
+    setEditingTask, setDaySubMode,
     setListReturnZoom, setShowListReturn, completeTask,
   } = useTaskStore();
   const { dateStr: today } = useCurrentTime(15000);
-  const [selectedDate, setSelectedDate] = useState(navigateToDate || today);
+  const [selectedDate, _setSelectedDate] = useState(navigateToDate || currentDate || today);
+
+  const setSelectedDate = useCallback((date: string) => {
+    _setSelectedDate(date);
+    setCurrentDate(date);
+  }, [setCurrentDate]);
 
   // Swipe
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -44,7 +50,7 @@ export function DayListView() {
       setSelectedDate(navigateToDate);
       setNavigateToDate(null);
     }
-  }, [navigateToDate, setNavigateToDate]);
+  }, [navigateToDate, setNavigateToDate, setSelectedDate]);
 
   useEffect(() => {
     generateRecurringInstances(selectedDate, selectedDate);

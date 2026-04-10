@@ -23,16 +23,22 @@ function addDaysToDate(dateStr: string, days: number): string {
 
 export function DayView() {
   const { tasks, routinesEnabled, generateRecurringInstances, navigateToDate, setNavigateToDate,
+    currentDate, setCurrentDate,
     listReturnZoom, setListReturnZoom, showListReturn, setShowListReturn, setDaySubMode } = useTaskStore();
   const { minutes: nowMinutes, dateStr: today } = useCurrentTime(15000);
-  const [selectedDate, setSelectedDate] = useState(navigateToDate || today);
+  const [selectedDate, _setSelectedDate] = useState(navigateToDate || currentDate || today);
+
+  const setSelectedDate = useCallback((date: string) => {
+    _setSelectedDate(date);
+    setCurrentDate(date);
+  }, [setCurrentDate]);
 
   useEffect(() => {
     if (navigateToDate) {
       setSelectedDate(navigateToDate);
       setNavigateToDate(null);
     }
-  }, [navigateToDate, setNavigateToDate]);
+  }, [navigateToDate, setNavigateToDate, setSelectedDate]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
