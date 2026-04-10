@@ -15,6 +15,58 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 const SCOPES = "https://www.googleapis.com/auth/calendar.readonly";
 
+function getFormatterParts(date: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+    hourCycle: "h23",
+  }).formatToParts(date);
+
+  const read = (type: string) => parts.find((part) => part.type === type)?.value ?? "00";
+
+  return {
+    year: Number(read("year")),
+    month: Number(read("month")),
+    day: Number(read("day")),
+    hour: Number(read("hour")),
+    minute: Number(read("minute")),
+    second: Number(read("second")),
+  };
+}
+
+function getTimeZoneOffsetMs(date: Date, timeZone: string) {
+  const parts = getFormatterParts(date, timeZone);
+  const asUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+  return asUtc - date.getTime();
+}
+
+function toUtcBoundaryIso(dateStr: string, timeStr: string, timeZone: string) {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const [hour, minute, second = 0] = timeStr.split(":").map(Number);
+  const utcGuess = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+  const initialOffset = getTimeZoneOffsetMs(utcGuess, timeZone);
+  const resolved = new Date(utcGuess.getTime() - initialOffset);
+  const resolvedOffset = getTimeZoneOffsetMs(resolved, timeZone);
+
+  return new Date(utcGuess.getTime() - resolvedOffset).toISOString();
+}
+
+function formatEventDateTime(dateTime: string, timeZone: string) {
+  const date = new Date(dateTime);
+  const parts = getFormatterParts(date, timeZone);
+
+  return {
+    date: `${parts.year}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`,
+    time: `${String(parts.hour).padStart(2, "0")}:${String(parts.minute).padStart(2, "0")}`,
+  };
+}
+
 async function exchangeCode(code: string, redirectUri: string, deviceId: string) {
   // Exchange authorization code for tokens
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
@@ -150,18 +202,21 @@ async function fetchCalendars(deviceId: string) {
   return allCals || [];
 }
 
-async function fetchEvents(deviceId: string, timeMin: string, timeMax: string, calendarIds: string[]) {
+async function fetchEvents(deviceId: string, timeMin: string, timeMax: string, calendarIds: string[], timeZone: string = "UTC") {
   const { token } = await getValidToken(deviceId);
 
   const allEvents: any[] = [];
+  const queryTimeMin = toUtcBoundaryIso(timeMin, "00:00:00", timeZone);
+  const queryTimeMax = toUtcBoundaryIso(timeMax, "23:59:59", timeZone);
 
   for (const calId of calendarIds) {
     const params = new URLSearchParams({
-      timeMin: new Date(timeMin + "T00:00:00").toISOString(),
-      timeMax: new Date(timeMax + "T23:59:59").toISOString(),
+      timeMin: queryTimeMin,
+      timeMax: queryTimeMax,
       singleEvents: "true",
       orderBy: "startTime",
       maxResults: "250",
+      timeZone,
     });
 
     const res = await fetch(
@@ -180,8 +235,11 @@ async function fetchEvents(deviceId: string, timeMin: string, timeMax: string, c
       if (!start) continue;
 
       const isAllDay = !event.start?.dateTime;
-      const startDate = start.split("T")[0];
-      const startTime = isAllDay ? null : start.split("T")[1]?.substring(0, 5);
+      const normalizedStart = isAllDay
+        ? { date: event.start?.date || start, time: null }
+        : formatEventDateTime(event.start.dateTime, timeZone);
+      const startDate = normalizedStart.date;
+      const startTime = normalizedStart.time;
 
       let durationMin = 60;
       if (!isAllDay && end) {
@@ -241,7 +299,7 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { action, deviceId, code, redirectUri, timeMin, timeMax, calendarIds, calendarId, visible } = body;
+    const { action, deviceId, code, redirectUri, timeMin, timeMax, calendarIds, calendarId, visible, timeZone } = body;
 
     let result: any;
 
@@ -269,7 +327,7 @@ Deno.serve(async (req) => {
         result = await fetchCalendars(deviceId);
         break;
       case "events":
-        result = await fetchEvents(deviceId, timeMin, timeMax, calendarIds);
+        result = await fetchEvents(deviceId, timeMin, timeMax, calendarIds, timeZone);
         break;
       case "toggle_calendar":
         result = await toggleCalendar(calendarId, visible);

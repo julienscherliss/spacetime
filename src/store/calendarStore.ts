@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '@/integrations/supabase/client';
+import { useTimezoneStore } from '@/store/timezoneStore';
 
 export interface GoogleCalendar {
   id: string;
@@ -59,8 +60,6 @@ function getDeviceId(): string {
   }
   return id;
 }
-
-const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 
 async function callEdge(action: string, params: Record<string, any> = {}) {
   const { data, error } = await supabase.functions.invoke('google-calendar', {
@@ -146,6 +145,7 @@ export const useCalendarStore = create<CalendarState>()(
 
       fetchEvents: async (startDate, endDate) => {
         const { calendars, deviceId } = get();
+        const timeZone = useTimezoneStore.getState().timezone;
         const visibleCalIds = calendars.filter(c => c.visible).map(c => c.google_calendar_id);
         set({ lastFetchedRange: { startDate, endDate } });
         if (visibleCalIds.length === 0) {
@@ -158,6 +158,7 @@ export const useCalendarStore = create<CalendarState>()(
             timeMin: startDate,
             timeMax: endDate,
             calendarIds: visibleCalIds,
+            timeZone,
           });
           if (Array.isArray(result)) {
             set({ events: result });
