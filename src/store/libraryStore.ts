@@ -248,7 +248,11 @@ export const useLibraryStore = create<LibraryState>()(
         if (filters.category === 'none') {
           filtered = filtered.filter((i) => !i.category);
         } else if (filters.category !== 'all') {
-          filtered = filtered.filter((i) => i.category === filters.category);
+          // Include subtags: if filtering by "work", also show "work--polyphia"
+          filtered = filtered.filter((i) => 
+            i.category === filters.category || 
+            (i.category && i.category.startsWith(filters.category + '--'))
+          );
         }
 
         // Urgency filter

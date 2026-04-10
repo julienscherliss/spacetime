@@ -8,12 +8,13 @@ import {
   X, Plus, Check, Clock, AlertTriangle, Trash2,
   ArrowDownAZ, CalendarClock, Tag, ChevronDown, GripVertical, CalendarDays,
 } from 'lucide-react';
-import { TagAutocomplete } from '@/components/TagAutocomplete';
+import { TagAutocomplete, isSubtagOf, hasSubtags, getParentValue } from '@/components/TagAutocomplete';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useCarryStore } from '@/store/carryStore';
 import { useTaskStore } from '@/store/taskStore';
 import { LibraryEditModal } from '@/components/LibraryEditModal';
 import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Dialog,
   DialogContent,
@@ -231,69 +232,64 @@ function JiggleChip({ label, catValue, onDelete, isDragging }: {
 
 /* ── Quick due-date picker for add input ── */
 function QuickDuePicker({ dueDate, setDueDate }: { dueDate: string; setDueDate: (d: string) => void }) {
-  const [open, setOpen] = useState(false);
-
   return (
-    <div className="relative shrink-0">
-      <button
-        onClick={() => setOpen(!open)}
-        className={`p-2 transition-colors ${
-          dueDate ? 'text-primary' : 'text-muted-foreground/40 hover:text-muted-foreground'
-        }`}
-      >
-        <CalendarDays size={16} />
-      </button>
-      {open && (
-        <div className="absolute right-0 top-full mt-1 z-50 bg-card border border-border rounded-md shadow-lg p-2">
-          <Calendar
-            mode="single"
-            selected={dueDate ? new Date(dueDate + 'T12:00:00') : undefined}
-            onSelect={(d) => {
-              if (d) {
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          className={`p-2 transition-colors shrink-0 ${
+            dueDate ? 'text-primary' : 'text-muted-foreground/40 hover:text-muted-foreground'
+          }`}
+        >
+          <CalendarDays size={16} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0 z-[60]" align="end" side="top">
+        <Calendar
+          mode="single"
+          selected={dueDate ? new Date(dueDate + 'T12:00:00') : undefined}
+          onSelect={(d) => {
+            if (d) {
+              const y = d.getFullYear();
+              const m = String(d.getMonth() + 1).padStart(2, '0');
+              const day = String(d.getDate()).padStart(2, '0');
+              setDueDate(`${y}-${m}-${day}`);
+            }
+          }}
+          className="p-3 pointer-events-auto"
+        />
+        <div className="flex items-center gap-1.5 px-3 pb-2">
+          {[
+            { label: '1w', days: 7 },
+            { label: '1m', days: 30 },
+            { label: '6m', days: 182 },
+            { label: '1y', days: 365 },
+          ].map((opt) => (
+            <button
+              key={opt.label}
+              onClick={() => {
+                const d = new Date();
+                d.setDate(d.getDate() + opt.days);
                 const y = d.getFullYear();
                 const m = String(d.getMonth() + 1).padStart(2, '0');
                 const day = String(d.getDate()).padStart(2, '0');
                 setDueDate(`${y}-${m}-${day}`);
-              }
-              setOpen(false);
-            }}
-            className="pointer-events-auto"
-          />
-          <div className="flex items-center gap-1.5 px-1 pb-1 pt-1">
-            {[
-              { label: '1w', days: 7 },
-              { label: '1m', days: 30 },
-              { label: '6m', days: 182 },
-              { label: '1y', days: 365 },
-            ].map((opt) => (
-              <button
-                key={opt.label}
-                onClick={() => {
-                  const d = new Date();
-                  d.setDate(d.getDate() + opt.days);
-                  const y = d.getFullYear();
-                  const m = String(d.getMonth() + 1).padStart(2, '0');
-                  const day = String(d.getDate()).padStart(2, '0');
-                  setDueDate(`${y}-${m}-${day}`);
-                  setOpen(false);
-                }}
-                className="flex-1 py-1.5 text-[10px] font-mono tracking-wider text-muted-foreground/60 hover:text-foreground hover:bg-muted/30 rounded transition-colors"
-              >
-                {opt.label}
-              </button>
-            ))}
-            {dueDate && (
-              <button
-                onClick={() => { setDueDate(''); setOpen(false); }}
-                className="text-[10px] font-mono tracking-wider text-destructive/60 hover:text-destructive ml-auto px-2 py-1.5"
-              >
-                Clear
-              </button>
-            )}
-          </div>
+              }}
+              className="flex-1 py-1.5 text-[10px] font-mono tracking-wider text-muted-foreground/60 hover:text-foreground hover:bg-muted/30 rounded transition-colors"
+            >
+              {opt.label}
+            </button>
+          ))}
+          {dueDate && (
+            <button
+              onClick={() => setDueDate('')}
+              className="text-[10px] font-mono tracking-wider text-destructive/60 hover:text-destructive ml-auto px-2 py-1.5"
+            >
+              Clear
+            </button>
+          )}
         </div>
-      )}
-    </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -316,6 +312,7 @@ export function LibraryPanel() {
   const [tagEditMode, setTagEditMode] = useState(false);
   const [tagModalOpen, setTagModalOpen] = useState(false);
   const [draggingTag, setDraggingTag] = useState<string | null>(null);
+  const [drilldownParent, setDrilldownParent] = useState<string | null>(null);
   
   const [deletingTag, setDeletingTag] = useState<{ value: string; label: string; count: number } | null>(null);
   const [editingTagValue, setEditingTagValue] = useState<string | null>(null);
@@ -573,45 +570,90 @@ export function LibraryPanel() {
                     </>
                   ) : (
                     <>
-                      <Chip
-                        active={filters.category === 'all'}
-                        label="All"
-                        onClick={() => setFilter({ category: 'all' })}
-                      />
-                      <Chip
-                        active={filters.category === 'none'}
-                        label="Untagged"
-                        onClick={() => setFilter({ category: filters.category === 'none' ? 'all' : 'none' })}
-                      />
-                      {categories.map((cat) => (
-                        <Chip
-                          key={cat.value}
-                          active={filters.category === cat.value}
-                          label={cat.label}
-                          onClick={() => setFilter({ category: filters.category === cat.value ? 'all' : cat.value })}
-                          onLongPress={() => setTagModalOpen(true)}
-                        />
-                      ))}
-
-                      {/* Add category chip */}
-                      {showNewCat ? (
-                        <input
-                          value={newCatName}
-                          onChange={(e) => setNewCatName(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === 'Enter') handleAddCategory(); if (e.key === 'Escape') setShowNewCat(false); }}
-                          onBlur={handleAddCategory}
-                          placeholder="Name…"
-                          className="shrink-0 w-20 bg-transparent text-[10px] font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none border-b border-primary/40 px-1 py-1"
-                          autoFocus
-                        />
+                      {drilldownParent ? (
+                        <>
+                          {/* Back to parent level */}
+                          <Chip
+                            active={false}
+                            label="← Back"
+                            onClick={() => { setDrilldownParent(null); setFilter({ category: 'all' }); }}
+                          />
+                          {/* Parent tag */}
+                          <Chip
+                            active={filters.category === drilldownParent}
+                            label={categories.find(c => c.value === drilldownParent)?.label || drilldownParent}
+                            onClick={() => setFilter({ category: filters.category === drilldownParent ? 'all' : drilldownParent })}
+                          />
+                          {/* Subtags of this parent */}
+                          {categories.filter(c => isSubtagOf(c.value, drilldownParent)).map((cat) => {
+                            const subLabel = cat.label.includes(' – ') ? cat.label.split(' – ').slice(1).join(' – ') : cat.label;
+                            return (
+                              <Chip
+                                key={cat.value}
+                                active={filters.category === cat.value}
+                                label={subLabel}
+                                onClick={() => setFilter({ category: filters.category === cat.value ? 'all' : cat.value })}
+                                onLongPress={() => setTagModalOpen(true)}
+                              />
+                            );
+                          })}
+                        </>
                       ) : (
-                        <button
-                          onClick={() => setShowNewCat(true)}
-                          className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wider text-primary/50 hover:text-primary border border-dashed border-primary/25 hover:border-primary/50 transition-colors min-h-[32px]"
-                        >
-                          <Tag size={10} />
-                          Add
-                        </button>
+                        <>
+                          <Chip
+                            active={filters.category === 'all'}
+                            label="All"
+                            onClick={() => setFilter({ category: 'all' })}
+                          />
+                          <Chip
+                            active={filters.category === 'none'}
+                            label="Untagged"
+                            onClick={() => setFilter({ category: filters.category === 'none' ? 'all' : 'none' })}
+                          />
+                          {categories
+                            .filter(c => !c.value.includes('--'))  // Only top-level tags
+                            .map((cat) => {
+                              const hasSubs = hasSubtags(cat.value, categories);
+                              return (
+                                <Chip
+                                  key={cat.value}
+                                  active={filters.category === cat.value}
+                                  label={cat.label}
+                                  onClick={() => {
+                                    if (filters.category === cat.value && hasSubs) {
+                                      // Second click on active parent with subtags → drill down
+                                      setDrilldownParent(cat.value);
+                                      setFilter({ category: 'all' });
+                                    } else {
+                                      setFilter({ category: filters.category === cat.value ? 'all' : cat.value });
+                                    }
+                                  }}
+                                  onLongPress={() => setTagModalOpen(true)}
+                                />
+                              );
+                            })}
+
+                          {/* Add category chip */}
+                          {showNewCat ? (
+                            <input
+                              value={newCatName}
+                              onChange={(e) => setNewCatName(e.target.value)}
+                              onKeyDown={(e) => { if (e.key === 'Enter') handleAddCategory(); if (e.key === 'Escape') setShowNewCat(false); }}
+                              onBlur={handleAddCategory}
+                              placeholder="Name…"
+                              className="shrink-0 w-20 bg-transparent text-[10px] font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none border-b border-primary/40 px-1 py-1"
+                              autoFocus
+                            />
+                          ) : (
+                            <button
+                              onClick={() => setShowNewCat(true)}
+                              className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wider text-primary/50 hover:text-primary border border-dashed border-primary/25 hover:border-primary/50 transition-colors min-h-[32px]"
+                            >
+                              <Tag size={10} />
+                              Add
+                            </button>
+                          )}
+                        </>
                       )}
                     </>
                   )}

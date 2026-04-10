@@ -204,6 +204,7 @@ export function CalendarView() {
                   // Second tap on selected date → navigate to day view
                   setNavigateToDate(day.date);
                   setViewMode('day');
+                  setSelectedDate(null);
                 } else {
                   setSelectedDate(day.date);
                 }

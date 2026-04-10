@@ -237,7 +237,9 @@ export function WeekView() {
         </div>
       </div>
 
-      <AllDayEventStrip dates={week.map((day) => day.date)} compact={isMobile} />
+      <div className={`${isMobile ? 'pl-6' : 'pl-[3.25rem]'}`}>
+        <AllDayEventStrip dates={week.map((day) => day.date)} compact={isMobile} />
+      </div>
 
       {/* Calendar grid — flows naturally, no inner scroll */}
       <div
