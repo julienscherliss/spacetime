@@ -78,6 +78,9 @@ export const useCalendarStore = create<CalendarState>()(
       loading: false,
       panelOpen: false,
       deviceId: getDeviceId(),
+      completedEventIds: [] as string[],
+      eventCategories: {} as Record<string, string>,
+      editingEventId: null,
 
       setPanelOpen: (open) => set({ panelOpen: open }),
 
