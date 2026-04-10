@@ -140,13 +140,12 @@ export function CalendarEventEditPanel() {
                 </div>
               )}
 
-              {/* Tag/Category */}
               <div className="border-t border-border/30 pt-3">
                 <div className="flex items-center gap-1.5 mb-2">
                   <Tag size={11} strokeWidth={1.5} className="text-muted-foreground/40" />
                   <span className="text-[10px] font-mono tracking-[0.12em] text-muted-foreground/40">TAG</span>
                 </div>
-                <TagAutocomplete
+                <CategorySelect
                   value={localCategory}
                   onChange={(val) => {
                     setLocalCategory(val);
