@@ -13,7 +13,31 @@ function formatDuration(mins: number): string {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
-export function CalendarEventEditPanel() {
+function CategorySelect({ value, onChange }: { value: string; onChange: (val: string) => void }) {
+  const categories = useLibraryStore((s) => s.categories);
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {categories.map((cat) => (
+        <button
+          key={cat.value}
+          onClick={() => onChange(value === cat.value ? '' : cat.value)}
+          className={`px-2.5 py-1.5 rounded-sm text-[10px] font-mono tracking-wider transition-colors border ${
+            value === cat.value
+              ? 'border-primary/30 bg-primary/8 text-primary'
+              : 'border-border/40 text-muted-foreground/50 hover:border-border hover:text-foreground/60'
+          }`}
+        >
+          {cat.label.toUpperCase()}
+        </button>
+      ))}
+      {categories.length === 0 && (
+        <span className="text-[10px] font-mono text-muted-foreground/30">No tags defined</span>
+      )}
+    </div>
+  );
+}
+
+
   const editingEventId = useCalendarStore((s) => s.editingEventId);
   const events = useCalendarStore((s) => s.events);
   const calendars = useCalendarStore((s) => s.calendars);
