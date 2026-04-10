@@ -9,7 +9,7 @@ import { PriorityBadge } from '@/components/PriorityBadge';
 import { TimelineTaskBlock } from '@/components/TimelineTaskBlock';
 import { CondensedTaskBlock } from '@/components/CondensedTaskBlock';
 import { timeToMinutes, minutesToTime, snapTo15, formatTime12h, formatHour12h } from '@/hooks/useCurrentTime';
-import { Calendar as CalIcon, Check } from 'lucide-react';
+import { Calendar as CalIcon, Check, Copy } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getOccupiedSlots, findValidPosition, clampResize, wouldOverlap, getRoutineConflicts } from '@/utils/collisionDetection';
 import { clusterTasks, TaskCluster, getZoomForCluster } from '@/utils/taskClustering';
@@ -769,6 +769,7 @@ export function TimelineColumn({
   const scheduledDragUnlinkMode = useScheduledDragStore((s) => s.unlinkMode);
   const scheduledDragIsLinked = useScheduledDragStore((s) => s.isLinkedTask);
   const scheduledDragBlocked = useScheduledDragStore((s) => s.blocked);
+  const scheduledDragCopyMode = useScheduledDragStore((s) => s.copyMode);
 
   // Scheduled drag: single global drop handler — only the column matching targetDate processes it
   useEffect(() => {
@@ -790,6 +791,29 @@ export function TimelineColumn({
       }
 
       const newTime = minutesToTime(state.currentMinutes);
+
+      // Copy mode: duplicate the task at the new position instead of moving
+      if (state.copyMode) {
+        const sourceTask = useTaskStore.getState().tasks.find(t => t.id === state.taskId);
+        if (sourceTask) {
+          addTask({
+            title: sourceTask.title,
+            date: state.targetDate || sourceTask.date,
+            time: newTime,
+            duration: sourceTask.duration || 30,
+            priority: sourceTask.priority as any,
+            type: sourceTask.type,
+            category: sourceTask.category,
+            description: sourceTask.description,
+            subtasks: sourceTask.subtasks,
+            recurrence: sourceTask.recurrence,
+            isRoutine: sourceTask.isRoutine,
+            dueDate: sourceTask.dueDate,
+          });
+        }
+        useScheduledDragStore.getState().endDrag();
+        return;
+      }
 
       // If unlink mode is active, detach this single occurrence before moving
       if (state.unlinkMode) {
@@ -1113,28 +1137,32 @@ export function TimelineColumn({
             left: showTimeLabels ? '3.25rem' : '2px',
           }}
         >
-          <div className={`h-full rounded-[2px] border-2 border-dashed transition-colors duration-200 ${
+          <div className={`h-full rounded-[2px] border-2 border-dashed transition-colors duration-200 relative ${
             scheduledDragBlocked
               ? 'border-destructive/50 bg-destructive/[0.06]'
-              : scheduledDragUnlinkMode
-                ? 'border-destructive/60 bg-destructive/[0.04]'
-                : scheduledDragIsLinked
-                  ? 'border-primary/50 bg-primary/[0.06]'
-                  : 'border-muted-foreground/30 bg-muted/[0.06]'
+              : scheduledDragCopyMode
+                ? 'border-primary/50 bg-primary/[0.08]'
+                : scheduledDragUnlinkMode
+                  ? 'border-destructive/60 bg-destructive/[0.04]'
+                  : scheduledDragIsLinked
+                    ? 'border-primary/50 bg-primary/[0.06]'
+                    : 'border-muted-foreground/30 bg-muted/[0.06]'
           }`}>
             <div className="px-2 py-1 flex items-center gap-1.5">
               <span className={`text-[10px] font-mono transition-colors duration-200 ${
                 scheduledDragBlocked
                   ? 'text-destructive/70'
-                  : scheduledDragUnlinkMode
-                    ? 'text-destructive/70'
-                    : scheduledDragIsLinked
-                      ? 'text-primary/60'
-                      : 'text-muted-foreground/50'
+                  : scheduledDragCopyMode
+                    ? 'text-primary/70'
+                    : scheduledDragUnlinkMode
+                      ? 'text-destructive/70'
+                      : scheduledDragIsLinked
+                        ? 'text-primary/60'
+                        : 'text-muted-foreground/50'
               }`}>
-                {scheduledDragBlocked ? 'BLOCKED' : formatTime12h(minutesToTime(scheduledDragMinutes))}
+                {scheduledDragBlocked ? 'BLOCKED' : scheduledDragCopyMode ? 'COPY HERE' : formatTime12h(minutesToTime(scheduledDragMinutes))}
               </span>
-              {!scheduledDragBlocked && scheduledDragIsLinked && (
+              {!scheduledDragBlocked && !scheduledDragCopyMode && scheduledDragIsLinked && (
                 <span className={`text-[8px] font-mono tracking-wider uppercase transition-colors duration-200 ${
                   scheduledDragUnlinkMode
                     ? 'text-destructive/50'
@@ -1144,6 +1172,14 @@ export function TimelineColumn({
                 </span>
               )}
             </div>
+            {/* Copy icon on far right */}
+            {!scheduledDragBlocked && (
+              <div className={`absolute right-1.5 top-1/2 -translate-y-1/2 transition-colors duration-150 ${
+                scheduledDragCopyMode ? 'text-primary/70' : 'text-muted-foreground/25'
+              }`}>
+                <Copy size={14} />
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -296,6 +296,10 @@ export function TimelineTaskBlock({
         useScheduledDragStore.getState().updatePosition(clampedMin);
         useScheduledDragStore.getState().setTargetDate(col.date);
         useScheduledDragStore.getState().setBlocked(blocked);
+
+        // Copy mode: pointer in rightmost 40px of column
+        const copyZone = colRect.right - 40;
+        useScheduledDragStore.getState().setCopyMode(e.clientX >= copyZone && !blocked);
       }
 
       // Track stationary hold for unlink gesture (only for linked tasks)
