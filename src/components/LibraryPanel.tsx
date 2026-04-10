@@ -774,26 +774,6 @@ export function LibraryPanel() {
       )}
 
       <TagManagerPanel open={tagModalOpen} onClose={() => setTagModalOpen(false)} />
-
-      {/* Delete tag confirmation dialog */}
-      <Dialog open={!!deletingTag} onOpenChange={(o) => { if (!o) setDeletingTag(null); }}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="font-mono text-[14px]">Delete "{deletingTag?.label}"?</DialogTitle>
-            <DialogDescription className="font-mono text-[12px]">
-              {deletingTag?.count} task{deletingTag?.count !== 1 ? 's' : ''} use{deletingTag?.count === 1 ? 's' : ''} this tag. They will be set to uncategorized.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" size="sm" onClick={() => setDeletingTag(null)} className="font-mono text-[11px]">
-              Cancel
-            </Button>
-            <Button variant="destructive" size="sm" onClick={confirmDeleteTag} className="font-mono text-[11px]">
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   );
 }
