@@ -1,9 +1,11 @@
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Priority } from '@/store/taskStore';
+import { useLibraryStore } from '@/store/libraryStore';
 import { useCarryStore } from '@/store/carryStore';
-import { Plus, X, ChevronDown } from 'lucide-react';
+import { Plus, X, Clock, Tag, CalendarDays } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { TagAutocomplete } from '@/components/TagAutocomplete';
 
 const PRIORITY_LABELS = ['Flex', 'Semi', 'Fixed', 'Lock'] as const;
@@ -17,6 +19,8 @@ const PRIORITY_COLORS = [
 export function AddTaskModal() {
   const [open, setOpen] = useState(false);
   const { addTask } = useTaskStore();
+  const categories = useLibraryStore((s) => s.categories);
+  const addCategory = useLibraryStore((s) => s.addCategory);
   const isCarrying = useCarryStore((s) => !!s.carried);
   const [title, setTitle] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -24,6 +28,10 @@ export function AddTaskModal() {
   const [duration] = useState(30);
   const [priority, setPriority] = useState<Priority>(0);
   const [category, setCategory] = useState('');
+  const [showCatPicker, setShowCatPicker] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showNewCatInput, setShowNewCatInput] = useState(false);
+  const [newCatInline, setNewCatInline] = useState('');
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = () => {
@@ -36,6 +44,27 @@ export function AddTaskModal() {
     setPriority(0);
     setCategory('');
     setOpen(false);
+  };
+
+  const handleAddCatInline = () => {
+    if (!newCatInline.trim()) { setShowNewCatInput(false); return; }
+    addCategory(newCatInline.trim());
+    setCategory(newCatInline.trim().toLowerCase().replace(/\s+/g, '-'));
+    setNewCatInline('');
+    setShowNewCatInput(false);
+    setShowCatPicker(false);
+  };
+
+  const catLabel = categories.find(c => c.value === category)?.label || (category || '');
+
+  const formatDateLabel = () => {
+    const d = new Date(date + 'T12:00:00');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diff = Math.round((d.getTime() - today.getTime()) / 86400000);
+    if (diff === 0) return 'Today';
+    if (diff === 1) return 'Tomorrow';
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
   return (
@@ -62,98 +91,156 @@ export function AddTaskModal() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 40 }}
               transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-              className="bg-card border border-border rounded-t-lg sm:rounded-sm p-5 w-full max-w-sm shadow-lg"
+              className="bg-card border border-border rounded-t-lg sm:rounded-sm w-full max-w-sm shadow-lg"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-display font-bold text-foreground text-base">New Task</h3>
-                <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground p-1">
-                  <X size={16} strokeWidth={1.5} />
-                </button>
+              {/* Metadata chips row */}
+              <div className="px-5 pt-4 pb-2 flex items-center gap-1.5 flex-wrap">
+                {/* Priority */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide border transition-colors ${PRIORITY_COLORS[priority]} bg-muted/40 hover:bg-muted/60`}>
+                      {PRIORITY_LABELS[priority]}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-36 p-1 z-[70]" align="start">
+                    {([0, 1, 2, 3] as Priority[]).map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => setPriority(p)}
+                        className={`w-full text-left px-3 py-2 text-[11px] font-mono rounded-sm transition-colors ${
+                          priority === p
+                            ? `${PRIORITY_COLORS[p]} bg-muted/50`
+                            : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30'
+                        }`}
+                      >
+                        {PRIORITY_LABELS[p]}
+                      </button>
+                    ))}
+                  </PopoverContent>
+                </Popover>
+
+                {/* Date */}
+                <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
+                  <PopoverTrigger asChild>
+                    <button className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide text-foreground/70 bg-muted/40 hover:bg-muted/60 transition-colors">
+                      <CalendarDays size={11} strokeWidth={1.5} />
+                      {formatDateLabel()}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 z-[70]" align="start" onClick={(e) => e.stopPropagation()}>
+                    <Calendar
+                      mode="single"
+                      selected={new Date(date + 'T12:00:00')}
+                      onSelect={(d) => {
+                        if (d) setDate(d.toISOString().split('T')[0]);
+                        setShowDatePicker(false);
+                      }}
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                {/* Time */}
+                <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide text-foreground/70 bg-muted/40">
+                  <Clock size={11} strokeWidth={1.5} />
+                  <input
+                    type="time"
+                    value={time}
+                    onChange={(e) => setTime(e.target.value)}
+                    className="bg-transparent focus:outline-none text-[10px] font-mono w-[4.5rem]"
+                  />
+                </div>
+
+                {/* Tag */}
+                <Popover open={showCatPicker} onOpenChange={setShowCatPicker}>
+                  <PopoverTrigger asChild>
+                    <button className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
+                      category
+                        ? 'text-foreground/70 bg-muted/40 hover:bg-muted/60'
+                        : 'text-muted-foreground/40 bg-muted/30 hover:bg-muted/50'
+                    }`}>
+                      <Tag size={10} strokeWidth={1.5} />
+                      {catLabel || 'Tag'}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-40 p-1 z-[70]" align="start" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => { setCategory(''); setShowCatPicker(false); }}
+                      className={`w-full text-left px-3 py-2 text-[11px] font-mono rounded-sm ${!category ? 'text-foreground bg-muted/50' : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30'}`}
+                    >
+                      No tag
+                    </button>
+                    {categories.map((cat) => (
+                      <button
+                        key={cat.value}
+                        onClick={() => { setCategory(cat.value); setShowCatPicker(false); }}
+                        className={`w-full text-left px-3 py-2 text-[11px] font-mono rounded-sm ${category === cat.value ? 'text-foreground bg-muted/50' : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30'}`}
+                      >
+                        {cat.label}
+                      </button>
+                    ))}
+                    <div className="border-t border-border/30 mt-1 pt-1">
+                      {showNewCatInput ? (
+                        <div className="px-3 py-1.5">
+                          <input
+                            value={newCatInline}
+                            onChange={(e) => setNewCatInline(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleAddCatInline(); if (e.key === 'Escape') setShowNewCatInput(false); }}
+                            onBlur={handleAddCatInline}
+                            placeholder="New tag…"
+                            className="w-full bg-transparent text-[11px] font-mono text-foreground placeholder:text-muted-foreground/30 focus:outline-none border-b border-primary/30"
+                            autoFocus
+                          />
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setShowNewCatInput(true)}
+                          className="w-full text-left px-3 py-2 text-[11px] font-mono text-primary/60 hover:text-primary flex items-center gap-1.5"
+                        >
+                          <Plus size={10} /> New…
+                        </button>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
 
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-[10px] font-mono tracking-widest text-muted-foreground/50 mb-1">TITLE</label>
-                  <div className="relative">
-                    <input
-                      ref={titleInputRef}
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      placeholder="What needs to be done?"
-                      className="w-full bg-muted/40 border border-border rounded-sm px-3 py-2.5 text-sm font-mono text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:ring-1 focus:ring-primary/30"
-                      autoFocus
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !title.match(/#\S+$/)) handleSubmit();
-                      }}
-                    />
-                    <TagAutocomplete
-                      inputValue={title}
-                      inputRef={titleInputRef as React.RefObject<HTMLInputElement>}
-                      onSelectTag={(cat, cleaned) => {
-                        setTitle(cleaned);
-                        setCategory(cat.value);
-                      }}
-                    />
-                  </div>
+              {/* Title input */}
+              <div className="px-5 pb-2">
+                <div className="relative">
+                  <input
+                    ref={titleInputRef}
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="What needs to be done?"
+                    className="w-full bg-transparent font-display font-bold text-foreground text-lg leading-tight focus:outline-none placeholder:text-muted-foreground/25"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !title.match(/#\S+$/)) handleSubmit();
+                    }}
+                  />
+                  <TagAutocomplete
+                    inputValue={title}
+                    inputRef={titleInputRef as React.RefObject<HTMLInputElement>}
+                    onSelectTag={(cat, cleaned) => {
+                      setTitle(cleaned);
+                      setCategory(cat.value);
+                    }}
+                  />
                 </div>
+              </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[10px] font-mono tracking-widest text-muted-foreground/50 mb-1">DATE</label>
-                    <input
-                      type="date"
-                      value={date}
-                      onChange={(e) => setDate(e.target.value)}
-                      className="w-full bg-muted/40 border border-border rounded-sm px-3 py-2.5 text-sm font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-mono tracking-widest text-muted-foreground/50 mb-1">TIME</label>
-                    <input
-                      type="time"
-                      value={time}
-                      onChange={(e) => setTime(e.target.value)}
-                      className="w-full bg-muted/40 border border-border rounded-sm px-3 py-2.5 text-sm font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-mono tracking-widest text-muted-foreground/50 mb-1.5">PRIORITY</label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button className={`flex items-center gap-1.5 px-3 py-2.5 rounded-sm text-[11px] font-mono tracking-wider border transition-colors ${PRIORITY_COLORS[priority]} bg-muted/40 hover:bg-muted/60`}>
-                        {PRIORITY_LABELS[priority]}
-                        <ChevronDown size={12} strokeWidth={1.5} />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-36 p-1 z-[70]" align="start">
-                      {([0, 1, 2, 3] as Priority[]).map((p) => (
-                        <button
-                          key={p}
-                          onClick={() => setPriority(p)}
-                          className={`w-full text-left px-3 py-2 text-[11px] font-mono rounded-sm transition-colors ${
-                            priority === p
-                              ? `${PRIORITY_COLORS[p]} bg-muted/50`
-                              : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30'
-                          }`}
-                        >
-                          {PRIORITY_LABELS[p]}
-                        </button>
-                      ))}
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                <p className="text-[10px] font-mono text-muted-foreground/35 tracking-wider">
+              {/* Hint + Submit */}
+              <div className="px-5 pb-5 pt-2">
+                <p className="text-[10px] font-mono text-muted-foreground/35 tracking-wider mb-3">
                   To set repeat/routine, edit the task after creation.
                 </p>
 
                 <button
                   onClick={handleSubmit}
                   disabled={!title.trim()}
-                  className="w-full py-3 rounded-sm bg-primary text-primary-foreground font-mono text-[11px] tracking-widest hover:bg-primary/90 disabled:opacity-20 disabled:cursor-not-allowed transition-colors mt-1"
+                  className="w-full py-3 rounded-sm bg-primary text-primary-foreground font-mono text-[11px] tracking-widest hover:bg-primary/90 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
                 >
                   CREATE
                 </button>
