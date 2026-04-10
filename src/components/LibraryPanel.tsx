@@ -468,6 +468,7 @@ export function LibraryPanel() {
                       setInput(cleaned);
                       setQuickCategory(cat.value);
                     }}
+                    onSubmitAfterSelect={handleAdd}
                   />
                   <DateAutocomplete
                     inputValue={input}
@@ -476,6 +477,7 @@ export function LibraryPanel() {
                       setInput(cleaned);
                       setQuickDueDate(dateStr);
                     }}
+                    onSubmitAfterSelect={handleAdd}
                   />
                 </div>
                 {quickCategory && (
