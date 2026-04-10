@@ -14,37 +14,69 @@ export function TagAutocomplete({ inputValue, onSelectTag, onSubmitAfterSelect, 
   const [suggestions, setSuggestions] = useState<CategoryDef[]>([]);
   const [selectedIdx, setSelectedIdx] = useState(0);
 
-  // Detect #tag or #tag/subtag pattern
+  // Detect #tag, #tag/subtag, or #tag/sub/sub patterns
   useEffect(() => {
-    // Match #parent/subtag (subtag mode)
-    const subMatch = inputValue.match(/#([^/\s]+)\/(\S*)$/);
-    // Match #tag (tag mode)
-    const match = inputValue.match(/#(\S*)$/);
+    const hashMatch = inputValue.match(/#(\S*)$/);
+    if (!hashMatch) {
+      setSuggestions([]);
+      return;
+    }
 
-    if (subMatch) {
-      const parentQuery = subMatch[1].toLowerCase();
-      const subQuery = subMatch[2].toLowerCase();
-      
-      // Find parent tag
-      const parent = categories.find(c =>
-        c.label.toLowerCase() === parentQuery || c.value === parentQuery
-      );
+    const fullQuery = hashMatch[1].toLowerCase();
+
+    if (fullQuery.includes('/')) {
+      // Subtag mode: everything before last / is parent path, after is the query
+      const lastSlash = fullQuery.lastIndexOf('/');
+      const parentPath = fullQuery.substring(0, lastSlash);
+      const subQuery = fullQuery.substring(lastSlash + 1);
+
+      // Resolve parent: try exact value match, then label match for each segment
+      const resolveParent = () => {
+        // Try exact value match first
+        const exact = categories.find(c => c.value === parentPath);
+        if (exact) return exact;
+        // Try building path segment by segment
+        const segments = parentPath.split('/');
+        let currentValue = '';
+        for (const seg of segments) {
+          const candidates = categories.filter(c =>
+            currentValue
+              ? c.value.startsWith(currentValue + '/') && !c.value.substring(currentValue.length + 1).includes('/')
+              : !c.value.includes('/')
+          );
+          const match = candidates.find(c =>
+            c.value === (currentValue ? `${currentValue}/${seg}` : seg) ||
+            c.label.toLowerCase().split(' / ').pop() === seg
+          );
+          if (!match) return null;
+          currentValue = match.value;
+        }
+        return categories.find(c => c.value === currentValue) || null;
+      };
+
+      const parent = resolveParent();
 
       if (parent) {
-        // Show existing subtags of this parent
-        const subtags = categories.filter(c => isSubtagOf(c.value, parent.value));
+        // Show direct children of this parent
+        const directChildren = categories.filter(c => {
+          if (!c.value.startsWith(parent.value + '/')) return false;
+          const remainder = c.value.slice(parent.value.length + 1);
+          return !remainder.includes('/');
+        });
         const filtered = subQuery
-          ? subtags.filter(c =>
-              getSubtagLabel(c.label).toLowerCase().includes(subQuery) ||
+          ? directChildren.filter(c =>
+              c.label.split(' / ').pop()?.toLowerCase().includes(subQuery) ||
               c.value.split('/').pop()?.includes(subQuery)
             )
-          : subtags;
+          : directChildren;
 
-        // Add "create new" option if query doesn't match existing
-        if (subQuery && !filtered.some(c => getSubtagLabel(c.label).toLowerCase() === subQuery)) {
+        // Check depth (max 3 levels of subtags)
+        const depth = parent.value.split('/').length;
+        if (subQuery && depth < 3 && !filtered.some(c => c.value.split('/').pop() === subQuery)) {
           const newValue = `${parent.value}/${subQuery.replace(/\s+/g, '-')}`;
-          const newLabel = `${parent.label} / ${subQuery.charAt(0).toUpperCase() + subQuery.slice(1)}`;
-          filtered.push({ value: newValue, label: newLabel });
+          const parts = parent.label.split(' / ');
+          parts.push(subQuery.charAt(0).toUpperCase() + subQuery.slice(1));
+          filtered.push({ value: newValue, label: parts.join(' / ') });
         }
 
         setSuggestions(filtered.slice(0, 6));
@@ -52,36 +84,27 @@ export function TagAutocomplete({ inputValue, onSelectTag, onSubmitAfterSelect, 
         return;
       }
 
-      // Parent not found — offer to create both
-      if (parentQuery) {
-        const newParentValue = parentQuery.replace(/\s+/g, '-');
-        const newSubValue = subQuery ? `${newParentValue}/${subQuery.replace(/\s+/g, '-')}` : newParentValue;
-        const newSubLabel = subQuery
-          ? `${parentQuery.charAt(0).toUpperCase() + parentQuery.slice(1)} / ${subQuery.charAt(0).toUpperCase() + subQuery.slice(1)}`
-          : parentQuery.charAt(0).toUpperCase() + parentQuery.slice(1);
-        setSuggestions([{ value: newSubValue, label: newSubLabel }]);
+      // Parent path not found — offer to create the full path
+      if (parentPath) {
+        const segments = fullQuery.split('/').filter(Boolean);
+        const newValue = segments.map(s => s.replace(/\s+/g, '-')).join('/');
+        const newLabel = segments.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' / ');
+        setSuggestions([{ value: newValue, label: newLabel }]);
         setSelectedIdx(0);
         return;
       }
 
       setSuggestions([]);
-    } else if (match) {
-      const query = match[1].toLowerCase();
-      // Don't show suggestions if we're mid-slash (handled above)
-      if (query.includes('/')) {
-        setSuggestions([]);
-        return;
-      }
-      const filtered = query
+    } else {
+      // Simple #tag mode — only top-level tags
+      const filtered = fullQuery
         ? categories.filter((c) =>
-            (c.label.toLowerCase().includes(query) || c.value.includes(query)) &&
-            !c.value.includes('/')  // Only show top-level tags in # mode
+            (c.label.toLowerCase().includes(fullQuery) || c.value.includes(fullQuery)) &&
+            !c.value.includes('/')
           )
-        : categories.filter(c => !c.value.includes('/'));  // Only top-level
+        : categories.filter(c => !c.value.includes('/'));
       setSuggestions(filtered.slice(0, 6));
       setSelectedIdx(0);
-    } else {
-      setSuggestions([]);
     }
   }, [inputValue, categories]);
 
