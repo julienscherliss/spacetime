@@ -32,7 +32,14 @@ const Index = () => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const code = params.get('code');
+    const state = params.get('state'); // state = deviceId from the auth URL
     if (code) {
+      // If state (deviceId) came back from Google, adopt it so this browser
+      // uses the same deviceId that initiated the auth flow.
+      if (state) {
+        localStorage.setItem('do-device-id', state);
+        useCalendarStore.setState({ deviceId: state });
+      }
       window.history.replaceState({}, '', window.location.pathname);
       useCalendarStore.getState().handleAuthCallback(code);
     }
