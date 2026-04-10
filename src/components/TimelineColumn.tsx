@@ -9,7 +9,7 @@ import { PriorityBadge } from '@/components/PriorityBadge';
 import { TimelineTaskBlock } from '@/components/TimelineTaskBlock';
 import { CondensedTaskBlock } from '@/components/CondensedTaskBlock';
 import { timeToMinutes, minutesToTime, snapTo15, formatTime12h, formatHour12h } from '@/hooks/useCurrentTime';
-import { Calendar as CalIcon } from 'lucide-react';
+import { Calendar as CalIcon, Check } from 'lucide-react';
 import { getOccupiedSlots, findValidPosition, clampResize, wouldOverlap, getRoutineConflicts } from '@/utils/collisionDetection';
 import { clusterTasks, TaskCluster, getZoomForCluster } from '@/utils/taskClustering';
 
