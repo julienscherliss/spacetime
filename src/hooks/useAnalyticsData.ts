@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useTaskStore, Task } from '@/store/taskStore';
 import { useLibraryStore } from '@/store/libraryStore';
+import { useCalendarStore } from '@/store/calendarStore';
 import {
   startOfWeek, endOfWeek, startOfMonth, endOfMonth,
   subDays, subWeeks, subMonths, format, parseISO, isWithinInterval,
