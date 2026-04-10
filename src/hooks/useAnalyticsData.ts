@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useTaskStore, Task } from '@/store/taskStore';
 import { useLibraryStore } from '@/store/libraryStore';
+import { useCalendarStore } from '@/store/calendarStore';
 import {
   startOfWeek, endOfWeek, startOfMonth, endOfMonth,
   subDays, subWeeks, subMonths, format, parseISO, isWithinInterval,
@@ -147,16 +148,56 @@ export interface AnalyticsData {
 export function useAnalyticsData(filters: AnalyticsFilters): AnalyticsData {
   const allTasks = useTaskStore(s => s.tasks);
   const categories = useLibraryStore(s => s.categories);
+  const calendarEvents = useCalendarStore(s => s.events);
+  const completedEventIds = useCalendarStore(s => s.completedEventIds);
+  const eventCategories = useCalendarStore(s => s.eventCategories);
 
   return useMemo(() => {
+    // Convert completed+tagged calendar events into synthetic task entries
+    const calendarAsTasks: Task[] = calendarEvents
+      .filter(e => completedEventIds.includes(e.id) && eventCategories[e.id])
+      .map(e => ({
+        id: `cal-${e.id}`,
+        title: e.title,
+        date: e.date,
+        time: e.time || null,
+        duration: e.duration || 30,
+        completed: true,
+        category: eventCategories[e.id] || '',
+        priority: 0,
+        originalPriority: 0,
+        moveCount: 0,
+        type: 'one-time' as const,
+        subtasks: [],
+        description: null,
+        isRoutine: false,
+        isRecurrenceInstance: false,
+        recurrence: null,
+        recurrenceParentId: null,
+        seriesId: null,
+        linked: false,
+        linkedGroupId: null,
+        detachedFromSeries: false,
+        inWaitingRoom: false,
+        waitingRoomCount: 0,
+        dueDate: null,
+        archivedAt: null,
+        archiveReason: null,
+        attachments: [],
+        createdAt: e.date,
+        updatedAt: e.date,
+      } as Task));
+
+    const combinedTasks = [...allTasks, ...calendarAsTasks];
+
     const range = getDateRange(filters);
     const prevRange = getPreviousPeriodRange(range.start, range.end);
 
-    const tasks = filterTasks(allTasks, filters, range.start, range.end);
-    const prevTasks = filterTasks(allTasks, filters, prevRange.start, prevRange.end);
+    const tasks = filterTasks(combinedTasks, filters, range.start, range.end);
+    const prevTasks = filterTasks(combinedTasks, filters, prevRange.start, prevRange.end);
 
     // All unique tags from all tasks
-    const allTags = [...new Set(allTasks.map(t => t.category || '').filter(Boolean))];
+    const allTags = [...new Set(combinedTasks.map(t => t.category || '').filter(Boolean))];
 
     // Tag breakdown
     const tagMap = new Map<string, TagBreakdown>();
@@ -200,7 +241,7 @@ export function useAnalyticsData(filters: AnalyticsFilters): AnalyticsData {
       .filter(d => d >= firstMonday)
       .map(d => {
         const dateStr = format(d, 'yyyy-MM-dd');
-        const dayTasks = allTasks.filter(t => t.date === dateStr && t.archiveReason !== 'deleted');
+        const dayTasks = combinedTasks.filter(t => t.date === dateStr && t.archiveReason !== 'deleted');
         return {
           date: dateStr,
           value: dayTasks.reduce((sum, t) => sum + (t.duration || 30), 0),
@@ -235,5 +276,5 @@ export function useAnalyticsData(filters: AnalyticsFilters): AnalyticsData {
       prevTotals: calcTotals(prevTasks),
       allTags,
     };
-  }, [allTasks, categories, filters]);
+  }, [allTasks, categories, filters, calendarEvents, completedEventIds, eventCategories]);
 }
