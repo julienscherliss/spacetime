@@ -690,11 +690,6 @@ export function LibraryPanel() {
 
 
 
-
-
-
-
-
                                   }}
                                   onLongPress={() => setTagModalOpen(true)}
                                 />
