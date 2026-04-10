@@ -50,10 +50,10 @@ export function DayListView() {
     generateRecurringInstances(selectedDate, selectedDate);
   }, [selectedDate, generateRecurringInstances]);
 
-  const { connected, fetchEvents } = useCalendarStore();
+  const { connected, calendars, fetchEvents } = useCalendarStore();
   useEffect(() => {
     if (connected) fetchEvents(selectedDate, selectedDate);
-  }, [selectedDate, connected]);
+  }, [selectedDate, connected, calendars, fetchEvents]);
 
   const dayTasks = tasks
     .filter((t) => t.date === selectedDate && !t.inWaitingRoom && !t.archivedAt &&

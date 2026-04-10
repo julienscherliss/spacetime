@@ -96,10 +96,10 @@ export function DayView() {
     generateRecurringInstances(selectedDate, selectedDate);
   }, [selectedDate, generateRecurringInstances]);
 
-  const { connected, fetchEvents } = useCalendarStore();
+  const { connected, calendars, fetchEvents } = useCalendarStore();
   useEffect(() => {
     if (connected) fetchEvents(selectedDate, selectedDate);
-  }, [selectedDate, connected]);
+  }, [selectedDate, connected, calendars, fetchEvents]);
   // Zoom to task time when coming from list view
   useEffect(() => {
     if (!listReturnZoom) return;

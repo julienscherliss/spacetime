@@ -88,12 +88,12 @@ export function WeekView() {
     }
   }, [week, generateRecurringInstances]);
 
-  const { connected, fetchEvents } = useCalendarStore();
+  const { connected, calendars, fetchEvents } = useCalendarStore();
   useEffect(() => {
     const start = week[0]?.date;
     const end = week[week.length - 1]?.date;
     if (connected && start && end) fetchEvents(start, end);
-  }, [week, connected]);
+  }, [week, connected, calendars, fetchEvents]);
 
   // Bind zoom gestures to the page-level scroll
   useEffect(() => {
