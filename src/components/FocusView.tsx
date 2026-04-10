@@ -288,114 +288,14 @@ export function FocusView() {
 
       <AnimatePresence mode="wait">
         {activePanel === 'completed' && (
-          <motion.div
-            key="completed"
-            initial={{ opacity: 0, y: -40 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -40 }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute inset-0 flex flex-col pt-8 pb-16 px-3 sm:px-4 overflow-y-auto"
-          >
-            {/* Header */}
-            <div className="max-w-sm mx-auto w-full mb-2">
-              <p className="text-[10px] font-mono text-muted-foreground/50 tracking-widest">
-                {completedCount}/{allTodayTasks.length} COMPLETED
-              </p>
-            </div>
-
-            {/* Task list */}
-            <div className="max-w-sm mx-auto w-full flex flex-col">
-              {allTodayTasks.length === 0 ? (
-                <div className="text-center py-20">
-                  <p className="text-muted-foreground/30 font-mono text-sm tracking-wider">NO TASKS</p>
-                </div>
-              ) : (
-                allTodayTasks.map((task) => {
-                  const isOverdue = !task.completed && task.time &&
-                    nowMinutes >= timeToMinutes(task.time) + (task.duration || 30);
-
-                  return (
-                    <div
-                      key={task.id}
-                      className={`w-full text-left px-3 py-4 border-b border-border/20 transition-colors ${
-                        task.completed ? 'opacity-50' : ''
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        {/* Time column */}
-                        <div className="w-16 flex-shrink-0 pt-0.5">
-                          {task.time ? (
-                            <div>
-                              <p className={`text-[11px] font-mono leading-tight ${
-                                isOverdue ? 'text-red-500/80' : 'text-foreground/80'
-                              }`}>
-                                {formatTime12h(task.time)}
-                              </p>
-                              {task.duration && (
-                                <p className={`text-[9px] font-mono mt-0.5 ${
-                                  isOverdue ? 'text-red-500/40' : 'text-muted-foreground/40'
-                                }`}>
-                                  {Math.floor(task.duration / 60) > 0 ? `${Math.floor(task.duration / 60)}h ` : ''}{task.duration % 60 > 0 ? `${task.duration % 60}m` : ''}
-                                </p>
-                              )}
-                            </div>
-                          ) : (
-                            <p className="text-[9px] font-mono text-muted-foreground/30 tracking-wider">
-                              ANYTIME
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Content — double tap to complete */}
-                        <button
-                          onClick={() => handleDayListTap(task.id)}
-                          className="flex-1 min-w-0 text-left active:bg-muted/40 rounded-sm -m-1 p-1 transition-colors"
-                        >
-                          <p className={`text-sm font-display font-medium leading-snug ${
-                            task.completed
-                              ? 'line-through text-muted-foreground/50'
-                              : isOverdue
-                                ? 'text-red-500'
-                                : 'text-foreground'
-                          }`}>
-                            {task.title}
-                          </p>
-                          {task.description && (
-                            <p className={`text-[11px] mt-0.5 line-clamp-1 ${
-                              isOverdue ? 'text-red-500/40' : 'text-muted-foreground/50'
-                            }`}>
-                              {task.description}
-                            </p>
-                          )}
-                          {task.subtasks && task.subtasks.length > 0 && (
-                            <p className="text-[9px] font-mono text-muted-foreground/40 mt-1 tracking-wider">
-                              {task.subtasks.filter((s: any) => s.completed).length}/{task.subtasks.length} SUBTASKS
-                            </p>
-                          )}
-                        </button>
-
-                        {/* Priority dot */}
-                        <div
-                          className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
-                          style={{
-                            backgroundColor: `hsl(var(--priority-${task.priority}))`,
-                            opacity: 0.6,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-            <button
-              onClick={() => setActivePanel('main')}
-              className="self-center mt-8 p-2 text-muted-foreground/30 hover:text-muted-foreground/50 transition-colors"
-            >
-              <ChevronDown size={40} strokeWidth={1.5} />
-            </button>
-          </motion.div>
+          <FocusDayListPanel
+            allTodayTasks={allTodayTasks}
+            completedCount={completedCount}
+            nowMinutes={nowMinutes}
+            activeTaskId={activeTask?.id}
+            onTaskTap={handleDayListTap}
+            onBack={() => setActivePanel('main')}
+          />
         )}
 
         {activePanel === 'main' && (
@@ -452,7 +352,148 @@ export function FocusView() {
   );
 }
 
-// ── Task Detail Panel (swipe-up content) ──
+// ── Focus Day List Panel (swipe-down top view) ──
+interface FocusDayListPanelProps {
+  allTodayTasks: ReturnType<typeof useTaskStore.getState>['tasks'];
+  completedCount: number;
+  nowMinutes: number;
+  activeTaskId: string | undefined;
+  onTaskTap: (id: string) => void;
+  onBack: () => void;
+}
+
+function FocusDayListPanel({ allTodayTasks, completedCount, nowMinutes, activeTaskId, onTaskTap, onBack }: FocusDayListPanelProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const activeRowRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Scroll to center the active task when panel mounts
+    if (activeRowRef.current && scrollRef.current) {
+      const container = scrollRef.current;
+      const row = activeRowRef.current;
+      const containerHeight = container.clientHeight;
+      const rowTop = row.offsetTop;
+      const rowHeight = row.offsetHeight;
+      container.scrollTop = rowTop - containerHeight / 2 + rowHeight / 2;
+    }
+  }, []);
+
+  return (
+    <motion.div
+      key="completed"
+      ref={scrollRef}
+      initial={{ opacity: 0, y: -40 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -40 }}
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+      className="absolute inset-0 flex flex-col pt-8 pb-16 px-3 sm:px-4 overflow-y-auto"
+    >
+      {/* Header */}
+      <div className="max-w-sm mx-auto w-full mb-2">
+        <p className="text-[10px] font-mono text-muted-foreground/50 tracking-widest">
+          {completedCount}/{allTodayTasks.length} COMPLETED
+        </p>
+      </div>
+
+      {/* Task list */}
+      <div className="max-w-sm mx-auto w-full flex flex-col">
+        {allTodayTasks.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="text-muted-foreground/30 font-mono text-sm tracking-wider">NO TASKS</p>
+          </div>
+        ) : (
+          allTodayTasks.map((task) => {
+            const isOverdue = !task.completed && task.time &&
+              nowMinutes >= timeToMinutes(task.time) + (task.duration || 30);
+            const isCurrent = task.id === activeTaskId;
+
+            return (
+              <div
+                key={task.id}
+                ref={isCurrent ? activeRowRef : undefined}
+                className={`w-full text-left px-3 py-4 border-b border-border/20 transition-colors ${
+                  task.completed ? 'opacity-50' : ''
+                } ${isCurrent ? 'bg-primary/5 border-l-2 border-l-primary/40' : ''}`}
+              >
+                <div className="flex items-start gap-3">
+                  {/* Time column */}
+                  <div className="w-16 flex-shrink-0 pt-0.5">
+                    {task.time ? (
+                      <div>
+                        <p className={`text-[11px] font-mono leading-tight ${
+                          isOverdue ? 'text-red-500/80' : 'text-foreground/80'
+                        }`}>
+                          {formatTime12h(task.time)}
+                        </p>
+                        {task.duration && (
+                          <p className={`text-[9px] font-mono mt-0.5 ${
+                            isOverdue ? 'text-red-500/40' : 'text-muted-foreground/40'
+                          }`}>
+                            {Math.floor(task.duration / 60) > 0 ? `${Math.floor(task.duration / 60)}h ` : ''}{task.duration % 60 > 0 ? `${task.duration % 60}m` : ''}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-[9px] font-mono text-muted-foreground/30 tracking-wider">
+                        ANYTIME
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Content — double tap to complete */}
+                  <button
+                    onClick={() => onTaskTap(task.id)}
+                    className="flex-1 min-w-0 text-left active:bg-muted/40 rounded-sm -m-1 p-1 transition-colors"
+                  >
+                    <p className={`text-sm font-display font-medium leading-snug ${
+                      task.completed
+                        ? 'line-through text-muted-foreground/50'
+                        : isOverdue
+                          ? 'text-red-500'
+                          : 'text-foreground'
+                    }`}>
+                      {task.title}
+                    </p>
+                    {task.description && (
+                      <p className={`text-[11px] mt-0.5 line-clamp-1 ${
+                        isOverdue ? 'text-red-500/40' : 'text-muted-foreground/50'
+                      }`}>
+                        {task.description}
+                      </p>
+                    )}
+                    {task.subtasks && task.subtasks.length > 0 && (
+                      <p className="text-[9px] font-mono text-muted-foreground/40 mt-1 tracking-wider">
+                        {task.subtasks.filter((s: any) => s.completed).length}/{task.subtasks.length} SUBTASKS
+                      </p>
+                    )}
+                  </button>
+
+                  {/* Priority dot */}
+                  <div
+                    className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
+                    style={{
+                      backgroundColor: `hsl(var(--priority-${task.priority}))`,
+                      opacity: 0.6,
+                    }}
+                  />
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      <button
+        onClick={onBack}
+        className="self-center mt-8 p-2 text-muted-foreground/30 hover:text-muted-foreground/50 transition-colors"
+      >
+        <ChevronDown size={40} strokeWidth={1.5} />
+      </button>
+    </motion.div>
+  );
+}
+
+
 interface TaskDetailPanelProps {
   task: ReturnType<typeof useTaskStore.getState>['tasks'][0] | undefined;
   onUpdateTask: (id: string, updates: any) => void;
