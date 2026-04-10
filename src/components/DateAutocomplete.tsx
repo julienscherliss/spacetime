@@ -33,9 +33,10 @@ interface DateAutocompleteProps {
   inputValue: string;
   inputRef?: React.RefObject<HTMLInputElement>;
   onSelectDate: (dateStr: string, cleanedValue: string) => void;
+  onSubmitAfterSelect?: () => void;
 }
 
-export function DateAutocomplete({ inputValue, inputRef, onSelectDate }: DateAutocompleteProps) {
+export function DateAutocomplete({ inputValue, inputRef, onSelectDate, onSubmitAfterSelect }: DateAutocompleteProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [selectedIdx, setSelectedIdx] = useState(0);
@@ -79,7 +80,7 @@ export function DateAutocomplete({ inputValue, inputRef, onSelectDate }: DateAut
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         setSelectedIdx(i => Math.max(i - 1, 0));
-      } else if (e.key === 'Enter' || e.key === 'Tab') {
+      } else if (e.key === ' ' || e.key === 'Enter' || e.key === 'Tab') {
         if (options[selectedIdx]) {
           e.preventDefault();
           const opt = options[selectedIdx];
@@ -89,6 +90,9 @@ export function DateAutocomplete({ inputValue, inputRef, onSelectDate }: DateAut
             const cleaned = inputValue.replace(/@\S*$/, '').trim();
             onSelectDate(opt.date, cleaned);
             setShowMenu(false);
+            if (e.key === 'Enter' && onSubmitAfterSelect) {
+              setTimeout(() => onSubmitAfterSelect(), 0);
+            }
           }
         }
       } else if (e.key === 'Escape') {

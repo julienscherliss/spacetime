@@ -4,11 +4,12 @@ import { useLibraryStore, CategoryDef } from '@/store/libraryStore';
 interface TagAutocompleteProps {
   inputValue: string;
   onSelectTag: (category: CategoryDef, cleanedValue: string) => void;
+  onSubmitAfterSelect?: () => void;
   inputRef?: React.RefObject<HTMLInputElement>;
   anchorRef?: React.RefObject<HTMLElement>;
 }
 
-export function TagAutocomplete({ inputValue, onSelectTag, inputRef }: TagAutocompleteProps) {
+export function TagAutocomplete({ inputValue, onSelectTag, onSubmitAfterSelect, inputRef }: TagAutocompleteProps) {
   const categories = useLibraryStore((s) => s.categories);
   const [suggestions, setSuggestions] = useState<CategoryDef[]>([]);
   const [selectedIdx, setSelectedIdx] = useState(0);
@@ -98,13 +99,17 @@ export function TagAutocomplete({ inputValue, onSelectTag, inputRef }: TagAutoco
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         setSelectedIdx((i) => Math.max(i - 1, 0));
-      } else if (e.key === 'Tab' || (e.key === 'Enter' && suggestions.length > 0)) {
+      } else if (e.key === ' ' || e.key === 'Tab' || (e.key === 'Enter' && suggestions.length > 0)) {
         const tagMatch = inputValue.match(/#\S*$/);
         if (tagMatch && suggestions[selectedIdx]) {
           e.preventDefault();
           const cleaned = inputValue.replace(/#\S*$/, '').trim();
           onSelectTag(suggestions[selectedIdx], cleaned);
           setSuggestions([]);
+          if (e.key === 'Enter' && onSubmitAfterSelect) {
+            // Small delay so state updates before submit
+            setTimeout(() => onSubmitAfterSelect(), 0);
+          }
         }
       } else if (e.key === 'Escape') {
         setSuggestions([]);
