@@ -55,10 +55,18 @@ export function FocusView() {
   // Swipe state
   const touchStartY = useRef(0);
 
-  const todayTasks = tasks
-    .filter((t) => !t.completed && !t.inWaitingRoom && !t.archivedAt && t.date === today && t.time &&
+  // All today tasks (for top panel day-list view)
+  const allTodayTasks = tasks
+    .filter((t) => !t.inWaitingRoom && !t.archivedAt && t.date === today &&
       !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring'))
-    .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+    .sort((a, b) => {
+      if (!a.time && !b.time) return 0;
+      if (!a.time) return 1;
+      if (!b.time) return -1;
+      return a.time.localeCompare(b.time);
+    });
+
+  const todayTasks = allTodayTasks.filter(t => !t.completed && t.time);
 
   const upcomingTasks = todayTasks.filter((t) => {
     if (!t.time) return false;
@@ -66,34 +74,70 @@ export function FocusView() {
     return start > nowMinutes;
   });
 
-  const completedToday = tasks
-    .filter((t) => {
-      if (!t.completed || t.archiveReason === 'deleted') return false;
-      if (t.date === today) return true;
-      if (t.archivedAt) {
-        const archivedDate = t.archivedAt.slice(0, 10);
-        if (archivedDate === today) return true;
-      }
-      return false;
-    })
-    .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+  const completedToday = allTodayTasks.filter(t => t.completed);
 
-  const activeTask = todayTasks.find((t) => {
+  // Grace period: keep overdue task in focus for 5 minutes
+  const GRACE_MINUTES = 5;
+  const overdueGraceRef = useRef<{ taskId: string; expiredAt: number } | null>(null);
+  const [hasExpiredOverdue, setHasExpiredOverdue] = useState(false);
+
+  // Find naturally active task (within its scheduled window)
+  const naturalActiveTask = todayTasks.find((t) => {
     if (!t.time) return false;
     const start = timeToMinutes(t.time);
     const end = start + (t.duration || 30);
     return nowMinutes >= start && nowMinutes < end;
   });
 
+  // Find grace-period task: a task whose time ended but is within 5-min grace
+  const graceTask = (() => {
+    if (naturalActiveTask) return null; // natural task takes priority after grace expires
+    // Find most recent task that just ended
+    const justEnded = todayTasks
+      .filter((t) => {
+        if (!t.time) return false;
+        const end = timeToMinutes(t.time) + (t.duration || 30);
+        return nowMinutes >= end && nowMinutes < end + GRACE_MINUTES;
+      })
+      .sort((a, b) => {
+        const endA = timeToMinutes(a.time!) + (a.duration || 30);
+        const endB = timeToMinutes(b.time!) + (b.duration || 30);
+        return endB - endA; // most recent first
+      });
+    return justEnded[0] || null;
+  })();
+
+  // Track when an overdue task's grace expires
+  useEffect(() => {
+    if (graceTask) {
+      if (!overdueGraceRef.current || overdueGraceRef.current.taskId !== graceTask.id) {
+        const endMin = timeToMinutes(graceTask.time!) + (graceTask.duration || 30);
+        overdueGraceRef.current = { taskId: graceTask.id, expiredAt: endMin };
+      }
+      setHasExpiredOverdue(false);
+    } else if (overdueGraceRef.current) {
+      // Grace just expired — mark red arrow
+      setHasExpiredOverdue(true);
+    }
+  }, [graceTask?.id]);
+
+  // Clear expired overdue flag when user navigates to completed panel
+  useEffect(() => {
+    if (activePanel === 'completed') setHasExpiredOverdue(false);
+  }, [activePanel]);
+
+  const activeTask = naturalActiveTask || graceTask;
+  const isGracePeriod = !naturalActiveTask && !!graceTask;
+
   const elapsed = activeTask?.time ? nowMinutes - timeToMinutes(activeTask.time) : 0;
   const remaining = activeTask ? (activeTask.duration || 30) - elapsed : 0;
   const nextTask = activeTask ? getNextTask(activeTask.id) : todayTasks[0];
 
-  // Overdue tasks: ended but not completed, not the active task
+  // Overdue tasks: ended but not completed, not the active task, past grace
   const overdueTasks = todayTasks.filter((t) => {
     if (!t.time || t.id === activeTask?.id) return false;
     const end = timeToMinutes(t.time) + (t.duration || 30);
-    return nowMinutes >= end;
+    return nowMinutes >= end + GRACE_MINUTES;
   });
 
   const completedCount = completedToday.length;
