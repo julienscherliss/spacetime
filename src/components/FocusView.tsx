@@ -1033,7 +1033,7 @@ function MainFocusPanel({
                   animate={completing ? { scale: 0.95, opacity: 0.3 } : { scale: 1, opacity: 1 }}
                   transition={{ duration: 0.25, ease: 'easeOut' }}
                 >
-                  {isGracePeriod ? '+' : ''}{displayH}:{displayM}
+                  {displayH}:{displayM}
                 </motion.div>
 
                 <h1 className={`mt-2 text-sm sm:text-base font-display font-medium leading-snug text-center max-w-[220px] uppercase ${
