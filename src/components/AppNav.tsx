@@ -7,10 +7,9 @@ import { useTimezoneStore, getTzAbbr } from '@/store/timezoneStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { Clock, Maximize, Scan as ScanIcon } from 'lucide-react';
 import {
   Focus, List, CalendarDays, Grid3X3, Repeat,
-  Archive, Clock as ClockIcon, LogOut, Settings, MoreHorizontal, X, ArchiveRestore, BarChart3
+  Archive, Clock, LogOut, Settings, MoreHorizontal, X, ArchiveRestore, BarChart3, Scan, Maximize
 } from 'lucide-react';
 
 const views: { mode: ViewMode; icon: typeof Focus; label: string }[] = [
@@ -294,6 +293,99 @@ export function AppNav() {
         </div>
       </div>
     </nav>
+  );
+}
+
+/* ── Scan button with long-press menu ── */
+function ScanButton() {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const didLongPress = useRef(false);
+  const pointerMoved = useRef(false);
+  const startPos = useRef<{ x: number; y: number } | null>(null);
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    didLongPress.current = false;
+    pointerMoved.current = false;
+    startPos.current = { x: e.clientX, y: e.clientY };
+    longPressTimer.current = setTimeout(() => {
+      didLongPress.current = true;
+      setMenuOpen(true);
+    }, 400);
+  }, []);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!startPos.current) return;
+    const dx = Math.abs(e.clientX - startPos.current.x);
+    const dy = Math.abs(e.clientY - startPos.current.y);
+    if (dx > 5 || dy > 5) {
+      pointerMoved.current = true;
+      if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+    }
+  }, []);
+
+  const handlePointerUp = useCallback(() => {
+    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+    if (!didLongPress.current && !pointerMoved.current) {
+      window.dispatchEvent(new CustomEvent('fit-to-tasks'));
+    }
+    startPos.current = null;
+  }, []);
+
+  const handlePointerCancel = useCallback(() => {
+    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+    startPos.current = null;
+  }, []);
+
+  useEffect(() => {
+    return () => { if (longPressTimer.current) clearTimeout(longPressTimer.current); };
+  }, []);
+
+  return (
+    <div className="relative">
+      <button
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+        onClick={(e) => e.preventDefault()}
+        onContextMenu={(e) => e.preventDefault()}
+        className="flex items-center justify-center w-[44px] h-[44px] rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors touch-none select-none"
+        title="Fit to tasks (hold for options)"
+      >
+        <Scan size={18} strokeWidth={1.5} />
+      </button>
+      <Popover open={menuOpen} onOpenChange={setMenuOpen}>
+        <PopoverTrigger asChild>
+          <span className="absolute inset-0 pointer-events-none" />
+        </PopoverTrigger>
+        <PopoverContent className="w-36 p-1.5" align="start" side="top" sideOffset={6}>
+          <div className="flex flex-col gap-0.5">
+            <button
+              onClick={() => { window.dispatchEvent(new CustomEvent('fit-to-tasks')); setMenuOpen(false); }}
+              className="flex items-center gap-2 px-2 py-1.5 rounded-sm text-[10px] font-mono tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors w-full text-left"
+            >
+              <Scan size={11} strokeWidth={1.5} />
+              FIT TASKS
+            </button>
+            <button
+              onClick={() => { window.dispatchEvent(new CustomEvent('focus-current')); setMenuOpen(false); }}
+              className="flex items-center gap-2 px-2 py-1.5 rounded-sm text-[10px] font-mono tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors w-full text-left"
+            >
+              <Clock size={11} strokeWidth={1.5} />
+              FOCUS
+            </button>
+            <button
+              onClick={() => { window.dispatchEvent(new CustomEvent('frame-all')); setMenuOpen(false); }}
+              className="flex items-center gap-2 px-2 py-1.5 rounded-sm text-[10px] font-mono tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors w-full text-left"
+            >
+              <Maximize size={11} strokeWidth={1.5} />
+              FRAME ALL
+            </button>
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 }
 
