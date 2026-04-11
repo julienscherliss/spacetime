@@ -21,9 +21,11 @@ import { InventoryDropZones } from '@/components/InventoryDropZones';
 import { CarryIndicator } from '@/components/CarryIndicator';
 import { AnalyticsPanel } from '@/components/analytics/AnalyticsPanel';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNativeNotifications } from '@/hooks/useNativeNotifications';
 
 const Index = () => {
   const { viewMode, daySubMode, routinesEnabled, moveOverdueToWaitingRoom } = useTaskStore();
+  useNativeNotifications();
   const [waitingOpen, setWaitingOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
