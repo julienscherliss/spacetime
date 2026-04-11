@@ -80,10 +80,6 @@ function minToDocY(min: number, hourHeight: number, timelineTop: number): number
   return timelineTop + ((min - START_HOUR * 60) / 60) * hourHeight;
 }
 
-/** Usable viewport height below sticky elements */
-function usableViewport(): number {
-  return window.innerHeight - STICKY_OFFSET;
-}
 
 function animateZoom(
   fromScale: number,
