@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Priority, RecurrencePattern, CustomUnit } from '@/store/taskStore';
 import { SubtaskList, Subtask } from '@/components/SubtaskList';
 import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar, Inbox, CalendarCheck, XCircle, Paperclip, ExternalLink, Check, AlertTriangle, Tag, Upload, FileText } from 'lucide-react';
+import { useTimezoneStore } from '@/store/timezoneStore';
 import { supabase } from '@/integrations/supabase/client';
 import { useLibraryStore } from '@/store/libraryStore';
 import { TagAutocomplete } from '@/components/TagAutocomplete';
@@ -547,19 +548,28 @@ export function TaskEditPanel() {
                   </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-32 p-1 z-[70]" align="start" onClick={(e) => e.stopPropagation()}>
-                  {([0, 1, 2, 3] as Priority[]).map((p) => (
+                  {([0, 1, 2, 3] as Priority[]).map((p) => {
+                    const mobilityMode = useTimezoneStore.getState().mobilityMode;
+                    const isElite = mobilityMode === 'elite';
+                    const isDisabled = isElite && p < priority;
+                    return (
                     <button
                       key={p}
-                      onClick={() => setPriority(p)}
+                      onClick={() => !isDisabled && setPriority(p)}
+                      disabled={isDisabled}
                       className={`w-full text-left px-3 py-2 text-[11px] font-mono rounded-sm transition-colors ${
-                        priority === p
+                        isDisabled
+                          ? 'text-muted-foreground/20 cursor-not-allowed'
+                        : priority === p
                           ? `${PRIORITY_COLORS[p]} bg-muted/50`
                           : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30'
                       }`}
                     >
                       {PRIORITY_LABELS[p]}
+                      {isDisabled && <span className="text-[8px] ml-1 opacity-50">▼</span>}
                     </button>
-                  ))}
+                    );
+                  })}
                 </PopoverContent>
               </Popover>
 

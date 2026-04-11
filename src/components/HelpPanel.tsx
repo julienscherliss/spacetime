@@ -89,6 +89,14 @@ const tips: HelpTip[] = [
     keywords: ['priority', 'flex', 'semi', 'fixed', 'lock', 'escalate', 'level', 'move'],
   },
   {
+    id: 'task-mobility',
+    title: 'Task Mobility modes',
+    description: 'Controls how due dates affect task priority. In Normal mode, tasks due this week auto-escalate to Semi (can only move within the week), and tasks due today escalate to Fixed (locked to that day). You can still manually lower priority. In Elite mode, the same auto-escalation applies but priority can only go up — never down. Disabled mode turns off all due-date-based escalation. Change this in Settings → Task Mobility.',
+    icon: <ArrowUpDown size={16} strokeWidth={1.5} />,
+    category: 'tasks',
+    keywords: ['mobility', 'elite', 'normal', 'disabled', 'due', 'date', 'escalate', 'priority', 'restrict', 'settings'],
+  },
+  {
     id: 'tags',
     title: 'Tag your tasks',
     description: 'Assign a category tag in the edit panel. Tags are used in Analytics to track how you spend your time across different areas.',
