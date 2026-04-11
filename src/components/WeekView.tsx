@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTrackpadSwipe } from '@/hooks/useTrackpadSwipe';
 import { useTouchDragStore } from '@/store/touchDragStore';
+import { useScheduledDragStore } from '@/store/scheduledDragStore';
+import { useCarryStore } from '@/store/carryStore';
 import { motion } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
 import { useCalendarStore } from '@/store/calendarStore';
@@ -115,14 +117,40 @@ export function WeekView() {
     onSwipeNegative: useCallback(() => setWeekOffset(o => o + 1), []),
   });
 
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (useTouchDragStore.getState().dragging) return;
-    if (e.touches.length !== 1) return;
-    touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  const resetSwipeGesture = useCallback(() => {
+    setSwipeOffset(0);
+    setSwiping(false);
+    touchStartRef.current = null;
   }, []);
 
+  const isNavigationGestureBlocked = useCallback((target?: EventTarget | null) => {
+    const el = target as HTMLElement | null;
+    if (el?.closest('[data-task-block], [data-cluster-block], button, input, textarea, select, [data-touch-ignore]')) {
+      return true;
+    }
+
+    const scheduledDrag = useScheduledDragStore.getState();
+    return Boolean(
+      useTouchDragStore.getState().dragging ||
+      useCarryStore.getState().carried ||
+      scheduledDrag.taskId ||
+      scheduledDrag.active
+    );
+  }, []);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length !== 1 || isNavigationGestureBlocked(e.target)) {
+      resetSwipeGesture();
+      return;
+    }
+    touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }, [isNavigationGestureBlocked, resetSwipeGesture]);
+
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (useTouchDragStore.getState().dragging) return;
+    if (isNavigationGestureBlocked(e.target)) {
+      resetSwipeGesture();
+      return;
+    }
     if (!touchStartRef.current || e.touches.length !== 1) return;
     const dx = e.touches[0].clientX - touchStartRef.current.x;
     const dy = e.touches[0].clientY - touchStartRef.current.y;
@@ -130,13 +158,11 @@ export function WeekView() {
       setSwiping(true);
       setSwipeOffset(dx);
     }
-  }, []);
+  }, [isNavigationGestureBlocked, resetSwipeGesture]);
 
-  const handleTouchEnd = useCallback(() => {
-    if (useTouchDragStore.getState().dragging) {
-      setSwipeOffset(0);
-      setSwiping(false);
-      touchStartRef.current = null;
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (isNavigationGestureBlocked(e.target)) {
+      resetSwipeGesture();
       return;
     }
     if (Math.abs(swipeOffset) > 60) {
@@ -146,10 +172,8 @@ export function WeekView() {
         setWeekOffset(o => o + 1);
       }
     }
-    setSwipeOffset(0);
-    setSwiping(false);
-    touchStartRef.current = null;
-  }, [swipeOffset]);
+    resetSwipeGesture();
+  }, [isNavigationGestureBlocked, resetSwipeGesture, swipeOffset]);
 
   const goToCurrentWeek = () => setWeekOffset(0);
   const isCurrentWeek = weekOffset === 0;

@@ -160,10 +160,12 @@ export function TimelineTaskBlock({
     pickupRafRef.current = requestAnimationFrame(tick);
   }, [task.id, task.title, task.duration, task.date, task.time]);
 
-  // Cancel everything on multi-touch (pinch zoom)
+  // Stop touch bubbling so parent day/week swipe handlers never treat a task drag
+  // as a view-navigation gesture. Multi-touch still cancels pending pickup/drag.
   const handleTouchStartMulti = useCallback((e: React.TouchEvent) => {
+    e.stopPropagation();
+
     if (e.touches.length > 1) {
-      // Multi-touch detected (pinch) — cancel any pending pickup/drag
       clearPickupHold();
       if (pointerStartRef.current) {
         pointerStartRef.current = null;

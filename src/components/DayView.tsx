@@ -158,19 +158,45 @@ export function DayView() {
     onSwipeNegative: useCallback(() => setSelectedDate(d => addDaysToDate(d, 1)), []),
   });
 
+  const resetSwipeGesture = useCallback(() => {
+    setSwipeOffset(0);
+    setSwiping(false);
+    touchStartRef.current = null;
+  }, []);
+
+  const isNavigationGestureBlocked = useCallback((target?: EventTarget | null) => {
+    const el = target as HTMLElement | null;
+    if (el?.closest('[data-task-block], [data-cluster-block], button, input, textarea, select, [data-touch-ignore]')) {
+      return true;
+    }
+
+    const scheduledDrag = useScheduledDragStore.getState();
+    return Boolean(
+      useTouchDragStore.getState().dragging ||
+      useCarryStore.getState().carried ||
+      scheduledDrag.taskId ||
+      scheduledDrag.active
+    );
+  }, []);
+
   // Swipe gesture handlers
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (useTouchDragStore.getState().dragging) return;
-    if (e.touches.length !== 1) return;
+    if (e.touches.length !== 1 || isNavigationGestureBlocked(e.target)) {
+      resetSwipeGesture();
+      return;
+    }
     touchStartRef.current = {
       x: e.touches[0].clientX,
       y: e.touches[0].clientY,
       time: Date.now(),
     };
-  }, []);
+  }, [isNavigationGestureBlocked, resetSwipeGesture]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (useTouchDragStore.getState().dragging) return;
+    if (isNavigationGestureBlocked(e.target)) {
+      resetSwipeGesture();
+      return;
+    }
     if (!touchStartRef.current || e.touches.length !== 1) return;
     const dx = e.touches[0].clientX - touchStartRef.current.x;
     const dy = e.touches[0].clientY - touchStartRef.current.y;
@@ -178,13 +204,11 @@ export function DayView() {
       setSwiping(true);
       setSwipeOffset(dx);
     }
-  }, []);
+  }, [isNavigationGestureBlocked, resetSwipeGesture]);
 
-  const handleTouchEnd = useCallback(() => {
-    if (useTouchDragStore.getState().dragging) {
-      setSwipeOffset(0);
-      setSwiping(false);
-      touchStartRef.current = null;
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (isNavigationGestureBlocked(e.target)) {
+      resetSwipeGesture();
       return;
     }
     if (!touchStartRef.current) return;
@@ -196,10 +220,8 @@ export function DayView() {
         setSelectedDate(d => addDaysToDate(d, 1));
       }
     }
-    setSwipeOffset(0);
-    setSwiping(false);
-    touchStartRef.current = null;
-  }, [swipeOffset]);
+    resetSwipeGesture();
+  }, [isNavigationGestureBlocked, resetSwipeGesture, swipeOffset]);
 
   const goToToday = () => setSelectedDate(today);
 
