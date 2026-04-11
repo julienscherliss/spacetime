@@ -80,7 +80,7 @@ export function useNativeNotifications() {
       overdueIntervalRef.current = setInterval(() => {
         const currentTasks = useTaskStore.getState().tasks;
         const currentLevel = useTimezoneStore.getState().notificationLevel;
-        void syncTaskNotifications(currentTasks, currentLevel, true, true);
+        void syncTaskNotifications(currentTasks, currentLevel, false, true);
       }, 60_000);
     }
 
