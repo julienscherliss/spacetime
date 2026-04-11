@@ -270,45 +270,21 @@ export function TimelineTaskBlock({
         const rawMinutes = START_HOUR * 60 + (yInCol / hourHeight) * 60;
         const snapped = snapTo15(rawMinutes);
 
-        // Collision detection — clamp to nearest valid position
         const taskDuration = task.duration || 30;
         const allTasks = useTaskStore.getState().tasks;
         const routinesOn = useTaskStore.getState().routinesEnabled;
-        const occupiedSlots = getOccupiedSlots(allTasks, col.date, task.id, routinesOn);
-        const { startMin: clampedMin, blocked } = findValidPosition(snapped, taskDuration, occupiedSlots);
 
-        useScheduledDragStore.getState().updatePosition(clampedMin);
-        useScheduledDragStore.getState().setTargetDate(col.date);
-        useScheduledDragStore.getState().setBlocked(blocked);
-
-        // Copy mode: pointer in rightmost 40px of column
-        const currentDragState = useScheduledDragStore.getState();
-        const copyZone = colRect.right - 40;
-        const inCopyZone = e.clientX >= copyZone && !blocked;
-        // Linked tasks get unlink in that zone; unlinked tasks get copy
-        if (currentDragState.isLinkedTask) {
-          useScheduledDragStore.getState().setUnlinkMode(inCopyZone);
-          useScheduledDragStore.getState().setCopyMode(false);
-        } else {
-          useScheduledDragStore.getState().setCopyMode(inCopyZone);
-          useScheduledDragStore.getState().setUnlinkMode(false);
-        }
-
-        // Relink detection: check if dragged task overlaps a task with same title+duration
-        const draggedTask = task;
-        const draggedDuration = draggedTask.duration || 30;
-        const dragStart = clampedMin;
-        const dragEnd = dragStart + draggedDuration;
+        // Relink detection BEFORE collision clamping: use raw snapped position
         let relinkTarget: string | null = null;
-        if (!draggedTask.linked) {
+        if (!task.linked) {
+          const dragStart = snapped;
+          const dragEnd = snapped + taskDuration;
           for (const t of allTasks) {
-            if (t.id === draggedTask.id || t.completed || t.archivedAt) continue;
+            if (t.id === task.id || t.completed || t.archivedAt) continue;
             if (t.date !== col.date || !t.time) continue;
-            if (t.title === draggedTask.title && (t.duration || 30) === draggedDuration) {
-              const tStart = START_HOUR * 60 + ((parseInt(t.time.split(':')[0]) * 60 + parseInt(t.time.split(':')[1])) - START_HOUR * 60);
+            if (t.title === task.title && (t.duration || 30) === taskDuration) {
               const tStartMin = parseInt(t.time.split(':')[0]) * 60 + parseInt(t.time.split(':')[1]);
               const tEnd = tStartMin + (t.duration || 30);
-              // Check overlap
               if (dragStart < tEnd && dragEnd > tStartMin) {
                 relinkTarget = t.id;
                 break;
@@ -316,7 +292,39 @@ export function TimelineTaskBlock({
             }
           }
         }
-        useScheduledDragStore.getState().setRelinkMode(!!relinkTarget, relinkTarget);
+
+        if (relinkTarget) {
+          // Snap to target's position, skip collision detection
+          const target = allTasks.find(t => t.id === relinkTarget)!;
+          const targetMin = parseInt(target.time!.split(':')[0]) * 60 + parseInt(target.time!.split(':')[1]);
+          useScheduledDragStore.getState().updatePosition(targetMin);
+          useScheduledDragStore.getState().setTargetDate(col.date);
+          useScheduledDragStore.getState().setBlocked(false);
+          useScheduledDragStore.getState().setCopyMode(false);
+          useScheduledDragStore.getState().setUnlinkMode(false);
+          useScheduledDragStore.getState().setRelinkMode(true, relinkTarget);
+        } else {
+          // Normal collision detection
+          const occupiedSlots = getOccupiedSlots(allTasks, col.date, task.id, routinesOn);
+          const { startMin: clampedMin, blocked } = findValidPosition(snapped, taskDuration, occupiedSlots);
+
+          useScheduledDragStore.getState().updatePosition(clampedMin);
+          useScheduledDragStore.getState().setTargetDate(col.date);
+          useScheduledDragStore.getState().setBlocked(blocked);
+          useScheduledDragStore.getState().setRelinkMode(false, null);
+
+          // Copy mode: pointer in rightmost 40px of column
+          const currentDragState = useScheduledDragStore.getState();
+          const copyZone = colRect.right - 40;
+          const inCopyZone = e.clientX >= copyZone && !blocked;
+          if (currentDragState.isLinkedTask) {
+            useScheduledDragStore.getState().setUnlinkMode(inCopyZone);
+            useScheduledDragStore.getState().setCopyMode(false);
+          } else {
+            useScheduledDragStore.getState().setCopyMode(inCopyZone);
+            useScheduledDragStore.getState().setUnlinkMode(false);
+          }
+        }
       }
     };
 
