@@ -1185,7 +1185,7 @@ export function TimelineColumn({
         >
           <div className={`h-full rounded-[2px] border-2 border-dashed transition-colors duration-200 relative ${
             scheduledDragBlocked
-              ? 'border-destructive/50 bg-destructive/[0.06]'
+              ? 'border-destructive/50 bg-destructive/[0.12]'
               : scheduledDragRelinkMode
                 ? 'border-primary/50 bg-primary/[0.08]'
               : scheduledDragCopyMode
@@ -1214,9 +1214,6 @@ export function TimelineColumn({
               }`}>
                 {scheduledDragBlocked ? '' : scheduledDragRelinkMode ? '' : scheduledDragCopyMode ? 'COPY HERE' : formatTime12h(minutesToTime(scheduledDragMinutes))}
               </span>
-              {scheduledDragBlocked && (
-                <XCircle size={20} className="text-destructive/60" strokeWidth={2} />
-              )}
               {!scheduledDragBlocked && scheduledDragRelinkMode && (
                 <>
                   <Link size={16} className="text-primary/70" />
