@@ -448,6 +448,7 @@ export function TimelineTaskBlock({
         style={{
           borderLeftColor: hasRoutineConflict ? 'hsl(var(--routine-conflict) / 0.7)' : borderLeftColor,
           borderLeftWidth: task.priority >= 2 ? '3px' : '2px',
+          boxShadow: '0 1px 2px 0 hsl(var(--foreground) / 0.04)',
         }}
       >
         {!isLocked && canShowResizeHandles && (
