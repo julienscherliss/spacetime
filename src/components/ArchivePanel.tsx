@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Task } from '@/store/taskStore';
+
 import { X, RotateCcw, CheckCircle2, Trash2, Filter, Clock, AlertTriangle } from 'lucide-react';
 import { format, isToday, isYesterday, startOfWeek, isWithinInterval, subDays } from 'date-fns';
 
@@ -32,7 +33,7 @@ function formatDuration(mins?: number) {
 }
 
 export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
-  const { tasks, restoreTask } = useTaskStore();
+  const { tasks, restoreTask, setEditingTask } = useTaskStore();
   const [filter, setFilter] = useState<ArchiveFilter>('all');
 
   const archived = useMemo(() => {
@@ -145,7 +146,7 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
                     </div>
                     <div className="divide-y divide-border/20">
                       {group.tasks.map((task) => (
-                        <ArchiveRow key={task.id} task={task} onRevive={handleRevive} />
+                        <ArchiveRow key={task.id} task={task} onRevive={handleRevive} onEdit={setEditingTask} />
                       ))}
                     </div>
                   </div>
@@ -159,7 +160,7 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
   );
 }
 
-function ArchiveRow({ task, onRevive }: { task: Task; onRevive: (id: string) => void }) {
+function ArchiveRow({ task, onRevive, onEdit }: { task: Task; onRevive: (id: string) => void; onEdit: (id: string) => void }) {
   const isCompleted = task.archiveReason === 'completed';
 
   return (
@@ -175,9 +176,12 @@ function ArchiveRow({ task, onRevive }: { task: Task; onRevive: (id: string) => 
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <p className={`text-xs font-mono truncate ${isCompleted ? 'text-muted-foreground line-through' : 'text-foreground/70'}`}>
+        <button
+          onClick={() => onEdit(task.id)}
+          className={`text-xs font-mono truncate text-left hover:underline cursor-pointer ${isCompleted ? 'text-muted-foreground line-through' : 'text-foreground/70'}`}
+        >
           {task.title}
-        </p>
+        </button>
         <div className="flex items-center gap-2 mt-0.5">
           {task.duration && (
             <span className="text-[9px] font-mono text-muted-foreground/40">

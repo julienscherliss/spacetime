@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { X, Clock, CheckCircle, Calendar, TrendingUp } from 'lucide-react';
 import { useTaskStore } from '@/store/taskStore';
+
 import { useLibraryStore } from '@/store/libraryStore';
 import { subDays, format, parseISO } from 'date-fns';
 
@@ -20,6 +21,7 @@ interface Props {
 
 export function TagDetailPanel({ tag, onClose }: Props) {
   const tasks = useTaskStore(s => s.tasks);
+  const setEditingTask = useTaskStore(s => s.setEditingTask);
   const categories = useLibraryStore(s => s.categories);
   const label = categories.find(c => c.value === tag)?.label || tag;
 
@@ -127,11 +129,15 @@ export function TagDetailPanel({ tag, onClose }: Props) {
           <h3 className="text-[9px] font-mono text-muted-foreground/40 tracking-[0.15em] mb-2">RECENT TASKS</h3>
           <div className="space-y-1">
             {stats.recentTasks.map(t => (
-              <div key={t.id} className="flex items-center gap-2 py-1.5 px-2 rounded border border-border/20 bg-card/30">
+              <button
+                key={t.id}
+                onClick={() => setEditingTask(t.id)}
+                className="w-full flex items-center gap-2 py-1.5 px-2 rounded border border-border/20 bg-card/30 hover:bg-card/60 transition-colors text-left cursor-pointer"
+              >
                 <div className={`w-1.5 h-1.5 rounded-full ${t.completed ? 'bg-green-500/60' : 'bg-muted-foreground/30'}`} />
-                <span className="text-[10px] font-mono text-foreground/70 flex-1 truncate">{t.title}</span>
+                <span className="text-[10px] font-mono text-foreground/70 flex-1 truncate hover:underline">{t.title}</span>
                 <span className="text-[8px] font-mono text-muted-foreground/40">{t.date}</span>
-              </div>
+              </button>
             ))}
           </div>
         </div>
