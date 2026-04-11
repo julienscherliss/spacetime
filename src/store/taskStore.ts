@@ -505,20 +505,33 @@ export const useTaskStore = create<TaskState>()(
       canMoveTask: (id, newDate) => {
         const task = get().tasks.find((t) => t.id === id);
         if (!task) return { allowed: false, reason: 'Task not found' };
+        const mobilityMode = useTimezoneStore.getState().mobilityMode;
+        if (mobilityMode === 'disabled') {
+          // Only enforce LOCK in disabled mode
+          if (task.priority >= 3 && task.date !== newDate) {
+            return { allowed: false, reason: 'Cannot move locked task' };
+          }
+          if (task.priority >= 3 && task.date === newDate) {
+            return { allowed: false, reason: 'Task is locked' };
+          }
+          return { allowed: true };
+        }
+        const today = new Date().toISOString().split('T')[0];
+        const pri = computeEffectivePriority(task, today);
         if (task.date === newDate) {
-          if (task.priority >= 3) {
+          if (pri >= 3) {
             return { allowed: false, reason: 'Task is locked' };
           }
           return { allowed: true };
         }
 
-        if (task.priority >= 3) {
+        if (pri >= 3) {
           return { allowed: false, reason: 'Cannot move locked task' };
         }
-        if (task.priority >= 2) {
+        if (pri >= 2) {
           return { allowed: false, reason: 'Cannot move outside current day' };
         }
-        if (task.priority >= 1) {
+        if (pri >= 1) {
           const srcWeek = getWeekBounds(task.date);
           if (newDate < srcWeek.start || newDate > srcWeek.end) {
             return { allowed: false, reason: 'Cannot move outside current week' };
