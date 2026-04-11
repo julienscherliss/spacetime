@@ -17,11 +17,22 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const { connected, email, calendars, loading, checkStatus, startAuth, refreshCalendarData, toggleCalendar, disconnect } = useCalendarStore();
   const [search, setSearch] = useState('');
   const [helpOpen, setHelpOpen] = useState(false);
-  const [pwOpen, setPwOpen] = useState(false);
+  const [pwMode, setPwMode] = useState<'closed' | 'change' | 'reset'>('closed');
   const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
   const [pwLoading, setPwLoading] = useState(false);
+  const [authProvider, setAuthProvider] = useState<'email' | 'google' | 'unknown'>('unknown');
+
+  // Detect auth provider when panel opens
+  useEffect(() => {
+    if (!open) return;
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      const provider = user.app_metadata?.provider;
+      setAuthProvider(provider === 'google' ? 'google' : 'email');
+    });
+  }, [open]);
 
   useEffect(() => {
     if (open) checkStatus();
@@ -297,14 +308,41 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               <Lock size={12} strokeWidth={1.5} className="text-muted-foreground" />
               <span className="text-[11px] font-mono tracking-[0.12em] text-muted-foreground">ACCOUNT</span>
             </div>
-            {!pwOpen ? (
-              <button
-                onClick={() => setPwOpen(true)}
-                className="w-full flex items-center justify-center gap-2 bg-muted/30 border border-border/50 rounded-sm p-3 min-h-[48px] text-[12px] font-mono tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-              >
-                CHANGE PASSWORD
-              </button>
-            ) : (
+
+            {pwMode === 'closed' && (
+              <div className="space-y-2">
+                <button
+                  onClick={() => setPwMode('change')}
+                  className="w-full flex items-center justify-center gap-2 bg-muted/30 border border-border/50 rounded-sm p-3 min-h-[48px] text-[12px] font-mono tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                >
+                  CHANGE PASSWORD
+                </button>
+                <button
+                  onClick={async () => {
+                    setPwLoading(true);
+                    try {
+                      const { data: { user } } = await supabase.auth.getUser();
+                      if (!user?.email) { toast.error('No email found'); return; }
+                      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+                        redirectTo: `${window.location.origin}/reset-password`,
+                      });
+                      if (error) throw error;
+                      toast.success('Password reset link sent to your email');
+                    } catch (err: any) {
+                      toast.error(err.message || 'Failed to send reset email');
+                    } finally {
+                      setPwLoading(false);
+                    }
+                  }}
+                  disabled={pwLoading}
+                  className="w-full flex items-center justify-center gap-2 bg-muted/30 border border-border/50 rounded-sm p-3 min-h-[48px] text-[12px] font-mono tracking-wider text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-50"
+                >
+                  {pwLoading ? 'SENDING...' : "FORGOT PASSWORD? SEND RESET LINK"}
+                </button>
+              </div>
+            )}
+
+            {pwMode === 'change' && (
               <form
                 onSubmit={async (e) => {
                   e.preventDefault();
@@ -312,10 +350,25 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                   if (newPw !== confirmPw) { toast.error('Passwords do not match'); return; }
                   setPwLoading(true);
                   try {
+                    // For email users, verify current password first
+                    if (authProvider === 'email' && currentPw) {
+                      const { data: { user } } = await supabase.auth.getUser();
+                      if (!user?.email) throw new Error('No email found');
+                      const { error: signInError } = await supabase.auth.signInWithPassword({
+                        email: user.email,
+                        password: currentPw,
+                      });
+                      if (signInError) throw new Error('Current password is incorrect');
+                    }
+
+                    // Refresh session before update
+                    const { error: refreshError } = await supabase.auth.refreshSession();
+                    if (refreshError) throw refreshError;
+
                     const { error } = await supabase.auth.updateUser({ password: newPw });
                     if (error) throw error;
                     toast.success('Password updated');
-                    setPwOpen(false);
+                    setPwMode('closed');
                     setCurrentPw(''); setNewPw(''); setConfirmPw('');
                   } catch (err: any) {
                     toast.error(err.message || 'Failed to update password');
@@ -325,6 +378,21 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 }}
                 className="space-y-2"
               >
+                {authProvider === 'email' && (
+                  <input
+                    type="password"
+                    value={currentPw}
+                    onChange={(e) => setCurrentPw(e.target.value)}
+                    placeholder="Current password"
+                    required
+                    className="w-full bg-muted/30 border border-border/50 rounded-sm px-3 py-2.5 text-[12px] font-mono text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/30 min-h-[44px]"
+                  />
+                )}
+                {authProvider === 'google' && (
+                  <div className="text-[10px] font-mono text-muted-foreground/50 bg-muted/20 border border-border/30 rounded-sm p-2.5 leading-relaxed">
+                    You signed in with Google. Setting a password lets you also log in with email.
+                  </div>
+                )}
                 <input
                   type="password"
                   value={newPw}
@@ -346,7 +414,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => { setPwOpen(false); setNewPw(''); setConfirmPw(''); }}
+                    onClick={() => { setPwMode('closed'); setCurrentPw(''); setNewPw(''); setConfirmPw(''); }}
                     className="flex-1 py-2.5 rounded-sm border border-border/50 text-[11px] font-mono tracking-wider text-muted-foreground hover:text-foreground transition-colors"
                   >
                     CANCEL
