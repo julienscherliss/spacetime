@@ -608,9 +608,13 @@ export const useTaskStore = create<TaskState>()(
       getTasksForDate: (date) => {
         const state = get();
         const today = new Date().toISOString().split('T')[0];
-        const mobilityMode = useTimezoneStore.getState().mobilityMode;
-        return state.tasks.filter((t) => t.date === date && !t.completed && !t.inWaitingRoom && !t.archivedAt &&
-          !(!state.routinesEnabled && t.isRoutine !== false && t.type === 'recurring'));
+        return state.tasks
+          .filter((t) => t.date === date && !t.completed && !t.inWaitingRoom && !t.archivedAt &&
+            !(!state.routinesEnabled && t.isRoutine !== false && t.type === 'recurring'))
+          .map((t) => {
+            const ePri = computeEffectivePriority(t, today);
+            return ePri !== t.priority ? { ...t, priority: ePri } : t;
+          });
       },
 
       getCurrentFocusTask: () => {
