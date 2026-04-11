@@ -16,6 +16,7 @@ import { WaitingRoom } from '@/components/WaitingRoom';
 import { ArchivePanel } from '@/components/ArchivePanel';
 import { TouchDragGhost } from '@/components/TouchDragGhost';
 import { SettingsPanel } from '@/components/SettingsPanel';
+import { HelpPanel } from '@/components/HelpPanel';
 import { InventoryDropZones } from '@/components/InventoryDropZones';
 import { CarryIndicator } from '@/components/CarryIndicator';
 import { AnalyticsPanel } from '@/components/analytics/AnalyticsPanel';
@@ -27,6 +28,8 @@ const Index = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [helpSection, setHelpSection] = useState<string | undefined>();
 
   // Handle Google Calendar OAuth callback
   useEffect(() => {
@@ -85,6 +88,17 @@ const Index = () => {
     return () => window.removeEventListener('toggle-analytics', handler);
   }, []);
 
+  // Listen for help panel open requests (e.g. from drag blocked info button)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setHelpSection(detail?.section);
+      setHelpOpen(true);
+    };
+    window.addEventListener('open-help', handler);
+    return () => window.removeEventListener('open-help', handler);
+  }, []);
+
   return (
     <div className={`min-h-screen bg-background`}>
       <AppNav />
@@ -118,6 +132,7 @@ const Index = () => {
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <ArchivePanel open={archiveOpen} onClose={() => setArchiveOpen(false)} />
       <AnalyticsPanel open={analyticsOpen} onClose={() => setAnalyticsOpen(false)} />
+      <HelpPanel open={helpOpen} onClose={() => { setHelpOpen(false); setHelpSection(undefined); }} initialSection={helpSection} />
     </div>
   );
 };
