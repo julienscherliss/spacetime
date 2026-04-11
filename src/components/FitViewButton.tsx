@@ -236,12 +236,20 @@ export function FitViewButton({ tasks, scrollRef, hourHeight, setScale, resetZoo
     };
   }, []);
 
-  // Listen for external fit-to-tasks event (from mobile bottom nav)
+  // Listen for external events (from mobile bottom nav)
   useEffect(() => {
-    const handler = () => fitToTasks();
-    window.addEventListener('fit-to-tasks', handler);
-    return () => window.removeEventListener('fit-to-tasks', handler);
-  }, [fitToTasks]);
+    const handleFit = () => fitToTasks();
+    const handleFocus = () => focusCurrent();
+    const handleFrame = () => frameAll();
+    window.addEventListener('fit-to-tasks', handleFit);
+    window.addEventListener('focus-current', handleFocus);
+    window.addEventListener('frame-all', handleFrame);
+    return () => {
+      window.removeEventListener('fit-to-tasks', handleFit);
+      window.removeEventListener('focus-current', handleFocus);
+      window.removeEventListener('frame-all', handleFrame);
+    };
+  }, [fitToTasks, focusCurrent, frameAll]);
 
   return (
     <div className="relative">
