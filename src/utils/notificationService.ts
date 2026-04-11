@@ -633,9 +633,24 @@ export async function cancelNotificationsForTask(taskId: string): Promise<void> 
 
   try {
     const pending = await LocalNotifications.getPending();
+
+    // Build a set of all possible overdue IDs for this task in a wide window
+    // (cover past 24h + future 30min = ~1470 minute slots)
+    const nowMinute = Math.floor(Date.now() / 60_000);
+    const possibleOverdueIds = new Set<number>();
+    for (let m = nowMinute - 1440; m <= nowMinute + 30; m++) {
+      possibleOverdueIds.add(overdueNotificationId(taskId, m));
+    }
+
     const matching = pending.notifications.filter((notification) => {
       if (!isManagedNotificationId(notification.id)) return false;
-      return notification.id === taskNotificationId(taskId) || getNotificationTaskId(notification) === taskId;
+      // Match regular reminder
+      if (notification.id === taskNotificationId(taskId)) return true;
+      // Match by extra.taskId (may not always be available on iOS)
+      if (getNotificationTaskId(notification) === taskId) return true;
+      // Match overdue slots by deterministic ID
+      if (possibleOverdueIds.has(notification.id)) return true;
+      return false;
     });
 
     if (matching.length > 0) {
@@ -644,7 +659,11 @@ export async function cancelNotificationsForTask(taskId: string): Promise<void> 
       });
     }
 
-    log('canceled all notifications for task', { taskId, count: matching.length });
+    log('canceled all notifications for task', {
+      taskId,
+      count: matching.length,
+      overdueIdsChecked: possibleOverdueIds.size,
+    });
   } catch {
     // ignore
   }

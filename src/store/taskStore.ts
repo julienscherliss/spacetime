@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { getWeekBounds } from '@/hooks/useCurrentTime';
 import type { Subtask } from '@/components/SubtaskList';
 import { useTimezoneStore } from '@/store/timezoneStore';
+import { cancelNotificationsForTask } from '@/utils/notificationService';
 
 export type Priority = 0 | 1 | 2 | 3;
 export type TaskType = 'one-time' | 'recurring';
@@ -392,7 +393,11 @@ export const useTaskStore = create<TaskState>()(
         set((s) => ({ tasks: [...s.tasks, task] }));
       },
 
-      updateTask: (id, updates) =>
+      updateTask: (id, updates) => {
+        // If time or date changed, immediately cancel stale notifications
+        if ('time' in updates || 'date' in updates || 'completed' in updates) {
+          void cancelNotificationsForTask(id);
+        }
         set((s) => ({
           tasks: s.tasks.map((t) => {
             if (t.id !== id) return t;
@@ -411,7 +416,8 @@ export const useTaskStore = create<TaskState>()(
             }
             return merged;
           }),
-        })),
+        }));
+      },
 
       updateFutureInstances: (taskId, fromDate, updates) => {
         const sourceTask = get().tasks.find((t) => t.id === taskId);
@@ -444,6 +450,8 @@ export const useTaskStore = create<TaskState>()(
           ),
           editingTaskId: s.editingTaskId === id ? null : s.editingTaskId,
         }));
+        // Immediately cancel any pending notifications (including overdue) for this task
+        void cancelNotificationsForTask(id);
         const state = get();
         const today = new Date().toISOString().split('T')[0];
         const todayTasks = state.tasks.filter((t) => t.date === today && !t.archivedAt);
@@ -461,6 +469,8 @@ export const useTaskStore = create<TaskState>()(
           ),
           editingTaskId: s.editingTaskId === id ? null : s.editingTaskId,
         }));
+        // Immediately cancel any pending notifications for deleted task
+        void cancelNotificationsForTask(id);
       },
 
       archiveTask: (id, reason) => {
@@ -584,6 +594,8 @@ export const useTaskStore = create<TaskState>()(
             return t;
           }),
         }));
+        // Immediately cancel overdue notifications — task was rescheduled
+        void cancelNotificationsForTask(id);
         return { blocked: false };
       },
 
