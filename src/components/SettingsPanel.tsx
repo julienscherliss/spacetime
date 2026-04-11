@@ -17,6 +17,11 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const { connected, email, calendars, loading, checkStatus, startAuth, refreshCalendarData, toggleCalendar, disconnect } = useCalendarStore();
   const [search, setSearch] = useState('');
   const [helpOpen, setHelpOpen] = useState(false);
+  const [pwOpen, setPwOpen] = useState(false);
+  const [currentPw, setCurrentPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+  const [pwLoading, setPwLoading] = useState(false);
 
   useEffect(() => {
     if (open) checkStatus();
