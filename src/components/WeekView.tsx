@@ -236,8 +236,8 @@ export function WeekView() {
         </h2>
       </div>
 
-      {/* Sticky weekday/date header with controls */}
-      <div className="sticky top-12 z-30 bg-background border-b border-border/30">
+      {/* Sticky weekday/date header with controls — top-0 on mobile (bottom nav), top-12 on desktop */}
+      <div className="sticky top-0 sm:top-12 z-30 bg-background border-b border-border/30">
         <div className="flex items-center justify-between">
           <div className="flex-1 min-w-0">
             <WeekDayHeaders
