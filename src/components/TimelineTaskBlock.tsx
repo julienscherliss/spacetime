@@ -446,6 +446,13 @@ export function TimelineTaskBlock({
                 : `${task.isRoutine ? 'bg-background/60 backdrop-blur-sm border border-[hsl(var(--task-border))]' : 'bg-card border border-[hsl(var(--task-border))]'} hover:border-[hsl(var(--task-hover))] hover:shadow-sm`
         } ${isOverdue && !hasRoutineConflict ? 'border-destructive/30' : ''}`}
         style={{
+          ...({
+            borderLeftColor: hasRoutineConflict ? 'hsl(var(--routine-conflict) / 0.7)' : borderLeftColor,
+            borderLeftWidth: task.priority >= 2 ? '3px' : '2px',
+          }),
+          boxShadow: '0 1px 2px 0 hsl(var(--foreground) / 0.04)',
+        }}
+        style={{
           borderLeftColor: hasRoutineConflict ? 'hsl(var(--routine-conflict) / 0.7)' : borderLeftColor,
           borderLeftWidth: task.priority >= 2 ? '3px' : '2px',
         }}
