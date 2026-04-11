@@ -1,3 +1,4 @@
+import { useTaskStore } from '@/store/taskStore';
 import { MutableRefObject, useRef, useCallback, useEffect, useState } from 'react';
 import { Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -308,15 +309,22 @@ export function TimelineTaskBlock({
           const occupiedSlots = getOccupiedSlots(allTasks, col.date, task.id, routinesOn);
           const { startMin: clampedMin, blocked } = findValidPosition(snapped, taskDuration, occupiedSlots);
 
+          // Check movement restriction (priority-based)
+          let moveBlocked = blocked;
+          if (!blocked && col.date !== task.date) {
+            const validation = useTaskStore.getState().canMoveTask(task.id, col.date);
+            if (!validation.allowed) moveBlocked = true;
+          }
+
           useScheduledDragStore.getState().updatePosition(clampedMin);
           useScheduledDragStore.getState().setTargetDate(col.date);
-          useScheduledDragStore.getState().setBlocked(blocked);
+          useScheduledDragStore.getState().setBlocked(moveBlocked);
           useScheduledDragStore.getState().setRelinkMode(false, null);
 
           // Copy mode: pointer in rightmost 40px of column
           const currentDragState = useScheduledDragStore.getState();
           const copyZone = colRect.right - 40;
-          const inCopyZone = e.clientX >= copyZone && !blocked;
+          const inCopyZone = e.clientX >= copyZone && !moveBlocked;
           if (currentDragState.isLinkedTask) {
             useScheduledDragStore.getState().setUnlinkMode(inCopyZone);
             useScheduledDragStore.getState().setCopyMode(false);
