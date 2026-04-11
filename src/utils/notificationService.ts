@@ -499,7 +499,9 @@ export async function syncTaskNotifications(
     }
 
     lastSyncFingerprint = fp;
-    log('sync result', { scheduled: toSchedule.length, canceled: toCancel.length, unchanged });
+    const overdueScheduled = toSchedule.filter(id => id >= OVERDUE_ID_OFFSET && id < OVERDUE_ID_OFFSET + 1_000_000).length;
+    const overdueUnchanged = [...desired.keys()].filter(id => id >= OVERDUE_ID_OFFSET && id < OVERDUE_ID_OFFSET + 1_000_000 && currentTaskNotifIds.has(id)).length;
+    log('sync result', { scheduled: toSchedule.length, canceled: toCancel.length, unchanged, overdueScheduled, overdueUnchanged, overduePreserved: overdueUnchanged });
 
     return { scheduled: toSchedule.length, canceled: toCancel.length, unchanged, skipped: false };
   } catch (error) {
