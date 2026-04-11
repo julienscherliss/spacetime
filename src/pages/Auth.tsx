@@ -43,6 +43,14 @@ export default function Auth() {
   const handleGoogle = async () => {
     setLoading(true);
     try {
+      if (isNativePlatform()) {
+        // Native: open OAuth in system browser, deep-link callback
+        await nativeGoogleSignIn();
+        // Browser is open — loading clears when deep link returns session
+        return;
+      }
+
+      // Web: use Lovable managed OAuth
       const result = await lovable.auth.signInWithOAuth('google', {
         redirect_uri: window.location.origin,
       });
