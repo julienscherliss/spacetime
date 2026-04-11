@@ -1175,7 +1175,9 @@ export function TimelineColumn({
                     ? 'border-primary/50 bg-primary/[0.06]'
                     : 'border-muted-foreground/30 bg-muted/[0.06]'
           }`}>
-            <div className="px-2 py-1 flex items-center gap-1.5">
+            <div className={`px-2 py-1 flex items-center gap-1.5 h-full ${
+              scheduledDragRelinkMode ? 'justify-center flex-col' : ''
+            }`}>
               <span className={`text-[10px] font-mono transition-colors duration-200 ${
                 scheduledDragBlocked
                   ? 'text-destructive/70'
@@ -1189,12 +1191,17 @@ export function TimelineColumn({
                         ? 'text-primary/60'
                         : 'text-muted-foreground/50'
               }`}>
-                {scheduledDragBlocked ? 'BLOCKED' : scheduledDragRelinkMode ? 'RELINK' : scheduledDragCopyMode ? 'COPY HERE' : formatTime12h(minutesToTime(scheduledDragMinutes))}
+                {scheduledDragBlocked ? 'BLOCKED' : scheduledDragRelinkMode ? '' : scheduledDragCopyMode ? 'COPY HERE' : formatTime12h(minutesToTime(scheduledDragMinutes))}
               </span>
               {!scheduledDragBlocked && scheduledDragRelinkMode && (
-                <span className="text-[8px] font-mono tracking-wider uppercase text-primary/40">
-                  link to series
-                </span>
+                <>
+                  <Link size={16} className="text-primary/70" />
+                  {Math.max(((scheduledDragDuration || 30) / 60) * HOUR_HEIGHT, 22) > 40 && (
+                    <span className="text-[8px] font-mono tracking-wider uppercase text-primary/50">
+                      relink to series
+                    </span>
+                  )}
+                </>
               )}
               {!scheduledDragBlocked && !scheduledDragCopyMode && !scheduledDragRelinkMode && scheduledDragIsLinked && (
                 <span className={`text-[8px] font-mono tracking-wider uppercase transition-colors duration-200 ${
@@ -1220,12 +1227,6 @@ export function TimelineColumn({
                 scheduledDragUnlinkMode ? 'text-destructive/70' : 'text-muted-foreground/25'
               }`}>
                 <Unlink size={14} />
-              </div>
-            )}
-            {/* Link icon when relink mode active */}
-            {!scheduledDragBlocked && scheduledDragRelinkMode && (
-              <div className="absolute right-1.5 top-1/2 -translate-y-1/2 text-primary/70">
-                <Link size={14} />
               </div>
             )}
           </div>
