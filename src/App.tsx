@@ -11,6 +11,7 @@ import { isNativePlatform, setupDeepLinkListener } from "@/utils/nativeAuth";
 import Index from "./pages/Index.tsx";
 import Auth from "./pages/Auth.tsx";
 import ResetPassword from "./pages/ResetPassword.tsx";
+import AuthCallback from "./pages/AuthCallback.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -63,6 +64,7 @@ const App = () => {
       <BrowserRouter>
         <Routes>
           <Route path="/auth" element={<AuthRedirect />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/" element={<AuthGuard><Index /></AuthGuard>} />
           <Route path="*" element={<NotFound />} />
