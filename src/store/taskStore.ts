@@ -464,6 +464,8 @@ export const useTaskStore = create<TaskState>()(
           ),
           editingTaskId: s.editingTaskId === id ? null : s.editingTaskId,
         }));
+        // Immediately cancel any pending notifications for deleted task
+        void cancelNotificationsForTask(id);
       },
 
       archiveTask: (id, reason) => {
