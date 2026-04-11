@@ -182,7 +182,6 @@ function ArchiveRow({ task, onRevive, onEdit }: { task: Task; onRevive: (id: str
         >
           {task.title}
         </button>
-        </p>
         <div className="flex items-center gap-2 mt-0.5">
           {task.duration && (
             <span className="text-[9px] font-mono text-muted-foreground/40">
