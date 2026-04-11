@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core';
 import { isNative } from './nativePlatform';
 import type { Task, Priority } from '@/store/taskStore';
 
@@ -8,38 +9,175 @@ import type { Task, Priority } from '@/store/taskStore';
  * - 'all'      → all scheduled tasks (FLEX, SEMI, FIXED, LOCK)
  */
 export type NotificationLevel = 'off' | 'important' | 'all';
+export type NotificationPermissionStatus = 'granted' | 'denied' | 'prompt';
+
+export interface NotificationDebugSnapshot {
+  platform: string;
+  isNative: boolean;
+  pluginAvailable: boolean;
+  permissionStatus: NotificationPermissionStatus;
+  requestResult: NotificationPermissionStatus | null;
+  scheduleStatus: string | null;
+}
 
 /** Minutes before the task start time to fire the notification */
 const LEAD_MINUTES = 5;
+const TEST_NOTIFICATION_ID = 984251;
+
+function logNotificationDebug(message: string, data?: unknown) {
+  if (data === undefined) {
+    console.log(`[notifications] ${message}`);
+    return;
+  }
+
+  console.log(`[notifications] ${message}`, data);
+}
+
+function logNotificationError(message: string, error: unknown) {
+  console.error(`[notifications] ${message}`, error);
+}
+
+function normalizePermissionStatus(status: string | undefined): NotificationPermissionStatus {
+  if (status === 'granted' || status === 'denied') return status;
+  return 'prompt';
+}
 
 // Lazy-load the Capacitor plugin only on native
 async function getPlugin() {
-  if (!isNative) return null;
-  const { LocalNotifications } = await import('@capacitor/local-notifications');
-  return LocalNotifications;
+  logNotificationDebug('platform detection', {
+    platform: Capacitor.getPlatform(),
+    isNative,
+  });
+
+  if (!isNative) {
+    logNotificationDebug('native guard prevented local notifications runtime path');
+    return null;
+  }
+
+  try {
+    const { LocalNotifications } = await import('@capacitor/local-notifications');
+    logNotificationDebug('local notifications plugin import succeeded');
+    return LocalNotifications;
+  } catch (error) {
+    logNotificationError('local notifications plugin import failed', error);
+    return null;
+  }
 }
 
-/** Request notification permission. Returns 'granted' | 'denied' | 'prompt'. */
-export async function requestNotificationPermission(): Promise<'granted' | 'denied' | 'prompt'> {
+export async function getNotificationDebugSnapshot(): Promise<NotificationDebugSnapshot> {
+  const LN = await getPlugin();
+
+  if (!LN) {
+    const snapshot: NotificationDebugSnapshot = {
+      platform: Capacitor.getPlatform(),
+      isNative,
+      pluginAvailable: false,
+      permissionStatus: 'denied',
+      requestResult: null,
+      scheduleStatus: 'Local notifications are unavailable in this runtime.',
+    };
+
+    logNotificationDebug('debug snapshot', snapshot);
+    return snapshot;
+  }
+
+  try {
+    const permissions = await LN.checkPermissions();
+    const snapshot: NotificationDebugSnapshot = {
+      platform: Capacitor.getPlatform(),
+      isNative,
+      pluginAvailable: true,
+      permissionStatus: normalizePermissionStatus(permissions.display),
+      requestResult: null,
+      scheduleStatus: null,
+    };
+
+    logNotificationDebug('debug snapshot', snapshot);
+    return snapshot;
+  } catch (error) {
+    logNotificationError('failed to build notification debug snapshot', error);
+    return {
+      platform: Capacitor.getPlatform(),
+      isNative,
+      pluginAvailable: true,
+      permissionStatus: 'denied',
+      requestResult: null,
+      scheduleStatus: 'Failed to read current notification permission.',
+    };
+  }
+}
+
+/** Request notification permission directly from a user action. */
+export async function requestNotificationPermission(): Promise<NotificationPermissionStatus> {
+  logNotificationDebug('requestPermissions() invoked from direct user action');
+
   const LN = await getPlugin();
   if (!LN) return 'denied';
 
-  const { display } = await LN.checkPermissions();
-  if (display === 'granted') return 'granted';
-
-  // If already denied on iOS, the OS won't show the prompt again — user must go to Settings
-  if (display === 'denied') return 'denied';
-
-  const result = await LN.requestPermissions();
-  return result.display === 'granted' ? 'granted' : 'denied';
+  try {
+    const result = await LN.requestPermissions();
+    const status = normalizePermissionStatus(result.display);
+    logNotificationDebug('permission request result', { display: status });
+    return status;
+  } catch (error) {
+    logNotificationError('requestPermissions() failed', error);
+    return 'denied';
+  }
 }
 
 /** Check current permission status without prompting. */
-export async function checkNotificationPermission(): Promise<'granted' | 'denied' | 'prompt'> {
+export async function checkNotificationPermission(): Promise<NotificationPermissionStatus> {
   const LN = await getPlugin();
   if (!LN) return 'denied';
-  const { display } = await LN.checkPermissions();
-  return display as 'granted' | 'denied' | 'prompt';
+
+  try {
+    const { display } = await LN.checkPermissions();
+    const status = normalizePermissionStatus(display);
+    logNotificationDebug('checked notification permission', { display: status });
+    return status;
+  } catch (error) {
+    logNotificationError('checkPermissions() failed', error);
+    return 'denied';
+  }
+}
+
+/** Schedule a test notification 8 seconds from now to verify permissions. */
+export async function scheduleTestNotification(delaySeconds = 8): Promise<boolean> {
+  const LN = await getPlugin();
+  if (!LN) return false;
+
+  const fireAt = new Date(Date.now() + delaySeconds * 1000);
+
+  try {
+    await LN.cancel({ notifications: [{ id: TEST_NOTIFICATION_ID }] });
+  } catch {
+    logNotificationDebug('no previous test notification to cancel');
+  }
+
+  try {
+    await LN.schedule({
+      notifications: [
+        {
+          id: TEST_NOTIFICATION_ID,
+          title: 'spaacetime notifications enabled',
+          body: `Test notification scheduled for ~${delaySeconds} seconds from now.`,
+          schedule: { at: fireAt, allowWhileIdle: true },
+          extra: {
+            type: 'notification-permission-test',
+            scheduledFor: fireAt.toISOString(),
+          },
+        },
+      ],
+    });
+
+    logNotificationDebug('test notification scheduled successfully', {
+      scheduledFor: fireAt.toISOString(),
+    });
+    return true;
+  } catch (error) {
+    logNotificationError('failed to schedule test notification', error);
+    return false;
+  }
 }
 
 /** Derive a stable numeric ID from a task UUID (notifications need number IDs). */
@@ -136,6 +274,14 @@ export async function rescheduleAllNotifications(
   }
 
   if (level === 'off') return;
+
+  const permission = await checkNotificationPermission();
+  if (permission !== 'granted') {
+    logNotificationDebug('skipping task notification reschedule because permission is not granted', {
+      permission,
+    });
+    return;
+  }
 
   // Schedule each qualifying task
   for (const task of tasks) {
