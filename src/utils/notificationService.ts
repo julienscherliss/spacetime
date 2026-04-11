@@ -140,10 +140,14 @@ function taskNotificationId(taskId: string): number {
   return TASK_ID_OFFSET + (Math.abs(hash) % 1_000_000);
 }
 
-/** Derive a stable numeric ID for an overdue reminder (task + minute offset) */
-function overdueNotificationId(taskId: string, minuteOffset: number): number {
+/**
+ * Derive a stable numeric ID for an overdue reminder based on task + absolute
+ * minute timestamp. This ensures the same minute slot always produces the same
+ * ID regardless of when the sync runs, preventing cancel/reschedule churn.
+ */
+function overdueNotificationId(taskId: string, absoluteMinuteTimestamp: number): number {
   let hash = 0;
-  const key = `${taskId}:overdue:${minuteOffset}`;
+  const key = `${taskId}:overdue:${absoluteMinuteTimestamp}`;
   for (let i = 0; i < key.length; i++) {
     hash = ((hash << 5) - hash + key.charCodeAt(i)) | 0;
   }
