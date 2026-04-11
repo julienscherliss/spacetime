@@ -46,8 +46,6 @@ export function AppNav() {
   if (isMobile) {
     return (
       <>
-        {/* Bottom spacer so content isn't hidden behind the fixed nav */}
-        <div className="h-[60px]" />
 
         {/* Overflow menu — opens upward from bottom nav */}
         <AnimatePresence>
