@@ -605,7 +605,81 @@ export function TaskEditPanel() {
                   Unlink
                 </button>
               )}
+
+              {/* Reminder chip */}
+              <button
+                onClick={() => setShowReminderModal(true)}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
+                  reminders.length > 0
+                    ? 'text-foreground/70 bg-muted/40 hover:bg-muted/60'
+                    : 'text-muted-foreground/40 bg-muted/30 hover:bg-muted/50'
+                }`}
+              >
+                <Bell size={10} strokeWidth={1.5} />
+                {reminders.length > 0 ? `${reminders.length}` : ''}
+              </button>
             </div>
+
+            {/* Reminder modal */}
+            <AnimatePresence>
+              {showReminderModal && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-[80] flex items-center justify-center"
+                >
+                  <div className="absolute inset-0 bg-black/30" onClick={() => setShowReminderModal(false)} />
+                  <motion.div
+                    initial={{ scale: 0.95, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.95, opacity: 0 }}
+                    className="relative bg-card border border-border rounded-lg shadow-lg w-[300px] max-h-[70vh] overflow-hidden"
+                  >
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+                      <h3 className="text-[12px] font-display font-bold text-foreground tracking-tight">REMINDERS</h3>
+                      <button onClick={() => setShowReminderModal(false)} className="text-muted-foreground hover:text-foreground transition-colors">
+                        <X size={14} strokeWidth={1.5} />
+                      </button>
+                    </div>
+                    <div className="p-4 flex flex-wrap gap-2">
+                      {REMINDER_OPTIONS.map((opt) => {
+                        const isSelected = reminders.includes(opt.value);
+                        return (
+                          <button
+                            key={opt.value}
+                            onClick={() => {
+                              setReminders(prev =>
+                                isSelected
+                                  ? prev.filter(v => v !== opt.value)
+                                  : [...prev, opt.value].sort((a, b) => a - b)
+                              );
+                            }}
+                            className={`px-3 py-2 rounded-full text-[11px] font-mono tracking-wide transition-colors border ${
+                              isSelected
+                                ? 'border-primary/40 bg-primary/10 text-primary'
+                                : 'border-border/50 bg-muted/30 text-muted-foreground/60 hover:bg-muted/50 hover:text-foreground/70'
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {reminders.length > 0 && (
+                      <div className="px-4 pb-3">
+                        <button
+                          onClick={() => setReminders([])}
+                          className="text-[10px] font-mono text-muted-foreground/40 hover:text-destructive/60 transition-colors"
+                        >
+                          Clear all
+                        </button>
+                      </div>
+                    )}
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <div className="px-5 pb-5">
               {/* ─── Title ─── */}
