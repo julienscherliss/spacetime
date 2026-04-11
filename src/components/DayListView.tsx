@@ -291,10 +291,10 @@ export function DayListView() {
         )}
       </div>
 
-      {/* FAB */}
+      {/* FAB — positioned above bottom nav on mobile */}
       <button
         onClick={handleAddTask}
-        className="fixed bottom-6 right-6 z-40 w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center active:scale-95 transition-transform"
+        className="fixed bottom-20 sm:bottom-6 right-6 z-40 w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center active:scale-95 transition-transform"
       >
         <Plus size={22} strokeWidth={2} />
       </button>
