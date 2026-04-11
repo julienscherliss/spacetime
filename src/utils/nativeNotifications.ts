@@ -1,5 +1,5 @@
 import { Capacitor } from '@capacitor/core';
-import { isNative } from './nativePlatform';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import type { Task, Priority } from '@/store/taskStore';
 
 /**
@@ -15,16 +15,31 @@ export interface NotificationDebugSnapshot {
   platform: string;
   isNative: boolean;
   pluginAvailable: boolean;
+  requestPermissionsCallable: boolean;
+  checkPermissionsCallable: boolean;
+  scheduleCallable: boolean;
   permissionStatus: NotificationPermissionStatus;
   requestResult: NotificationPermissionStatus | null;
+  requestError: string | null;
   scheduleStatus: string | null;
+  scheduleError: string | null;
+}
+
+export interface NotificationPermissionRequestResult {
+  status: NotificationPermissionStatus;
+  error: string | null;
+}
+
+export interface NotificationScheduleResult {
+  ok: boolean;
+  error: string | null;
+  scheduledFor: string | null;
 }
 
 /** Minutes before the task start time to fire the notification */
 const LEAD_MINUTES = 5;
 const TEST_NOTIFICATION_ID = 984251;
-/** Maximum ms to wait for any single native bridge call */
-const BRIDGE_TIMEOUT_MS = 10_000;
+const PLUGIN_NAME = 'LocalNotifications';
 
 function logNotificationDebug(message: string, data?: unknown) {
   if (data === undefined) {
@@ -39,153 +54,208 @@ function logNotificationError(message: string, error: unknown) {
   console.error(`[notifications] ${message}`, error);
 }
 
+function formatNotificationError(error: unknown): string {
+  if (error instanceof Error) {
+    return `${error.name}: ${error.message}`;
+  }
+
+  if (typeof error === 'string') {
+    return error;
+  }
+
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
+
 function normalizePermissionStatus(status: string | undefined): NotificationPermissionStatus {
   if (status === 'granted' || status === 'denied') return status;
   return 'prompt';
 }
 
-/** Race a promise against a timeout — prevents the native bridge from hanging forever. */
-function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new Error(`[notifications] ${label} timed out after ${ms}ms`));
-    }, ms);
-    promise.then(
-      (v) => { clearTimeout(timer); resolve(v); },
-      (e) => { clearTimeout(timer); reject(e); },
-    );
-  });
+function getRuntimeSnapshot(log = true) {
+  const snapshot = {
+    platform: Capacitor.getPlatform(),
+    isNative: Capacitor.isNativePlatform(),
+    pluginAvailable: Capacitor.isNativePlatform() ? Capacitor.isPluginAvailable(PLUGIN_NAME) : false,
+    requestPermissionsCallable: typeof LocalNotifications.requestPermissions === 'function',
+    checkPermissionsCallable: typeof LocalNotifications.checkPermissions === 'function',
+    scheduleCallable: typeof LocalNotifications.schedule === 'function',
+  };
+
+  if (log) {
+    logNotificationDebug('Capacitor runtime snapshot', {
+      'Capacitor.isNativePlatform()': snapshot.isNative,
+      'Capacitor.getPlatform()': snapshot.platform,
+      [`Capacitor.isPluginAvailable('${PLUGIN_NAME}')`]: snapshot.pluginAvailable,
+      'LocalNotifications.requestPermissions callable': snapshot.requestPermissionsCallable,
+      'LocalNotifications.checkPermissions callable': snapshot.checkPermissionsCallable,
+      'LocalNotifications.schedule callable': snapshot.scheduleCallable,
+    });
+  }
+
+  return snapshot;
 }
 
-// Lazy-load the Capacitor plugin only on native
-async function getPlugin() {
-  const platform = Capacitor.getPlatform();
-  logNotificationDebug('getPlugin() called', { platform, isNative });
+function getBaseDebugSnapshot(): NotificationDebugSnapshot {
+  const runtime = getRuntimeSnapshot();
 
-  if (!isNative) {
-    logNotificationDebug('native guard prevented local notifications runtime path');
-    return null;
+  let permissionStatus: NotificationPermissionStatus = 'prompt';
+  let scheduleStatus: string | null = null;
+
+  if (!runtime.isNative) {
+    permissionStatus = 'denied';
+    scheduleStatus = 'Notifications only run inside the native mobile app.';
+  } else if (!runtime.pluginAvailable) {
+    permissionStatus = 'denied';
+    scheduleStatus = `Capacitor.isPluginAvailable('${PLUGIN_NAME}') returned false in the native app.`;
   }
 
-  try {
-    logNotificationDebug('importing @capacitor/local-notifications…');
-    const { LocalNotifications } = await withTimeout(
-      import('@capacitor/local-notifications'),
-      BRIDGE_TIMEOUT_MS,
-      'plugin import',
-    );
-    logNotificationDebug('local notifications plugin import succeeded');
-    return LocalNotifications;
-  } catch (error) {
-    logNotificationError('local notifications plugin import failed', error);
-    return null;
-  }
+  return {
+    ...runtime,
+    permissionStatus,
+    requestResult: null,
+    requestError: null,
+    scheduleStatus,
+    scheduleError: null,
+  };
+}
+
+export function getNotificationDebugSnapshotSync(): NotificationDebugSnapshot {
+  const snapshot = getBaseDebugSnapshot();
+  logNotificationDebug('debug snapshot (sync)', snapshot);
+  return snapshot;
 }
 
 export async function getNotificationDebugSnapshot(): Promise<NotificationDebugSnapshot> {
-  const LN = await getPlugin();
+  const snapshot = getBaseDebugSnapshot();
 
-  if (!LN) {
-    const snapshot: NotificationDebugSnapshot = {
-      platform: Capacitor.getPlatform(),
-      isNative,
-      pluginAvailable: false,
-      permissionStatus: 'denied',
-      requestResult: null,
-      scheduleStatus: 'Local notifications are unavailable in this runtime.',
-    };
+  if (!snapshot.isNative || !snapshot.pluginAvailable || !snapshot.checkPermissionsCallable) {
+    const nextSnapshot = !snapshot.checkPermissionsCallable && snapshot.isNative && snapshot.pluginAvailable
+      ? {
+          ...snapshot,
+          permissionStatus: 'denied' as NotificationPermissionStatus,
+          scheduleStatus: 'LocalNotifications.checkPermissions is not callable.',
+        }
+      : snapshot;
 
-    logNotificationDebug('debug snapshot', snapshot);
-    return snapshot;
+    logNotificationDebug('debug snapshot', nextSnapshot);
+    return nextSnapshot;
   }
 
   try {
-    const permissions = await LN.checkPermissions();
-    const snapshot: NotificationDebugSnapshot = {
-      platform: Capacitor.getPlatform(),
-      isNative,
-      pluginAvailable: true,
+    const permissions = await LocalNotifications.checkPermissions();
+    const nextSnapshot: NotificationDebugSnapshot = {
+      ...snapshot,
       permissionStatus: normalizePermissionStatus(permissions.display),
-      requestResult: null,
-      scheduleStatus: null,
     };
 
-    logNotificationDebug('debug snapshot', snapshot);
-    return snapshot;
+    logNotificationDebug('debug snapshot', nextSnapshot);
+    return nextSnapshot;
   } catch (error) {
-    logNotificationError('failed to build notification debug snapshot', error);
+    const message = formatNotificationError(error);
+    logNotificationError('LocalNotifications.checkPermissions threw while building debug snapshot', error);
+
     return {
-      platform: Capacitor.getPlatform(),
-      isNative,
-      pluginAvailable: true,
+      ...snapshot,
       permissionStatus: 'denied',
-      requestResult: null,
-      scheduleStatus: 'Failed to read current notification permission.',
+      scheduleStatus: `LocalNotifications.checkPermissions error: ${message}`,
+      scheduleError: message,
     };
   }
 }
 
 /** Request notification permission directly from a user action. */
-export async function requestNotificationPermission(): Promise<NotificationPermissionStatus> {
+export async function requestNotificationPermission(): Promise<NotificationPermissionRequestResult> {
+  const runtime = getRuntimeSnapshot();
   logNotificationDebug('requestPermissions() invoked from direct user action');
 
-  const LN = await getPlugin();
-  if (!LN) {
-    logNotificationDebug('requestPermissions() aborted — plugin not available');
-    return 'denied';
+  if (!runtime.isNative) {
+    const error = 'Capacitor runtime is web, so iOS local notifications cannot be requested here.';
+    logNotificationDebug(error);
+    return { status: 'denied', error };
+  }
+
+  if (!runtime.pluginAvailable) {
+    const error = `Capacitor.isPluginAvailable('${PLUGIN_NAME}') returned false.`;
+    logNotificationDebug(error);
+    return { status: 'denied', error };
+  }
+
+  if (!runtime.requestPermissionsCallable) {
+    const error = 'LocalNotifications.requestPermissions is not callable.';
+    logNotificationDebug(error);
+    return { status: 'denied', error };
   }
 
   try {
-    logNotificationDebug('calling LN.requestPermissions()…');
-    const result = await withTimeout(
-      LN.requestPermissions(),
-      BRIDGE_TIMEOUT_MS,
-      'requestPermissions',
-    );
+    logNotificationDebug('calling LocalNotifications.requestPermissions()…');
+    const result = await LocalNotifications.requestPermissions();
     const status = normalizePermissionStatus(result.display);
-    logNotificationDebug('permission request result', { display: status });
-    return status;
+    logNotificationDebug('LocalNotifications.requestPermissions result', { display: status });
+    return { status, error: null };
   } catch (error) {
-    logNotificationError('requestPermissions() failed or timed out', error);
-    return 'denied';
+    const message = formatNotificationError(error);
+    logNotificationError('LocalNotifications.requestPermissions threw', error);
+    return { status: 'denied', error: message };
   }
 }
 
 /** Check current permission status without prompting. */
 export async function checkNotificationPermission(): Promise<NotificationPermissionStatus> {
-  const LN = await getPlugin();
-  if (!LN) return 'denied';
+  const runtime = getRuntimeSnapshot();
+  if (!runtime.isNative || !runtime.pluginAvailable || !runtime.checkPermissionsCallable) return 'denied';
 
   try {
-    const { display } = await withTimeout(
-      LN.checkPermissions(),
-      BRIDGE_TIMEOUT_MS,
-      'checkPermissions',
-    );
+    const { display } = await LocalNotifications.checkPermissions();
     const status = normalizePermissionStatus(display);
     logNotificationDebug('checked notification permission', { display: status });
     return status;
   } catch (error) {
-    logNotificationError('checkPermissions() failed or timed out', error);
+    logNotificationError('LocalNotifications.checkPermissions threw', error);
     return 'denied';
   }
 }
 
 /** Schedule a test notification 8 seconds from now to verify permissions. */
-export async function scheduleTestNotification(delaySeconds = 8): Promise<boolean> {
-  const LN = await getPlugin();
-  if (!LN) return false;
+export async function scheduleTestNotification(delaySeconds = 8): Promise<NotificationScheduleResult> {
+  const runtime = getRuntimeSnapshot();
+  if (!runtime.isNative) {
+    return {
+      ok: false,
+      error: 'Capacitor runtime is web, so test notifications cannot be scheduled here.',
+      scheduledFor: null,
+    };
+  }
+
+  if (!runtime.pluginAvailable) {
+    return {
+      ok: false,
+      error: `Capacitor.isPluginAvailable('${PLUGIN_NAME}') returned false.`,
+      scheduledFor: null,
+    };
+  }
+
+  if (!runtime.scheduleCallable) {
+    return {
+      ok: false,
+      error: 'LocalNotifications.schedule is not callable.',
+      scheduledFor: null,
+    };
+  }
 
   const fireAt = new Date(Date.now() + delaySeconds * 1000);
 
   try {
-    await LN.cancel({ notifications: [{ id: TEST_NOTIFICATION_ID }] });
-  } catch {
-    logNotificationDebug('no previous test notification to cancel');
+    await LocalNotifications.cancel({ notifications: [{ id: TEST_NOTIFICATION_ID }] });
+  } catch (error) {
+    logNotificationError('failed to cancel previous test notification', error);
   }
 
   try {
-    await LN.schedule({
+    await LocalNotifications.schedule({
       notifications: [
         {
           id: TEST_NOTIFICATION_ID,
@@ -203,10 +273,19 @@ export async function scheduleTestNotification(delaySeconds = 8): Promise<boolea
     logNotificationDebug('test notification scheduled successfully', {
       scheduledFor: fireAt.toISOString(),
     });
-    return true;
+    return {
+      ok: true,
+      error: null,
+      scheduledFor: fireAt.toISOString(),
+    };
   } catch (error) {
-    logNotificationError('failed to schedule test notification', error);
-    return false;
+    const message = formatNotificationError(error);
+    logNotificationError('LocalNotifications.schedule threw while scheduling test notification', error);
+    return {
+      ok: false,
+      error: message,
+      scheduledFor: fireAt.toISOString(),
+    };
   }
 }
 
@@ -247,8 +326,8 @@ export async function scheduleTaskNotification(
   task: Task,
   level: NotificationLevel,
 ): Promise<void> {
-  const LN = await getPlugin();
-  if (!LN) return;
+  const runtime = getRuntimeSnapshot(false);
+  if (!runtime.isNative || !runtime.pluginAvailable || !runtime.scheduleCallable) return;
   if (!shouldNotify(task, level)) return;
   if (!task.time || task.completed) return;
 
@@ -262,9 +341,9 @@ export async function scheduleTaskNotification(
   const notifId = taskIdToNumber(task.id);
 
   // Cancel any existing notification for this task first
-  try { await LN.cancel({ notifications: [{ id: notifId }] }); } catch { /* ignore */ }
+  try { await LocalNotifications.cancel({ notifications: [{ id: notifId }] }); } catch { /* ignore */ }
 
-  await LN.schedule({
+  await LocalNotifications.schedule({
     notifications: [
       {
         id: notifId,
@@ -279,10 +358,10 @@ export async function scheduleTaskNotification(
 
 /** Cancel the notification for a specific task. */
 export async function cancelTaskNotification(taskId: string): Promise<void> {
-  const LN = await getPlugin();
-  if (!LN) return;
+  const runtime = getRuntimeSnapshot(false);
+  if (!runtime.isNative || !runtime.pluginAvailable) return;
   try {
-    await LN.cancel({ notifications: [{ id: taskIdToNumber(taskId) }] });
+    await LocalNotifications.cancel({ notifications: [{ id: taskIdToNumber(taskId) }] });
   } catch { /* ignore */ }
 }
 
@@ -294,13 +373,13 @@ export async function rescheduleAllNotifications(
   tasks: Task[],
   level: NotificationLevel,
 ): Promise<void> {
-  const LN = await getPlugin();
-  if (!LN) return;
+  const runtime = getRuntimeSnapshot(false);
+  if (!runtime.isNative || !runtime.pluginAvailable || !runtime.scheduleCallable) return;
 
   // Cancel all pending notifications
-  const pending = await LN.getPending();
+  const pending = await LocalNotifications.getPending();
   if (pending.notifications.length > 0) {
-    await LN.cancel({ notifications: pending.notifications });
+    await LocalNotifications.cancel({ notifications: pending.notifications });
   }
 
   if (level === 'off') return;

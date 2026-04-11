@@ -1,7 +1,9 @@
 import { Capacitor } from '@capacitor/core';
 
 /** True when running inside a Capacitor native shell (iOS / Android). */
-export const isNative = Capacitor.isNativePlatform();
+export function isNativePlatform() {
+  return Capacitor.isNativePlatform();
+}
 
 /**
  * Apply native-only viewport and scaling fixes.
@@ -9,7 +11,7 @@ export const isNative = Capacitor.isNativePlatform();
  * Has zero effect on the web version.
  */
 export function applyNativeFixes() {
-  if (!isNative) return;
+  if (!isNativePlatform()) return;
 
   // 1. Force correct viewport meta for native shell
   let meta = document.querySelector('meta[name="viewport"]');

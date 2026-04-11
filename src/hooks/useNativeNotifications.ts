@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { isNative } from '@/utils/nativePlatform';
+import { isNativePlatform } from '@/utils/nativePlatform';
 import { useTaskStore } from '@/store/taskStore';
 import { useTimezoneStore } from '@/store/timezoneStore';
 import {
@@ -13,12 +13,12 @@ import {
  * No-op on web.
  */
 export function useNativeNotifications() {
-  if (!isNative) return;
-
   const tasks = useTaskStore((s) => s.tasks);
   const level = useTimezoneStore((s) => s.notificationLevel);
 
   useEffect(() => {
+    if (!isNativePlatform()) return;
+
     void (async () => {
       if (level === 'off') {
         await rescheduleAllNotifications(tasks, 'off');
