@@ -9,7 +9,7 @@ import { PriorityBadge } from '@/components/PriorityBadge';
 import { TimelineTaskBlock } from '@/components/TimelineTaskBlock';
 import { CondensedTaskBlock } from '@/components/CondensedTaskBlock';
 import { timeToMinutes, minutesToTime, snapTo15, formatTime12h, formatHour12h } from '@/hooks/useCurrentTime';
-import { Calendar as CalIcon, Check, Copy, Unlink } from 'lucide-react';
+import { Calendar as CalIcon, Check, Copy, Unlink, Link } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getOccupiedSlots, findValidPosition, clampResize, wouldOverlap, getRoutineConflicts } from '@/utils/collisionDetection';
 import { clusterTasks, TaskCluster, getZoomForCluster } from '@/utils/taskClustering';
@@ -770,6 +770,8 @@ export function TimelineColumn({
   const scheduledDragIsLinked = useScheduledDragStore((s) => s.isLinkedTask);
   const scheduledDragBlocked = useScheduledDragStore((s) => s.blocked);
   const scheduledDragCopyMode = useScheduledDragStore((s) => s.copyMode);
+  const scheduledDragRelinkMode = useScheduledDragStore((s) => s.relinkMode);
+  const scheduledDragRelinkTargetId = useScheduledDragStore((s) => s.relinkTargetId);
 
   // Scheduled drag: single global drop handler — only the column matching targetDate processes it
   useEffect(() => {
@@ -823,6 +825,29 @@ export function TimelineColumn({
           linkedGroupId: undefined,
           detachedFromSeries: true,
         });
+      }
+
+      // Relink mode: adopt target's series/group, keep original position
+      if (state.relinkMode && state.relinkTargetId) {
+        const targetTask = useTaskStore.getState().tasks.find(t => t.id === state.relinkTargetId);
+        const { updateTask } = useTaskStore.getState();
+        if (targetTask) {
+          updateTask(state.taskId, {
+            linked: true,
+            linkedGroupId: targetTask.linkedGroupId || targetTask.seriesId || targetTask.id,
+            seriesId: targetTask.seriesId || targetTask.id,
+            detachedFromSeries: false,
+          });
+          // Also ensure target is linked with same group
+          if (!targetTask.linkedGroupId) {
+            updateTask(targetTask.id, {
+              linked: true,
+              linkedGroupId: targetTask.seriesId || targetTask.id,
+            });
+          }
+        }
+        useScheduledDragStore.getState().endDrag();
+        return;
       }
 
       if (state.sourceDate && state.sourceDate !== state.targetDate) {
