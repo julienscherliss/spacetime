@@ -170,14 +170,19 @@ function shouldNotify(task: Task, level: NotificationLevel): boolean {
   return (task.priority as number) >= 2;
 }
 
-/** Build a fingerprint of notification-relevant task data for change detection */
+/**
+ * Build a fingerprint of notification-relevant task data for change detection.
+ * For overdue mode, include a rounded minute timestamp so the fingerprint only
+ * changes once per minute rather than on every render cycle.
+ */
 function buildFingerprint(tasks: Task[], level: NotificationLevel, persistentOverdue: boolean): string {
   if (level === 'off') return 'off';
+  const nowMinute = persistentOverdue ? Math.floor(Date.now() / 60_000) : 0;
   const parts = tasks
     .filter(t => shouldNotify(t, level) && t.time && !t.completed)
     .map(t => `${t.id}:${t.date}:${t.time}:${t.priority}:${t.title}:${t.completed}`)
     .sort();
-  return `${level}:po=${persistentOverdue}:${parts.join('|')}`;
+  return `${level}:po=${persistentOverdue}:m=${nowMinute}:${parts.join('|')}`;
 }
 
 interface DesiredNotification {
@@ -469,7 +474,8 @@ export async function syncTaskNotifications(
       await LocalNotifications.cancel({
         notifications: toCancel.map(id => ({ id })),
       });
-      log(`canceled ${toCancel.length} stale notifications`);
+      const overdueCount = toCancel.filter(id => id >= OVERDUE_ID_OFFSET && id < OVERDUE_ID_OFFSET + 1_000_000).length;
+      log(`canceled ${toCancel.length} stale notifications (${overdueCount} overdue)`);
     }
 
     // Schedule missing in batches of 50, all with sound
