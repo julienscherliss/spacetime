@@ -160,6 +160,7 @@ export function DayView() {
 
   // Swipe gesture handlers
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (useTouchDragStore.getState().dragging) return;
     if (e.touches.length !== 1) return;
     touchStartRef.current = {
       x: e.touches[0].clientX,
@@ -169,6 +170,7 @@ export function DayView() {
   }, []);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (useTouchDragStore.getState().dragging) return;
     if (!touchStartRef.current || e.touches.length !== 1) return;
     const dx = e.touches[0].clientX - touchStartRef.current.x;
     const dy = e.touches[0].clientY - touchStartRef.current.y;
@@ -179,6 +181,12 @@ export function DayView() {
   }, []);
 
   const handleTouchEnd = useCallback(() => {
+    if (useTouchDragStore.getState().dragging) {
+      setSwipeOffset(0);
+      setSwiping(false);
+      touchStartRef.current = null;
+      return;
+    }
     if (!touchStartRef.current) return;
     const threshold = 60;
     if (Math.abs(swipeOffset) > threshold) {
