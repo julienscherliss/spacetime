@@ -834,17 +834,23 @@ export function TimelineColumn({
         const targetTask = useTaskStore.getState().tasks.find(t => t.id === state.relinkTargetId);
         const { updateTask } = useTaskStore.getState();
         if (targetTask) {
+          const groupId = targetTask.linkedGroupId || targetTask.seriesId || targetTask.id;
+          const sId = targetTask.seriesId || targetTask.id;
           updateTask(state.taskId, {
             linked: true,
-            linkedGroupId: targetTask.linkedGroupId || targetTask.seriesId || targetTask.id,
-            seriesId: targetTask.seriesId || targetTask.id,
+            linkedGroupId: groupId,
+            seriesId: sId,
             detachedFromSeries: false,
+            recurrence: targetTask.recurrence,
+            type: targetTask.type || 'recurring',
+            recurrenceParentId: targetTask.recurrenceParentId || targetTask.id,
+            isRecurrenceInstance: true,
           });
           // Also ensure target is linked with same group
           if (!targetTask.linkedGroupId) {
             updateTask(targetTask.id, {
               linked: true,
-              linkedGroupId: targetTask.seriesId || targetTask.id,
+              linkedGroupId: groupId,
             });
           }
         }
