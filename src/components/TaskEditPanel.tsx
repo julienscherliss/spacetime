@@ -206,6 +206,8 @@ export function TaskEditPanel() {
           }))
       );
       setIsUploading(false);
+      setReminders(task.reminders || []);
+      setShowReminderModal(false);
       scopeTriggeredRef.current = false;
     }
   }, [task?.id]);
@@ -260,6 +262,7 @@ export function TaskEditPanel() {
       detachedFromSeries: (recurrence && !isLinked && task?.recurrenceParentId) ? true : false,
       dueDate: dueDate || undefined,
       category: taskCategory || undefined,
+      reminders: reminders.length > 0 ? reminders : undefined,
       attachments: [
         ...attachments,
         ...linkAttachments.map(l => ({
