@@ -575,6 +575,20 @@ export function TaskEditPanel() {
                 <Repeat size={10} strokeWidth={1.5} />
                 {recurrenceType !== 'none' ? recurrenceLabel(buildRecurrence()) : ''}
               </button>
+
+              {/* Unlink chip — only shown for linked recurring tasks, one-way action */}
+              {recurrenceType !== 'none' && isLinked && (
+                <button
+                  onClick={() => {
+                    setIsLinked(false);
+                    if (navigator.vibrate) navigator.vibrate(15);
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors text-destructive/60 bg-destructive/10 hover:bg-destructive/15"
+                >
+                  <Unlink size={10} strokeWidth={1.5} />
+                  Unlink
+                </button>
+              )}
             </div>
 
             <div className="px-5 pb-5">
@@ -775,20 +789,29 @@ export function TaskEditPanel() {
                               <span className={`absolute top-0.5 w-3 h-3 rounded-full transition-all ${isRoutine ? 'left-3.5 bg-primary' : 'left-0.5 bg-muted-foreground/40'}`} />
                             </button>
                           </div>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1.5">
-                              {isLinked ? <Link size={10} className="text-primary/50" /> : <Unlink size={10} className="text-muted-foreground/30" />}
-                              <span className="text-[9px] font-mono tracking-wider text-muted-foreground/50">
-                                {isLinked ? 'LINKED' : 'UNLINKED'}
-                              </span>
+                          {isLinked && (
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1.5">
+                                <Link size={10} className="text-primary/50" />
+                                <span className="text-[9px] font-mono tracking-wider text-muted-foreground/50">LINKED</span>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setIsLinked(false);
+                                  if (navigator.vibrate) navigator.vibrate(15);
+                                }}
+                                className="text-[8px] font-mono tracking-wider text-destructive/50 hover:text-destructive/80 transition-colors"
+                              >
+                                UNLINK
+                              </button>
                             </div>
-                            <button
-                              onClick={() => setIsLinked(!isLinked)}
-                              className={`relative w-7 h-4 rounded-full transition-colors ${isLinked ? 'bg-primary/30' : 'bg-muted'}`}
-                            >
-                              <span className={`absolute top-0.5 w-3 h-3 rounded-full transition-all ${isLinked ? 'left-3.5 bg-primary' : 'left-0.5 bg-muted-foreground/40'}`} />
-                            </button>
-                          </div>
+                          )}
+                          {!isLinked && task?.recurrenceParentId && (
+                            <div className="flex items-center gap-1.5">
+                              <Unlink size={10} className="text-muted-foreground/30" />
+                              <span className="text-[9px] font-mono tracking-wider text-muted-foreground/35">UNLINKED</span>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

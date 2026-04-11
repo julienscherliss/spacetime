@@ -9,7 +9,7 @@ import { PriorityBadge } from '@/components/PriorityBadge';
 import { TimelineTaskBlock } from '@/components/TimelineTaskBlock';
 import { CondensedTaskBlock } from '@/components/CondensedTaskBlock';
 import { timeToMinutes, minutesToTime, snapTo15, formatTime12h, formatHour12h } from '@/hooks/useCurrentTime';
-import { Calendar as CalIcon, Check, Copy } from 'lucide-react';
+import { Calendar as CalIcon, Check, Copy, Unlink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getOccupiedSlots, findValidPosition, clampResize, wouldOverlap, getRoutineConflicts } from '@/utils/collisionDetection';
 import { clusterTasks, TaskCluster, getZoomForCluster } from '@/utils/taskClustering';
@@ -1173,11 +1173,19 @@ export function TimelineColumn({
               )}
             </div>
             {/* Copy icon on far right */}
-            {!scheduledDragBlocked && (
+            {!scheduledDragBlocked && !scheduledDragIsLinked && (
               <div className={`absolute right-1.5 top-1/2 -translate-y-1/2 transition-colors duration-150 ${
                 scheduledDragCopyMode ? 'text-primary/70' : 'text-muted-foreground/25'
               }`}>
                 <Copy size={14} />
+              </div>
+            )}
+            {/* Unlink icon on far right for linked tasks */}
+            {!scheduledDragBlocked && scheduledDragIsLinked && (
+              <div className={`absolute right-1.5 top-1/2 -translate-y-1/2 transition-colors duration-150 ${
+                scheduledDragUnlinkMode ? 'text-destructive/70' : 'text-muted-foreground/25'
+              }`}>
+                <Unlink size={14} />
               </div>
             )}
           </div>
