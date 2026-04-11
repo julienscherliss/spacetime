@@ -1165,6 +1165,8 @@ export function TimelineColumn({
           <div className={`h-full rounded-[2px] border-2 border-dashed transition-colors duration-200 relative ${
             scheduledDragBlocked
               ? 'border-destructive/50 bg-destructive/[0.06]'
+              : scheduledDragRelinkMode
+                ? 'border-primary/50 bg-primary/[0.08]'
               : scheduledDragCopyMode
                 ? 'border-primary/50 bg-primary/[0.08]'
                 : scheduledDragUnlinkMode
@@ -1177,6 +1179,8 @@ export function TimelineColumn({
               <span className={`text-[10px] font-mono transition-colors duration-200 ${
                 scheduledDragBlocked
                   ? 'text-destructive/70'
+                  : scheduledDragRelinkMode
+                    ? 'text-primary/70'
                   : scheduledDragCopyMode
                     ? 'text-primary/70'
                     : scheduledDragUnlinkMode
@@ -1185,9 +1189,14 @@ export function TimelineColumn({
                         ? 'text-primary/60'
                         : 'text-muted-foreground/50'
               }`}>
-                {scheduledDragBlocked ? 'BLOCKED' : scheduledDragCopyMode ? 'COPY HERE' : formatTime12h(minutesToTime(scheduledDragMinutes))}
+                {scheduledDragBlocked ? 'BLOCKED' : scheduledDragRelinkMode ? 'RELINK' : scheduledDragCopyMode ? 'COPY HERE' : formatTime12h(minutesToTime(scheduledDragMinutes))}
               </span>
-              {!scheduledDragBlocked && !scheduledDragCopyMode && scheduledDragIsLinked && (
+              {!scheduledDragBlocked && scheduledDragRelinkMode && (
+                <span className="text-[8px] font-mono tracking-wider uppercase text-primary/40">
+                  link to series
+                </span>
+              )}
+              {!scheduledDragBlocked && !scheduledDragCopyMode && !scheduledDragRelinkMode && scheduledDragIsLinked && (
                 <span className={`text-[8px] font-mono tracking-wider uppercase transition-colors duration-200 ${
                   scheduledDragUnlinkMode
                     ? 'text-destructive/50'
@@ -1198,7 +1207,7 @@ export function TimelineColumn({
               )}
             </div>
             {/* Copy icon on far right */}
-            {!scheduledDragBlocked && !scheduledDragIsLinked && (
+            {!scheduledDragBlocked && !scheduledDragIsLinked && !scheduledDragRelinkMode && (
               <div className={`absolute right-1.5 top-1/2 -translate-y-1/2 transition-colors duration-150 ${
                 scheduledDragCopyMode ? 'text-primary/70' : 'text-muted-foreground/25'
               }`}>
@@ -1206,11 +1215,17 @@ export function TimelineColumn({
               </div>
             )}
             {/* Unlink icon on far right for linked tasks */}
-            {!scheduledDragBlocked && scheduledDragIsLinked && (
+            {!scheduledDragBlocked && scheduledDragIsLinked && !scheduledDragRelinkMode && (
               <div className={`absolute right-1.5 top-1/2 -translate-y-1/2 transition-colors duration-150 ${
                 scheduledDragUnlinkMode ? 'text-destructive/70' : 'text-muted-foreground/25'
               }`}>
                 <Unlink size={14} />
+              </div>
+            )}
+            {/* Link icon when relink mode active */}
+            {!scheduledDragBlocked && scheduledDragRelinkMode && (
+              <div className="absolute right-1.5 top-1/2 -translate-y-1/2 text-primary/70">
+                <Link size={14} />
               </div>
             )}
           </div>
