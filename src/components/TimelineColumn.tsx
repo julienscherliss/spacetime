@@ -824,6 +824,8 @@ export function TimelineColumn({
           linked: false,
           linkedGroupId: undefined,
           detachedFromSeries: true,
+          recurrence: undefined,
+          type: 'one-time',
         });
       }
 
