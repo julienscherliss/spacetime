@@ -3,8 +3,15 @@ import { Browser } from '@capacitor/browser';
 import { App as CapApp } from '@capacitor/app';
 import { supabase } from '@/integrations/supabase/client';
 
-/** Custom URL scheme for deep-link callback */
-const CALLBACK_URL = 'spaacetime://auth/callback';
+/**
+ * HTTPS callback URL (already in the Supabase allow-list).
+ * The /auth/callback page acts as a "trampoline": it reads the tokens
+ * from the URL and redirects into the native app via custom scheme.
+ */
+const HTTPS_CALLBACK = 'https://spaacetime.lovable.app/auth/callback';
+
+/** Custom URL scheme the trampoline page redirects to */
+const APP_SCHEME_CALLBACK = 'spaacetime://auth/callback';
 
 /** True when running inside a native Capacitor shell (iOS / Android) */
 export function isNativePlatform(): boolean {
@@ -13,14 +20,14 @@ export function isNativePlatform(): boolean {
 
 /**
  * Open Google OAuth in the system browser (not the in-app webview).
- * Supabase returns a redirect URL; we open it externally so the OS can
- * hand the callback deep-link back to the app.
+ * Uses the HTTPS callback URL so Supabase accepts it, then the
+ * trampoline page bounces back into the app via custom URL scheme.
  */
 export async function nativeGoogleSignIn(): Promise<void> {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: CALLBACK_URL,
+      redirectTo: HTTPS_CALLBACK,
       skipBrowserRedirect: true,
     },
   });
@@ -33,9 +40,8 @@ export async function nativeGoogleSignIn(): Promise<void> {
 }
 
 /**
- * Listen for deep-link callbacks after the external browser completes
- * the OAuth flow.  Extracts tokens from the URL hash (implicit grant)
- * and sets the Supabase session.
+ * Listen for deep-link callbacks after the trampoline page redirects
+ * to the custom URL scheme.  Extracts tokens and sets the Supabase session.
  *
  * Call once on app startup (e.g. in a top-level useEffect).
  * Returns a cleanup function that removes the listener.
@@ -71,7 +77,6 @@ export function setupDeepLinkListener(): () => void {
     }
 
     // PKCE flow fallback: code arrives as a query parameter
-    // e.g. spaacetime://auth/callback?code=...
     const codePart = url.split('?')[1]?.split('#')[0];
     if (codePart) {
       const params = new URLSearchParams(codePart);
