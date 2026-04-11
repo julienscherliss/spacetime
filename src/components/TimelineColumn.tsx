@@ -1186,7 +1186,6 @@ export function TimelineColumn({
           <div className={`h-full rounded-[2px] border-2 border-dashed transition-colors duration-200 relative ${
             scheduledDragBlocked
               ? 'border-destructive/50 bg-destructive/[0.06]'
-            : false ? ''
               : scheduledDragRelinkMode
                 ? 'border-primary/50 bg-primary/[0.08]'
               : scheduledDragCopyMode
@@ -1198,7 +1197,7 @@ export function TimelineColumn({
                     : 'border-muted-foreground/30 bg-muted/[0.06]'
           }`}>
             <div className={`px-2 py-1 flex items-center gap-1.5 h-full ${
-              scheduledDragRelinkMode ? 'justify-center flex-col' : ''
+              scheduledDragBlocked ? 'justify-center flex-col' : scheduledDragRelinkMode ? 'justify-center flex-col' : ''
             }`}>
               <span className={`text-[10px] font-mono transition-colors duration-200 ${
                 scheduledDragBlocked
