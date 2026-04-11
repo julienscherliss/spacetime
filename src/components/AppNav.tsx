@@ -1,14 +1,16 @@
 /* nav v2 */
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, ViewMode, DaySubMode } from '@/store/taskStore';
 import { useLibraryStore } from '@/store/libraryStore';
 import { useTimezoneStore, getTzAbbr } from '@/store/timezoneStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Clock, Maximize, Scan as ScanIcon } from 'lucide-react';
 import {
   Focus, List, CalendarDays, Grid3X3, Repeat,
-  Archive, Clock, LogOut, Settings, MoreHorizontal, X, ArchiveRestore, BarChart3, Scan
+  Archive, Clock as ClockIcon, LogOut, Settings, MoreHorizontal, X, ArchiveRestore, BarChart3
 } from 'lucide-react';
 
 const views: { mode: ViewMode; icon: typeof Focus; label: string }[] = [
@@ -113,14 +115,8 @@ export function AppNav() {
           ref={moreRef}
         >
           <div className="flex items-center justify-between px-2 py-1.5">
-            {/* Fit/scan button — replaces logo on mobile */}
-            <button
-              onClick={() => window.dispatchEvent(new CustomEvent('fit-to-tasks'))}
-              className="flex items-center justify-center w-[44px] h-[44px] rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-              title="Fit to tasks"
-            >
-              <Scan size={18} strokeWidth={1.5} />
-            </button>
+            {/* Fit/scan button with long-press menu */}
+            <ScanButton />
 
             {/* View tabs — primary action */}
             <div className="flex items-center bg-muted/50 rounded-md p-0.5 gap-0.5">
