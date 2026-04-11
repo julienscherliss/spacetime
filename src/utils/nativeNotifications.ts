@@ -23,6 +23,8 @@ export interface NotificationDebugSnapshot {
 /** Minutes before the task start time to fire the notification */
 const LEAD_MINUTES = 5;
 const TEST_NOTIFICATION_ID = 984251;
+/** Maximum ms to wait for any single native bridge call */
+const BRIDGE_TIMEOUT_MS = 10_000;
 
 function logNotificationDebug(message: string, data?: unknown) {
   if (data === undefined) {
@@ -42,12 +44,23 @@ function normalizePermissionStatus(status: string | undefined): NotificationPerm
   return 'prompt';
 }
 
+/** Race a promise against a timeout — prevents the native bridge from hanging forever. */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`[notifications] ${label} timed out after ${ms}ms`));
+    }, ms);
+    promise.then(
+      (v) => { clearTimeout(timer); resolve(v); },
+      (e) => { clearTimeout(timer); reject(e); },
+    );
+  });
+}
+
 // Lazy-load the Capacitor plugin only on native
 async function getPlugin() {
-  logNotificationDebug('platform detection', {
-    platform: Capacitor.getPlatform(),
-    isNative,
-  });
+  const platform = Capacitor.getPlatform();
+  logNotificationDebug('getPlugin() called', { platform, isNative });
 
   if (!isNative) {
     logNotificationDebug('native guard prevented local notifications runtime path');
@@ -55,7 +68,12 @@ async function getPlugin() {
   }
 
   try {
-    const { LocalNotifications } = await import('@capacitor/local-notifications');
+    logNotificationDebug('importing @capacitor/local-notifications…');
+    const { LocalNotifications } = await withTimeout(
+      import('@capacitor/local-notifications'),
+      BRIDGE_TIMEOUT_MS,
+      'plugin import',
+    );
     logNotificationDebug('local notifications plugin import succeeded');
     return LocalNotifications;
   } catch (error) {
@@ -112,15 +130,23 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
   logNotificationDebug('requestPermissions() invoked from direct user action');
 
   const LN = await getPlugin();
-  if (!LN) return 'denied';
+  if (!LN) {
+    logNotificationDebug('requestPermissions() aborted — plugin not available');
+    return 'denied';
+  }
 
   try {
-    const result = await LN.requestPermissions();
+    logNotificationDebug('calling LN.requestPermissions()…');
+    const result = await withTimeout(
+      LN.requestPermissions(),
+      BRIDGE_TIMEOUT_MS,
+      'requestPermissions',
+    );
     const status = normalizePermissionStatus(result.display);
     logNotificationDebug('permission request result', { display: status });
     return status;
   } catch (error) {
-    logNotificationError('requestPermissions() failed', error);
+    logNotificationError('requestPermissions() failed or timed out', error);
     return 'denied';
   }
 }
@@ -131,12 +157,16 @@ export async function checkNotificationPermission(): Promise<NotificationPermiss
   if (!LN) return 'denied';
 
   try {
-    const { display } = await LN.checkPermissions();
+    const { display } = await withTimeout(
+      LN.checkPermissions(),
+      BRIDGE_TIMEOUT_MS,
+      'checkPermissions',
+    );
     const status = normalizePermissionStatus(display);
     logNotificationDebug('checked notification permission', { display: status });
     return status;
   } catch (error) {
-    logNotificationError('checkPermissions() failed', error);
+    logNotificationError('checkPermissions() failed or timed out', error);
     return 'denied';
   }
 }
