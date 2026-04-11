@@ -22,7 +22,7 @@ function notificationFingerprint(tasks: Task[], level: NotificationLevel, persis
   const nowMinute = persistentOverdue ? Math.floor(Date.now() / 60_000) : 0;
   const parts = tasks
     .filter(t => shouldNotify(t) && t.time && !t.completed)
-    .map(t => `${t.id}:${t.date}:${t.time}:${t.priority}:${t.title}:${t.completed}`)
+    .map(t => `${t.id}:${t.date}:${t.time}:${t.priority}:${t.title}:${t.completed}:${t.duration ?? 0}`)
     .sort();
   return `${level}:po=${persistentOverdue}:m=${nowMinute}:${parts.join('|')}`;
 }
