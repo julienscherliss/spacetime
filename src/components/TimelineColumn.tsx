@@ -786,6 +786,16 @@ export function TimelineColumn({
 
       // Block drop if collision detected
       if (state.blocked) {
+        // Check if it's a move restriction vs collision
+        if (state.sourceDate && state.sourceDate !== state.targetDate) {
+          const validation = canMoveTask(state.taskId, state.targetDate);
+          if (!validation.allowed) {
+            setDragMsg('reason' in validation ? validation.reason : 'Cannot move');
+            setTimeout(() => setDragMsg(''), 3000);
+            useScheduledDragStore.getState().cancel();
+            return;
+          }
+        }
         setDragMsg('No space available');
         setTimeout(() => setDragMsg(''), 2000);
         useScheduledDragStore.getState().cancel();
