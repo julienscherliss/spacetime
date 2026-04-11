@@ -47,6 +47,13 @@ const App = () => {
     document.documentElement.classList.toggle('dark', darkMode);
   }, [darkMode]);
 
+  // Register deep-link listener for native OAuth callback
+  useEffect(() => {
+    if (!isNativePlatform()) return;
+    const cleanup = setupDeepLinkListener();
+    return cleanup;
+  }, []);
+
   return (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
