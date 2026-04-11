@@ -56,6 +56,14 @@ const Index = () => {
     useCalendarStore.getState().checkStatus();
   }, []);
 
+  // Switch to focus view when a notification is tapped
+  useEffect(() => {
+    const cleanup = setupNotificationTapListener((_taskId) => {
+      useTaskStore.getState().setViewMode('focus');
+    });
+    return cleanup;
+  }, []);
+
   // Move overdue tasks to waiting room periodically
   useEffect(() => {
     moveOverdueToWaitingRoom();
