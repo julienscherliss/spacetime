@@ -845,6 +845,7 @@ export function TimelineColumn({
             type: targetTask.type || 'recurring',
             recurrenceParentId: targetTask.recurrenceParentId || targetTask.id,
             isRecurrenceInstance: true,
+            isRoutine: targetTask.isRoutine || false,
           });
           // Also ensure target is linked with same group
           if (!targetTask.linkedGroupId) {
