@@ -42,6 +42,20 @@ const UNIT_OPTIONS: { label: string; value: CustomUnit }[] = [
   { label: 'years', value: 'years' },
 ];
 
+const REMINDER_OPTIONS: { label: string; value: number }[] = [
+  { label: 'At start', value: 0 },
+  { label: '5 min', value: 5 },
+  { label: '10 min', value: 10 },
+  { label: '15 min', value: 15 },
+  { label: '30 min', value: 30 },
+  { label: '1 hour', value: 60 },
+  { label: '2 hours', value: 120 },
+  { label: '4 hours', value: 240 },
+  { label: '8 hours', value: 480 },
+  { label: '12 hours', value: 720 },
+  { label: '24 hours', value: 1440 },
+];
+
 function recurrenceToType(r?: RecurrencePattern): string {
   if (!r) return 'none';
   return r.type;
