@@ -636,7 +636,8 @@ export function TimelineColumn({
         priority: 0,
         type: 'one-time',
       });
-      // Library is a permanent repository — do NOT remove the source item
+      // Remove from library after placing on schedule
+      useLibraryStore.getState().deleteItem(dropped.libraryItemId);
     } else if (dropped.fromWaitingRoom) {
       const { updateTask } = useTaskStore.getState();
       updateTask(dropped.taskId, {
