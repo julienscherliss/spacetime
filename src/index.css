@@ -207,6 +207,24 @@
   transition: opacity 0.6s ease 0.4s;
 }
 
+/* ── Capacitor native overrides ── */
+.capacitor-native body {
+  /* Ensure content fits inside safe areas */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* Prevent pull-to-refresh / overscroll bounce */
+  overscroll-behavior: none;
+}
+
+.capacitor-native * {
+  /* Prevent iOS tap highlight */
+  -webkit-tap-highlight-color: transparent;
+}
+
 @keyframes subtask-pulse {
   0% { opacity: 0.3; }
   3.33% { opacity: 1; }
