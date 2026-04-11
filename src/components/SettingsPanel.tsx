@@ -350,20 +350,21 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                   if (newPw !== confirmPw) { toast.error('Passwords do not match'); return; }
                   setPwLoading(true);
                   try {
+                    // Ensure we have a valid session
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (!session) {
+                      toast.error('Session expired. Please sign in again.');
+                      return;
+                    }
+
                     // For email users, verify current password first
                     if (authProvider === 'email' && currentPw) {
-                      const { data: { user } } = await supabase.auth.getUser();
-                      if (!user?.email) throw new Error('No email found');
                       const { error: signInError } = await supabase.auth.signInWithPassword({
-                        email: user.email,
+                        email: session.user.email!,
                         password: currentPw,
                       });
                       if (signInError) throw new Error('Current password is incorrect');
                     }
-
-                    // Refresh session before update
-                    const { error: refreshError } = await supabase.auth.refreshSession();
-                    if (refreshError) throw refreshError;
 
                     const { error } = await supabase.auth.updateUser({ password: newPw });
                     if (error) throw error;
