@@ -22,7 +22,7 @@ interface SettingsPanelProps {
 }
 
 export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
-  const { timezone, setTimezone, routinesFixedTime, setRoutinesFixedTime, autoDetect, setAutoDetect, darkMode, setDarkMode, mobilityMode, setMobilityMode, notificationLevel, setNotificationLevel } = useTimezoneStore();
+  const { timezone, setTimezone, routinesFixedTime, setRoutinesFixedTime, autoDetect, setAutoDetect, darkMode, setDarkMode, mobilityMode, setMobilityMode, notificationLevel, setNotificationLevel, persistentOverdue, setPersistentOverdue } = useTimezoneStore();
   const { connected, email, calendars, loading, checkStatus, startAuth, refreshCalendarData, toggleCalendar, disconnect } = useCalendarStore();
   const nativeRuntime = isNativePlatform();
   const [search, setSearch] = useState('');
@@ -319,7 +319,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
 
                     if (opt.value === 'off') {
                       setNotificationLevel('off');
-                      await syncTaskNotifications(useTaskStore.getState().tasks, 'off', true);
+                      await syncTaskNotifications(useTaskStore.getState().tasks, 'off', true, false);
                       toast.success('Notifications turned off');
                       return;
                     }
@@ -342,8 +342,8 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                       const testResult = await scheduleTestNotification(8);
                       console.log('[notifications] test result', testResult);
 
-                      // Sync real task notifications
-                      const syncResult = await syncTaskNotifications(useTaskStore.getState().tasks, opt.value, true);
+                      const po = useTimezoneStore.getState().persistentOverdue;
+                      const syncResult = await syncTaskNotifications(useTaskStore.getState().tasks, opt.value, true, po);
                       console.log('[notifications] level change sync', syncResult);
 
                       toast.success(
@@ -374,6 +374,33 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               {notificationLevel === 'important' && 'Notifications for FIXED and LOCK tasks only.'}
               {notificationLevel === 'all' && 'Notifications for all scheduled tasks (FLEX, SEMI, FIXED, LOCK).'}
             </div>
+
+            {/* Persistent Overdue toggle */}
+            {notificationLevel !== 'off' && (
+              <button
+                onClick={async () => {
+                  const next = !persistentOverdue;
+                  setPersistentOverdue(next);
+                  if (isNativePlatform()) {
+                    await syncTaskNotifications(useTaskStore.getState().tasks, notificationLevel, true, next);
+                  }
+                  toast.success(next ? 'Persistent overdue reminders enabled' : 'Persistent overdue reminders disabled');
+                }}
+                className="w-full flex items-center justify-between bg-muted/30 border border-border/50 rounded-sm p-3 min-h-[48px] mt-2"
+              >
+                <div className="text-left">
+                  <div className="text-[12px] font-mono text-foreground">Persistent overdue reminders</div>
+                  <div className="text-[10px] font-mono text-muted-foreground/50 mt-0.5">
+                    Keep reminding every minute after a task becomes overdue
+                  </div>
+                </div>
+                <div className={`w-9 h-5 rounded-full transition-colors flex items-center px-0.5 ${
+                  persistentOverdue ? 'bg-primary justify-end' : 'bg-border justify-start'
+                }`}>
+                  <div className="w-4 h-4 rounded-full bg-white shadow-sm" />
+                </div>
+              </button>
+            )}
           </div>
 
             <div className="flex items-center gap-1.5 mb-2">

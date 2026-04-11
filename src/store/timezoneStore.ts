@@ -11,12 +11,14 @@ interface TimezoneState {
   darkMode: boolean;
   mobilityMode: MobilityMode;
   notificationLevel: NotificationLevel;
+  persistentOverdue: boolean;
   setTimezone: (tz: string) => void;
   setRoutinesFixedTime: (v: boolean) => void;
   setAutoDetect: (v: boolean) => void;
   setDarkMode: (v: boolean) => void;
   setMobilityMode: (mode: MobilityMode) => void;
   setNotificationLevel: (level: NotificationLevel) => void;
+  setPersistentOverdue: (v: boolean) => void;
 }
 
 export const useTimezoneStore = create<TimezoneState>()(
@@ -28,6 +30,7 @@ export const useTimezoneStore = create<TimezoneState>()(
       darkMode: false,
       mobilityMode: 'normal',
       notificationLevel: 'important',
+      persistentOverdue: false,
       setTimezone: (tz: string) => set({ timezone: tz }),
       setRoutinesFixedTime: (v: boolean) => set({ routinesFixedTime: v }),
       setAutoDetect: (v: boolean) => set({ autoDetect: v }),
@@ -37,6 +40,7 @@ export const useTimezoneStore = create<TimezoneState>()(
       },
       setMobilityMode: (mode: MobilityMode) => set({ mobilityMode: mode }),
       setNotificationLevel: (level: NotificationLevel) => set({ notificationLevel: level }),
+      setPersistentOverdue: (v: boolean) => set({ persistentOverdue: v }),
     }),
     { name: 'do-timezone' }
   )
