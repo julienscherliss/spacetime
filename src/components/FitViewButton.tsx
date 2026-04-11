@@ -6,10 +6,22 @@ import { timeToMinutes } from '@/hooks/useCurrentTime';
 import { START_HOUR, END_HOUR } from '@/components/TimelineColumn';
 import { SCALE_MIN, SCALE_MAX } from '@/hooks/useTimeScale';
 
-/** Approximate height of sticky elements (nav bar + sticky controls) */
-const STICKY_OFFSET = 96;
 /** Padding (px) above and below the framed area */
 const FRAME_PADDING = 40;
+
+/** Height of sticky elements above the timeline content.
+ *  Mobile: sticky controls sit at top-0 (~36px), bottom nav is 64px.
+ *  Desktop: top nav (48px) + sticky controls (~36px) = 84px.
+ */
+function getStickyOffset(): number {
+  return window.innerWidth < 640 ? 36 : 84;
+}
+
+/** Usable viewport height below sticky elements (and above bottom nav on mobile) */
+function usableViewport(): number {
+  const bottomNav = window.innerWidth < 640 ? 64 : 0;
+  return window.innerHeight - getStickyOffset() - bottomNav;
+}
 
 interface FitViewButtonProps {
   tasks: Task[];
@@ -68,10 +80,6 @@ function minToDocY(min: number, hourHeight: number, timelineTop: number): number
   return timelineTop + ((min - START_HOUR * 60) / 60) * hourHeight;
 }
 
-/** Usable viewport height below sticky elements */
-function usableViewport(): number {
-  return window.innerHeight - STICKY_OFFSET;
-}
 
 function animateZoom(
   fromScale: number,
@@ -121,7 +129,7 @@ export function FitViewButton({ tasks, scrollRef, hourHeight, setScale, resetZoo
     if (!bounds) {
       // No tasks — center on current time
       const nowDocY = minToDocY(nowMinutes, hourHeight, timelineTop);
-      const targetScroll = Math.max(0, nowDocY - STICKY_OFFSET - viewH / 2);
+      const targetScroll = Math.max(0, nowDocY - getStickyOffset() - viewH / 2);
       animateZoom(hourHeight, hourHeight, window.scrollY, targetScroll, 250, () => {});
       return;
     }
@@ -142,7 +150,7 @@ export function FitViewButton({ tasks, scrollRef, hourHeight, setScale, resetZoo
     // Recalculate positions with new scale — timeline top stays the same
     const midMin = (earliest + latest) / 2;
     const midDocY = timelineTop + ((midMin - START_HOUR * 60) / 60) * targetScale;
-    const targetScroll = Math.max(0, midDocY - STICKY_OFFSET - viewH / 2);
+    const targetScroll = Math.max(0, midDocY - getStickyOffset() - viewH / 2);
 
     animateZoom(hourHeight, targetScale, window.scrollY, targetScroll, 250, (scale) => {
       setScale(scale);
@@ -160,7 +168,7 @@ export function FitViewButton({ tasks, scrollRef, hourHeight, setScale, resetZoo
     targetScale = Math.max(SCALE_MIN, Math.min(SCALE_MAX, targetScale));
 
     const centerDocY = timelineTop + ((centerMin - START_HOUR * 60) / 60) * targetScale;
-    const targetScroll = Math.max(0, centerDocY - STICKY_OFFSET - viewH / 2);
+    const targetScroll = Math.max(0, centerDocY - getStickyOffset() - viewH / 2);
 
     animateZoom(hourHeight, targetScale, window.scrollY, targetScroll, 250, (scale) => {
       setScale(scale);
@@ -179,7 +187,7 @@ export function FitViewButton({ tasks, scrollRef, hourHeight, setScale, resetZoo
 
     const midMin = ((START_HOUR + END_HOUR) / 2) * 60;
     const midDocY = timelineTop + ((midMin - START_HOUR * 60) / 60) * targetScale;
-    const targetScroll = Math.max(0, midDocY - STICKY_OFFSET - viewH / 2);
+    const targetScroll = Math.max(0, midDocY - getStickyOffset() - viewH / 2);
 
     animateZoom(hourHeight, targetScale, window.scrollY, targetScroll, 250, (scale) => {
       setScale(scale);
