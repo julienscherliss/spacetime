@@ -415,58 +415,66 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 <button
                   key={opt.value}
                   type="button"
+                  disabled={notificationLoading}
                   onClick={async (e) => {
                     e.preventDefault();
                     e.stopPropagation();
 
-                    setNotificationLevel(opt.value);
-
                     if (!isNativePlatform()) {
-                      await refreshNotificationDebug({
-                        scheduleStatus: 'Preferences saved. Notifications only run in the native app.',
-                      });
+                      setNotificationLevel(opt.value);
                       toast('Notification preferences only apply in the native mobile app.');
                       return;
                     }
 
                     if (opt.value === 'off') {
-                      // Force sync with 'off' to cancel all task notifications
+                      setNotificationLevel('off');
                       await syncTaskNotifications(useTaskStore.getState().tasks, 'off', true);
-                      await refreshNotificationDebug({
-                        requestResult: notificationDebug.requestResult,
-                        scheduleStatus: 'Task notifications turned off.',
-                      });
                       toast.success('Notifications turned off');
                       return;
                     }
 
-                    const status = await getPermissionStatus();
-                    if (status !== 'granted') {
-                      await refreshNotificationDebug({
-                        requestResult: notificationDebug.requestResult,
-                        scheduleStatus: 'Preference saved. Tap Enable Notifications to grant permission.',
-                      });
-                      toast.error('Tap Enable Notifications to request permission.', { duration: 5000 });
-                      return;
+                    // Enabling: request permission if needed, then sync + test
+                    setNotificationLoading(true);
+                    try {
+                      const status = await getPermissionStatus();
+                      if (status !== 'granted') {
+                        const permResult = await requestPermissionFromUserAction();
+                        if (permResult.status !== 'granted') {
+                          toast.error('Notifications blocked. Go to iPhone Settings → spaacetime → Notifications.', { duration: 6000 });
+                          return;
+                        }
+                      }
+
+                      setNotificationLevel(opt.value);
+
+                      // Schedule test notification
+                      const testResult = await scheduleTestNotification(8);
+                      console.log('[notifications] test result', testResult);
+
+                      // Sync real task notifications
+                      const syncResult = await syncTaskNotifications(useTaskStore.getState().tasks, opt.value, true);
+                      console.log('[notifications] level change sync', syncResult);
+
+                      toast.success(
+                        testResult.ok
+                          ? `Notifications set to ${opt.label}. Test alert in ~8s.`
+                          : `Notifications set to ${opt.label}.`
+                      );
+                    } catch (error) {
+                      console.error('[notifications] enable flow error', error);
+                      const msg = error instanceof Error ? error.message : String(error);
+                      toast.error(msg, { duration: 7000 });
+                    } finally {
+                      setNotificationLoading(false);
                     }
-
-                    // Force sync with new level
-                    const result = await syncTaskNotifications(useTaskStore.getState().tasks, opt.value, true);
-                    console.log('[notifications] level change sync', result);
-
-                    await refreshNotificationDebug({
-                      requestResult: notificationDebug.requestResult,
-                      scheduleStatus: `Notifications set to ${opt.label}. Scheduled ${result.scheduled}, canceled ${result.canceled}.`,
-                    });
-                    toast.success(`Notifications set to ${opt.label}`);
                   }}
-                  className={`flex-1 py-2.5 rounded-[2px] text-[11px] font-mono tracking-wider transition-colors min-h-[44px] ${
+                  className={`flex-1 py-2.5 rounded-[2px] text-[11px] font-mono tracking-wider transition-colors min-h-[44px] disabled:opacity-50 ${
                     notificationLevel === opt.value
                       ? 'bg-primary/10 text-primary border border-primary/20'
                       : 'text-muted-foreground/50 hover:text-foreground hover:bg-muted/40 border border-transparent'
                   }`}
                 >
-                  {opt.label.toUpperCase()}
+                  {notificationLoading && opt.value !== 'off' && opt.value === notificationLevel ? '…' : opt.label.toUpperCase()}
                 </button>
               ))}
             </div>
@@ -474,32 +482,6 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               {notificationLevel === 'off' && 'No task notifications.'}
               {notificationLevel === 'important' && 'Notifications for FIXED and LOCK tasks only.'}
               {notificationLevel === 'all' && 'Notifications for all scheduled tasks (FLEX, SEMI, FIXED, LOCK).'}
-            </div>
-            <div className="mt-2 space-y-2">
-              <button
-                type="button"
-                onClick={handleEnableNotifications}
-                  disabled={!nativeRuntime || notificationLoading}
-                className="w-full flex items-center justify-center bg-primary/10 text-primary border border-primary/20 rounded-sm p-3 min-h-[48px] text-[12px] font-mono tracking-wider transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {notificationLoading ? 'ENABLING…' : 'ENABLE NOTIFICATIONS'}
-              </button>
-
-              <div className="rounded-sm border border-border/40 bg-background/70 p-3 space-y-1.5">
-                <div className="text-[9px] font-mono tracking-[0.14em] text-muted-foreground/60">DEBUG STATUS</div>
-                <div className="text-[10px] font-mono text-foreground/70">Capacitor.isNativePlatform(): {notificationDebug.isNative ? 'true' : 'false'}</div>
-                <div className="text-[10px] font-mono text-foreground/70">Capacitor.getPlatform(): {notificationDebug.platform}</div>
-                <div className="text-[10px] font-mono text-foreground/70">Plugin available: {notificationDebug.pluginAvailable ? 'true' : 'false'}</div>
-                <div className="text-[10px] font-mono text-foreground/70">Permission: {notificationDebug.permissionStatus}</div>
-                <div className="text-[10px] font-mono text-foreground/70">Last request: {notificationDebug.requestResult ?? 'not requested yet'}</div>
-                {notificationDebug.requestError && (
-                  <div className="text-[10px] font-mono text-destructive/80 leading-relaxed">Request error: {notificationDebug.requestError}</div>
-                )}
-                <div className="text-[10px] font-mono text-foreground/70 leading-relaxed">Status: {notificationDebug.scheduleStatus ?? 'no scheduling attempt yet'}</div>
-                {notificationDebug.scheduleError && (
-                  <div className="text-[10px] font-mono text-destructive/80 leading-relaxed">Schedule error: {notificationDebug.scheduleError}</div>
-                )}
-              </div>
             </div>
           </div>
 
