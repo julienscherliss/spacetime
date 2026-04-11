@@ -33,6 +33,8 @@ interface CalendarState {
   panelOpen: boolean;
   deviceId: string;
   lastFetchedRange: { startDate: string; endDate: string } | null;
+  lastFetchSignature: string | null;
+  lastFetchedAt: number | null;
   completedEventIds: string[];
   eventCategories: Record<string, string>;
   editingEventId: string | null;
@@ -69,6 +71,32 @@ async function callEdge(action: string, params: Record<string, any> = {}) {
   return data;
 }
 
+const CALENDAR_CACHE_TTL_MS = 2 * 60 * 1000;
+
+function addDays(dateStr: string, days: number): string {
+  const date = new Date(`${dateStr}T12:00:00`);
+  date.setDate(date.getDate() + days);
+  return date.toISOString().split('T')[0];
+}
+
+function getInclusiveDaySpan(startDate: string, endDate: string): number {
+  const start = new Date(`${startDate}T12:00:00`).getTime();
+  const end = new Date(`${endDate}T12:00:00`).getTime();
+  return Math.max(1, Math.round((end - start) / 86400000) + 1);
+}
+
+function buildFetchSignature(calendarIds: string[], timeZone: string): string {
+  return `${timeZone}::${[...calendarIds].sort().join('|')}`;
+}
+
+function rangeCovers(
+  range: { startDate: string; endDate: string } | null,
+  startDate: string,
+  endDate: string
+): boolean {
+  return !!range && range.startDate <= startDate && range.endDate >= endDate;
+}
+
 export const useCalendarStore = create<CalendarState>()(
   persist(
     (set, get) => ({
@@ -80,6 +108,8 @@ export const useCalendarStore = create<CalendarState>()(
       panelOpen: false,
       deviceId: getDeviceId(),
       lastFetchedRange: null,
+      lastFetchSignature: null,
+      lastFetchedAt: null,
       completedEventIds: [] as string[],
       eventCategories: {} as Record<string, string>,
       editingEventId: null,
@@ -144,28 +174,71 @@ export const useCalendarStore = create<CalendarState>()(
       },
 
       fetchEvents: async (startDate, endDate) => {
-        const { calendars, deviceId, lastFetchedRange, events: cachedEvents } = get();
+        const {
+          calendars,
+          deviceId,
+          lastFetchedRange,
+          lastFetchSignature,
+          lastFetchedAt,
+          events: cachedEvents,
+        } = get();
         const timeZone = useTimezoneStore.getState().timezone;
-        const visibleCalIds = calendars.filter(c => c.visible).map(c => c.google_calendar_id);
-        
-        // If range changed, keep showing cached events for the new range while loading
-        const rangeChanged = !lastFetchedRange || lastFetchedRange.startDate !== startDate || lastFetchedRange.endDate !== endDate;
-        set({ lastFetchedRange: { startDate, endDate }, loading: true });
-        
+        const visibleCalIds = calendars
+          .filter(c => c.visible)
+          .map(c => c.google_calendar_id)
+          .sort();
+
         if (visibleCalIds.length === 0) {
-          set({ events: [], loading: false });
+          set({
+            events: [],
+            loading: false,
+            lastFetchedRange: null,
+            lastFetchSignature: null,
+            lastFetchedAt: null,
+          });
           return;
         }
+
+        const fetchSignature = buildFetchSignature(visibleCalIds, timeZone);
+        const cacheCoversRequestedRange =
+          fetchSignature === lastFetchSignature && rangeCovers(lastFetchedRange, startDate, endDate);
+        const cacheIsFresh = !!lastFetchedAt && Date.now() - lastFetchedAt < CALENDAR_CACHE_TTL_MS;
+
+        if (cacheCoversRequestedRange && cacheIsFresh) {
+          set({ loading: false });
+          return;
+        }
+
+        const requestedRangeHasVisibleEvents = cachedEvents.some(
+          (event) =>
+            visibleCalIds.includes(event.calendarId) &&
+            event.date >= startDate &&
+            event.date <= endDate
+        );
+
+        const requestedSpan = getInclusiveDaySpan(startDate, endDate);
+        const bufferDays = Math.max(requestedSpan, 2);
+        const bufferedStartDate = addDays(startDate, -bufferDays);
+        const bufferedEndDate = addDays(endDate, bufferDays);
+
+        set({ loading: !cacheCoversRequestedRange && !requestedRangeHasVisibleEvents });
+
         try {
           const result = await callEdge('events', {
             deviceId,
-            timeMin: startDate,
-            timeMax: endDate,
+            timeMin: bufferedStartDate,
+            timeMax: bufferedEndDate,
             calendarIds: visibleCalIds,
             timeZone,
           });
           if (Array.isArray(result)) {
-            set({ events: result, loading: false });
+            set({
+              events: result,
+              loading: false,
+              lastFetchedRange: { startDate: bufferedStartDate, endDate: bufferedEndDate },
+              lastFetchSignature: fetchSignature,
+              lastFetchedAt: Date.now(),
+            });
           } else {
             set({ loading: false });
           }
@@ -230,6 +303,8 @@ export const useCalendarStore = create<CalendarState>()(
         calendars: state.calendars,
         events: state.events,
         lastFetchedRange: state.lastFetchedRange,
+          lastFetchSignature: state.lastFetchSignature,
+          lastFetchedAt: state.lastFetchedAt,
         completedEventIds: state.completedEventIds,
         eventCategories: state.eventCategories,
       }),
