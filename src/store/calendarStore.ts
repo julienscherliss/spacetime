@@ -144,12 +144,16 @@ export const useCalendarStore = create<CalendarState>()(
       },
 
       fetchEvents: async (startDate, endDate) => {
-        const { calendars, deviceId } = get();
+        const { calendars, deviceId, lastFetchedRange, events: cachedEvents } = get();
         const timeZone = useTimezoneStore.getState().timezone;
         const visibleCalIds = calendars.filter(c => c.visible).map(c => c.google_calendar_id);
-        set({ lastFetchedRange: { startDate, endDate } });
+        
+        // If range changed, keep showing cached events for the new range while loading
+        const rangeChanged = !lastFetchedRange || lastFetchedRange.startDate !== startDate || lastFetchedRange.endDate !== endDate;
+        set({ lastFetchedRange: { startDate, endDate }, loading: true });
+        
         if (visibleCalIds.length === 0) {
-          set({ events: [] });
+          set({ events: [], loading: false });
           return;
         }
         try {
@@ -161,10 +165,13 @@ export const useCalendarStore = create<CalendarState>()(
             timeZone,
           });
           if (Array.isArray(result)) {
-            set({ events: result });
+            set({ events: result, loading: false });
+          } else {
+            set({ loading: false });
           }
         } catch (e) {
           console.error('Fetch events error:', e);
+          set({ loading: false });
         }
       },
 
@@ -221,6 +228,8 @@ export const useCalendarStore = create<CalendarState>()(
         connected: state.connected,
         email: state.email,
         calendars: state.calendars,
+        events: state.events,
+        lastFetchedRange: state.lastFetchedRange,
         completedEventIds: state.completedEventIds,
         eventCategories: state.eventCategories,
       }),
