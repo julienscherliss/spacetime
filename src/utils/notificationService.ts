@@ -6,6 +6,10 @@
  *   - Test notification flow: isolated, uses dedicated ID namespace
  *   - Task notification flow: diff-based sync, idempotent, guarded against concurrent runs
  *
+ * iOS limit: max 64 pending local notifications. We reserve 1 slot for test
+ * notifications and use the remaining 63 for task reminders, prioritized by
+ * nearest fire time.
+ *
  * All native plugin interactions go through this module.
  * UI components should never call LocalNotifications directly.
  */
@@ -59,6 +63,13 @@ const TEST_NOTIFICATION_ID = 984251;
 const PLUGIN_NAME = 'LocalNotifications';
 
 /**
+ * iOS allows a maximum of 64 pending local notifications.
+ * We reserve 1 slot for the test notification.
+ */
+const IOS_MAX_PENDING = 64;
+const MAX_TASK_NOTIFICATIONS = IOS_MAX_PENDING - 1; // 63
+
+/**
  * Task notification IDs use the range [1_000_000, 2_000_000).
  * Test notification uses a fixed ID outside this range.
  */
@@ -75,11 +86,14 @@ let lastSyncFingerprint = '';
 /** Debug mode — enable verbose per-task logging */
 let debugMode = false;
 
+/** Cached permission status to avoid redundant native calls */
+let cachedPermission: NotificationPermissionStatus | null = null;
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function log(msg: string, data?: unknown) {
   if (data !== undefined) {
-    console.log(`[notifications] ${msg}`, data);
+    console.log(`[notifications] ${msg}`, JSON.stringify(data));
   } else {
     console.log(`[notifications] ${msg}`);
   }
@@ -115,7 +129,6 @@ function taskNotificationId(taskId: string): number {
   for (let i = 0; i < taskId.length; i++) {
     hash = ((hash << 5) - hash + taskId.charCodeAt(i)) | 0;
   }
-  // Keep in [TASK_ID_OFFSET, TASK_ID_OFFSET + 1_000_000)
   return TASK_ID_OFFSET + (Math.abs(hash) % 1_000_000);
 }
 
@@ -145,12 +158,22 @@ function buildFingerprint(tasks: Task[], level: NotificationLevel): string {
   return `${level}:${parts.join('|')}`;
 }
 
-/** Compute desired notification map: notifId → { title, body, fireAt } */
-function computeDesired(tasks: Task[], level: NotificationLevel): Map<number, { title: string; body: string; fireAt: Date; taskId: string }> {
-  const map = new Map<number, { title: string; body: string; fireAt: Date; taskId: string }>();
-  if (level === 'off') return map;
+interface DesiredNotification {
+  title: string;
+  body: string;
+  fireAt: Date;
+  taskId: string;
+}
+
+/**
+ * Compute desired notifications, capped to MAX_TASK_NOTIFICATIONS (63),
+ * prioritized by nearest fire time so the most imminent reminders are kept.
+ */
+function computeDesired(tasks: Task[], level: NotificationLevel): Map<number, DesiredNotification> {
+  if (level === 'off') return new Map();
 
   const now = Date.now();
+  const candidates: { id: number; data: DesiredNotification }[] = [];
 
   for (const task of tasks) {
     if (!shouldNotify(task, level)) continue;
@@ -162,15 +185,27 @@ function computeDesired(tasks: Task[], level: NotificationLevel): Map<number, { 
 
     if (fireAt.getTime() <= now) continue;
 
-    const id = taskNotificationId(task.id);
-    map.set(id, {
-      title: `${priorityLabel(task.priority)} — ${task.title}`,
-      body: `Starts in ${LEAD_MINUTES} min · ${task.time}`,
-      fireAt,
-      taskId: task.id,
+    candidates.push({
+      id: taskNotificationId(task.id),
+      data: {
+        title: `${priorityLabel(task.priority)} — ${task.title}`,
+        body: `Starts in ${LEAD_MINUTES} min · ${task.time}`,
+        fireAt,
+        taskId: task.id,
+      },
     });
   }
 
+  // Sort by nearest fire time and take only the first 63
+  candidates.sort((a, b) => a.data.fireAt.getTime() - b.data.fireAt.getTime());
+  const capped = candidates.slice(0, MAX_TASK_NOTIFICATIONS);
+
+  const map = new Map<number, DesiredNotification>();
+  for (const c of capped) {
+    map.set(c.id, c.data);
+  }
+
+  logDebug(`computed desired: ${candidates.length} candidates → ${capped.length} capped`);
   return map;
 }
 
@@ -180,9 +215,13 @@ export async function getPermissionStatus(): Promise<NotificationPermissionStatu
   if (!Capacitor.isNativePlatform() || !Capacitor.isPluginAvailable(PLUGIN_NAME)) return 'denied';
   if (typeof LocalNotifications.checkPermissions !== 'function') return 'denied';
 
+  // Return cached if available (avoid redundant native calls during same session)
+  if (cachedPermission !== null) return cachedPermission;
+
   try {
     const { display } = await LocalNotifications.checkPermissions();
-    return normalizePermission(display);
+    cachedPermission = normalizePermission(display);
+    return cachedPermission;
   } catch (error) {
     console.error('[notifications] checkPermissions error', error);
     return 'denied';
@@ -205,6 +244,7 @@ export async function requestPermissionFromUserAction(): Promise<NotificationPer
     log('requesting permission from user action');
     const result = await LocalNotifications.requestPermissions();
     const status = normalizePermission(result.display);
+    cachedPermission = status; // Update cache
     log('permission result', { status });
     return { status, error: null };
   } catch (error) {
@@ -262,19 +302,20 @@ export async function clearTestNotifications(): Promise<void> {
  *
  * Safe to call multiple times — uses fingerprint to skip no-op syncs,
  * and a mutex to prevent overlapping runs.
+ *
+ * Caps to 63 notifications (iOS 64 limit minus 1 test slot).
  */
 export async function syncTaskNotifications(
   tasks: Task[],
   level: NotificationLevel,
   force = false,
 ): Promise<SyncResult> {
-  // Guard: not on native
   if (!isPluginReady()) {
     return { scheduled: 0, canceled: 0, unchanged: 0, skipped: true, reason: 'plugin not ready' };
   }
 
-  // Guard: no permission
-  const perm = await getPermissionStatus();
+  // Guard: no permission (use cache to avoid extra native call)
+  const perm = cachedPermission ?? await getPermissionStatus();
   if (perm !== 'granted' && level !== 'off') {
     return { scheduled: 0, canceled: 0, unchanged: 0, skipped: true, reason: `permission ${perm}` };
   }
@@ -311,7 +352,7 @@ export async function syncTaskNotifications(
       return { scheduled: 0, canceled: taskNotifs.length, unchanged: 0, skipped: false };
     }
 
-    // Compute desired state
+    // Compute desired state (already capped to 63)
     const desired = computeDesired(tasks, level);
 
     // Get current pending task notifications
@@ -326,14 +367,14 @@ export async function syncTaskNotifications(
     const toCancel: number[] = [];
     const toSchedule: number[] = [];
 
-    // Find stale: in current but not in desired
+    // Stale: in current but not in desired
     for (const id of currentTaskNotifIds) {
       if (!desired.has(id)) {
         toCancel.push(id);
       }
     }
 
-    // Find missing: in desired but not in current
+    // Missing: in desired but not in current
     for (const id of desired.keys()) {
       if (!currentTaskNotifIds.has(id)) {
         toSchedule.push(id);
@@ -347,10 +388,9 @@ export async function syncTaskNotifications(
       await LocalNotifications.cancel({
         notifications: toCancel.map(id => ({ id })),
       });
-      logDebug(`canceled ${toCancel.length} stale notifications`);
     }
 
-    // Schedule missing
+    // Schedule missing in batches of 50
     if (toSchedule.length > 0) {
       const notifications = toSchedule.map(id => {
         const d = desired.get(id)!;
@@ -363,12 +403,10 @@ export async function syncTaskNotifications(
         };
       });
 
-      // Schedule in batches of 50 to avoid overwhelming the bridge
       for (let i = 0; i < notifications.length; i += 50) {
         const batch = notifications.slice(i, i + 50);
         await LocalNotifications.schedule({ notifications: batch });
       }
-      logDebug(`scheduled ${toSchedule.length} new notifications`);
     }
 
     lastSyncFingerprint = fp;
@@ -389,15 +427,22 @@ export async function cancelNotificationsForTask(taskId: string): Promise<void> 
   const id = taskNotificationId(taskId);
   try {
     await LocalNotifications.cancel({ notifications: [{ id }] });
-    logDebug(`canceled notification for task ${taskId}`);
   } catch { /* ignore */ }
-  // Invalidate fingerprint so next sync picks up the change
   lastSyncFingerprint = '';
 }
 
 /** Force-invalidate the fingerprint (e.g. after a single-task update) */
 export function invalidateSyncFingerprint(): void {
   lastSyncFingerprint = '';
+}
+
+/**
+ * Read the current fingerprint. UI code that does its own forced sync
+ * can call this afterward to pre-set the hook's ref, preventing a
+ * duplicate sync when the hook's useEffect fires.
+ */
+export function getCurrentSyncFingerprint(): string {
+  return lastSyncFingerprint;
 }
 
 // ─── Debug snapshot ──────────────────────────────────────────────────────────
@@ -411,7 +456,7 @@ export function getDebugSnapshotSync(): NotificationDebugSnapshot {
     requestPermissionsCallable: typeof LocalNotifications.requestPermissions === 'function',
     checkPermissionsCallable: typeof LocalNotifications.checkPermissions === 'function',
     scheduleCallable: typeof LocalNotifications.schedule === 'function',
-    permissionStatus: isNative ? 'prompt' : 'denied',
+    permissionStatus: cachedPermission ?? (isNative ? 'prompt' : 'denied'),
     requestResult: null,
     requestError: null,
     scheduleStatus: isNative ? null : 'Notifications only work in the native mobile app.',
@@ -427,7 +472,8 @@ export async function getDebugSnapshot(): Promise<NotificationDebugSnapshot> {
 
   try {
     const { display } = await LocalNotifications.checkPermissions();
-    return { ...snapshot, permissionStatus: normalizePermission(display) };
+    cachedPermission = normalizePermission(display);
+    return { ...snapshot, permissionStatus: cachedPermission };
   } catch (error) {
     const msg = formatError(error);
     return { ...snapshot, permissionStatus: 'denied', scheduleError: msg };
