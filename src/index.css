@@ -220,6 +220,12 @@
   overscroll-behavior: none;
 }
 
+/* Full-screen overlay panels need their own safe-area inset on native */
+.capacitor-native .fixed.inset-0 {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
 .capacitor-native * {
   /* Prevent iOS tap highlight */
   -webkit-tap-highlight-color: transparent;
