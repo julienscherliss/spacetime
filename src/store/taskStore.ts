@@ -40,16 +40,16 @@ export interface Task {
   isRecurrenceInstance?: boolean;
   isRoutine?: boolean;
   linked?: boolean;
-  seriesId?: string;          // recurrence origin — shared by all instances from one template
-  linkedGroupId?: string;     // synchronization group — only truly linked tasks share this
-  detachedFromSeries?: boolean; // explicitly detached from series behaviour
+  seriesId?: string;
+  linkedGroupId?: string;
+  detachedFromSeries?: boolean;
   inWaitingRoom?: boolean;
   waitingRoomCount?: number;
   dueDate?: string;
   archivedAt?: string;
   archiveReason?: 'completed' | 'deleted';
   attachments?: { name: string; url: string; type: string }[];
-  reminders?: number[]; // minutes before task start to notify (e.g. [5, 15, 60])
+  reminders?: number[];
 }
 
 export interface DailyStats {
@@ -62,10 +62,9 @@ export type MoveValidation =
   | { allowed: true }
   | { allowed: false; reason: string };
 
-/** Info for zooming timeline to a specific time window when coming from list view */
 export interface ListReturnZoom {
-  taskTime: string; // HH:MM
-  taskDuration: number; // minutes
+  taskTime: string;
+  taskDuration: number;
 }
 
 interface TaskState {
@@ -77,13 +76,9 @@ interface TaskState {
   editingTaskId: string | null;
   showCompletionStats: boolean;
   dailyStats: DailyStats | null;
-  /** When set, DayView should open to this date and then clear it */
   navigateToDate: string | null;
-  /** Persisted current date for day/list views — survives view switches */
   currentDate: string | null;
-  /** When set, DayView should zoom to this time window and show return button */
   listReturnZoom: ListReturnZoom | null;
-  /** Whether to show the return-to-list button in DayView */
   showListReturn: boolean;
 
   setViewMode: (mode: ViewMode) => void;
@@ -118,7 +113,6 @@ interface TaskState {
   dismissCompletionStats: () => void;
   generateRecurringInstances: (startDate: string, endDate: string) => void;
   moveOverdueToWaitingRoom: () => void;
-  /** Link or unlink all tasks in a series from a given date forward */
   linkSeriesFromDate: (taskId: string, fromDate: string, linked: boolean) => void;
 }
 
@@ -128,14 +122,9 @@ function deriveType(recurrence?: RecurrencePattern): TaskType {
   return recurrence ? 'recurring' : 'one-time';
 }
 
-/**
- * Compute set of task IDs that should be affected by a schedule change.
- * Uses explicit linkedGroupId — never inferred from series membership alone.
- */
 function getLinkedScheduleTargetIds(tasks: Task[], activeTask: Task): Set<string> {
   const targetIds = new Set<string>([activeTask.id]);
 
-  // Only propagate if the task is explicitly linked AND has a linkedGroupId
   if (activeTask.linked !== true || !activeTask.linkedGroupId) {
     return targetIds;
   }
@@ -171,7 +160,6 @@ function sortTasksBySeriesOrder(tasks: Task[]): Task[] {
   });
 }
 
-/** Compute effective priority based on due date and mobility mode */
 function computeEffectivePriority(task: Task, today: string): Priority {
   const mobilityMode = useTimezoneStore.getState().mobilityMode;
   if (mobilityMode === 'disabled') return task.priority;
@@ -179,11 +167,9 @@ function computeEffectivePriority(task: Task, today: string): Priority {
 
   let minPriority = task.priority;
 
-  // Due today or overdue → at least FIXED (2)
   if (task.dueDate <= today) {
     minPriority = Math.max(minPriority, 2) as Priority;
   } else {
-    // Check if due this week
     const weekBounds = getWeekBounds(today);
     if (task.dueDate <= weekBounds.end) {
       minPriority = Math.max(minPriority, 1) as Priority;
@@ -208,8 +194,6 @@ function resolveGeneratedLinkState(seriesTasks: Task[], occurrenceDate: string):
     linkedGroupId: activeLinkedGroupId,
   };
 }
-
-// ─── Recurrence engine ────────────────────────────────────────
 
 function addDays(dateStr: string, n: number): string {
   const d = new Date(dateStr + 'T12:00:00');
@@ -346,8 +330,6 @@ function getAllOccurrences(
   return dates;
 }
 
-// ─── Store ────────────────────────────────────────
-
 export const useTaskStore = create<TaskState>()(
   persist(
     (set, get) => ({
@@ -373,18 +355,9 @@ export const useTaskStore = create<TaskState>()(
       toggleRoutines: () => set((s) => ({ routinesEnabled: !s.routinesEnabled })),
 
       addTask: (taskData) => {
-        const type = deriveType(taskData.recurrence);
-        const id = generateId();
-        const seriesId = taskData.recurrenceParentId || id;
-        const linkedGroupId = taskData.linked ? seriesId : undefined;
         const task: Task = {
           ...taskData,
-          type,
-          isRoutine: taskData.isRoutine ?? (type === 'recurring'),
-          id,
-          seriesId,
-          linkedGroupId,
-          detachedFromSeries: false,
+          id: generateId(),
           originalPriority: taskData.priority,
           completed: false,
           createdAt: new Date().toISOString(),
@@ -394,7 +367,6 @@ export const useTaskStore = create<TaskState>()(
       },
 
       updateTask: (id, updates) => {
-        // If time or date changed, immediately cancel stale notifications
         if ('time' in updates || 'date' in updates || 'completed' in updates) {
           void cancelNotificationsForTask(id);
         }
@@ -406,7 +378,6 @@ export const useTaskStore = create<TaskState>()(
             if ('recurrence' in updates) {
               merged.type = deriveType(merged.recurrence);
             }
-            // Elite mode: prevent priority de-escalation
             if (mobilityMode === 'elite' && 'priority' in updates && updates.priority !== undefined) {
               const today = new Date().toISOString().split('T')[0];
               const effectiveMin = computeEffectivePriority(t, today);
@@ -450,7 +421,6 @@ export const useTaskStore = create<TaskState>()(
           ),
           editingTaskId: s.editingTaskId === id ? null : s.editingTaskId,
         }));
-        // Immediately cancel any pending notifications (including overdue) for this task
         void cancelNotificationsForTask(id);
         const state = get();
         const today = new Date().toISOString().split('T')[0];
@@ -469,7 +439,6 @@ export const useTaskStore = create<TaskState>()(
           ),
           editingTaskId: s.editingTaskId === id ? null : s.editingTaskId,
         }));
-        // Immediately cancel any pending notifications for deleted task
         void cancelNotificationsForTask(id);
       },
 
@@ -518,7 +487,6 @@ export const useTaskStore = create<TaskState>()(
         if (!task) return { allowed: false, reason: 'Task not found' };
         const mobilityMode = useTimezoneStore.getState().mobilityMode;
         if (mobilityMode === 'disabled') {
-          // Only enforce LOCK in disabled mode
           if (task.priority >= 3 && task.date !== newDate) {
             return { allowed: false, reason: 'Cannot move locked task' };
           }
@@ -594,8 +562,9 @@ export const useTaskStore = create<TaskState>()(
             return t;
           }),
         }));
-        // Immediately cancel overdue notifications — task was rescheduled
-        void cancelNotificationsForTask(id);
+        Array.from(targetIds).forEach((taskId) => {
+          void cancelNotificationsForTask(taskId);
+        });
         return { blocked: false };
       },
 
@@ -612,6 +581,10 @@ export const useTaskStore = create<TaskState>()(
               : t
           ),
         }));
+
+        Array.from(targetIds).forEach((taskId) => {
+          void cancelNotificationsForTask(taskId);
+        });
       },
 
       reorderTask: (id, newTime) => {
@@ -625,6 +598,10 @@ export const useTaskStore = create<TaskState>()(
             targetIds.has(t.id) ? { ...t, time: newTime } : t
           ),
         }));
+
+        Array.from(targetIds).forEach((taskId) => {
+          void cancelNotificationsForTask(taskId);
+        });
       },
 
       skipFocusTask: () => {
@@ -698,154 +675,104 @@ export const useTaskStore = create<TaskState>()(
           tasks: s.tasks.map((t) => {
             if (t.completed || t.inWaitingRoom || t.archivedAt) return t;
             if (!t.time) return t;
+            if (t.date !== now.toISOString().split('T')[0]) return t;
 
-            // Calculate when the task should have ended
             const [h, m] = t.time.split(':').map(Number);
-            const taskEnd = new Date(`${t.date}T00:00:00`);
-            taskEnd.setHours(h, m + (t.duration || 30), 0, 0);
+            const start = new Date(`${t.date}T00:00:00`);
+            start.setHours(h, m, 0, 0);
+            const end = start.getTime() + (t.duration || 30) * 60_000;
 
-            // Only move to waiting room 12 hours after scheduled end
-            const graceMs = 12 * 60 * 60 * 1000;
-            if (nowMs - taskEnd.getTime() < graceMs) return t;
-
-            return {
-              ...t,
-              inWaitingRoom: true,
-              waitingRoomCount: (t.waitingRoomCount || 0) + 1,
-            };
-          }),
-        }));
-      },
-
-      linkSeriesFromDate: (taskId, fromDate, linked) => {
-        const task = get().tasks.find((t) => t.id === taskId);
-        if (!task) return;
-        const seriesId = getTaskSeriesId(task);
-        const linkedGroupId = task.linkedGroupId || task.id;
-
-        set((s) => ({
-          tasks: s.tasks.map((t) => {
-            if (!isTaskInSameSeries(t, seriesId)) return t;
-
-            if (!linked) {
-              if (t.id !== taskId) return t;
+            if (nowMs > end) {
               return {
                 ...t,
-                linked: false,
-                linkedGroupId: undefined,
-                detachedFromSeries: !!t.recurrenceParentId,
+                inWaitingRoom: true,
+                waitingRoomCount: (t.waitingRoomCount || 0) + 1,
               };
             }
 
-            if (t.date < fromDate && t.id !== taskId) return t;
-
-            return {
-              ...t,
-              linked: true,
-              linkedGroupId,
-              detachedFromSeries: false,
-            };
+            return t;
           }),
         }));
       },
 
-      generateRecurringInstances: (startDate, endDate) => {
-        const state = get();
-        const recurringParents = state.tasks.filter(
-          (t) => t.recurrence && !t.isRecurrenceInstance
-        );
-        const existingInstanceDates = new Map<string, Set<string>>();
-        state.tasks
-          .filter((t) => t.isRecurrenceInstance && t.recurrenceParentId)
-          .forEach((t) => {
-            const s = existingInstanceDates.get(t.recurrenceParentId!) || new Set();
-            s.add(t.date);
-            existingInstanceDates.set(t.recurrenceParentId!, s);
-          });
+      generateRecurringInstances: (startDate, endDate) =>
+        set((s) => {
+          const nextTasks = [...s.tasks];
+          const recurringParents = nextTasks.filter((task) => !!task.recurrence && !task.isRecurrenceInstance);
 
-        const seriesTasksMap = new Map<string, Task[]>();
-        state.tasks.forEach((task) => {
-          const sid = getTaskSeriesId(task);
-          const existing = seriesTasksMap.get(sid) || [];
-          existing.push(task);
-          seriesTasksMap.set(sid, existing);
-        });
+          for (const parent of recurringParents) {
+            const seriesId = getTaskSeriesId(parent);
+            const existingSeriesTasks = nextTasks.filter((task) => isTaskInSameSeries(task, seriesId));
+            const existingDates = new Set(existingSeriesTasks.map((task) => task.date));
+            const occurrences = getAllOccurrences(parent.recurrence!, parent.date, startDate, endDate);
 
-        const newTasks: Task[] = [];
-        for (const parent of recurringParents) {
-          if (!parent.recurrence) continue;
-          const occurrences = getAllOccurrences(parent.recurrence, parent.date, startDate, endDate);
-          const existing = existingInstanceDates.get(parent.id) || new Set();
-          const sid = getTaskSeriesId(parent);
-          const seriesTasks = sortTasksBySeriesOrder(seriesTasksMap.get(sid) || [parent]);
+            for (const occurrenceDate of occurrences) {
+              if (existingDates.has(occurrenceDate)) continue;
 
-          for (const occ of occurrences) {
-            if (occ === parent.date) continue;
-            if (existing.has(occ)) continue;
+              const linkState = resolveGeneratedLinkState(
+                nextTasks.filter((task) => isTaskInSameSeries(task, seriesId)),
+                occurrenceDate,
+              );
 
-            const linkState = resolveGeneratedLinkState(seriesTasks, occ);
+              nextTasks.push({
+                ...parent,
+                id: generateId(),
+                date: occurrenceDate,
+                completed: false,
+                createdAt: new Date().toISOString(),
+                archivedAt: undefined,
+                archiveReason: undefined,
+                inWaitingRoom: false,
+                waitingRoomCount: 0,
+                isRecurrenceInstance: true,
+                recurrenceParentId: parent.id,
+                detachedFromSeries: false,
+                type: deriveType(parent.recurrence),
+                linked: linkState.linked,
+                linkedGroupId: linkState.linkedGroupId,
+              });
 
-            const generatedTask: Task = {
-              id: generateId(),
-              title: parent.title,
-              category: parent.category,
-              description: parent.description,
-              subtasks: linkState.linked ? parent.subtasks : undefined,
-              type: 'recurring',
-              priority: parent.originalPriority,
-              originalPriority: parent.originalPriority,
-              date: occ,
-              time: parent.time,
-              duration: parent.duration,
-              completed: false,
-              createdAt: new Date().toISOString(),
-              moveCount: 0,
-              recurrenceParentId: parent.id,
-              isRecurrenceInstance: true,
-              recurrence: parent.recurrence,
-              isRoutine: parent.isRoutine,
-              linked: linkState.linked,
-              seriesId: sid,
-              linkedGroupId: linkState.linkedGroupId,
-              detachedFromSeries: !linkState.linked && !!parent.id,
-            };
-
-            newTasks.push(generatedTask);
-            seriesTasks.push(generatedTask);
+              existingDates.add(occurrenceDate);
+            }
           }
-        }
-        if (newTasks.length > 0) {
-          set((s) => ({ tasks: [...s.tasks, ...newTasks] }));
-        }
-      },
+
+          return { tasks: nextTasks };
+        }),
+
+      linkSeriesFromDate: (taskId, fromDate, linked) =>
+        set((s) => {
+          const sourceTask = s.tasks.find((task) => task.id === taskId);
+          if (!sourceTask) return s;
+
+          const seriesId = getTaskSeriesId(sourceTask);
+          const nextGroupId = linked ? (sourceTask.linkedGroupId || sourceTask.id) : undefined;
+
+          return {
+            tasks: s.tasks.map((task) => {
+              if (!isTaskInSameSeries(task, seriesId)) return task;
+
+              if (!linked) {
+                if (task.id !== taskId) return task;
+                return {
+                  ...task,
+                  linked: false,
+                  linkedGroupId: undefined,
+                };
+              }
+
+              if (task.date < fromDate && task.id !== taskId) return task;
+
+              return {
+                ...task,
+                linked: true,
+                linkedGroupId: nextGroupId,
+              };
+            }),
+          };
+        }),
     }),
     {
-      name: 'do-task-store',
-      onRehydrateStorage: () => (state) => {
-        // Migrate any non-UUID task IDs (e.g. old "demo-1" format)
-        if (state?.tasks) {
-          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-          const needsMigration = state.tasks.some(t => !uuidRegex.test(t.id));
-          if (needsMigration) {
-            const idMap = new Map<string, string>();
-            state.tasks = state.tasks.map(t => {
-              if (!uuidRegex.test(t.id)) {
-                const newId = crypto.randomUUID();
-                idMap.set(t.id, newId);
-                return { ...t, id: newId };
-              }
-              return t;
-            });
-            // Fix recurrence parent references
-            state.tasks = state.tasks.map(t => {
-              if (t.recurrenceParentId && idMap.has(t.recurrenceParentId)) {
-                return { ...t, recurrenceParentId: idMap.get(t.recurrenceParentId) };
-              }
-              return t;
-            });
-          }
-        }
-      },
+      name: 'task-storage',
     }
   )
 );
