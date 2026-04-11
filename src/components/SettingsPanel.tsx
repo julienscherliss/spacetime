@@ -33,6 +33,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const [confirmPw, setConfirmPw] = useState('');
   const [pwLoading, setPwLoading] = useState(false);
   const [authProvider, setAuthProvider] = useState<'email' | 'google' | 'unknown'>('unknown');
+  const [notificationLoading, setNotificationLoading] = useState(false);
 
   useEffect(() => {
     if (!open) return;
