@@ -226,6 +226,11 @@
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+/* Adjust full-height containers to account for safe-area body padding */
+.capacitor-native [style*="calc(100vh"] {
+  height: calc(100vh - 48px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) !important;
+}
+
 .capacitor-native * {
   /* Prevent iOS tap highlight */
   -webkit-tap-highlight-color: transparent;
