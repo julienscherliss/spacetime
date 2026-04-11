@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTrackpadSwipe } from '@/hooks/useTrackpadSwipe';
-import { useTouchDragStore } from '@/store/touchDragStore';
 import { motion } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
 import { useCalendarStore } from '@/store/calendarStore';
