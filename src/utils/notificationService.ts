@@ -175,12 +175,15 @@ function shouldNotify(task: Task, level: NotificationLevel): boolean {
   return (task.priority as number) >= 2;
 }
 
+/** "Due" = end of the scheduled block: start time + duration.
+ *  If no duration, defaults to 30 min so a reminder still fires. */
 function getTaskDueMs(task: Task): number | null {
   if (!task.time) return null;
   const [h, m] = task.time.split(':').map(Number);
   const dt = new Date(`${task.date}T00:00:00`);
   dt.setHours(h, m, 0, 0);
-  return dt.getTime();
+  const durationMin = (task.duration && task.duration > 0) ? task.duration : 30;
+  return dt.getTime() + durationMin * 60_000;
 }
 
 function nextMinuteSlotStart(nowMs: number): number {
