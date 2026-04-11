@@ -9,7 +9,7 @@ import { PriorityBadge } from '@/components/PriorityBadge';
 import { TimelineTaskBlock } from '@/components/TimelineTaskBlock';
 import { CondensedTaskBlock } from '@/components/CondensedTaskBlock';
 import { timeToMinutes, minutesToTime, snapTo15, formatTime12h, formatHour12h } from '@/hooks/useCurrentTime';
-import { Calendar as CalIcon, Check, Copy, Unlink } from 'lucide-react';
+import { Calendar as CalIcon, Check, Copy, Unlink, Link } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getOccupiedSlots, findValidPosition, clampResize, wouldOverlap, getRoutineConflicts } from '@/utils/collisionDetection';
 import { clusterTasks, TaskCluster, getZoomForCluster } from '@/utils/taskClustering';
@@ -770,6 +770,8 @@ export function TimelineColumn({
   const scheduledDragIsLinked = useScheduledDragStore((s) => s.isLinkedTask);
   const scheduledDragBlocked = useScheduledDragStore((s) => s.blocked);
   const scheduledDragCopyMode = useScheduledDragStore((s) => s.copyMode);
+  const scheduledDragRelinkMode = useScheduledDragStore((s) => s.relinkMode);
+  const scheduledDragRelinkTargetId = useScheduledDragStore((s) => s.relinkTargetId);
 
   // Scheduled drag: single global drop handler — only the column matching targetDate processes it
   useEffect(() => {
@@ -823,6 +825,29 @@ export function TimelineColumn({
           linkedGroupId: undefined,
           detachedFromSeries: true,
         });
+      }
+
+      // Relink mode: adopt target's series/group, keep original position
+      if (state.relinkMode && state.relinkTargetId) {
+        const targetTask = useTaskStore.getState().tasks.find(t => t.id === state.relinkTargetId);
+        const { updateTask } = useTaskStore.getState();
+        if (targetTask) {
+          updateTask(state.taskId, {
+            linked: true,
+            linkedGroupId: targetTask.linkedGroupId || targetTask.seriesId || targetTask.id,
+            seriesId: targetTask.seriesId || targetTask.id,
+            detachedFromSeries: false,
+          });
+          // Also ensure target is linked with same group
+          if (!targetTask.linkedGroupId) {
+            updateTask(targetTask.id, {
+              linked: true,
+              linkedGroupId: targetTask.seriesId || targetTask.id,
+            });
+          }
+        }
+        useScheduledDragStore.getState().endDrag();
+        return;
       }
 
       if (state.sourceDate && state.sourceDate !== state.targetDate) {
@@ -1140,6 +1165,8 @@ export function TimelineColumn({
           <div className={`h-full rounded-[2px] border-2 border-dashed transition-colors duration-200 relative ${
             scheduledDragBlocked
               ? 'border-destructive/50 bg-destructive/[0.06]'
+              : scheduledDragRelinkMode
+                ? 'border-primary/50 bg-primary/[0.08]'
               : scheduledDragCopyMode
                 ? 'border-primary/50 bg-primary/[0.08]'
                 : scheduledDragUnlinkMode
@@ -1152,6 +1179,8 @@ export function TimelineColumn({
               <span className={`text-[10px] font-mono transition-colors duration-200 ${
                 scheduledDragBlocked
                   ? 'text-destructive/70'
+                  : scheduledDragRelinkMode
+                    ? 'text-primary/70'
                   : scheduledDragCopyMode
                     ? 'text-primary/70'
                     : scheduledDragUnlinkMode
@@ -1160,9 +1189,14 @@ export function TimelineColumn({
                         ? 'text-primary/60'
                         : 'text-muted-foreground/50'
               }`}>
-                {scheduledDragBlocked ? 'BLOCKED' : scheduledDragCopyMode ? 'COPY HERE' : formatTime12h(minutesToTime(scheduledDragMinutes))}
+                {scheduledDragBlocked ? 'BLOCKED' : scheduledDragRelinkMode ? 'RELINK' : scheduledDragCopyMode ? 'COPY HERE' : formatTime12h(minutesToTime(scheduledDragMinutes))}
               </span>
-              {!scheduledDragBlocked && !scheduledDragCopyMode && scheduledDragIsLinked && (
+              {!scheduledDragBlocked && scheduledDragRelinkMode && (
+                <span className="text-[8px] font-mono tracking-wider uppercase text-primary/40">
+                  link to series
+                </span>
+              )}
+              {!scheduledDragBlocked && !scheduledDragCopyMode && !scheduledDragRelinkMode && scheduledDragIsLinked && (
                 <span className={`text-[8px] font-mono tracking-wider uppercase transition-colors duration-200 ${
                   scheduledDragUnlinkMode
                     ? 'text-destructive/50'
@@ -1173,7 +1207,7 @@ export function TimelineColumn({
               )}
             </div>
             {/* Copy icon on far right */}
-            {!scheduledDragBlocked && !scheduledDragIsLinked && (
+            {!scheduledDragBlocked && !scheduledDragIsLinked && !scheduledDragRelinkMode && (
               <div className={`absolute right-1.5 top-1/2 -translate-y-1/2 transition-colors duration-150 ${
                 scheduledDragCopyMode ? 'text-primary/70' : 'text-muted-foreground/25'
               }`}>
@@ -1181,11 +1215,17 @@ export function TimelineColumn({
               </div>
             )}
             {/* Unlink icon on far right for linked tasks */}
-            {!scheduledDragBlocked && scheduledDragIsLinked && (
+            {!scheduledDragBlocked && scheduledDragIsLinked && !scheduledDragRelinkMode && (
               <div className={`absolute right-1.5 top-1/2 -translate-y-1/2 transition-colors duration-150 ${
                 scheduledDragUnlinkMode ? 'text-destructive/70' : 'text-muted-foreground/25'
               }`}>
                 <Unlink size={14} />
+              </div>
+            )}
+            {/* Link icon when relink mode active */}
+            {!scheduledDragBlocked && scheduledDragRelinkMode && (
+              <div className="absolute right-1.5 top-1/2 -translate-y-1/2 text-primary/70">
+                <Link size={14} />
               </div>
             )}
           </div>

@@ -293,6 +293,30 @@ export function TimelineTaskBlock({
           useScheduledDragStore.getState().setCopyMode(inCopyZone);
           useScheduledDragStore.getState().setUnlinkMode(false);
         }
+
+        // Relink detection: check if dragged task overlaps a task with same title+duration
+        const draggedTask = task;
+        const draggedDuration = draggedTask.duration || 30;
+        const dragStart = clampedMin;
+        const dragEnd = dragStart + draggedDuration;
+        let relinkTarget: string | null = null;
+        if (!draggedTask.linked) {
+          for (const t of allTasks) {
+            if (t.id === draggedTask.id || t.completed || t.archivedAt) continue;
+            if (t.date !== col.date || !t.time) continue;
+            if (t.title === draggedTask.title && (t.duration || 30) === draggedDuration) {
+              const tStart = START_HOUR * 60 + ((parseInt(t.time.split(':')[0]) * 60 + parseInt(t.time.split(':')[1])) - START_HOUR * 60);
+              const tStartMin = parseInt(t.time.split(':')[0]) * 60 + parseInt(t.time.split(':')[1]);
+              const tEnd = tStartMin + (t.duration || 30);
+              // Check overlap
+              if (dragStart < tEnd && dragEnd > tStartMin) {
+                relinkTarget = t.id;
+                break;
+              }
+            }
+          }
+        }
+        useScheduledDragStore.getState().setRelinkMode(!!relinkTarget, relinkTarget);
       }
     };
 

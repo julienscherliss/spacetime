@@ -20,6 +20,10 @@ export interface ScheduledDragState {
   blocked: boolean;
   /** Whether the drop should copy instead of move */
   copyMode: boolean;
+  /** When set, dropping will relink this task to the target's series */
+  relinkMode: boolean;
+  /** The task ID to relink to */
+  relinkTargetId: string | null;
 }
 
 interface ScheduledDragActions {
@@ -36,6 +40,7 @@ interface ScheduledDragActions {
   setUnlinkMode: (unlink: boolean) => void;
   setBlocked: (blocked: boolean) => void;
   setCopyMode: (copy: boolean) => void;
+  setRelinkMode: (relink: boolean, targetId?: string | null) => void;
   endDrag: () => ScheduledDragState;
   cancel: () => void;
 }
@@ -53,6 +58,8 @@ const initial: ScheduledDragState = {
   unlinkMode: false,
   blocked: false,
   copyMode: false,
+  relinkMode: false,
+  relinkTargetId: null,
 };
 
 export const useScheduledDragStore = create<ScheduledDragState & ScheduledDragActions>((set, get) => ({
@@ -76,6 +83,7 @@ export const useScheduledDragStore = create<ScheduledDragState & ScheduledDragAc
   setUnlinkMode: (unlink) => set({ unlinkMode: unlink }),
   setBlocked: (blocked) => set({ blocked }),
   setCopyMode: (copyMode) => set({ copyMode }),
+  setRelinkMode: (relinkMode, targetId = null) => set({ relinkMode, relinkTargetId: targetId }),
   endDrag: () => {
     const state = { ...get() };
     set(initial);
