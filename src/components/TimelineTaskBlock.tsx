@@ -260,8 +260,6 @@ export function TimelineTaskBlock({
         }
         useScheduledDragStore.getState().activate();
         didDragRef.current = true;
-        lastPosition.current = { x: e.clientX, y: e.clientY };
-        stationaryStart.current = Date.now();
       }
 
       // Find which column the pointer is over
@@ -284,41 +282,21 @@ export function TimelineTaskBlock({
         useScheduledDragStore.getState().setBlocked(blocked);
 
         // Copy mode: pointer in rightmost 40px of column
+        const currentDragState = useScheduledDragStore.getState();
         const copyZone = colRect.right - 40;
-        useScheduledDragStore.getState().setCopyMode(e.clientX >= copyZone && !blocked);
-      }
-
-      // Track stationary hold for unlink gesture (only for linked tasks)
-      const currentState = useScheduledDragStore.getState();
-      if (currentState.active && currentState.isLinkedTask && !currentState.unlinkMode) {
-        const now = Date.now();
-        if (lastPosition.current) {
-          const moveDist = Math.hypot(
-            e.clientX - lastPosition.current.x,
-            e.clientY - lastPosition.current.y
-          );
-          if (moveDist > STATIONARY_THRESHOLD) {
-            lastPosition.current = { x: e.clientX, y: e.clientY };
-            stationaryStart.current = now;
-            clearUnlinkHold();
-          } else if (!unlinkHoldTimer.current) {
-            unlinkHoldTimer.current = setTimeout(() => {
-              const s2 = useScheduledDragStore.getState();
-              if (s2.active && s2.isLinkedTask && !s2.unlinkMode) {
-                useScheduledDragStore.getState().setUnlinkMode(true);
-                if (navigator.vibrate) navigator.vibrate(30);
-              }
-            }, UNLINK_HOLD_MS);
-          }
+        const inCopyZone = e.clientX >= copyZone && !blocked;
+        // Linked tasks get unlink in that zone; unlinked tasks get copy
+        if (currentDragState.isLinkedTask) {
+          useScheduledDragStore.getState().setUnlinkMode(inCopyZone);
+          useScheduledDragStore.getState().setCopyMode(false);
         } else {
-          lastPosition.current = { x: e.clientX, y: e.clientY };
-          stationaryStart.current = now;
+          useScheduledDragStore.getState().setCopyMode(inCopyZone);
+          useScheduledDragStore.getState().setUnlinkMode(false);
         }
       }
     };
 
     const handleUp = (e: PointerEvent) => {
-      clearUnlinkHold();
       clearPickupHold();
       setDragReady(false);
       if (!pointerStartRef.current) return;
@@ -347,7 +325,6 @@ export function TimelineTaskBlock({
     };
 
     const handleCancel = () => {
-      clearUnlinkHold();
       clearPickupHold();
       setDragReady(false);
       useScheduledDragStore.getState().cancel();
