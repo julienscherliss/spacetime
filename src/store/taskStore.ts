@@ -395,9 +395,18 @@ export const useTaskStore = create<TaskState>()(
         set((s) => ({
           tasks: s.tasks.map((t) => {
             if (t.id !== id) return t;
-            const merged = { ...t, ...updates };
+            const mobilityMode = useTimezoneStore.getState().mobilityMode;
+            let merged = { ...t, ...updates };
             if ('recurrence' in updates) {
               merged.type = deriveType(merged.recurrence);
+            }
+            // Elite mode: prevent priority de-escalation
+            if (mobilityMode === 'elite' && 'priority' in updates && updates.priority !== undefined) {
+              const today = new Date().toISOString().split('T')[0];
+              const effectiveMin = computeEffectivePriority(t, today);
+              if ((updates.priority as number) < effectiveMin) {
+                merged.priority = effectiveMin;
+              }
             }
             return merged;
           }),
