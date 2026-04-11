@@ -695,8 +695,81 @@ export const useTaskStore = create<TaskState>()(
         }));
       },
 
-      generateRecurringInstances: () => {},
-      linkSeriesFromDate: () => {},
+      generateRecurringInstances: (startDate, endDate) =>
+        set((s) => {
+          const nextTasks = [...s.tasks];
+          const recurringParents = nextTasks.filter((task) => !!task.recurrence && !task.isRecurrenceInstance);
+
+          for (const parent of recurringParents) {
+            const seriesId = getTaskSeriesId(parent);
+            const existingSeriesTasks = nextTasks.filter((task) => isTaskInSameSeries(task, seriesId));
+            const existingDates = new Set(existingSeriesTasks.map((task) => task.date));
+            const occurrences = getAllOccurrences(parent.recurrence!, parent.date, startDate, endDate);
+
+            for (const occurrenceDate of occurrences) {
+              if (existingDates.has(occurrenceDate)) continue;
+
+              const linkState = resolveGeneratedLinkState(
+                nextTasks.filter((task) => isTaskInSameSeries(task, seriesId)),
+                occurrenceDate,
+              );
+
+              nextTasks.push({
+                ...parent,
+                id: generateId(),
+                date: occurrenceDate,
+                completed: false,
+                createdAt: new Date().toISOString(),
+                archivedAt: undefined,
+                archiveReason: undefined,
+                inWaitingRoom: false,
+                waitingRoomCount: 0,
+                isRecurrenceInstance: true,
+                recurrenceParentId: parent.id,
+                detachedFromSeries: false,
+                type: deriveType(parent.recurrence),
+                linked: linkState.linked,
+                linkedGroupId: linkState.linkedGroupId,
+              });
+
+              existingDates.add(occurrenceDate);
+            }
+          }
+
+          return { tasks: nextTasks };
+        }),
+
+      linkSeriesFromDate: (taskId, fromDate, linked) =>
+        set((s) => {
+          const sourceTask = s.tasks.find((task) => task.id === taskId);
+          if (!sourceTask) return s;
+
+          const seriesId = getTaskSeriesId(sourceTask);
+          const nextGroupId = linked ? (sourceTask.linkedGroupId || sourceTask.id) : undefined;
+
+          return {
+            tasks: s.tasks.map((task) => {
+              if (!isTaskInSameSeries(task, seriesId)) return task;
+
+              if (!linked) {
+                if (task.id !== taskId) return task;
+                return {
+                  ...task,
+                  linked: false,
+                  linkedGroupId: undefined,
+                };
+              }
+
+              if (task.date < fromDate && task.id !== taskId) return task;
+
+              return {
+                ...task,
+                linked: true,
+                linkedGroupId: nextGroupId,
+              };
+            }),
+          };
+        }),
     }),
     {
       name: 'task-storage',
