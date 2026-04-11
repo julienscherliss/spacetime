@@ -304,22 +304,27 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                   onClick={async (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    if (opt.value !== 'off') {
-                      const status = await requestNotificationPermission();
-                      if (status === 'denied') {
-                        toast.error(
-                          'Notifications are blocked. Go to iPhone Settings → spaacetime → Notifications and enable them.',
-                          { duration: 6000 }
-                        );
-                        return;
-                      }
-                    }
+
                     setNotificationLevel(opt.value);
+
+                    if (opt.value === 'off') {
+                      await rescheduleAllNotifications(useTaskStore.getState().tasks, 'off');
+                      toast.success('Notifications turned off');
+                      return;
+                    }
+
+                    const status = await requestNotificationPermission();
+                    if (status === 'denied') {
+                      toast.error(
+                        'Notifications preference saved, but iPhone notifications are blocked. Go to Settings → spaacetime → Notifications to enable them.',
+                        { duration: 6000 }
+                      );
+                      return;
+                    }
+
                     const allTasks = useTaskStore.getState().tasks;
                     await rescheduleAllNotifications(allTasks, opt.value);
-                    if (opt.value !== 'off') {
-                      toast.success(`Notifications set to ${opt.label}`);
-                    }
+                    toast.success(`Notifications set to ${opt.label}`);
                   }}
                   className={`flex-1 py-2.5 rounded-[2px] text-[11px] font-mono tracking-wider transition-colors min-h-[44px] ${
                     notificationLevel === opt.value
