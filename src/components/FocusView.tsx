@@ -921,7 +921,7 @@ function MainFocusPanel({
           {hasOverdue ? (
             <>
               <div className="font-display text-[64px] sm:text-[80px] font-bold text-primary/70 leading-none tabular-nums tracking-tight select-none">
-                +{overdueH}:{overdueM}
+                {overdueH}:{overdueM}
               </div>
               <h1 className="mt-3 text-sm font-display font-medium text-primary/60 leading-tight text-center uppercase">
                 {overdueTasks.length === 1 ? overdueTasks[0].title : `${overdueTasks.length} tasks`}
