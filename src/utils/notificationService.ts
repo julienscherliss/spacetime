@@ -11,6 +11,9 @@
  * We intentionally stay well below that limit to preserve headroom and avoid
  * churn near the cap.
  *
+ * OVERDUE THRESHOLD: A task is overdue when current time > task START + DURATION.
+ * If no duration is set, it's overdue once the start time passes.
+ *
  * All native plugin interactions go through this module.
  * UI components should never call LocalNotifications directly.
  */
@@ -59,9 +62,11 @@ const LEAD_MINUTES = 5;
 const TEST_NOTIFICATION_ID = 984251;
 const PLUGIN_NAME = 'LocalNotifications';
 
-const IOS_MAX_PENDING = 64;
 const SAFE_PENDING_CAP = 50;
 const MAX_TASK_NOTIFICATIONS = SAFE_PENDING_CAP;
+
+/** Reserve this many slots exclusively for overdue + imminent (firing within 10 min) */
+const RESERVED_URGENT_SLOTS = 25;
 
 const TASK_ID_OFFSET = 1_000_000;
 const OVERDUE_ID_OFFSET = 2_000_000;
@@ -76,6 +81,8 @@ let lastSyncFingerprint = '';
 let lastSyncCompletedAt = 0;
 let debugMode = false;
 let cachedPermission: NotificationPermissionStatus | null = null;
+/** Guard: only one tap listener may be registered */
+let tapListenerRegistered = false;
 
 function log(msg: string, data?: unknown) {
   if (data !== undefined) {
@@ -148,16 +155,11 @@ function overdueNotificationId(taskId: string, absoluteMinuteTimestamp: number):
 
 function priorityLabel(p: Priority): string {
   switch (p) {
-    case 0:
-      return 'FLEX';
-    case 1:
-      return 'SEMI';
-    case 2:
-      return 'FIXED';
-    case 3:
-      return 'LOCK';
-    default:
-      return '';
+    case 0: return 'FLEX';
+    case 1: return 'SEMI';
+    case 2: return 'FIXED';
+    case 3: return 'LOCK';
+    default: return '';
   }
 }
 
@@ -173,6 +175,17 @@ function getTaskStartMs(task: Task): number | null {
   const dt = new Date(`${task.date}T00:00:00`);
   dt.setHours(h, m, 0, 0);
   return dt.getTime();
+}
+
+/**
+ * Get the task END time: start + duration.
+ * If no duration, falls back to start time (task is overdue once start passes).
+ */
+function getTaskEndMs(task: Task): number | null {
+  const startMs = getTaskStartMs(task);
+  if (startMs === null) return null;
+  const durationMs = (task.duration ?? 0) * 60_000;
+  return startMs + durationMs;
 }
 
 function nextMinuteSlotStart(nowMs: number): number {
@@ -195,23 +208,22 @@ function getNotificationTaskId(notification: { extra?: unknown }): string | null
 function getOverdueRemovalReason(task: Task | undefined, nowMs: number): string {
   if (!task) return 'task deleted';
   if (task.completed) return 'task completed';
-  const taskStartMs = getTaskStartMs(task);
-  if (taskStartMs === null) return 'task unscheduled';
-  if (taskStartMs > nowMs) return 'task moved to future';
+  const endMs = getTaskEndMs(task);
+  if (endMs === null) return 'task unscheduled';
+  if (endMs > nowMs) return 'task not yet overdue (end time in future)';
   return 'slot outside desired overdue window';
 }
 
 /**
  * Build a fingerprint of notification-relevant task data for change detection.
- * For overdue mode, include the current minute bucket so the sliding overdue
- * window only advances once per minute.
+ * Includes duration since overdue threshold depends on it.
  */
 function buildFingerprint(tasks: Task[], level: NotificationLevel, persistentOverdue: boolean): string {
   if (level === 'off') return 'off';
   const nowMinute = persistentOverdue ? Math.floor(Date.now() / 60_000) : 0;
   const parts = tasks
     .filter((t) => shouldNotify(t, level) && t.time && !t.completed)
-    .map((t) => `${t.id}:${t.date}:${t.time}:${t.priority}:${t.title}:${t.completed}`)
+    .map((t) => `${t.id}:${t.date}:${t.time}:${t.priority}:${t.title}:${t.completed}:${t.duration ?? 0}`)
     .sort();
   return `${level}:po=${persistentOverdue}:m=${nowMinute}:${parts.join('|')}`;
 }
@@ -222,6 +234,8 @@ interface DesiredNotification {
   fireAt: Date;
   taskId: string;
   type: 'reminder' | 'overdue';
+  /** true if fires within 10 min of now */
+  isUrgent: boolean;
 }
 
 interface DesiredComputation {
@@ -232,6 +246,7 @@ interface DesiredComputation {
   overdueKeptCount: number;
   skippedDueToCap: number;
   overdueSkippedDueToCap: number;
+  evictedFutureReminders: number;
 }
 
 function computeDesired(
@@ -239,45 +254,45 @@ function computeDesired(
   level: NotificationLevel,
   persistentOverdue: boolean,
 ): DesiredComputation {
-  if (level === 'off') {
-    return {
-      desired: new Map(),
-      candidateCount: 0,
-      keptCount: 0,
-      overdueCandidateCount: 0,
-      overdueKeptCount: 0,
-      skippedDueToCap: 0,
-      overdueSkippedDueToCap: 0,
-    };
-  }
+  const empty: DesiredComputation = {
+    desired: new Map(),
+    candidateCount: 0,
+    keptCount: 0,
+    overdueCandidateCount: 0,
+    overdueKeptCount: 0,
+    skippedDueToCap: 0,
+    overdueSkippedDueToCap: 0,
+    evictedFutureReminders: 0,
+  };
+
+  if (level === 'off') return empty;
 
   const now = Date.now();
-  const candidates: { id: number; data: DesiredNotification }[] = [];
+  const urgentThresholdMs = now + 10 * 60_000; // within 10 min = urgent
+
+  // Collect candidates in two buckets: urgent (overdue + imminent) and future
+  const urgentCandidates: { id: number; data: DesiredNotification }[] = [];
+  const futureCandidates: { id: number; data: DesiredNotification }[] = [];
   let totalOverdueSlots = 0;
   let overdueCandidateCount = 0;
+
+  /** Track which tasks already have overdue notifications to avoid duplicate reminders */
+  const tasksWithOverdue = new Set<string>();
 
   for (const task of tasks) {
     if (!shouldNotify(task, level)) continue;
     if (!task.time || task.completed) continue;
 
-    const taskTimeMs = getTaskStartMs(task);
-    if (taskTimeMs === null) continue;
+    const taskStartMs = getTaskStartMs(task);
+    if (taskStartMs === null) continue;
 
-    const reminderAt = new Date(taskTimeMs - LEAD_MINUTES * 60_000);
-    if (reminderAt.getTime() > now) {
-      candidates.push({
-        id: taskNotificationId(task.id),
-        data: {
-          title: `${priorityLabel(task.priority)} — ${task.title}`,
-          body: `Starts in ${LEAD_MINUTES} min · ${task.time}`,
-          fireAt: reminderAt,
-          taskId: task.id,
-          type: 'reminder',
-        },
-      });
-    }
+    const taskEndMs = getTaskEndMs(task)!; // always non-null when startMs is non-null
 
-    if (persistentOverdue && taskTimeMs <= now) {
+    // ── Overdue notifications ──
+    // Overdue = current time > task END time (start + duration)
+    if (persistentOverdue && taskEndMs <= now) {
+      tasksWithOverdue.add(task.id);
+
       const availableSlots = Math.min(
         OVERDUE_WINDOW_MINUTES,
         MAX_OVERDUE_PER_TASK,
@@ -290,82 +305,110 @@ function computeDesired(
       }
 
       const windowStartMs = nextMinuteSlotStart(now);
-      const slotLabels: string[] = [];
 
       for (let i = 0; i < availableSlots; i++) {
         const fireTimeMs = windowStartMs + i * 60_000;
         const absoluteMinute = absoluteMinuteFromMs(fireTimeMs);
-        const overdueMinutesAtFire = Math.max(1, Math.floor((fireTimeMs - taskTimeMs) / 60_000));
+        const overdueMinutesAtFire = Math.max(1, Math.floor((fireTimeMs - taskEndMs) / 60_000));
 
-        candidates.push({
+        const candidate = {
           id: overdueNotificationId(task.id, absoluteMinute),
           data: {
             title: `OVERDUE — ${task.title}`,
             body: `${overdueMinutesAtFire} min overdue · was ${task.time}`,
             fireAt: new Date(fireTimeMs),
             taskId: task.id,
-            type: 'overdue',
+            type: 'overdue' as const,
+            isUrgent: true, // overdue is always urgent
           },
-        });
+        };
 
-        slotLabels.push(new Date(fireTimeMs).toISOString());
+        urgentCandidates.push(candidate);
       }
 
       totalOverdueSlots += availableSlots;
       overdueCandidateCount += availableSlots;
+      continue; // Don't also schedule a reminder for an already-overdue task
+    }
 
-      logDebug('overdue task desired window', {
-        title: task.title,
-        taskId: task.id,
-        windowStart: slotLabels[0],
-        windowEnd: slotLabels[slotLabels.length - 1],
-        slots: slotLabels,
-      });
+    // ── Standard 5-min-before reminder ──
+    // Only schedule if task is NOT already overdue
+    const reminderAtMs = taskStartMs - LEAD_MINUTES * 60_000;
+    if (reminderAtMs > now) {
+      const isUrgent = reminderAtMs <= urgentThresholdMs;
+      const candidate = {
+        id: taskNotificationId(task.id),
+        data: {
+          title: `${priorityLabel(task.priority)} — ${task.title}`,
+          body: `Starts in ${LEAD_MINUTES} min · ${task.time}`,
+          fireAt: new Date(reminderAtMs),
+          taskId: task.id,
+          type: 'reminder' as const,
+          isUrgent,
+        },
+      };
+
+      if (isUrgent) {
+        urgentCandidates.push(candidate);
+      } else {
+        futureCandidates.push(candidate);
+      }
     }
   }
 
-  candidates.sort((a, b) => {
-    if (a.data.type === 'overdue' && b.data.type !== 'overdue') return -1;
-    if (a.data.type !== 'overdue' && b.data.type === 'overdue') return 1;
-    return a.data.fireAt.getTime() - b.data.fireAt.getTime();
-  });
+  // ── Priority-based queue packing ──
+  // 1. Urgent candidates get first priority (up to RESERVED_URGENT_SLOTS)
+  // 2. Remaining slots go to future reminders
+  // 3. If urgent exceeds reserved slots, they still get priority over future
 
-  const capped = candidates.slice(0, MAX_TASK_NOTIFICATIONS);
+  // Sort urgent by fire time
+  urgentCandidates.sort((a, b) => a.data.fireAt.getTime() - b.data.fireAt.getTime());
+  // Sort future by fire time
+  futureCandidates.sort((a, b) => a.data.fireAt.getTime() - b.data.fireAt.getTime());
+
   const desired = new Map<number, DesiredNotification>();
-  for (const candidate of capped) {
-    desired.set(candidate.id, candidate.data);
+
+  // Add all urgent first
+  for (const c of urgentCandidates) {
+    if (desired.size >= MAX_TASK_NOTIFICATIONS) break;
+    desired.set(c.id, c.data);
   }
 
-  const overdueKeptCount = capped.filter((candidate) => candidate.data.type === 'overdue').length;
-  const skippedDueToCap = Math.max(0, candidates.length - capped.length);
+  const urgentCount = desired.size;
+
+  // Fill remaining with future reminders
+  let evictedFutureReminders = 0;
+  for (const c of futureCandidates) {
+    if (desired.size >= MAX_TASK_NOTIFICATIONS) {
+      evictedFutureReminders++;
+      continue;
+    }
+    desired.set(c.id, c.data);
+  }
+
+  const overdueKeptCount = [...desired.values()].filter((d) => d.type === 'overdue').length;
+  const skippedDueToCap = Math.max(0, urgentCandidates.length + futureCandidates.length - desired.size);
   const overdueSkippedDueToCap = Math.max(0, overdueCandidateCount - overdueKeptCount);
 
-  if (persistentOverdue) {
-    log('overdue desired slots count', { count: overdueKeptCount });
-    if (overdueSkippedDueToCap > 0) {
-      log('overdue skipped due to cap', {
-        count: overdueSkippedDueToCap,
-        safeCap: MAX_TASK_NOTIFICATIONS,
-      });
-    }
-  }
-
-  logDebug('computed desired', {
-    candidateCount: candidates.length,
-    keptCount: capped.length,
-    overdueCandidateCount,
-    overdueKeptCount,
-    skippedDueToCap,
+  log('queue allocation', {
+    urgentSlots: urgentCount,
+    futureSlots: desired.size - urgentCount,
+    totalDesired: desired.size,
+    cap: MAX_TASK_NOTIFICATIONS,
+    evictedFuture: evictedFutureReminders,
+    overdueKept: overdueKeptCount,
+    overdueSkipped: overdueSkippedDueToCap,
   });
 
   return {
     desired,
-    candidateCount: candidates.length,
-    keptCount: capped.length,
+    candidateCount: urgentCandidates.length + futureCandidates.length,
+    keptCount: desired.size,
     overdueCandidateCount,
     overdueKeptCount,
     skippedDueToCap,
     overdueSkippedDueToCap,
+    evictedFutureReminders,
   };
 }
 
@@ -470,104 +513,78 @@ export async function syncTaskNotifications(
   const now = Date.now();
   const fp = buildFingerprint(tasks, level, persistentOverdue);
 
+  // Skip if fingerprint unchanged (unless forced)
   if (!force && fp === lastSyncFingerprint) {
     logDebug('sync skipped — fingerprint unchanged');
     return { scheduled: 0, canceled: 0, unchanged: 0, skipped: true, reason: 'unchanged' };
   }
 
-  if (fp === lastSyncFingerprint && now - lastSyncCompletedAt < SYNC_COALESCE_MS) {
-    log('overdue sync coalesced', {
-      reason: 'recent identical sync',
-      msSinceLastSync: now - lastSyncCompletedAt,
-    });
+  // Coalesce rapid identical syncs
+  if (!force && fp === lastSyncFingerprint && now - lastSyncCompletedAt < SYNC_COALESCE_MS) {
+    log('sync coalesced', { reason: 'recent identical sync', msSinceLastSync: now - lastSyncCompletedAt });
     return { scheduled: 0, canceled: 0, unchanged: 0, skipped: true, reason: 'coalesced' };
   }
 
+  // Prevent concurrent syncs
   if (syncInFlight) {
-    log('overdue sync coalesced', { reason: 'sync already in flight' });
+    log('sync coalesced', { reason: 'sync already in flight' });
     return { scheduled: 0, canceled: 0, unchanged: 0, skipped: true, reason: 'in flight' };
   }
 
   syncInFlight = true;
 
   try {
-    log('sync start', { level, taskCount: tasks.length, persistentOverdue, safeCap: MAX_TASK_NOTIFICATIONS });
-
     const pending = await LocalNotifications.getPending();
-    const managedPending = pending.notifications.filter((notification) => isManagedNotificationId(notification.id));
+    const managedPending = pending.notifications.filter((n) => isManagedNotificationId(n.id));
+
+    log('sync start', {
+      level,
+      taskCount: tasks.length,
+      persistentOverdue,
+      queueBefore: managedPending.length,
+      cap: MAX_TASK_NOTIFICATIONS,
+    });
 
     if (level === 'off') {
       if (managedPending.length > 0) {
         await LocalNotifications.cancel({
-          notifications: managedPending.map((notification) => ({ id: notification.id })),
+          notifications: managedPending.map((n) => ({ id: n.id })),
         });
       }
       lastSyncFingerprint = fp;
       lastSyncCompletedAt = Date.now();
-      log('sync result', { scheduled: 0, canceled: managedPending.length, unchanged: 0 });
+      log('sync result — all off', { canceled: managedPending.length });
       return { scheduled: 0, canceled: managedPending.length, unchanged: 0, skipped: false };
     }
 
     const desiredResult = computeDesired(tasks, level, persistentOverdue);
     const desired = desiredResult.desired;
     const desiredIds = new Set(desired.keys());
-    const currentIds = new Set(managedPending.map((notification) => notification.id));
+    const currentIds = new Set(managedPending.map((n) => n.id));
 
+    // Cancel managed notifications that are no longer desired
     const toCancel = managedPending
-      .filter((notification) => !desiredIds.has(notification.id))
-      .map((notification) => notification.id);
+      .filter((n) => !desiredIds.has(n.id))
+      .map((n) => n.id);
+
+    // Schedule only new desired notifications not already pending
     const toSchedule = [...desiredIds].filter((id) => !currentIds.has(id));
     const unchanged = desired.size - toSchedule.length;
 
-    const desiredOverdueEntries = [...desired.entries()].filter(([, item]) => item.type === 'overdue');
-    const desiredOverdueIds = new Set(desiredOverdueEntries.map(([id]) => id));
-    const currentOverdueNotifications = managedPending.filter((notification) => isOverdueNotificationId(notification.id));
-    const currentOverdueIds = new Set(currentOverdueNotifications.map((notification) => notification.id));
-
-    const overduePreservedIds = [...desiredOverdueIds].filter((id) => currentOverdueIds.has(id));
-    const overdueMissingIds = [...desiredOverdueIds].filter((id) => !currentOverdueIds.has(id));
-    const overdueObsoleteNotifications = currentOverdueNotifications.filter(
-      (notification) => !desiredOverdueIds.has(notification.id),
-    );
-    const overdueObsoleteIds = overdueObsoleteNotifications.map((notification) => notification.id);
-
-    log('overdue sync start', { persistentOverdue, safeCap: MAX_TASK_NOTIFICATIONS });
-    log('overdue existing slots count', { count: currentOverdueIds.size });
-    log('overdue preserved count', { count: overduePreservedIds.length });
-    log('overdue missing count', { count: overdueMissingIds.length });
-    log('overdue obsolete count', { count: overdueObsoleteIds.length });
-
-    if (debugMode && persistentOverdue) {
-      const desiredByTask = new Map<string, { title: string; slots: Array<{ id: number; at: string }> }>();
-      for (const [id, item] of desiredOverdueEntries) {
-        const entry = desiredByTask.get(item.taskId) ?? { title: item.title, slots: [] };
-        entry.slots.push({ id, at: item.fireAt.toISOString() });
-        desiredByTask.set(item.taskId, entry);
+    // ── Duplicate detection diagnostic ──
+    if (debugMode) {
+      // Check for same-task notifications firing within the same minute
+      const byTaskMinute = new Map<string, { id: number; type: string; at: string }[]>();
+      for (const [id, item] of desired.entries()) {
+        const minuteKey = `${item.taskId}:${absoluteMinuteFromMs(item.fireAt.getTime())}`;
+        const list = byTaskMinute.get(minuteKey) ?? [];
+        list.push({ id, type: item.type, at: item.fireAt.toISOString() });
+        byTaskMinute.set(minuteKey, list);
       }
-
-      for (const [taskId, entry] of desiredByTask.entries()) {
-        const preserved = entry.slots.filter((slot) => currentOverdueIds.has(slot.id));
-        const missing = entry.slots.filter((slot) => !currentOverdueIds.has(slot.id));
-        logDebug('overdue task sync detail', {
-          taskId,
-          taskTitle: entry.title.replace(/^OVERDUE — /, ''),
-          windowStart: entry.slots[0]?.at,
-          windowEnd: entry.slots[entry.slots.length - 1]?.at,
-          preservedSlots: preserved,
-          missingSlots: missing,
-        });
-      }
-
-      const taskLookup = buildTaskLookup(tasks);
-      for (const notification of overdueObsoleteNotifications) {
-        const taskId = getNotificationTaskId(notification);
-        const task = taskId ? taskLookup.get(taskId) : undefined;
-        logDebug('overdue obsolete slot', {
-          taskId,
-          taskTitle: task?.title ?? null,
-          notificationId: notification.id,
-          reason: getOverdueRemovalReason(task, now),
-        });
+      for (const [key, items] of byTaskMinute.entries()) {
+        if (items.length > 1) {
+          log('DUPLICATE DETECTION — same task/minute', { key, items });
+        }
       }
     }
 
@@ -600,9 +617,6 @@ export async function syncTaskNotifications(
     const overdueCanceled = toCancel.filter((id) => isOverdueNotificationId(id)).length;
     const overdueScheduled = toSchedule.filter((id) => isOverdueNotificationId(id)).length;
 
-    log('overdue canceled count', { count: overdueCanceled });
-    log('overdue scheduled count', { count: overdueScheduled });
-
     lastSyncFingerprint = fp;
     lastSyncCompletedAt = Date.now();
 
@@ -612,11 +626,9 @@ export async function syncTaskNotifications(
       unchanged,
       overdueScheduled,
       overdueCanceled,
-      overdueUnchanged: overduePreservedIds.length,
-      overduePreserved: overduePreservedIds.length,
-      safeCap: MAX_TASK_NOTIFICATIONS,
-      skippedDueToCap: desiredResult.skippedDueToCap,
-      overdueSkippedDueToCap: desiredResult.overdueSkippedDueToCap,
+      queueAfter: desired.size,
+      evictedFuture: desiredResult.evictedFutureReminders,
+      cap: MAX_TASK_NOTIFICATIONS,
     });
 
     return { scheduled: toSchedule.length, canceled: toCancel.length, unchanged, skipped: false };
@@ -635,7 +647,6 @@ export async function cancelNotificationsForTask(taskId: string): Promise<void> 
     const pending = await LocalNotifications.getPending();
 
     // Build a set of all possible overdue IDs for this task in a wide window
-    // (cover past 24h + future 30min = ~1470 minute slots)
     const nowMinute = Math.floor(Date.now() / 60_000);
     const possibleOverdueIds = new Set<number>();
     for (let m = nowMinute - 1440; m <= nowMinute + 30; m++) {
@@ -644,11 +655,8 @@ export async function cancelNotificationsForTask(taskId: string): Promise<void> 
 
     const matching = pending.notifications.filter((notification) => {
       if (!isManagedNotificationId(notification.id)) return false;
-      // Match regular reminder
       if (notification.id === taskNotificationId(taskId)) return true;
-      // Match by extra.taskId (may not always be available on iOS)
       if (getNotificationTaskId(notification) === taskId) return true;
-      // Match overdue slots by deterministic ID
       if (possibleOverdueIds.has(notification.id)) return true;
       return false;
     });
@@ -723,10 +731,21 @@ export function isNotificationDebugMode(): boolean {
   return debugMode;
 }
 
+/**
+ * Register the notification tap listener ONCE. Subsequent calls are no-ops.
+ * Returns a cleanup function on first registration, undefined on subsequent calls.
+ */
 export function setupNotificationTapListener(
   onTap: (taskId: string | null) => void,
 ): (() => void) | undefined {
   if (!Capacitor.isNativePlatform()) return undefined;
+
+  if (tapListenerRegistered) {
+    log('tap listener already registered — skipping duplicate');
+    return undefined;
+  }
+
+  tapListenerRegistered = true;
 
   const listener = LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
     const taskId = (action.notification?.extra as { taskId?: string } | undefined)?.taskId ?? null;
@@ -735,6 +754,7 @@ export function setupNotificationTapListener(
   });
 
   return () => {
+    tapListenerRegistered = false;
     listener.then((l) => l.remove());
   };
 }
