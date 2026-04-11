@@ -33,8 +33,6 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const [confirmPw, setConfirmPw] = useState('');
   const [pwLoading, setPwLoading] = useState(false);
   const [authProvider, setAuthProvider] = useState<'email' | 'google' | 'unknown'>('unknown');
-  const [notificationLoading, setNotificationLoading] = useState(false);
-  const [notificationDebug, setNotificationDebug] = useState<NotificationDebugSnapshot>(() => getDebugSnapshotSync());
 
   useEffect(() => {
     if (!open) return;
@@ -48,112 +46,6 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   useEffect(() => {
     if (open) checkStatus();
   }, [open]);
-
-  // Refresh debug snapshot when panel opens — does NOT trigger scheduling
-  useEffect(() => {
-    let cancelled = false;
-    if (!open) return;
-
-    void (async () => {
-      const snapshot = await getDebugSnapshot();
-      if (!cancelled) {
-        setNotificationDebug((prev) => ({
-          ...snapshot,
-          requestResult: prev.requestResult,
-          requestError: prev.requestError,
-          scheduleStatus: prev.scheduleStatus ?? snapshot.scheduleStatus,
-          scheduleError: prev.scheduleError,
-        }));
-      }
-    })();
-
-    return () => { cancelled = true; };
-  }, [open]);
-
-  const refreshNotificationDebug = async (overrides: Partial<NotificationDebugSnapshot> = {}) => {
-    const snapshot = await getDebugSnapshot();
-    const hasOverride = <K extends keyof NotificationDebugSnapshot>(key: K) => Object.prototype.hasOwnProperty.call(overrides, key);
-    const nextState: NotificationDebugSnapshot = {
-      ...snapshot,
-      requestResult: hasOverride('requestResult') ? overrides.requestResult ?? null : notificationDebug.requestResult,
-      requestError: hasOverride('requestError') ? overrides.requestError ?? null : notificationDebug.requestError,
-      scheduleStatus: hasOverride('scheduleStatus') ? overrides.scheduleStatus ?? null : notificationDebug.scheduleStatus ?? snapshot.scheduleStatus,
-      scheduleError: hasOverride('scheduleError') ? overrides.scheduleError ?? null : notificationDebug.scheduleError,
-    };
-    setNotificationDebug(nextState);
-    return nextState;
-  };
-
-  /**
-   * Enable flow: request permission → schedule test → sync tasks.
-   * Only called from a direct user tap.
-   */
-  const handleEnableNotifications = async () => {
-    if (!isNativePlatform()) {
-      toast('Notifications only work in the native mobile app.');
-      return;
-    }
-
-    setNotificationLoading(true);
-
-    try {
-      console.log('[notifications] enable button tapped');
-
-      // Step 1: Request permission
-      const permResult = await requestPermissionFromUserAction();
-      console.log('[notifications] permission result', permResult);
-
-      if (permResult.error) {
-        await refreshNotificationDebug({
-          requestResult: permResult.status,
-          requestError: permResult.error,
-          scheduleStatus: `Permission error: ${permResult.error}`,
-        });
-        toast.error(permResult.error, { duration: 7000 });
-        return;
-      }
-
-      const granted = permResult.status === 'granted';
-
-      if (!granted) {
-        await refreshNotificationDebug({
-          requestResult: permResult.status,
-          scheduleStatus: 'Permission denied. Enable in iPhone Settings → spaacetime → Notifications.',
-        });
-        toast.error('Notifications blocked. Go to iPhone Settings → spaacetime → Notifications.', { duration: 6000 });
-        return;
-      }
-
-      // Step 2: Schedule test notification
-      const testResult = await scheduleTestNotification(8);
-      console.log('[notifications] test result', testResult);
-
-      // Step 3: Sync real task notifications (force to pick up permission change)
-      if (notificationLevel !== 'off') {
-        const syncResult = await syncTaskNotifications(useTaskStore.getState().tasks, notificationLevel, true);
-        console.log('[notifications] initial sync result', syncResult);
-      }
-
-      const scheduleStatus = testResult.ok
-        ? `Permission granted. Test notification in ~8s.${testResult.scheduledFor ? ` (${testResult.scheduledFor})` : ''}`
-        : `Test notification error: ${testResult.error ?? 'Unknown'}`;
-
-      await refreshNotificationDebug({
-        requestResult: 'granted',
-        scheduleStatus,
-        scheduleError: testResult.error,
-      });
-
-      toast.success(testResult.ok ? 'Notifications enabled. Test alert in ~8s.' : 'Notifications enabled.');
-    } catch (error) {
-      console.error('[notifications] enable flow error', error);
-      const msg = error instanceof Error ? error.message : String(error);
-      await refreshNotificationDebug({ scheduleStatus: `Enable failed: ${msg}`, scheduleError: msg });
-      toast.error(msg, { duration: 7000 });
-    } finally {
-      setNotificationLoading(false);
-    }
-  };
 
   const filtered = useMemo(() => {
     if (!search) return TIMEZONES.slice(0, 50);
