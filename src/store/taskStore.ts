@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { getWeekBounds } from '@/hooks/useCurrentTime';
 import type { Subtask } from '@/components/SubtaskList';
+import { useTimezoneStore } from '@/store/timezoneStore';
 
 export type Priority = 0 | 1 | 2 | 3;
 export type TaskType = 'one-time' | 'recurring';
@@ -166,6 +167,28 @@ function sortTasksBySeriesOrder(tasks: Task[]): Task[] {
     if (a.date !== b.date) return a.date.localeCompare(b.date);
     return a.createdAt.localeCompare(b.createdAt);
   });
+}
+
+/** Compute effective priority based on due date and mobility mode */
+function computeEffectivePriority(task: Task, today: string): Priority {
+  const mobilityMode = useTimezoneStore.getState().mobilityMode;
+  if (mobilityMode === 'disabled') return task.priority;
+  if (!task.dueDate) return task.priority;
+
+  let minPriority = task.priority;
+
+  // Due today or overdue → at least FIXED (2)
+  if (task.dueDate <= today) {
+    minPriority = Math.max(minPriority, 2) as Priority;
+  } else {
+    // Check if due this week
+    const weekBounds = getWeekBounds(today);
+    if (task.dueDate <= weekBounds.end) {
+      minPriority = Math.max(minPriority, 1) as Priority;
+    }
+  }
+
+  return minPriority as Priority;
 }
 
 function resolveGeneratedLinkState(seriesTasks: Task[], occurrenceDate: string): { linked: boolean; linkedGroupId?: string } {
@@ -372,9 +395,18 @@ export const useTaskStore = create<TaskState>()(
         set((s) => ({
           tasks: s.tasks.map((t) => {
             if (t.id !== id) return t;
-            const merged = { ...t, ...updates };
+            const mobilityMode = useTimezoneStore.getState().mobilityMode;
+            let merged = { ...t, ...updates };
             if ('recurrence' in updates) {
               merged.type = deriveType(merged.recurrence);
+            }
+            // Elite mode: prevent priority de-escalation
+            if (mobilityMode === 'elite' && 'priority' in updates && updates.priority !== undefined) {
+              const today = new Date().toISOString().split('T')[0];
+              const effectiveMin = computeEffectivePriority(t, today);
+              if ((updates.priority as number) < effectiveMin) {
+                merged.priority = effectiveMin;
+              }
             }
             return merged;
           }),
@@ -584,8 +616,14 @@ export const useTaskStore = create<TaskState>()(
 
       getTasksForDate: (date) => {
         const state = get();
-        return state.tasks.filter((t) => t.date === date && !t.completed && !t.inWaitingRoom && !t.archivedAt &&
-          !(!state.routinesEnabled && t.isRoutine !== false && t.type === 'recurring'));
+        const today = new Date().toISOString().split('T')[0];
+        return state.tasks
+          .filter((t) => t.date === date && !t.completed && !t.inWaitingRoom && !t.archivedAt &&
+            !(!state.routinesEnabled && t.isRoutine !== false && t.type === 'recurring'))
+          .map((t) => {
+            const ePri = computeEffectivePriority(t, today);
+            return ePri !== t.priority ? { ...t, priority: ePri } : t;
+          });
       },
 
       getCurrentFocusTask: () => {
