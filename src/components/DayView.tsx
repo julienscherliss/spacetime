@@ -239,7 +239,7 @@ export function DayView() {
       onTouchEnd={handleTouchEnd}
     >
       {/* Bold title row — scrolls away naturally */}
-      <div className="pt-3 pb-2">
+      <div className="pt-1 pb-0.5">
         <h2 className="text-lg sm:text-xl font-display font-bold text-foreground tracking-tight">
           {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', {
             weekday: 'long',
@@ -247,13 +247,13 @@ export function DayView() {
             day: 'numeric',
           })}
         </h2>
-        <p className="text-[10px] font-mono text-muted-foreground/50 mt-0.5 tracking-widest">
+        <p className="text-[10px] font-mono text-muted-foreground/50 tracking-widest">
           {completedCount}/{dayTasks.length} COMPLETED
         </p>
       </div>
 
       {/* Sticky compact control row — top-0 on mobile (bottom nav), top-12 on desktop (top nav) */}
-      <div className="sticky top-0 sm:top-12 z-30 bg-background py-1.5 flex items-center justify-between border-b border-border/30">
+      <div className="sticky top-0 sm:top-12 z-30 bg-background py-1 flex items-center justify-between border-b border-border/30">
         <div className="flex items-center gap-0.5">
           <button
             onClick={() => setSelectedDate(d => addDaysToDate(d, -1))}

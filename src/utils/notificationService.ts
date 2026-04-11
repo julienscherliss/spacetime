@@ -140,10 +140,14 @@ function taskNotificationId(taskId: string): number {
   return TASK_ID_OFFSET + (Math.abs(hash) % 1_000_000);
 }
 
-/** Derive a stable numeric ID for an overdue reminder (task + minute offset) */
-function overdueNotificationId(taskId: string, minuteOffset: number): number {
+/**
+ * Derive a stable numeric ID for an overdue reminder based on task + absolute
+ * minute timestamp. This ensures the same minute slot always produces the same
+ * ID regardless of when the sync runs, preventing cancel/reschedule churn.
+ */
+function overdueNotificationId(taskId: string, absoluteMinuteTimestamp: number): number {
   let hash = 0;
-  const key = `${taskId}:overdue:${minuteOffset}`;
+  const key = `${taskId}:overdue:${absoluteMinuteTimestamp}`;
   for (let i = 0; i < key.length; i++) {
     hash = ((hash << 5) - hash + key.charCodeAt(i)) | 0;
   }
@@ -166,14 +170,19 @@ function shouldNotify(task: Task, level: NotificationLevel): boolean {
   return (task.priority as number) >= 2;
 }
 
-/** Build a fingerprint of notification-relevant task data for change detection */
+/**
+ * Build a fingerprint of notification-relevant task data for change detection.
+ * For overdue mode, include a rounded minute timestamp so the fingerprint only
+ * changes once per minute rather than on every render cycle.
+ */
 function buildFingerprint(tasks: Task[], level: NotificationLevel, persistentOverdue: boolean): string {
   if (level === 'off') return 'off';
+  const nowMinute = persistentOverdue ? Math.floor(Date.now() / 60_000) : 0;
   const parts = tasks
     .filter(t => shouldNotify(t, level) && t.time && !t.completed)
     .map(t => `${t.id}:${t.date}:${t.time}:${t.priority}:${t.title}:${t.completed}`)
     .sort();
-  return `${level}:po=${persistentOverdue}:${parts.join('|')}`;
+  return `${level}:po=${persistentOverdue}:m=${nowMinute}:${parts.join('|')}`;
 }
 
 interface DesiredNotification {
@@ -226,25 +235,27 @@ function computeDesired(
       });
     }
 
-    // Overdue persistent reminders
+    // Overdue persistent reminders — use absolute minute timestamps for stable IDs
     if (persistentOverdue && taskTimeMs <= now) {
-      // Task is overdue — schedule rolling reminders for the next N minutes
-      const overdueMinutes = Math.floor((now - taskTimeMs) / 60_000);
       const remainingSlots = Math.min(MAX_OVERDUE_PER_TASK, MAX_OVERDUE_TOTAL - totalOverdueSlots);
 
       if (remainingSlots > 0) {
         let scheduled = 0;
-        for (let offset = 1; offset <= remainingSlots; offset++) {
-          const minuteFromNow = offset;
-          const fireTime = new Date(now + minuteFromNow * 60_000);
-          const totalOffset = overdueMinutes + offset;
+        // Round "now" up to the next full minute boundary for clean scheduling
+        const nowMinute = Math.ceil(now / 60_000) * 60_000;
+
+        for (let i = 0; i < remainingSlots; i++) {
+          const fireTimeMs = nowMinute + (i + 1) * 60_000;
+          // Absolute minute timestamp = minutes since epoch, stable across syncs
+          const absoluteMinute = Math.floor(fireTimeMs / 60_000);
+          const overdueMinutesAtFire = Math.floor((fireTimeMs - taskTimeMs) / 60_000);
 
           candidates.push({
-            id: overdueNotificationId(task.id, totalOffset),
+            id: overdueNotificationId(task.id, absoluteMinute),
             data: {
               title: `OVERDUE — ${task.title}`,
-              body: `${totalOffset} min overdue · was ${task.time}`,
-              fireAt: fireTime,
+              body: `${overdueMinutesAtFire} min overdue · was ${task.time}`,
+              fireAt: new Date(fireTimeMs),
               taskId: task.id,
               type: 'overdue',
             },
@@ -253,6 +264,7 @@ function computeDesired(
         }
 
         totalOverdueSlots += scheduled;
+        const overdueMinutes = Math.floor((now - taskTimeMs) / 60_000);
         log(`overdue schedule: ${scheduled} reminders for task "${task.title}" (${overdueMinutes}min overdue)`);
       }
     }
@@ -462,7 +474,8 @@ export async function syncTaskNotifications(
       await LocalNotifications.cancel({
         notifications: toCancel.map(id => ({ id })),
       });
-      log(`canceled ${toCancel.length} stale notifications`);
+      const overdueCount = toCancel.filter(id => id >= OVERDUE_ID_OFFSET && id < OVERDUE_ID_OFFSET + 1_000_000).length;
+      log(`canceled ${toCancel.length} stale notifications (${overdueCount} overdue)`);
     }
 
     // Schedule missing in batches of 50, all with sound
@@ -486,7 +499,9 @@ export async function syncTaskNotifications(
     }
 
     lastSyncFingerprint = fp;
-    log('sync result', { scheduled: toSchedule.length, canceled: toCancel.length, unchanged });
+    const overdueScheduled = toSchedule.filter(id => id >= OVERDUE_ID_OFFSET && id < OVERDUE_ID_OFFSET + 1_000_000).length;
+    const overdueUnchanged = [...desired.keys()].filter(id => id >= OVERDUE_ID_OFFSET && id < OVERDUE_ID_OFFSET + 1_000_000 && currentTaskNotifIds.has(id)).length;
+    log('sync result', { scheduled: toSchedule.length, canceled: toCancel.length, unchanged, overdueScheduled, overdueUnchanged, overduePreserved: overdueUnchanged });
 
     return { scheduled: toSchedule.length, canceled: toCancel.length, unchanged, skipped: false };
   } catch (error) {
