@@ -236,6 +236,13 @@ export function FitViewButton({ tasks, scrollRef, hourHeight, setScale, resetZoo
     };
   }, []);
 
+  // Listen for external fit-to-tasks event (from mobile bottom nav)
+  useEffect(() => {
+    const handler = () => fitToTasks();
+    window.addEventListener('fit-to-tasks', handler);
+    return () => window.removeEventListener('fit-to-tasks', handler);
+  }, [fitToTasks]);
+
   return (
     <div className="relative">
       <button
