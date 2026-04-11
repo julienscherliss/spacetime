@@ -589,6 +589,8 @@ export const useTaskStore = create<TaskState>()(
             return t;
           }),
         }));
+        // Immediately cancel overdue notifications — task was rescheduled
+        void cancelNotificationsForTask(id);
         return { blocked: false };
       },
 
