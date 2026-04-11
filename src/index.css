@@ -8,8 +8,8 @@
     --background: 0 0% 96%;
     --foreground: 0 0% 12%;
 
-    --card: 0 0% 22%;
-    --card-foreground: 0 0% 95%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 12%;
 
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 12%;
@@ -53,11 +53,11 @@
     --priority-2: 22 80% 50%;
     --priority-3: 0 70% 50%;
 
-    --task-border: 0 0% 28%;
-    --task-hover: 0 0% 35%;
+    --task-border: 0 0% 85%;
+    --task-hover: 0 0% 80%;
 
-    --routine-card: 0 0% 18%;
-    --routine-border: 0 0% 25%;
+    --routine-card: 0 0% 96%;
+    --routine-border: 0 0% 90%;
 
     /* Routine conflict — amber/orange, distinct from destructive red */
     --routine-conflict: 30 90% 50%;
