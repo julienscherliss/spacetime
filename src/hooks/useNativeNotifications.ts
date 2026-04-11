@@ -11,7 +11,7 @@ import type { NotificationLevel } from '@/utils/notificationService';
  * Must match the logic in notificationService's buildFingerprint so the
  * hook can detect when the service already synced (via getCurrentSyncFingerprint).
  */
-function notificationFingerprint(tasks: Task[], level: NotificationLevel): string {
+function notificationFingerprint(tasks: Task[], level: NotificationLevel, persistentOverdue: boolean): string {
   if (level === 'off') return 'off';
 
   const shouldNotify = (t: Task) => {
@@ -21,39 +21,33 @@ function notificationFingerprint(tasks: Task[], level: NotificationLevel): strin
 
   const parts = tasks
     .filter(t => shouldNotify(t) && t.time && !t.completed)
-    .map(t => `${t.id}:${t.date}:${t.time}:${t.priority}:${t.title}`)
+    .map(t => `${t.id}:${t.date}:${t.time}:${t.priority}:${t.title}:${t.completed}`)
     .sort();
-  return `${level}:${parts.join('|')}`;
+  return `${level}:po=${persistentOverdue}:${parts.join('|')}`;
 }
 
 /**
  * Watches for notification-relevant task or setting changes on native platforms
  * and triggers a diff-based sync. No-op on web.
- *
- * Guards against:
- * - Re-syncing on every render (fingerprint check)
- * - Re-syncing on unrelated state changes (selective field extraction)
- * - Duplicate sync when SettingsPanel already did a forced sync (compares
- *   against the service's current fingerprint)
- * - Multiple syncs during startup (debounce + in-flight guard in service)
  */
 export function useNativeNotifications() {
   const tasks = useTaskStore((s) => s.tasks);
   const level = useTimezoneStore((s) => s.notificationLevel);
+  const persistentOverdue = useTimezoneStore((s) => s.persistentOverdue);
   const lastFpRef = useRef('');
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
   const mountedRef = useRef(false);
+  const overdueIntervalRef = useRef<ReturnType<typeof setInterval>>();
 
   useEffect(() => {
     if (!isNativePlatform()) return;
 
-    const fp = notificationFingerprint(tasks, level);
+    const fp = notificationFingerprint(tasks, level, persistentOverdue);
 
     // Skip if nothing notification-relevant changed from this hook's perspective
     if (fp === lastFpRef.current) return;
 
     // Also skip if the service already synced with this exact fingerprint
-    // (e.g. SettingsPanel did a forced sync that updated the service fingerprint)
     const serviceFp = getCurrentSyncFingerprint();
     if (fp === serviceFp) {
       lastFpRef.current = fp;
@@ -69,9 +63,26 @@ export function useNativeNotifications() {
     // Debounce to batch rapid task mutations
     clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
-      void syncTaskNotifications(tasks, level);
+      void syncTaskNotifications(tasks, level, false, persistentOverdue);
     }, delay);
 
     return () => clearTimeout(timerRef.current);
-  }, [tasks, level]);
+  }, [tasks, level, persistentOverdue]);
+
+  // When persistent overdue is ON, re-sync every 60s to extend the rolling window
+  useEffect(() => {
+    if (!isNativePlatform()) return;
+
+    clearInterval(overdueIntervalRef.current);
+
+    if (persistentOverdue && level !== 'off') {
+      overdueIntervalRef.current = setInterval(() => {
+        const currentTasks = useTaskStore.getState().tasks;
+        const currentLevel = useTimezoneStore.getState().notificationLevel;
+        void syncTaskNotifications(currentTasks, currentLevel, true, true);
+      }, 60_000);
+    }
+
+    return () => clearInterval(overdueIntervalRef.current);
+  }, [persistentOverdue, level]);
 }
