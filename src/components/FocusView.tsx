@@ -89,10 +89,10 @@ export function FocusView() {
     return nowMinutes >= start && nowMinutes < end;
   });
 
-  // Find grace-period task: a task whose time ended but is within 5-min grace
+  // Find grace-period task: an overdue task whose window ended within the last 5 minutes.
+  // This takes PRIORITY over the natural active task for 5 minutes, so the user
+  // sees their overdue task even if a new one has started.
   const graceTask = (() => {
-    if (naturalActiveTask) return null; // natural task takes priority after grace expires
-    // Find most recent task that just ended
     const justEnded = todayTasks
       .filter((t) => {
         if (!t.time) return false;
@@ -107,7 +107,7 @@ export function FocusView() {
     return justEnded[0] || null;
   })();
 
-  // Track when an overdue task's grace expires
+  // Track when an overdue task's grace expires — then show red arrow
   useEffect(() => {
     if (graceTask) {
       if (!overdueGraceRef.current || overdueGraceRef.current.taskId !== graceTask.id) {
@@ -126,8 +126,9 @@ export function FocusView() {
     if (activePanel === 'completed') setHasExpiredOverdue(false);
   }, [activePanel]);
 
-  const activeTask = naturalActiveTask || graceTask;
-  const isGracePeriod = !naturalActiveTask && !!graceTask;
+  // Grace task takes priority for 5 minutes, then falls back to natural active task
+  const activeTask = graceTask || naturalActiveTask;
+  const isGracePeriod = !!graceTask;
 
   const elapsed = activeTask?.time ? nowMinutes - timeToMinutes(activeTask.time) : 0;
   const remaining = activeTask ? (activeTask.duration || 30) - elapsed : 0;
@@ -267,7 +268,7 @@ export function FocusView() {
           onClick={() => setActivePanel('completed')}
           className={`absolute left-1/2 -translate-x-1/2 top-2 z-20 p-2 transition-colors ${
             hasExpiredOverdue
-              ? 'text-red-500/70 hover:text-red-500'
+              ? 'text-destructive/70 hover:text-destructive'
               : 'text-muted-foreground/30 hover:text-muted-foreground/50'
           }`}
         >
