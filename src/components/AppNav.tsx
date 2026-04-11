@@ -46,7 +46,74 @@ export function AppNav() {
   if (isMobile) {
     return (
       <>
-        <nav className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border/60">
+        {/* Bottom spacer so content isn't hidden behind the fixed nav */}
+        <div className="h-[60px]" />
+
+        {/* Overflow menu — opens upward from bottom nav */}
+        <AnimatePresence>
+          {moreOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: 16, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.95 }}
+              transition={{ duration: 0.15 }}
+              className="fixed right-2 bottom-[68px] w-56 bg-card border border-border/60 rounded-lg shadow-lg overflow-hidden z-[51]"
+            >
+              <div className="py-1">
+                <OverflowItem
+                  icon={<Repeat size={18} strokeWidth={1.5} />}
+                  label={routinesEnabled ? 'Routines on' : 'Routines off'}
+                  active={routinesEnabled}
+                  onClick={() => { toggleRoutines(); }}
+                />
+                <OverflowItem
+                  icon={<Archive size={18} strokeWidth={1.5} />}
+                  label="Library"
+                  badge={libCount > 0 ? String(libCount) : undefined}
+                  active={libPanelOpen}
+                  onClick={() => { setLibPanelOpen(!libPanelOpen); setMoreOpen(false); }}
+                />
+                <OverflowItem
+                  icon={<Clock size={18} strokeWidth={1.5} />}
+                  label="Waiting Room"
+                  badge={waitingCount > 0 ? String(waitingCount) : undefined}
+                  onClick={() => { window.dispatchEvent(new CustomEvent('toggle-waiting-room')); setMoreOpen(false); }}
+                />
+                <OverflowItem
+                  icon={<ArchiveRestore size={18} strokeWidth={1.5} />}
+                  label="Archive"
+                  onClick={() => { window.dispatchEvent(new CustomEvent('toggle-archive')); setMoreOpen(false); }}
+                />
+                <OverflowItem
+                  icon={<BarChart3 size={18} strokeWidth={1.5} />}
+                  label="Analytics"
+                  onClick={() => { window.dispatchEvent(new CustomEvent('toggle-analytics')); setMoreOpen(false); }}
+                />
+
+                <div className="border-t border-border/40 my-1" />
+
+                <OverflowItem
+                  icon={<Settings size={18} strokeWidth={1.5} />}
+                  label={`Settings · ${getTzAbbr(useTimezoneStore.getState().timezone)}`}
+                  onClick={() => { window.dispatchEvent(new CustomEvent('toggle-settings')); setMoreOpen(false); }}
+                />
+                <OverflowItem
+                  icon={<LogOut size={18} strokeWidth={1.5} />}
+                  label="Sign out"
+                  onClick={() => { signOut(); setMoreOpen(false); }}
+                  destructive
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Fixed bottom nav bar */}
+        <nav
+          className="fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-sm border-t border-border/60"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+          ref={moreRef}
+        >
           <div className="flex items-center justify-between px-2 py-1.5">
             {/* Logo */}
             <h1 className="flex flex-col leading-[0.85] font-display font-bold text-[11px] uppercase pl-1">
@@ -83,85 +150,22 @@ export function AppNav() {
                   </span>
                 </button>
               ))}
-
             </div>
 
             {/* More button */}
-            <div className="relative" ref={moreRef}>
-              <button
-                onClick={() => setMoreOpen((o) => !o)}
-                className={`relative flex items-center justify-center w-[44px] h-[44px] rounded-md transition-colors ${
-                  moreOpen ? 'bg-muted text-foreground' : 'text-muted-foreground'
-                }`}
-              >
-                {moreOpen ? <X size={20} strokeWidth={1.5} /> : <MoreHorizontal size={20} strokeWidth={1.5} />}
-                {/* Badge for waiting count */}
-                {waitingCount > 0 && !moreOpen && (
-                  <span className="absolute top-1.5 right-1.5 min-w-[16px] h-[16px] rounded-full bg-primary text-primary-foreground text-[9px] font-mono flex items-center justify-center">
-                    {waitingCount}
-                  </span>
-                )}
-              </button>
-
-              {/* Overflow menu */}
-              <AnimatePresence>
-                {moreOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -8, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -8, scale: 0.95 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute right-0 top-full mt-1 w-56 bg-card border border-border/60 rounded-lg shadow-lg overflow-hidden z-50"
-                  >
-                    <div className="py-1">
-                      <OverflowItem
-                        icon={<Repeat size={18} strokeWidth={1.5} />}
-                        label={routinesEnabled ? 'Routines on' : 'Routines off'}
-                        active={routinesEnabled}
-                        onClick={() => { toggleRoutines(); }}
-                      />
-                      <OverflowItem
-                        icon={<Archive size={18} strokeWidth={1.5} />}
-                        label="Library"
-                        badge={libCount > 0 ? String(libCount) : undefined}
-                        active={libPanelOpen}
-                        onClick={() => { setLibPanelOpen(!libPanelOpen); setMoreOpen(false); }}
-                      />
-                      <OverflowItem
-                        icon={<Clock size={18} strokeWidth={1.5} />}
-                        label="Waiting Room"
-                        badge={waitingCount > 0 ? String(waitingCount) : undefined}
-                        onClick={() => { window.dispatchEvent(new CustomEvent('toggle-waiting-room')); setMoreOpen(false); }}
-                      />
-                      <OverflowItem
-                        icon={<ArchiveRestore size={18} strokeWidth={1.5} />}
-                        label="Archive"
-                        onClick={() => { window.dispatchEvent(new CustomEvent('toggle-archive')); setMoreOpen(false); }}
-                      />
-                      <OverflowItem
-                        icon={<BarChart3 size={18} strokeWidth={1.5} />}
-                        label="Analytics"
-                        onClick={() => { window.dispatchEvent(new CustomEvent('toggle-analytics')); setMoreOpen(false); }}
-                      />
-
-                      <div className="border-t border-border/40 my-1" />
-
-                      <OverflowItem
-                        icon={<Settings size={18} strokeWidth={1.5} />}
-                        label={`Settings · ${getTzAbbr(useTimezoneStore.getState().timezone)}`}
-                        onClick={() => { window.dispatchEvent(new CustomEvent('toggle-settings')); setMoreOpen(false); }}
-                      />
-                      <OverflowItem
-                        icon={<LogOut size={18} strokeWidth={1.5} />}
-                        label="Sign out"
-                        onClick={() => { signOut(); setMoreOpen(false); }}
-                        destructive
-                      />
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+            <button
+              onClick={() => setMoreOpen((o) => !o)}
+              className={`relative flex items-center justify-center w-[44px] h-[44px] rounded-md transition-colors ${
+                moreOpen ? 'bg-muted text-foreground' : 'text-muted-foreground'
+              }`}
+            >
+              {moreOpen ? <X size={20} strokeWidth={1.5} /> : <MoreHorizontal size={20} strokeWidth={1.5} />}
+              {waitingCount > 0 && !moreOpen && (
+                <span className="absolute top-1.5 right-1.5 min-w-[16px] h-[16px] rounded-full bg-primary text-primary-foreground text-[9px] font-mono flex items-center justify-center">
+                  {waitingCount}
+                </span>
+              )}
+            </button>
           </div>
         </nav>
       </>
