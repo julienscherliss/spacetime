@@ -332,7 +332,8 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
           </div>
           )}
 
-
+            <div className="flex items-center gap-1.5 mb-2">
+              <Moon size={12} strokeWidth={1.5} className="text-muted-foreground" />
               <span className="text-[11px] font-mono tracking-[0.12em] text-muted-foreground">APPEARANCE</span>
             </div>
             <button
