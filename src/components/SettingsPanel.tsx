@@ -284,8 +284,55 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             </div>
           </div>
 
+          {/* Notifications — native only */}
+          {isNativeApp && (
+          <div className="mb-4">
             <div className="flex items-center gap-1.5 mb-2">
-              <Moon size={12} strokeWidth={1.5} className="text-muted-foreground" />
+              <Bell size={12} strokeWidth={1.5} className="text-muted-foreground" />
+              <span className="text-[11px] font-mono tracking-[0.12em] text-muted-foreground">NOTIFICATIONS</span>
+            </div>
+            <div className="text-[10px] font-mono text-muted-foreground/50 mb-2">
+              Get reminders 5 min before scheduled tasks
+            </div>
+            <div className="flex gap-1 bg-muted/30 border border-border/50 rounded-sm p-1">
+              {([
+                { value: 'off' as NotificationLevel, label: 'Off' },
+                { value: 'important' as NotificationLevel, label: 'Important' },
+                { value: 'all' as NotificationLevel, label: 'All' },
+              ]).map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={async () => {
+                    if (opt.value !== 'off') {
+                      const granted = await requestNotificationPermission();
+                      if (!granted) {
+                        toast.error('Notification permission denied. Enable in device settings.');
+                        return;
+                      }
+                    }
+                    setNotificationLevel(opt.value);
+                    const tasks = useTaskStore.getState().tasks;
+                    await rescheduleAllNotifications(tasks, opt.value);
+                  }}
+                  className={`flex-1 py-2 rounded-[2px] text-[11px] font-mono tracking-wider transition-colors ${
+                    notificationLevel === opt.value
+                      ? 'bg-primary/10 text-primary border border-primary/20'
+                      : 'text-muted-foreground/50 hover:text-foreground hover:bg-muted/40 border border-transparent'
+                  }`}
+                >
+                  {opt.label.toUpperCase()}
+                </button>
+              ))}
+            </div>
+            <div className="text-[9px] font-mono text-muted-foreground/40 mt-1.5 leading-relaxed">
+              {notificationLevel === 'off' && 'No task notifications.'}
+              {notificationLevel === 'important' && 'Notifications for FIXED and LOCK tasks only.'}
+              {notificationLevel === 'all' && 'Notifications for all scheduled tasks (FLEX, SEMI, FIXED, LOCK).'}
+            </div>
+          </div>
+          )}
+
+
               <span className="text-[11px] font-mono tracking-[0.12em] text-muted-foreground">APPEARANCE</span>
             </div>
             <button
