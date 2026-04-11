@@ -97,13 +97,35 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
 
     setNotificationLoading(true);
 
+    // Hard safety timeout — button always recovers even if native bridge hangs
+    const safetyTimer = setTimeout(() => {
+      console.error('[notifications] safety timeout fired — force-resetting loading state');
+      setNotificationLoading(false);
+      setNotificationDebug((prev) => ({
+        ...prev,
+        scheduleStatus: 'Enable flow timed out after 15s. The native bridge may not be responding. Check Xcode console.',
+      }));
+      toast.error('Notification setup timed out. Check Xcode console for details.', { duration: 6000 });
+    }, 15_000);
+
     try {
-      console.log('[notifications] enable button tapped');
+      console.log('[notifications] enable button tapped — starting flow');
+      
+      console.log('[notifications] step 1: requesting permission…');
       const requestResult = await requestNotificationPermission();
+      console.log('[notifications] step 2: permission result =', requestResult);
+      
       const granted = requestResult === 'granted';
-      const testScheduled = granted ? await scheduleTestNotification(8) : false;
+      let testScheduled = false;
+
+      if (granted) {
+        console.log('[notifications] step 3: scheduling test notification…');
+        testScheduled = await scheduleTestNotification(8);
+        console.log('[notifications] step 4: test scheduled =', testScheduled);
+      }
 
       if (granted && notificationLevel !== 'off') {
+        console.log('[notifications] step 5: rescheduling all task notifications…');
         await rescheduleAllNotifications(useTaskStore.getState().tasks, notificationLevel);
       }
 
@@ -119,7 +141,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
       console.log('[notifications] enable flow complete', nextDebug);
 
       if (granted) {
-        toast.success(testScheduled ? 'Notifications enabled. Test alert scheduled.' : 'Notifications enabled.');
+        toast.success(testScheduled ? 'Notifications enabled. Test alert in ~8s.' : 'Notifications enabled.');
       } else {
         toast.error('Notifications are blocked. Go to iPhone Settings → spaacetime → Notifications.', {
           duration: 6000,
@@ -127,11 +149,13 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
       }
     } catch (error) {
       console.error('[notifications] enable flow failed', error);
+      const msg = error instanceof Error ? error.message : String(error);
       await refreshNotificationDebug({
-        scheduleStatus: 'Enable flow failed. Check the console logs for details.',
+        scheduleStatus: `Enable flow failed: ${msg}`,
       });
       toast.error('Failed to enable notifications. Check the debug panel below.');
     } finally {
+      clearTimeout(safetyTimer);
       setNotificationLoading(false);
     }
   };
