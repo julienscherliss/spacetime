@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { NotificationLevel } from '@/utils/nativeNotifications';
+import type { NotificationLevel } from '@/utils/notificationService';
 
 export type MobilityMode = 'disabled' | 'normal' | 'elite';
 
