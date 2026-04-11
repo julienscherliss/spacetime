@@ -10,6 +10,7 @@ import {
 interface HelpPanelProps {
   open: boolean;
   onClose: () => void;
+  initialSection?: string;
 }
 
 interface HelpTip {
@@ -198,9 +199,19 @@ const tips: HelpTip[] = [
   },
 ];
 
-export function HelpPanel({ open, onClose }: HelpPanelProps) {
+export function HelpPanel({ open, onClose, initialSection }: HelpPanelProps) {
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Auto-expand a section when opened with initialSection
+  useEffect(() => {
+    if (open && initialSection) {
+      setExpandedId(initialSection);
+      setSearch('');
+      setActiveCategory(null);
+    }
+  }, [open, initialSection]);
 
   const filtered = useMemo(() => {
     let result = tips;
@@ -325,7 +336,7 @@ export function HelpPanel({ open, onClose }: HelpPanelProps) {
                     </div>
                     <div className="space-y-1">
                       {items.map(tip => (
-                        <TipCard key={tip.id} tip={tip} searchQuery={search} />
+                        <TipCard key={tip.id} tip={tip} searchQuery={search} forceExpand={expandedId === tip.id} />
                       ))}
                     </div>
                   </div>
@@ -339,8 +350,12 @@ export function HelpPanel({ open, onClose }: HelpPanelProps) {
   );
 }
 
-function TipCard({ tip, searchQuery }: { tip: HelpTip; searchQuery: string }) {
-  const [expanded, setExpanded] = useState(!!searchQuery.trim());
+function TipCard({ tip, searchQuery, forceExpand }: { tip: HelpTip; searchQuery: string; forceExpand?: boolean }) {
+  const [expanded, setExpanded] = useState(!!searchQuery.trim() || !!forceExpand);
+
+  useEffect(() => {
+    if (forceExpand) setExpanded(true);
+  }, [forceExpand]);
 
   return (
     <button
