@@ -445,6 +445,8 @@ export const useTaskStore = create<TaskState>()(
           ),
           editingTaskId: s.editingTaskId === id ? null : s.editingTaskId,
         }));
+        // Immediately cancel any pending notifications (including overdue) for this task
+        void cancelNotificationsForTask(id);
         const state = get();
         const today = new Date().toISOString().split('T')[0];
         const todayTasks = state.tasks.filter((t) => t.date === today && !t.archivedAt);
