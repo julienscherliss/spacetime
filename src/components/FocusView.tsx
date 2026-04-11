@@ -268,7 +268,7 @@ export function FocusView() {
           onClick={() => setActivePanel('completed')}
           className={`absolute left-1/2 -translate-x-1/2 top-2 z-20 p-2 transition-colors ${
             hasExpiredOverdue
-              ? 'text-red-500/70 hover:text-red-500'
+              ? 'text-destructive/70 hover:text-destructive'
               : 'text-muted-foreground/30 hover:text-muted-foreground/50'
           }`}
         >
