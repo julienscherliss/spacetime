@@ -1,8 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useTimezoneStore, getTzAbbr, TIMEZONES } from '@/store/timezoneStore';
 import { useCalendarStore } from '@/store/calendarStore';
-import { X, Search, Globe, Repeat, MapPin, Calendar as CalIcon, RefreshCw, Unplug, HelpCircle, Moon, Shield } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { X, Search, Globe, Repeat, MapPin, Calendar as CalIcon, RefreshCw, Unplug, HelpCircle, Moon, Shield, Lock } from 'lucide-react';
 import type { MobilityMode } from '@/store/timezoneStore';
+import { toast } from 'sonner';
 import { HelpPanel } from './HelpPanel';
 
 interface SettingsPanelProps {
@@ -15,6 +17,11 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const { connected, email, calendars, loading, checkStatus, startAuth, refreshCalendarData, toggleCalendar, disconnect } = useCalendarStore();
   const [search, setSearch] = useState('');
   const [helpOpen, setHelpOpen] = useState(false);
+  const [pwOpen, setPwOpen] = useState(false);
+  const [currentPw, setCurrentPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+  const [pwLoading, setPwLoading] = useState(false);
 
   useEffect(() => {
     if (open) checkStatus();
@@ -282,6 +289,78 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 <div className="w-4 h-4 rounded-full bg-white shadow-sm" />
               </div>
             </button>
+          </div>
+
+          {/* Change Password */}
+          <div className="border-t border-border/30 pt-4">
+            <div className="flex items-center gap-1.5 mb-2">
+              <Lock size={12} strokeWidth={1.5} className="text-muted-foreground" />
+              <span className="text-[11px] font-mono tracking-[0.12em] text-muted-foreground">ACCOUNT</span>
+            </div>
+            {!pwOpen ? (
+              <button
+                onClick={() => setPwOpen(true)}
+                className="w-full flex items-center justify-center gap-2 bg-muted/30 border border-border/50 rounded-sm p-3 min-h-[48px] text-[12px] font-mono tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+              >
+                CHANGE PASSWORD
+              </button>
+            ) : (
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (newPw.length < 6) { toast.error('Password must be at least 6 characters'); return; }
+                  if (newPw !== confirmPw) { toast.error('Passwords do not match'); return; }
+                  setPwLoading(true);
+                  try {
+                    const { error } = await supabase.auth.updateUser({ password: newPw });
+                    if (error) throw error;
+                    toast.success('Password updated');
+                    setPwOpen(false);
+                    setCurrentPw(''); setNewPw(''); setConfirmPw('');
+                  } catch (err: any) {
+                    toast.error(err.message || 'Failed to update password');
+                  } finally {
+                    setPwLoading(false);
+                  }
+                }}
+                className="space-y-2"
+              >
+                <input
+                  type="password"
+                  value={newPw}
+                  onChange={(e) => setNewPw(e.target.value)}
+                  placeholder="New password"
+                  required
+                  minLength={6}
+                  className="w-full bg-muted/30 border border-border/50 rounded-sm px-3 py-2.5 text-[12px] font-mono text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/30 min-h-[44px]"
+                />
+                <input
+                  type="password"
+                  value={confirmPw}
+                  onChange={(e) => setConfirmPw(e.target.value)}
+                  placeholder="Confirm new password"
+                  required
+                  minLength={6}
+                  className="w-full bg-muted/30 border border-border/50 rounded-sm px-3 py-2.5 text-[12px] font-mono text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/30 min-h-[44px]"
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setPwOpen(false); setNewPw(''); setConfirmPw(''); }}
+                    className="flex-1 py-2.5 rounded-sm border border-border/50 text-[11px] font-mono tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    CANCEL
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={pwLoading}
+                    className="flex-1 py-2.5 rounded-sm bg-primary text-primary-foreground text-[11px] font-mono tracking-wider hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                  >
+                    {pwLoading ? 'SAVING...' : 'UPDATE'}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
 
           {/* Help */}
