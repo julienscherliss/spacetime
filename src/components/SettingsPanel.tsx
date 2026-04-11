@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useTimezoneStore, getTzAbbr, TIMEZONES } from '@/store/timezoneStore';
 import { useCalendarStore } from '@/store/calendarStore';
-import { X, Search, Globe, Repeat, MapPin, Calendar as CalIcon, RefreshCw, Unplug, HelpCircle, Moon } from 'lucide-react';
+import { X, Search, Globe, Repeat, MapPin, Calendar as CalIcon, RefreshCw, Unplug, HelpCircle, Moon, Shield } from 'lucide-react';
+import type { MobilityMode } from '@/store/timezoneStore';
 import { HelpPanel } from './HelpPanel';
 
 interface SettingsPanelProps {
@@ -10,7 +11,7 @@ interface SettingsPanelProps {
 }
 
 export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
-  const { timezone, setTimezone, routinesFixedTime, setRoutinesFixedTime, autoDetect, setAutoDetect, darkMode, setDarkMode } = useTimezoneStore();
+  const { timezone, setTimezone, routinesFixedTime, setRoutinesFixedTime, autoDetect, setAutoDetect, darkMode, setDarkMode, mobilityMode, setMobilityMode } = useTimezoneStore();
   const { connected, email, calendars, loading, checkStatus, startAuth, refreshCalendarData, toggleCalendar, disconnect } = useCalendarStore();
   const [search, setSearch] = useState('');
   const [helpOpen, setHelpOpen] = useState(false);
@@ -225,6 +226,42 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
           </div>
           {/* Appearance */}
           <div className="border-t border-border/30 pt-4">
+
+          {/* Task Mobility */}
+          <div className="mb-4">
+            <div className="flex items-center gap-1.5 mb-2">
+              <Shield size={12} strokeWidth={1.5} className="text-muted-foreground" />
+              <span className="text-[11px] font-mono tracking-[0.12em] text-muted-foreground">TASK MOBILITY</span>
+            </div>
+            <div className="text-[10px] font-mono text-muted-foreground/50 mb-2">
+              Auto-escalate priority based on due dates
+            </div>
+            <div className="flex gap-1 bg-muted/30 border border-border/50 rounded-sm p-1">
+              {([
+                { value: 'disabled' as MobilityMode, label: 'Disabled' },
+                { value: 'normal' as MobilityMode, label: 'Normal' },
+                { value: 'elite' as MobilityMode, label: 'Elite' },
+              ]).map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setMobilityMode(opt.value)}
+                  className={`flex-1 py-2 rounded-[2px] text-[11px] font-mono tracking-wider transition-colors ${
+                    mobilityMode === opt.value
+                      ? 'bg-primary/10 text-primary border border-primary/20'
+                      : 'text-muted-foreground/50 hover:text-foreground hover:bg-muted/40 border border-transparent'
+                  }`}
+                >
+                  {opt.label.toUpperCase()}
+                </button>
+              ))}
+            </div>
+            <div className="text-[9px] font-mono text-muted-foreground/40 mt-1.5 leading-relaxed">
+              {mobilityMode === 'disabled' && 'Due dates won\'t affect task priority levels'}
+              {mobilityMode === 'normal' && 'Due this week → Semi · Due today → Fixed · Can still de-escalate manually'}
+              {mobilityMode === 'elite' && 'Same as normal, but priority can only be escalated — never lowered'}
+            </div>
+          </div>
+
             <div className="flex items-center gap-1.5 mb-2">
               <Moon size={12} strokeWidth={1.5} className="text-muted-foreground" />
               <span className="text-[11px] font-mono tracking-[0.12em] text-muted-foreground">APPEARANCE</span>
