@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { NotificationLevel } from '@/utils/nativeNotifications';
 
 export type MobilityMode = 'disabled' | 'normal' | 'elite';
 
@@ -9,11 +10,13 @@ interface TimezoneState {
   autoDetect: boolean;
   darkMode: boolean;
   mobilityMode: MobilityMode;
+  notificationLevel: NotificationLevel;
   setTimezone: (tz: string) => void;
   setRoutinesFixedTime: (v: boolean) => void;
   setAutoDetect: (v: boolean) => void;
   setDarkMode: (v: boolean) => void;
   setMobilityMode: (mode: MobilityMode) => void;
+  setNotificationLevel: (level: NotificationLevel) => void;
 }
 
 export const useTimezoneStore = create<TimezoneState>()(
@@ -24,6 +27,7 @@ export const useTimezoneStore = create<TimezoneState>()(
       autoDetect: true,
       darkMode: false,
       mobilityMode: 'normal',
+      notificationLevel: 'important',
       setTimezone: (tz: string) => set({ timezone: tz }),
       setRoutinesFixedTime: (v: boolean) => set({ routinesFixedTime: v }),
       setAutoDetect: (v: boolean) => set({ autoDetect: v }),
@@ -32,6 +36,7 @@ export const useTimezoneStore = create<TimezoneState>()(
         set({ darkMode: v });
       },
       setMobilityMode: (mode: MobilityMode) => set({ mobilityMode: mode }),
+      setNotificationLevel: (level: NotificationLevel) => set({ notificationLevel: level }),
     }),
     { name: 'do-timezone' }
   )
