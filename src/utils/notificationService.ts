@@ -230,25 +230,27 @@ function computeDesired(
       });
     }
 
-    // Overdue persistent reminders
+    // Overdue persistent reminders — use absolute minute timestamps for stable IDs
     if (persistentOverdue && taskTimeMs <= now) {
-      // Task is overdue — schedule rolling reminders for the next N minutes
-      const overdueMinutes = Math.floor((now - taskTimeMs) / 60_000);
       const remainingSlots = Math.min(MAX_OVERDUE_PER_TASK, MAX_OVERDUE_TOTAL - totalOverdueSlots);
 
       if (remainingSlots > 0) {
         let scheduled = 0;
-        for (let offset = 1; offset <= remainingSlots; offset++) {
-          const minuteFromNow = offset;
-          const fireTime = new Date(now + minuteFromNow * 60_000);
-          const totalOffset = overdueMinutes + offset;
+        // Round "now" up to the next full minute boundary for clean scheduling
+        const nowMinute = Math.ceil(now / 60_000) * 60_000;
+
+        for (let i = 0; i < remainingSlots; i++) {
+          const fireTimeMs = nowMinute + (i + 1) * 60_000;
+          // Absolute minute timestamp = minutes since epoch, stable across syncs
+          const absoluteMinute = Math.floor(fireTimeMs / 60_000);
+          const overdueMinutesAtFire = Math.floor((fireTimeMs - taskTimeMs) / 60_000);
 
           candidates.push({
-            id: overdueNotificationId(task.id, totalOffset),
+            id: overdueNotificationId(task.id, absoluteMinute),
             data: {
               title: `OVERDUE — ${task.title}`,
-              body: `${totalOffset} min overdue · was ${task.time}`,
-              fireAt: fireTime,
+              body: `${overdueMinutesAtFire} min overdue · was ${task.time}`,
+              fireAt: new Date(fireTimeMs),
               taskId: task.id,
               type: 'overdue',
             },
@@ -257,6 +259,7 @@ function computeDesired(
         }
 
         totalOverdueSlots += scheduled;
+        const overdueMinutes = Math.floor((now - taskTimeMs) / 60_000);
         log(`overdue schedule: ${scheduled} reminders for task "${task.title}" (${overdueMinutes}min overdue)`);
       }
     }
