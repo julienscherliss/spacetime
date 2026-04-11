@@ -799,6 +799,7 @@ export function TaskEditPanel() {
                               <button
                                 onClick={() => {
                                   setIsLinked(false);
+                                  setRecurrenceType('none');
                                   if (navigator.vibrate) navigator.vibrate(15);
                                 }}
                                 className="text-[8px] font-mono tracking-wider text-destructive/50 hover:text-destructive/80 transition-colors"
