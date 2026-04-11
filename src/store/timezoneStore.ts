@@ -1,15 +1,19 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+export type MobilityMode = 'disabled' | 'normal' | 'elite';
+
 interface TimezoneState {
   timezone: string;
   routinesFixedTime: boolean;
   autoDetect: boolean;
   darkMode: boolean;
+  mobilityMode: MobilityMode;
   setTimezone: (tz: string) => void;
   setRoutinesFixedTime: (v: boolean) => void;
   setAutoDetect: (v: boolean) => void;
   setDarkMode: (v: boolean) => void;
+  setMobilityMode: (mode: MobilityMode) => void;
 }
 
 export const useTimezoneStore = create<TimezoneState>()(
@@ -19,6 +23,7 @@ export const useTimezoneStore = create<TimezoneState>()(
       routinesFixedTime: true,
       autoDetect: true,
       darkMode: false,
+      mobilityMode: 'normal',
       setTimezone: (tz: string) => set({ timezone: tz }),
       setRoutinesFixedTime: (v: boolean) => set({ routinesFixedTime: v }),
       setAutoDetect: (v: boolean) => set({ autoDetect: v }),
@@ -26,6 +31,7 @@ export const useTimezoneStore = create<TimezoneState>()(
         document.documentElement.classList.toggle('dark', v);
         set({ darkMode: v });
       },
+      setMobilityMode: (mode: MobilityMode) => set({ mobilityMode: mode }),
     }),
     { name: 'do-timezone' }
   )
