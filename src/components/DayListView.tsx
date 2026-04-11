@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
+import { useTouchDragStore } from '@/store/touchDragStore';
 import { useCalendarStore } from '@/store/calendarStore';
 import { useCurrentTime, formatTime12h } from '@/hooks/useCurrentTime';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
@@ -112,11 +113,13 @@ export function DayListView() {
 
   // Swipe handlers
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (useTouchDragStore.getState().dragging) return;
     if (e.touches.length !== 1) return;
     touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
   }, []);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (useTouchDragStore.getState().dragging) return;
     if (!touchStartRef.current || e.touches.length !== 1) return;
     const dx = e.touches[0].clientX - touchStartRef.current.x;
     const dy = e.touches[0].clientY - touchStartRef.current.y;
@@ -127,6 +130,12 @@ export function DayListView() {
   }, []);
 
   const handleTouchEnd = useCallback(() => {
+    if (useTouchDragStore.getState().dragging) {
+      setSwipeOffset(0);
+      setSwiping(false);
+      touchStartRef.current = null;
+      return;
+    }
     if (!touchStartRef.current) return;
     if (Math.abs(swipeOffset) > 60) {
       setSelectedDate(d => addDaysToDate(d, swipeOffset > 0 ? -1 : 1));
