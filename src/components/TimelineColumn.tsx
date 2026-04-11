@@ -152,6 +152,7 @@ export function TimelineColumn({
   const [dragOverDuration, setDragOverDuration] = useState<number>(30);
   const [dragValid, setDragValid] = useState(true);
   const [dragMsg, setDragMsg] = useState('');
+  const [dragMsgTop, setDragMsgTop] = useState<number | null>(null);
 
   const didDragRef = useRef(false);
   const dragOffsetRef = useRef(0);
@@ -790,14 +791,21 @@ export function TimelineColumn({
         if (state.sourceDate && state.sourceDate !== state.targetDate) {
           const validation = canMoveTask(state.taskId, state.targetDate);
           if (!validation.allowed) {
+            // Position message at the drag location
+            if (state.currentMinutes !== null) {
+              setDragMsgTop(((state.currentMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT);
+            }
             setDragMsg('reason' in validation ? validation.reason : 'Cannot move');
-            setTimeout(() => setDragMsg(''), 3000);
+            setTimeout(() => { setDragMsg(''); setDragMsgTop(null); }, 3000);
             useScheduledDragStore.getState().cancel();
             return;
           }
         }
+        if (state.currentMinutes !== null) {
+          setDragMsgTop(((state.currentMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT);
+        }
         setDragMsg('No space available');
-        setTimeout(() => setDragMsg(''), 2000);
+        setTimeout(() => { setDragMsg(''); setDragMsgTop(null); }, 2000);
         useScheduledDragStore.getState().cancel();
         return;
       }
@@ -1024,7 +1032,10 @@ export function TimelineColumn({
       )}
 
       {dragMsg && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 px-3 py-1.5 rounded-sm bg-card border border-destructive/20 shadow-sm flex items-center gap-2">
+        <div
+          className="absolute left-1/2 -translate-x-1/2 z-40 px-3 py-1.5 rounded-sm bg-card border border-destructive/20 shadow-sm flex items-center gap-2"
+          style={{ top: dragMsgTop != null ? Math.max(0, dragMsgTop - 20) : 12 }}
+        >
           <span className="text-[10px] font-mono text-destructive tracking-wider">{dragMsg}</span>
           {(dragMsg.includes('Cannot move') || dragMsg.includes('locked') || dragMsg.includes('outside')) && (
             <button
