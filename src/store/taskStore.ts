@@ -393,7 +393,11 @@ export const useTaskStore = create<TaskState>()(
         set((s) => ({ tasks: [...s.tasks, task] }));
       },
 
-      updateTask: (id, updates) =>
+      updateTask: (id, updates) => {
+        // If time or date changed, immediately cancel stale notifications
+        if ('time' in updates || 'date' in updates || 'completed' in updates) {
+          void cancelNotificationsForTask(id);
+        }
         set((s) => ({
           tasks: s.tasks.map((t) => {
             if (t.id !== id) return t;
@@ -412,7 +416,8 @@ export const useTaskStore = create<TaskState>()(
             }
             return merged;
           }),
-        })),
+        }));
+      },
 
       updateFutureInstances: (taskId, fromDate, updates) => {
         const sourceTask = get().tasks.find((t) => t.id === taskId);
