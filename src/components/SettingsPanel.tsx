@@ -6,6 +6,9 @@ import { X, Search, Globe, Repeat, MapPin, Calendar as CalIcon, RefreshCw, Unplu
 import type { MobilityMode } from '@/store/timezoneStore';
 import { toast } from 'sonner';
 import { HelpPanel } from './HelpPanel';
+import type { NotificationLevel } from '@/utils/nativeNotifications';
+import { requestNotificationPermission, rescheduleAllNotifications } from '@/utils/nativeNotifications';
+import { useTaskStore } from '@/store/taskStore';
 
 interface SettingsPanelProps {
   open: boolean;
