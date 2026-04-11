@@ -1229,12 +1229,6 @@ export function TimelineColumn({
                 <Unlink size={14} />
               </div>
             )}
-            {/* Link icon when relink mode active */}
-            {!scheduledDragBlocked && scheduledDragRelinkMode && (
-              <div className="absolute right-1.5 top-1/2 -translate-y-1/2 text-primary/70">
-                <Link size={14} />
-              </div>
-            )}
           </div>
         </div>
       )}
