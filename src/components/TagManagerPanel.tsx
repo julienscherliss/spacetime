@@ -2,8 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLibraryStore, CategoryDef } from '@/store/libraryStore';
 import {
-  X, Plus, Trash2, Tag, ChevronRight, ArrowUpRight, ArrowDownLeft,
-  GripVertical,
+  X, Plus, Trash2, Tag, ChevronRight, GripVertical,
 } from 'lucide-react';
 import {
   Dialog,
@@ -42,7 +41,6 @@ export function TagManagerPanel({ open, onClose }: TagManagerPanelProps) {
   const moveCategory = useLibraryStore((s) => s.moveCategory);
   const reparentTag = useLibraryStore((s) => s.reparentTag);
 
-  // Column path: each entry is a parent value (null = root)
   const [columnPath, setColumnPath] = useState<(string | null)[]>([null]);
   const [editingTag, setEditingTag] = useState<string | null>(null);
   const [editingLabel, setEditingLabel] = useState('');
@@ -51,9 +49,8 @@ export function TagManagerPanel({ open, onClose }: TagManagerPanelProps) {
   const [deletingTag, setDeletingTag] = useState<{ value: string; label: string; count: number } | null>(null);
   const [dragTag, setDragTag] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
-  const [dropAction, setDropAction] = useState<'into' | 'reorder' | null>(null);
+  const [dropColumnParent, setDropColumnParent] = useState<string | null | undefined>(undefined);
 
-  // Get items for a column
   const getColumnItems = (parentValue: string | null): CategoryDef[] => {
     if (parentValue === null) {
       return categories.filter(c => !c.value.includes('/'));
@@ -61,35 +58,29 @@ export function TagManagerPanel({ open, onClose }: TagManagerPanelProps) {
     return categories.filter(c => isDirectChild(c.value, parentValue));
   };
 
-  // Count items for a tag (including subtags)
   const getItemCount = (catValue: string): number => {
     return allItems.filter(
       i => i.category === catValue || (i.category && i.category.startsWith(catValue + '/'))
     ).length;
   };
 
-  // Has children?
   const hasChildren = (catValue: string): boolean => {
     return categories.some(c => isDirectChild(c.value, catValue));
   };
 
-  // Drill into a tag
   const drillInto = (catValue: string) => {
     const currentIdx = columnPath.findIndex(p => {
       const items = getColumnItems(p);
       return items.some(c => c.value === catValue);
     });
-    // Trim columns after the one containing this tag, then add the new column
     const newPath = [...columnPath.slice(0, currentIdx + 1), catValue];
     setColumnPath(newPath);
   };
 
-  // Navigate to column
   const navigateToColumn = (colIndex: number) => {
     setColumnPath(prev => prev.slice(0, colIndex + 1));
   };
 
-  // Delete tag
   const handleDeleteTag = (catValue: string) => {
     const cat = categories.find(c => c.value === catValue);
     if (!cat) return;
@@ -107,7 +98,6 @@ export function TagManagerPanel({ open, onClose }: TagManagerPanelProps) {
     setDeletingTag(null);
   };
 
-  // Add new tag
   const handleAddNew = (parentValue: string | null) => {
     if (!newTagValue.trim()) {
       setNewTagInput(null);
@@ -128,50 +118,60 @@ export function TagManagerPanel({ open, onClose }: TagManagerPanelProps) {
     setNewTagValue('');
   };
 
-  // Promote tag (move to parent's parent, making it a top-level or one level up)
-  const promoteTag = (catValue: string) => {
-    const segments = catValue.split('/');
-    if (segments.length <= 1) return; // Already top level
-    const grandParent = segments.length > 2 ? segments.slice(0, -2).join('/') : null;
-    reparentTag(catValue, grandParent);
-    // Clean up column path if needed
-    setColumnPath(prev => prev.filter(p => p !== catValue));
-  };
-
-  // Demote tag (make it a subtag of the tag above it in the list)
-  const demoteTag = (catValue: string, parentValue: string | null) => {
-    const siblings = getColumnItems(parentValue);
-    const idx = siblings.findIndex(c => c.value === catValue);
-    if (idx <= 0) return; // No sibling above to nest into
-    const targetParent = siblings[idx - 1].value;
-    // Check depth limit
-    if (targetParent.split('/').length >= 4) return;
-    reparentTag(catValue, targetParent);
-  };
-
-  // Drop handler for drag reparenting
-  const handleDrop = (targetValue: string | null) => {
+  // Drop onto a tag = nest into it
+  const handleDropOnTag = (targetValue: string) => {
     if (!dragTag || dragTag === targetValue) {
-      setDragTag(null);
-      setDropTarget(null);
-      setDropAction(null);
+      resetDrag();
       return;
     }
-    if (targetValue && dropAction === 'into') {
-      // Don't allow dropping into itself or its children
-      if (targetValue.startsWith(dragTag + '/')) return;
-      reparentTag(dragTag, targetValue);
-    } else if (dropAction === 'reorder' && targetValue) {
-      moveCategory(dragTag, targetValue);
+    // Don't allow dropping into itself or its children
+    if (targetValue.startsWith(dragTag + '/')) {
+      resetDrag();
+      return;
     }
+    // Check depth limit
+    if (targetValue.split('/').length >= 4) {
+      resetDrag();
+      return;
+    }
+    reparentTag(dragTag, targetValue);
+    resetDrag();
+  };
+
+  // Drop onto column empty space = reparent to that column's parent
+  const handleDropOnColumn = (columnParentValue: string | null) => {
+    if (!dragTag) {
+      resetDrag();
+      return;
+    }
+    // Get current parent of the dragged tag
+    const segments = dragTag.split('/');
+    const currentParent = segments.length > 1 ? segments.slice(0, -1).join('/') : null;
+    
+    // If already at this level, treat as reorder (no-op for column drop)
+    if (currentParent === columnParentValue) {
+      resetDrag();
+      return;
+    }
+
+    // Check depth limit
+    if (columnParentValue && columnParentValue.split('/').length >= 4) {
+      resetDrag();
+      return;
+    }
+
+    reparentTag(dragTag, columnParentValue);
+    resetDrag();
+  };
+
+  const resetDrag = () => {
     setDragTag(null);
     setDropTarget(null);
-    setDropAction(null);
+    setDropColumnParent(undefined);
   };
 
   if (!open) return null;
 
-  // Build breadcrumb
   const breadcrumbs = columnPath.map((p, i) => {
     if (p === null) return { label: 'All Tags', value: null, index: i };
     const cat = categories.find(c => c.value === p);
@@ -225,26 +225,67 @@ export function TagManagerPanel({ open, onClose }: TagManagerPanelProps) {
                 const isLastColumn = colIndex === columnPath.length - 1;
                 const depth = parentValue ? parentValue.split('/').length : 0;
                 const canAddSubtag = depth < 4;
+                const isColumnDropTarget = dropColumnParent === parentValue && dragTag;
 
                 return (
                   <div
                     key={`col-${colIndex}-${parentValue || 'root'}`}
-                    className={`flex-shrink-0 border-r border-border/20 flex flex-col ${
+                    className={`flex-shrink-0 border-r border-border/20 flex flex-col transition-colors duration-100 ${
                       isLastColumn ? 'flex-1 min-w-[240px]' : 'w-[220px]'
-                    }`}
+                    } ${isColumnDropTarget ? 'bg-primary/5' : ''}`}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (dragTag) {
+                        setDropColumnParent(parentValue);
+                        setDropTarget(null);
+                      }
+                    }}
+                    onDragLeave={(e) => {
+                      // Only clear if leaving the column entirely
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const x = e.clientX;
+                      const y = e.clientY;
+                      if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+                        if (dropColumnParent === parentValue) {
+                          setDropColumnParent(undefined);
+                        }
+                      }
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleDropOnColumn(parentValue);
+                    }}
                   >
+                    {/* Column header showing level */}
+                    {dragTag && (
+                      <div className={`px-3 py-1.5 text-[9px] font-mono tracking-wider text-center transition-colors duration-100 border-b border-border/10 ${
+                        isColumnDropTarget
+                          ? 'text-primary bg-primary/8'
+                          : 'text-muted-foreground/30'
+                      }`}>
+                        {isColumnDropTarget ? '↓ DROP TO MOVE HERE' : parentValue ? `LEVEL ${depth + 1}` : 'ROOT'}
+                      </div>
+                    )}
                     <div className="flex-1 overflow-y-auto py-2 px-2 space-y-0.5">
                       {items.length === 0 && !newTagInput ? (
                         <p className="text-center text-[11px] font-mono text-muted-foreground/30 py-6">
-                          {parentValue ? 'No subtags' : 'No tags yet'}
+                          {dragTag 
+                            ? 'Drop here to move to this level'
+                            : parentValue ? 'No subtags' : 'No tags yet'}
                         </p>
                       ) : (
                         items.map((cat) => {
                           const count = getItemCount(cat.value);
                           const hasSubs = hasChildren(cat.value);
                           const isSelected = columnPath.includes(cat.value);
-                          const isDragOver = dropTarget === cat.value;
+                          const isDragOverTag = dropTarget === cat.value;
                           const isDragging = dragTag === cat.value;
+                          // Can this tag accept a drop (nesting)?
+                          const canAcceptNest = dragTag && dragTag !== cat.value && 
+                            !cat.value.startsWith(dragTag + '/') &&
+                            cat.value.split('/').length < 4;
 
                           return (
                             <div
@@ -254,35 +295,34 @@ export function TagManagerPanel({ open, onClose }: TagManagerPanelProps) {
                                 setDragTag(cat.value);
                                 e.dataTransfer.effectAllowed = 'move';
                               }}
-                              onDragEnd={() => {
-                                setDragTag(null);
-                                setDropTarget(null);
-                                setDropAction(null);
-                              }}
+                              onDragEnd={resetDrag}
                               onDragOver={(e) => {
                                 e.preventDefault();
-                                if (dragTag && dragTag !== cat.value) {
+                                e.stopPropagation();
+                                if (dragTag && dragTag !== cat.value && canAcceptNest) {
                                   setDropTarget(cat.value);
-                                  // Hold over = nest into; quick pass = reorder
-                                  setDropAction('into');
+                                  setDropColumnParent(undefined);
                                 }
                               }}
-                              onDragLeave={() => {
+                              onDragLeave={(e) => {
+                                e.stopPropagation();
                                 if (dropTarget === cat.value) {
                                   setDropTarget(null);
-                                  setDropAction(null);
                                 }
                               }}
                               onDrop={(e) => {
                                 e.preventDefault();
-                                handleDrop(cat.value);
+                                e.stopPropagation();
+                                if (canAcceptNest) {
+                                  handleDropOnTag(cat.value);
+                                }
                               }}
                               className={`group flex items-center gap-2 px-2.5 py-2 rounded-md cursor-pointer select-none transition-all duration-100 ${
                                 isSelected
                                   ? 'bg-primary/8 text-foreground'
                                   : 'hover:bg-muted/40 text-foreground/80'
-                              } ${isDragOver ? 'ring-1 ring-primary/40 bg-primary/5' : ''} ${
-                                isDragging ? 'opacity-40' : ''
+                              } ${isDragOverTag && canAcceptNest ? 'ring-2 ring-primary/50 bg-primary/10 scale-[1.02]' : ''} ${
+                                isDragging ? 'opacity-30 scale-95' : ''
                               }`}
                               onClick={() => {
                                 if (hasSubs || canAddSubtag) drillInto(cat.value);
@@ -330,28 +370,8 @@ export function TagManagerPanel({ open, onClose }: TagManagerPanelProps) {
                                 {count}
                               </span>
 
-                              {/* Action buttons - visible on hover */}
-                              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                                {/* Promote (move up one level) */}
-                                {parentValue && (
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); promoteTag(cat.value); }}
-                                    className="p-1 text-muted-foreground/30 hover:text-foreground transition-colors"
-                                    title="Promote to parent level"
-                                  >
-                                    <ArrowUpRight size={12} />
-                                  </button>
-                                )}
-                                {/* Demote (nest into sibling above) */}
-                                {items.indexOf(cat) > 0 && cat.value.split('/').length < 4 && (
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); demoteTag(cat.value, parentValue); }}
-                                    className="p-1 text-muted-foreground/30 hover:text-foreground transition-colors"
-                                    title="Nest into tag above"
-                                  >
-                                    <ArrowDownLeft size={12} />
-                                  </button>
-                                )}
+                              {/* Delete - visible on hover */}
+                              <div className="flex items-center shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button
                                   onClick={(e) => { e.stopPropagation(); handleDeleteTag(cat.value); }}
                                   className="p-1 text-muted-foreground/30 hover:text-destructive transition-colors"
@@ -405,7 +425,7 @@ export function TagManagerPanel({ open, onClose }: TagManagerPanelProps) {
           {/* Hint */}
           <div className="px-5 py-2.5 border-t border-border/20">
             <p className="text-[10px] font-mono text-muted-foreground/30 text-center">
-              Click tag to drill in · Drag to reorder · ↗ promote · ↙ nest · Drop onto tag to make subtag
+              Click to drill in · Drag onto a tag to nest · Drag to a column to move level
             </p>
           </div>
         </motion.div>
