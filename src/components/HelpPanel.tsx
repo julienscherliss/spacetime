@@ -1,11 +1,14 @@
 import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  X, Search, Mouse, Smartphone, GripVertical, Focus, List,
+  X, Search, Mouse, GripVertical, Focus, List,
   CalendarDays, Grid3X3, Archive, Clock, BarChart3, Repeat,
-  Settings, Plus, ArrowUpDown, Tag, CheckCheck, Layers, Undo2,
-  HelpCircle, Hand, Timer, MoveHorizontal, ArchiveRestore,
+  Settings, Plus, ArrowUpDown, Tag, CheckCheck, Layers,
+  HelpCircle, Hand, MoveHorizontal, ArchiveRestore,
+  Link, Unlink, Copy, CalendarCheck, Paperclip, Shield,
+  Moon, ListChecks, ExternalLink,
 } from 'lucide-react';
+import { useTaskStore } from '@/store/taskStore';
 
 interface HelpPanelProps {
   open: boolean;
@@ -20,6 +23,10 @@ interface HelpTip {
   icon: React.ReactNode;
   category: 'navigation' | 'tasks' | 'gestures' | 'features';
   keywords: string[];
+  /** Event name to dispatch when "Open" link is clicked */
+  openAction?: string;
+  /** Label for the action link */
+  openLabel?: string;
 }
 
 const CATEGORY_META: Record<string, { label: string; color: string }> = {
@@ -34,7 +41,7 @@ const tips: HelpTip[] = [
   {
     id: 'views',
     title: 'Switch views',
-    description: 'Use the tab bar to switch between Focus, Day, Week, and Month views. Tap Day twice to toggle between timeline and list layout.',
+    description: 'Use the tab bar to switch between Focus, Day, Week, and Month views. Tap the Day tab twice to toggle between timeline and list layout.',
     icon: <List size={16} strokeWidth={1.5} />,
     category: 'navigation',
     keywords: ['view', 'focus', 'day', 'week', 'month', 'calendar', 'switch', 'tab', 'timeline', 'list'],
@@ -50,7 +57,7 @@ const tips: HelpTip[] = [
   {
     id: 'overflow-menu',
     title: 'More options menu',
-    description: 'On mobile, tap the ··· button (top right) to access Library, Waiting Room, Archive, Analytics, and Settings.',
+    description: 'On mobile, tap the ··· button (top right) to access Library, Waiting Room, Archive, Analytics, Tag Manager, and Settings.',
     icon: <Layers size={16} strokeWidth={1.5} />,
     category: 'navigation',
     keywords: ['menu', 'more', 'overflow', 'mobile', 'dots', 'settings'],
@@ -60,7 +67,7 @@ const tips: HelpTip[] = [
   {
     id: 'add-task',
     title: 'Add a new task',
-    description: 'Tap the + button at the bottom of the screen, or tap an empty slot on the timeline to create a task at that time.',
+    description: 'Tap the + button at the bottom of the screen, or click-and-drag on an empty slot in the timeline to create a task at that time with a specific duration.',
     icon: <Plus size={16} strokeWidth={1.5} />,
     category: 'tasks',
     keywords: ['add', 'create', 'new', 'task', 'plus', 'button'],
@@ -68,10 +75,10 @@ const tips: HelpTip[] = [
   {
     id: 'edit-task',
     title: 'Edit a task',
-    description: 'Single-click or tap a task block to open the edit panel. Change the title, duration, tag, notes, and more.',
+    description: 'Single-click or tap a task block to open the edit panel. Change the title, duration, priority, tag, due date, recurrence, notes, subtasks, and attachments. You can also click task names in Archive and Analytics to edit them.',
     icon: <Settings size={16} strokeWidth={1.5} />,
     category: 'tasks',
-    keywords: ['edit', 'click', 'tap', 'panel', 'modify', 'change', 'details'],
+    keywords: ['edit', 'click', 'tap', 'panel', 'modify', 'change', 'details', 'retag'],
   },
   {
     id: 'complete-task',
@@ -84,7 +91,7 @@ const tips: HelpTip[] = [
   {
     id: 'priority',
     title: 'Priority levels',
-    description: 'Tasks have 4 priority levels: FLEX (move freely), SEMI (within week), FIXED (within day), and LOCK (cannot move). Moving a task escalates its priority by one level.',
+    description: 'Tasks have 4 priority levels: FLEX (move freely), SEMI (within week only), FIXED (within day only), and LOCK (cannot move at all). Moving a task to another day escalates its priority by one level automatically. The drag overlay turns red when you try to drop a task outside its allowed zone.',
     icon: <ArrowUpDown size={16} strokeWidth={1.5} />,
     category: 'tasks',
     keywords: ['priority', 'flex', 'semi', 'fixed', 'lock', 'escalate', 'level', 'move'],
@@ -92,28 +99,54 @@ const tips: HelpTip[] = [
   {
     id: 'task-mobility',
     title: 'Task Mobility modes',
-    description: 'Controls how due dates affect task priority. In Normal mode, tasks due this week auto-escalate to Semi (can only move within the week), and tasks due today escalate to Fixed (locked to that day). You can still manually lower priority. In Elite mode, the same auto-escalation applies but priority can only go up — never down. Disabled mode turns off all due-date-based escalation. Change this in Settings → Task Mobility.',
-    icon: <ArrowUpDown size={16} strokeWidth={1.5} />,
+    description: 'Controls how due dates and movement affect task priority. Three modes available:\n\n• Disabled — No auto-escalation. Due dates don\'t affect priority. Tasks don\'t escalate when moved between days.\n\n• Normal — Tasks due this week auto-escalate to Semi. Tasks due today escalate to Fixed. You can still manually lower priority.\n\n• Elite — Same auto-escalation as Normal, but priority can only go up — never down. Lower priority options are greyed out in the edit panel.\n\nChange this in Settings → Task Mobility.',
+    icon: <Shield size={16} strokeWidth={1.5} />,
     category: 'tasks',
     keywords: ['mobility', 'elite', 'normal', 'disabled', 'due', 'date', 'escalate', 'priority', 'restrict', 'settings'],
+    openAction: 'toggle-settings',
+    openLabel: 'Open Settings',
+  },
+  {
+    id: 'due-dates',
+    title: 'Due dates',
+    description: 'Set a due date on any task from the edit panel. Due dates interact with the Task Mobility setting — in Normal or Elite mode, approaching deadlines automatically escalate task priority to restrict movement. Quick-set buttons let you pick 1 week, 1 month, 6 months, or 1 year.',
+    icon: <CalendarCheck size={16} strokeWidth={1.5} />,
+    category: 'tasks',
+    keywords: ['due', 'date', 'deadline', 'overdue', 'quick', 'set'],
+  },
+  {
+    id: 'subtasks',
+    title: 'Subtasks',
+    description: 'Add subtasks within the edit panel to break a task into smaller steps. Check them off individually — the task block shows a progress indicator based on completed subtasks.',
+    icon: <ListChecks size={16} strokeWidth={1.5} />,
+    category: 'tasks',
+    keywords: ['subtask', 'checklist', 'step', 'progress', 'break', 'down'],
   },
   {
     id: 'tags',
-    title: 'Tag your tasks',
-    description: 'Assign a category tag in the edit panel. Tags are used in Analytics to track how you spend your time across different areas.',
+    title: 'Tags & categories',
+    description: 'Assign a category tag in the edit panel. Tags support a parent/subtag hierarchy using the "parent > subtag" format. Use the Tag Manager to create, rename, and organize tags. Tags drive the Analytics breakdown — click a tag in Analytics to drill down into its subtags.',
     icon: <Tag size={16} strokeWidth={1.5} />,
     category: 'tasks',
-    keywords: ['tag', 'category', 'label', 'color', 'organize', 'analytics'],
+    keywords: ['tag', 'category', 'label', 'color', 'organize', 'analytics', 'subtag', 'hierarchy', 'manager'],
+  },
+  {
+    id: 'attachments',
+    title: 'Notes & attachments',
+    description: 'Add notes in the edit panel description field. URLs typed in notes are automatically detected and shown as clickable link attachments. You can also upload file attachments directly.',
+    icon: <Paperclip size={16} strokeWidth={1.5} />,
+    category: 'tasks',
+    keywords: ['note', 'attachment', 'link', 'url', 'file', 'upload', 'description'],
   },
 
   // Gestures
   {
     id: 'drag-desktop',
     title: 'Drag to reschedule (desktop)',
-    description: 'Click and drag a task block to move it to a new time slot. Drag between days in Week view to reschedule across days.',
+    description: 'Click and drag a task block to move it to a new time slot. Drag between day columns in Week view to reschedule across days. The overlay shows the target time and turns red if the drop zone is blocked.',
     icon: <Mouse size={16} strokeWidth={1.5} />,
     category: 'gestures',
-    keywords: ['drag', 'move', 'reschedule', 'desktop', 'mouse', 'click'],
+    keywords: ['drag', 'move', 'reschedule', 'desktop', 'mouse', 'click', 'week'],
   },
   {
     id: 'drag-mobile',
@@ -126,15 +159,39 @@ const tips: HelpTip[] = [
   {
     id: 'resize',
     title: 'Resize task duration',
-    description: 'Drag the bottom edge of a task block to make it longer or shorter. The duration updates in real time.',
+    description: 'Drag the top or bottom edge of a task block to make it longer or shorter. The duration updates in real time. Resizing respects collision boundaries — it won\'t overlap adjacent tasks.',
     icon: <GripVertical size={16} strokeWidth={1.5} />,
     category: 'gestures',
-    keywords: ['resize', 'duration', 'longer', 'shorter', 'drag', 'edge', 'bottom', 'handle'],
+    keywords: ['resize', 'duration', 'longer', 'shorter', 'drag', 'edge', 'bottom', 'top', 'handle'],
+  },
+  {
+    id: 'copy-task',
+    title: 'Copy a task',
+    description: 'While dragging an unlinked task, move the pointer to the rightmost edge of the column. A "COPY HERE" label and copy icon appear — drop to duplicate the task at that time without moving the original.',
+    icon: <Copy size={16} strokeWidth={1.5} />,
+    category: 'gestures',
+    keywords: ['copy', 'duplicate', 'clone', 'drag', 'right', 'edge'],
+  },
+  {
+    id: 'unlink-task',
+    title: 'Unlink a recurring task',
+    description: 'Linked recurring tasks move together. To unlink a single instance: drag it to the right edge (shows an Unlink icon), or tap the Unlink chip in the edit panel next to the repeat setting. Unlinking is one-way — once unlinked, the task becomes independent. Its repeat setting changes to "No repeat".',
+    icon: <Unlink size={16} strokeWidth={1.5} />,
+    category: 'gestures',
+    keywords: ['unlink', 'detach', 'recurring', 'linked', 'independent', 'series', 'one-way'],
+  },
+  {
+    id: 'relink-task',
+    title: 'Relink a task to a series',
+    description: 'To re-join an unlinked task to a series: drag it on top of another task with the same name and duration. A "RELINK" overlay appears. Dropping relinks the task — it adopts the target\'s recurrence, routine status, and series membership without moving from its position.',
+    icon: <Link size={16} strokeWidth={1.5} />,
+    category: 'gestures',
+    keywords: ['relink', 'rejoin', 'series', 'linked', 'drag', 'same', 'name', 'merge'],
   },
   {
     id: 'complete-cal',
     title: 'Complete calendar events',
-    description: 'Double-click or double-tap a Google Calendar event to mark it done. Tag it first so completed time counts in Analytics.',
+    description: 'Double-click or double-tap a Google Calendar event to mark it done. Single-click to open its edit panel where you can assign a tag. Tagged completed events count toward your time in Analytics.',
     icon: <CalendarDays size={16} strokeWidth={1.5} />,
     category: 'gestures',
     keywords: ['calendar', 'google', 'event', 'complete', 'double', 'tap'],
@@ -144,23 +201,27 @@ const tips: HelpTip[] = [
   {
     id: 'library',
     title: 'Task Library',
-    description: 'Store reusable task templates in the Library. Drag them onto the timeline to schedule. Great for tasks you do regularly but aren\'t strict routines.',
+    description: 'Store reusable task templates in the Library. Drag them onto the timeline to schedule. The source template stays in the Library — great for tasks you do regularly but aren\'t strict routines. Organize with categories.',
     icon: <Archive size={16} strokeWidth={1.5} />,
     category: 'features',
     keywords: ['library', 'template', 'reusable', 'store', 'drag', 'schedule'],
+    openAction: 'toggle-library',
+    openLabel: 'Open Library',
   },
   {
     id: 'waiting-room',
     title: 'Waiting Room',
-    description: 'Tasks not ready to schedule go to the Waiting Room. They stay out of your timeline but won\'t be forgotten. Move them back when you\'re ready.',
+    description: 'Tasks not ready to schedule go to the Waiting Room. They stay out of your timeline but won\'t be forgotten. Tap a task in the Waiting Room to pick it up, then tap a time slot to place it. Overdue unscheduled tasks are automatically moved here.',
     icon: <Clock size={16} strokeWidth={1.5} />,
     category: 'features',
     keywords: ['waiting', 'room', 'hold', 'park', 'later', 'defer'],
+    openAction: 'toggle-waiting-room',
+    openLabel: 'Open Waiting Room',
   },
   {
     id: 'routines',
     title: 'Routines',
-    description: 'Toggle routines on/off from the nav bar. Routine tasks repeat automatically and can optionally keep fixed times across timezone changes.',
+    description: 'Toggle routines on/off from the nav bar (clock icon). Routine tasks repeat automatically and appear as a faded overlay when disabled. In Settings, you can choose whether routines keep fixed clock times across timezone changes.',
     icon: <Repeat size={16} strokeWidth={1.5} />,
     category: 'features',
     keywords: ['routine', 'repeat', 'recurring', 'daily', 'toggle', 'automatic'],
@@ -168,26 +229,32 @@ const tips: HelpTip[] = [
   {
     id: 'analytics',
     title: 'Analytics',
-    description: 'View time breakdowns by tag, daily trends, activity heatmaps, and completion rates. Filter by time range, tag, priority, and more.',
+    description: 'View time breakdowns by tag, daily trends, activity heatmaps, completion rates, and neglected tags. Filter by time range, tag, priority, and more. Click any tag in the "Time by Tag" chart to drill down into its subtags. Click task names anywhere in Analytics to open the edit panel for retagging.',
     icon: <BarChart3 size={16} strokeWidth={1.5} />,
     category: 'features',
-    keywords: ['analytics', 'stats', 'chart', 'graph', 'time', 'breakdown', 'heatmap', 'trend'],
+    keywords: ['analytics', 'stats', 'chart', 'graph', 'time', 'breakdown', 'heatmap', 'trend', 'drill', 'subtag', 'neglected'],
+    openAction: 'toggle-analytics',
+    openLabel: 'Open Analytics',
   },
   {
     id: 'archive',
     title: 'Archive',
-    description: 'Completed, skipped, and deleted tasks are archived. Browse the archive to review past activity or restore tasks.',
+    description: 'Completed and deleted tasks are archived automatically. Browse the archive to review past activity, restore tasks, or click task names to re-edit and retag them. Filter by date, search, or completion status.',
     icon: <ArchiveRestore size={16} strokeWidth={1.5} />,
     category: 'features',
     keywords: ['archive', 'history', 'past', 'deleted', 'skipped', 'restore', 'review'],
+    openAction: 'toggle-archive',
+    openLabel: 'Open Archive',
   },
   {
     id: 'google-cal',
     title: 'Google Calendar sync',
-    description: 'Connect in Settings to overlay your Google Calendar events on the timeline. Toggle individual sub-calendars on/off. Hit the sync button to refresh.',
+    description: 'Connect in Settings to overlay your Google Calendar events on the timeline. Toggle individual sub-calendars on/off. Events are cached locally so they appear instantly when navigating — a background sync refreshes data automatically. Hit the sync button to force a refresh.',
     icon: <Grid3X3 size={16} strokeWidth={1.5} />,
     category: 'features',
     keywords: ['google', 'calendar', 'sync', 'connect', 'import', 'overlay', 'events'],
+    openAction: 'toggle-settings',
+    openLabel: 'Open Settings',
   },
   {
     id: 'focus-view',
@@ -196,6 +263,26 @@ const tips: HelpTip[] = [
     icon: <Focus size={16} strokeWidth={1.5} />,
     category: 'features',
     keywords: ['focus', 'current', 'timer', 'countdown', 'now', 'active', 'ring'],
+  },
+  {
+    id: 'dark-mode',
+    title: 'Dark mode',
+    description: 'Switch between light and dark themes in Settings → Appearance. The dark theme uses a darker color scheme while preserving the industrial design aesthetic.',
+    icon: <Moon size={16} strokeWidth={1.5} />,
+    category: 'features',
+    keywords: ['dark', 'mode', 'theme', 'light', 'appearance', 'night'],
+    openAction: 'toggle-settings',
+    openLabel: 'Open Settings',
+  },
+  {
+    id: 'tag-manager',
+    title: 'Tag Manager',
+    description: 'Create, rename, and organize your tags with a parent/subtag hierarchy. Access from the nav bar or overflow menu. Tags created here are available across all tasks.',
+    icon: <Tag size={16} strokeWidth={1.5} />,
+    category: 'features',
+    keywords: ['tag', 'manager', 'create', 'rename', 'organize', 'hierarchy', 'subtag'],
+    openAction: 'toggle-tag-manager',
+    openLabel: 'Open Tag Manager',
   },
 ];
 
@@ -350,7 +437,7 @@ export function HelpPanel({ open, onClose, initialSection }: HelpPanelProps) {
   );
 }
 
-function TipCard({ tip, searchQuery, forceExpand }: { tip: HelpTip; searchQuery: string; forceExpand?: boolean }) {
+function TipCard({ tip, searchQuery, forceExpand, onClose }: { tip: HelpTip; searchQuery: string; forceExpand?: boolean; onClose?: () => void }) {
   const [expanded, setExpanded] = useState(!!searchQuery.trim() || !!forceExpand);
 
   useEffect(() => {
@@ -386,9 +473,24 @@ function TipCard({ tip, searchQuery, forceExpand }: { tip: HelpTip; searchQuery:
             transition={{ duration: 0.15 }}
             className="overflow-hidden"
           >
-            <p className="text-[11px] font-mono text-muted-foreground/60 leading-relaxed mt-2 pl-[28px]">
-              {tip.description}
-            </p>
+            <div className="mt-2 pl-[28px]">
+              <p className="text-[11px] font-mono text-muted-foreground/60 leading-relaxed whitespace-pre-line">
+                {tip.description}
+              </p>
+              {tip.openAction && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.dispatchEvent(new CustomEvent(tip.openAction!));
+                    onClose?.();
+                  }}
+                  className="inline-flex items-center gap-1 mt-2 text-[10px] font-mono text-primary/70 hover:text-primary transition-colors tracking-wider"
+                >
+                  <ExternalLink size={10} strokeWidth={1.5} />
+                  {tip.openLabel || 'Open'}
+                </button>
+              )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
