@@ -490,3 +490,28 @@ export function setNotificationDebugMode(enabled: boolean): void {
 export function isNotificationDebugMode(): boolean {
   return debugMode;
 }
+
+// ─── Tap handler ─────────────────────────────────────────────────────────────
+
+/**
+ * Register a listener for notification taps. Returns a cleanup function.
+ * The callback receives the taskId from the notification extra data (if any).
+ */
+export function setupNotificationTapListener(
+  onTap: (taskId: string | null) => void,
+): (() => void) | undefined {
+  if (!Capacitor.isNativePlatform()) return undefined;
+
+  const listener = LocalNotifications.addListener(
+    'localNotificationActionPerformed',
+    (action) => {
+      const taskId = action.notification?.extra?.taskId ?? null;
+      log(`notification tapped, taskId=${taskId}`);
+      onTap(taskId);
+    },
+  );
+
+  return () => {
+    listener.then((l) => l.remove());
+  };
+}

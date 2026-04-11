@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTaskStore } from '@/store/taskStore';
 import { useCalendarStore } from '@/store/calendarStore';
 import { AppNav } from '@/components/AppNav';
+import { setupNotificationTapListener } from '@/utils/notificationService';
 import { FocusView } from '@/components/FocusView';
 import { DayView } from '@/components/DayView';
 import { DayListView } from '@/components/DayListView';
@@ -53,6 +54,14 @@ const Index = () => {
   // Check calendar connection status on mount
   useEffect(() => {
     useCalendarStore.getState().checkStatus();
+  }, []);
+
+  // Switch to focus view when a notification is tapped
+  useEffect(() => {
+    const cleanup = setupNotificationTapListener((_taskId) => {
+      useTaskStore.getState().setViewMode('focus');
+    });
+    return cleanup;
   }, []);
 
   // Move overdue tasks to waiting room periodically
