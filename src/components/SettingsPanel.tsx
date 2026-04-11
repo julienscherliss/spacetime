@@ -1,8 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useTimezoneStore, getTzAbbr, TIMEZONES } from '@/store/timezoneStore';
 import { useCalendarStore } from '@/store/calendarStore';
-import { X, Search, Globe, Repeat, MapPin, Calendar as CalIcon, RefreshCw, Unplug, HelpCircle, Moon, Shield } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { X, Search, Globe, Repeat, MapPin, Calendar as CalIcon, RefreshCw, Unplug, HelpCircle, Moon, Shield, Lock } from 'lucide-react';
 import type { MobilityMode } from '@/store/timezoneStore';
+import { toast } from 'sonner';
 import { HelpPanel } from './HelpPanel';
 
 interface SettingsPanelProps {
