@@ -581,6 +581,7 @@ export function TaskEditPanel() {
                 <button
                   onClick={() => {
                     setIsLinked(false);
+                    setRecurrenceType('none');
                     if (navigator.vibrate) navigator.vibrate(15);
                   }}
                   className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors text-destructive/60 bg-destructive/10 hover:bg-destructive/15"
@@ -798,6 +799,7 @@ export function TaskEditPanel() {
                               <button
                                 onClick={() => {
                                   setIsLinked(false);
+                                  setRecurrenceType('none');
                                   if (navigator.vibrate) navigator.vibrate(15);
                                 }}
                                 className="text-[8px] font-mono tracking-wider text-destructive/50 hover:text-destructive/80 transition-colors"
