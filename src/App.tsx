@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { useTimezoneStore } from "@/store/timezoneStore";
 import { useDataSync } from "@/hooks/useDataSync";
+import { isNativePlatform, setupDeepLinkListener } from "@/utils/nativeAuth";
 import Index from "./pages/Index.tsx";
 import Auth from "./pages/Auth.tsx";
 import NotFound from "./pages/NotFound.tsx";
@@ -45,6 +46,13 @@ const App = () => {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
   }, [darkMode]);
+
+  // Register deep-link listener for native OAuth callback
+  useEffect(() => {
+    if (!isNativePlatform()) return;
+    const cleanup = setupDeepLinkListener();
+    return cleanup;
+  }, []);
 
   return (
   <QueryClientProvider client={queryClient}>

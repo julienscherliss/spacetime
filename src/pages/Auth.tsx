@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { lovable } from '@/integrations/lovable/index';
+import { isNativePlatform, nativeGoogleSignIn } from '@/utils/nativeAuth';
 import { Mail, Lock, User, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -42,6 +43,14 @@ export default function Auth() {
   const handleGoogle = async () => {
     setLoading(true);
     try {
+      if (isNativePlatform()) {
+        // Native: open OAuth in system browser, deep-link callback
+        await nativeGoogleSignIn();
+        // Browser is open — loading clears when deep link returns session
+        return;
+      }
+
+      // Web: use Lovable managed OAuth
       const result = await lovable.auth.signInWithOAuth('google', {
         redirect_uri: window.location.origin,
       });
