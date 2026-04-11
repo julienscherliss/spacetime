@@ -258,14 +258,6 @@ export function WeekView() {
                 <span className="tracking-wider">EXIT ZOOM</span>
               </button>
             )}
-            <FitViewButton
-              tasks={visibleTasks}
-              scrollRef={scrollRef as React.RefObject<HTMLElement>}
-              hourHeight={hourHeight}
-              setScale={setScale}
-              resetZoom={resetZoom}
-              nowMinutes={nowMinutes}
-            />
           </div>
         </div>
       </div>

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Priority, RecurrencePattern, CustomUnit } from '@/store/taskStore';
 import { SubtaskList, Subtask } from '@/components/SubtaskList';
-import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar, Inbox, CalendarCheck, XCircle, Paperclip, ExternalLink, Check, AlertTriangle, Tag, Upload, FileText } from 'lucide-react';
+import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar, Inbox, CalendarCheck, XCircle, Paperclip, ExternalLink, Check, AlertTriangle, Tag, Upload, FileText, Bell } from 'lucide-react';
 import { useTimezoneStore } from '@/store/timezoneStore';
 import { supabase } from '@/integrations/supabase/client';
 import { useLibraryStore } from '@/store/libraryStore';
@@ -40,6 +40,20 @@ const UNIT_OPTIONS: { label: string; value: CustomUnit }[] = [
   { label: 'weeks', value: 'weeks' },
   { label: 'months', value: 'months' },
   { label: 'years', value: 'years' },
+];
+
+const REMINDER_OPTIONS: { label: string; value: number }[] = [
+  { label: 'At start', value: 0 },
+  { label: '5 min', value: 5 },
+  { label: '10 min', value: 10 },
+  { label: '15 min', value: 15 },
+  { label: '30 min', value: 30 },
+  { label: '1 hour', value: 60 },
+  { label: '2 hours', value: 120 },
+  { label: '4 hours', value: 240 },
+  { label: '8 hours', value: 480 },
+  { label: '12 hours', value: 720 },
+  { label: '24 hours', value: 1440 },
 ];
 
 function recurrenceToType(r?: RecurrencePattern): string {
@@ -159,6 +173,8 @@ export function TaskEditPanel() {
       }));
   });
   const [isUploading, setIsUploading] = useState(false);
+  const [reminders, setReminders] = useState<number[]>(task?.reminders || []);
+  const [showReminderModal, setShowReminderModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scopeTriggeredRef = useRef(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -204,6 +220,8 @@ export function TaskEditPanel() {
           }))
       );
       setIsUploading(false);
+      setReminders(task.reminders || []);
+      setShowReminderModal(false);
       scopeTriggeredRef.current = false;
     }
   }, [task?.id]);
@@ -258,6 +276,7 @@ export function TaskEditPanel() {
       detachedFromSeries: (recurrence && !isLinked && task?.recurrenceParentId) ? true : false,
       dueDate: dueDate || undefined,
       category: taskCategory || undefined,
+      reminders: reminders.length > 0 ? reminders : undefined,
       attachments: [
         ...attachments,
         ...linkAttachments.map(l => ({
@@ -600,7 +619,81 @@ export function TaskEditPanel() {
                   Unlink
                 </button>
               )}
+
+              {/* Reminder chip */}
+              <button
+                onClick={() => setShowReminderModal(true)}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
+                  reminders.length > 0
+                    ? 'text-foreground/70 bg-muted/40 hover:bg-muted/60'
+                    : 'text-muted-foreground/40 bg-muted/30 hover:bg-muted/50'
+                }`}
+              >
+                <Bell size={10} strokeWidth={1.5} />
+                {reminders.length > 0 ? `${reminders.length}` : ''}
+              </button>
             </div>
+
+            {/* Reminder modal */}
+            <AnimatePresence>
+              {showReminderModal && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-[80] flex items-center justify-center"
+                >
+                  <div className="absolute inset-0 bg-black/30" onClick={() => setShowReminderModal(false)} />
+                  <motion.div
+                    initial={{ scale: 0.95, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.95, opacity: 0 }}
+                    className="relative bg-card border border-border rounded-lg shadow-lg w-[300px] max-h-[70vh] overflow-hidden"
+                  >
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+                      <h3 className="text-[12px] font-display font-bold text-foreground tracking-tight">REMINDERS</h3>
+                      <button onClick={() => setShowReminderModal(false)} className="text-muted-foreground hover:text-foreground transition-colors">
+                        <X size={14} strokeWidth={1.5} />
+                      </button>
+                    </div>
+                    <div className="p-4 flex flex-wrap gap-2">
+                      {REMINDER_OPTIONS.map((opt) => {
+                        const isSelected = reminders.includes(opt.value);
+                        return (
+                          <button
+                            key={opt.value}
+                            onClick={() => {
+                              setReminders(prev =>
+                                isSelected
+                                  ? prev.filter(v => v !== opt.value)
+                                  : [...prev, opt.value].sort((a, b) => a - b)
+                              );
+                            }}
+                            className={`px-3 py-2 rounded-full text-[11px] font-mono tracking-wide transition-colors border ${
+                              isSelected
+                                ? 'border-primary/40 bg-primary/10 text-primary'
+                                : 'border-border/50 bg-muted/30 text-muted-foreground/60 hover:bg-muted/50 hover:text-foreground/70'
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {reminders.length > 0 && (
+                      <div className="px-4 pb-3">
+                        <button
+                          onClick={() => setReminders([])}
+                          className="text-[10px] font-mono text-muted-foreground/40 hover:text-destructive/60 transition-colors"
+                        >
+                          Clear all
+                        </button>
+                      </div>
+                    )}
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <div className="px-5 pb-5">
               {/* ─── Title ─── */}
