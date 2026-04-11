@@ -7,11 +7,9 @@ import type { MobilityMode } from '@/store/timezoneStore';
 import { toast } from 'sonner';
 import { HelpPanel } from './HelpPanel';
 import { isNativePlatform } from '@/utils/nativePlatform';
-import type { NotificationDebugSnapshot, NotificationLevel } from '@/utils/notificationService';
+import type { NotificationLevel } from '@/utils/notificationService';
 import {
   getPermissionStatus,
-  getDebugSnapshot,
-  getDebugSnapshotSync,
   requestPermissionFromUserAction,
   syncTaskNotifications,
   scheduleTestNotification,
