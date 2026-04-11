@@ -19,16 +19,27 @@ async function getPlugin() {
   return LocalNotifications;
 }
 
-/** Request notification permission. Returns true if granted. */
-export async function requestNotificationPermission(): Promise<boolean> {
+/** Request notification permission. Returns 'granted' | 'denied' | 'prompt'. */
+export async function requestNotificationPermission(): Promise<'granted' | 'denied' | 'prompt'> {
   const LN = await getPlugin();
-  if (!LN) return false;
+  if (!LN) return 'denied';
 
   const { display } = await LN.checkPermissions();
-  if (display === 'granted') return true;
+  if (display === 'granted') return 'granted';
+
+  // If already denied on iOS, the OS won't show the prompt again — user must go to Settings
+  if (display === 'denied') return 'denied';
 
   const result = await LN.requestPermissions();
-  return result.display === 'granted';
+  return result.display === 'granted' ? 'granted' : 'denied';
+}
+
+/** Check current permission status without prompting. */
+export async function checkNotificationPermission(): Promise<'granted' | 'denied' | 'prompt'> {
+  const LN = await getPlugin();
+  if (!LN) return 'denied';
+  const { display } = await LN.checkPermissions();
+  return display as 'granted' | 'denied' | 'prompt';
 }
 
 /** Derive a stable numeric ID from a task UUID (notifications need number IDs). */

@@ -284,8 +284,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             </div>
           </div>
 
-          {/* Notifications — native only */}
-          {isNativeApp && (
+          {/* Notifications */}
           <div className="mb-4">
             <div className="flex items-center gap-1.5 mb-2">
               <Bell size={12} strokeWidth={1.5} className="text-muted-foreground" />
@@ -302,19 +301,28 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               ]).map(opt => (
                 <button
                   key={opt.value}
-                  onClick={async () => {
+                  type="button"
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     if (opt.value !== 'off') {
-                      const granted = await requestNotificationPermission();
-                      if (!granted) {
-                        toast.error('Notification permission denied. Enable in device settings.');
+                      const status = await requestNotificationPermission();
+                      if (status === 'denied') {
+                        toast.error(
+                          'Notifications are blocked. Go to iPhone Settings → spaacetime → Notifications and enable them.',
+                          { duration: 6000 }
+                        );
                         return;
                       }
                     }
                     setNotificationLevel(opt.value);
-                    const tasks = useTaskStore.getState().tasks;
-                    await rescheduleAllNotifications(tasks, opt.value);
+                    const allTasks = useTaskStore.getState().tasks;
+                    await rescheduleAllNotifications(allTasks, opt.value);
+                    if (opt.value !== 'off') {
+                      toast.success(`Notifications set to ${opt.label}`);
+                    }
                   }}
-                  className={`flex-1 py-2 rounded-[2px] text-[11px] font-mono tracking-wider transition-colors ${
+                  className={`flex-1 py-2.5 rounded-[2px] text-[11px] font-mono tracking-wider transition-colors min-h-[44px] ${
                     notificationLevel === opt.value
                       ? 'bg-primary/10 text-primary border border-primary/20'
                       : 'text-muted-foreground/50 hover:text-foreground hover:bg-muted/40 border border-transparent'
@@ -330,7 +338,6 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               {notificationLevel === 'all' && 'Notifications for all scheduled tasks (FLEX, SEMI, FIXED, LOCK).'}
             </div>
           </div>
-          )}
 
             <div className="flex items-center gap-1.5 mb-2">
               <Moon size={12} strokeWidth={1.5} className="text-muted-foreground" />
