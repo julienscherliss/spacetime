@@ -9,7 +9,7 @@ import { PriorityBadge } from '@/components/PriorityBadge';
 import { TimelineTaskBlock } from '@/components/TimelineTaskBlock';
 import { CondensedTaskBlock } from '@/components/CondensedTaskBlock';
 import { timeToMinutes, minutesToTime, snapTo15, formatTime12h, formatHour12h } from '@/hooks/useCurrentTime';
-import { Calendar as CalIcon, Check, Copy, Unlink, Link } from 'lucide-react';
+import { Calendar as CalIcon, Check, Copy, Unlink, Link, XCircle, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getOccupiedSlots, findValidPosition, clampResize, wouldOverlap, getRoutineConflicts } from '@/utils/collisionDetection';
 import { clusterTasks, TaskCluster, getZoomForCluster } from '@/utils/taskClustering';
@@ -1014,8 +1014,20 @@ export function TimelineColumn({
       )}
 
       {dragMsg && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 px-3 py-1.5 rounded-sm bg-card border border-destructive/20 shadow-sm">
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 px-3 py-1.5 rounded-sm bg-card border border-destructive/20 shadow-sm flex items-center gap-2">
           <span className="text-[10px] font-mono text-destructive tracking-wider">{dragMsg}</span>
+          {(dragMsg.includes('Cannot move') || dragMsg.includes('locked') || dragMsg.includes('outside')) && (
+            <button
+              onClick={() => {
+                // Open help panel to task-mobility section
+                const event = new CustomEvent('open-help', { detail: { section: 'task-mobility' } });
+                window.dispatchEvent(event);
+              }}
+              className="text-destructive/50 hover:text-destructive transition-colors shrink-0"
+            >
+              <Info size={12} strokeWidth={2} />
+            </button>
+          )}
         </div>
       )}
 
@@ -1185,7 +1197,7 @@ export function TimelineColumn({
                     : 'border-muted-foreground/30 bg-muted/[0.06]'
           }`}>
             <div className={`px-2 py-1 flex items-center gap-1.5 h-full ${
-              scheduledDragRelinkMode ? 'justify-center flex-col' : ''
+              scheduledDragBlocked ? 'justify-center flex-col' : scheduledDragRelinkMode ? 'justify-center flex-col' : ''
             }`}>
               <span className={`text-[10px] font-mono transition-colors duration-200 ${
                 scheduledDragBlocked
@@ -1200,8 +1212,11 @@ export function TimelineColumn({
                         ? 'text-primary/60'
                         : 'text-muted-foreground/50'
               }`}>
-                {scheduledDragBlocked ? 'BLOCKED' : scheduledDragRelinkMode ? '' : scheduledDragCopyMode ? 'COPY HERE' : formatTime12h(minutesToTime(scheduledDragMinutes))}
+                {scheduledDragBlocked ? '' : scheduledDragRelinkMode ? '' : scheduledDragCopyMode ? 'COPY HERE' : formatTime12h(minutesToTime(scheduledDragMinutes))}
               </span>
+              {scheduledDragBlocked && (
+                <XCircle size={20} className="text-destructive/60" strokeWidth={2} />
+              )}
               {!scheduledDragBlocked && scheduledDragRelinkMode && (
                 <>
                   <Link size={16} className="text-primary/70" />

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Search, Mouse, Smartphone, GripVertical, Focus, List,
@@ -10,6 +10,7 @@ import {
 interface HelpPanelProps {
   open: boolean;
   onClose: () => void;
+  initialSection?: string;
 }
 
 interface HelpTip {
@@ -87,6 +88,14 @@ const tips: HelpTip[] = [
     icon: <ArrowUpDown size={16} strokeWidth={1.5} />,
     category: 'tasks',
     keywords: ['priority', 'flex', 'semi', 'fixed', 'lock', 'escalate', 'level', 'move'],
+  },
+  {
+    id: 'task-mobility',
+    title: 'Task Mobility modes',
+    description: 'Controls how due dates affect task priority. In Normal mode, tasks due this week auto-escalate to Semi (can only move within the week), and tasks due today escalate to Fixed (locked to that day). You can still manually lower priority. In Elite mode, the same auto-escalation applies but priority can only go up — never down. Disabled mode turns off all due-date-based escalation. Change this in Settings → Task Mobility.',
+    icon: <ArrowUpDown size={16} strokeWidth={1.5} />,
+    category: 'tasks',
+    keywords: ['mobility', 'elite', 'normal', 'disabled', 'due', 'date', 'escalate', 'priority', 'restrict', 'settings'],
   },
   {
     id: 'tags',
@@ -190,9 +199,19 @@ const tips: HelpTip[] = [
   },
 ];
 
-export function HelpPanel({ open, onClose }: HelpPanelProps) {
+export function HelpPanel({ open, onClose, initialSection }: HelpPanelProps) {
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Auto-expand a section when opened with initialSection
+  useEffect(() => {
+    if (open && initialSection) {
+      setExpandedId(initialSection);
+      setSearch('');
+      setActiveCategory(null);
+    }
+  }, [open, initialSection]);
 
   const filtered = useMemo(() => {
     let result = tips;
@@ -317,7 +336,7 @@ export function HelpPanel({ open, onClose }: HelpPanelProps) {
                     </div>
                     <div className="space-y-1">
                       {items.map(tip => (
-                        <TipCard key={tip.id} tip={tip} searchQuery={search} />
+                        <TipCard key={tip.id} tip={tip} searchQuery={search} forceExpand={expandedId === tip.id} />
                       ))}
                     </div>
                   </div>
@@ -331,8 +350,12 @@ export function HelpPanel({ open, onClose }: HelpPanelProps) {
   );
 }
 
-function TipCard({ tip, searchQuery }: { tip: HelpTip; searchQuery: string }) {
-  const [expanded, setExpanded] = useState(!!searchQuery.trim());
+function TipCard({ tip, searchQuery, forceExpand }: { tip: HelpTip; searchQuery: string; forceExpand?: boolean }) {
+  const [expanded, setExpanded] = useState(!!searchQuery.trim() || !!forceExpand);
+
+  useEffect(() => {
+    if (forceExpand) setExpanded(true);
+  }, [forceExpand]);
 
   return (
     <button
