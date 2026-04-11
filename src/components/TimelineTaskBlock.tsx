@@ -103,20 +103,6 @@ export function TimelineTaskBlock({
   const pickupCommitted = useRef(false);
   const dragActivated = useRef(false);
   const dragReadyFired = useRef(false);
-  const unlinkHoldTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastMoveTime = useRef<number>(0);
-  const stationaryStart = useRef<number>(0);
-  const lastPosition = useRef<{ x: number; y: number } | null>(null);
-
-  const UNLINK_HOLD_MS = 600;
-  const STATIONARY_THRESHOLD = 6;
-
-  const clearUnlinkHold = () => {
-    if (unlinkHoldTimer.current) {
-      clearTimeout(unlinkHoldTimer.current);
-      unlinkHoldTimer.current = null;
-    }
-  };
 
   const clearPickupHold = () => {
     if (pickupRafRef.current) {
