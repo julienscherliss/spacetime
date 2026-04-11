@@ -423,7 +423,7 @@ export function HelpPanel({ open, onClose, initialSection }: HelpPanelProps) {
                     </div>
                     <div className="space-y-1">
                       {items.map(tip => (
-                        <TipCard key={tip.id} tip={tip} searchQuery={search} forceExpand={expandedId === tip.id} />
+                        <TipCard key={tip.id} tip={tip} searchQuery={search} forceExpand={expandedId === tip.id} onClose={onClose} />
                       ))}
                     </div>
                   </div>
