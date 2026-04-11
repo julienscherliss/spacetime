@@ -8,7 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Focus, List, CalendarDays, Grid3X3, Repeat,
-  Archive, Clock, LogOut, Settings, MoreHorizontal, X, ArchiveRestore, BarChart3
+  Archive, Clock, LogOut, Settings, MoreHorizontal, X, ArchiveRestore, BarChart3, Scan
 } from 'lucide-react';
 
 const views: { mode: ViewMode; icon: typeof Focus; label: string }[] = [
@@ -113,11 +113,14 @@ export function AppNav() {
           ref={moreRef}
         >
           <div className="flex items-center justify-between px-2 py-1.5">
-            {/* Logo */}
-            <h1 className="flex flex-col leading-[0.85] font-display font-bold text-[11px] uppercase pl-1">
-              <span className="text-foreground tracking-[0.12em]">space</span>
-              <span className="text-muted-foreground/60 tracking-[0.35em]">time</span>
-            </h1>
+            {/* Fit/scan button — replaces logo on mobile */}
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('fit-to-tasks'))}
+              className="flex items-center justify-center w-[44px] h-[44px] rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+              title="Fit to tasks"
+            >
+              <Scan size={18} strokeWidth={1.5} />
+            </button>
 
             {/* View tabs — primary action */}
             <div className="flex items-center bg-muted/50 rounded-md p-0.5 gap-0.5">
