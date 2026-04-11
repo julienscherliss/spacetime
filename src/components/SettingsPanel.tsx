@@ -6,11 +6,12 @@ import { X, Search, Globe, Repeat, MapPin, Calendar as CalIcon, RefreshCw, Unplu
 import type { MobilityMode } from '@/store/timezoneStore';
 import { toast } from 'sonner';
 import { HelpPanel } from './HelpPanel';
-import { isNative } from '@/utils/nativePlatform';
+import { isNativePlatform } from '@/utils/nativePlatform';
 import type { NotificationDebugSnapshot, NotificationLevel } from '@/utils/nativeNotifications';
 import {
   checkNotificationPermission,
   getNotificationDebugSnapshot,
+  getNotificationDebugSnapshotSync,
   requestNotificationPermission,
   rescheduleAllNotifications,
   scheduleTestNotification,
@@ -25,6 +26,7 @@ interface SettingsPanelProps {
 export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const { timezone, setTimezone, routinesFixedTime, setRoutinesFixedTime, autoDetect, setAutoDetect, darkMode, setDarkMode, mobilityMode, setMobilityMode, notificationLevel, setNotificationLevel } = useTimezoneStore();
   const { connected, email, calendars, loading, checkStatus, startAuth, refreshCalendarData, toggleCalendar, disconnect } = useCalendarStore();
+  const nativeRuntime = isNativePlatform();
   const [search, setSearch] = useState('');
   const [helpOpen, setHelpOpen] = useState(false);
   const [pwMode, setPwMode] = useState<'closed' | 'change' | 'reset'>('closed');
@@ -34,14 +36,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const [pwLoading, setPwLoading] = useState(false);
   const [authProvider, setAuthProvider] = useState<'email' | 'google' | 'unknown'>('unknown');
   const [notificationLoading, setNotificationLoading] = useState(false);
-  const [notificationDebug, setNotificationDebug] = useState<NotificationDebugSnapshot>({
-    platform: 'web',
-    isNative,
-    pluginAvailable: false,
-    permissionStatus: 'denied',
-    requestResult: null,
-    scheduleStatus: isNative ? null : 'Notifications only run inside the native mobile app.',
-  });
+  const [notificationDebug, setNotificationDebug] = useState<NotificationDebugSnapshot>(() => getNotificationDebugSnapshotSync());
 
   // Detect auth provider when panel opens
   useEffect(() => {
@@ -68,7 +63,9 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
         setNotificationDebug((prev) => ({
           ...snapshot,
           requestResult: prev.requestResult,
+          requestError: prev.requestError,
           scheduleStatus: prev.scheduleStatus ?? snapshot.scheduleStatus,
+          scheduleError: prev.scheduleError,
         }));
       }
     })();
@@ -80,68 +77,89 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
 
   const refreshNotificationDebug = async (overrides: Partial<NotificationDebugSnapshot> = {}) => {
     const snapshot = await getNotificationDebugSnapshot();
+    const hasOverride = <K extends keyof NotificationDebugSnapshot>(key: K) => Object.prototype.hasOwnProperty.call(overrides, key);
     const nextState: NotificationDebugSnapshot = {
       ...snapshot,
-      requestResult: overrides.requestResult ?? snapshot.requestResult,
-      scheduleStatus: overrides.scheduleStatus ?? snapshot.scheduleStatus,
+      requestResult: hasOverride('requestResult') ? overrides.requestResult ?? null : notificationDebug.requestResult,
+      requestError: hasOverride('requestError') ? overrides.requestError ?? null : notificationDebug.requestError,
+      scheduleStatus: hasOverride('scheduleStatus') ? overrides.scheduleStatus ?? null : notificationDebug.scheduleStatus ?? snapshot.scheduleStatus,
+      scheduleError: hasOverride('scheduleError') ? overrides.scheduleError ?? null : notificationDebug.scheduleError,
     };
     setNotificationDebug(nextState);
     return nextState;
   };
 
   const handleEnableNotifications = async () => {
-    if (!isNative) {
+    if (!isNativePlatform()) {
       toast('Notifications only work in the Capacitor mobile app.');
       return;
     }
 
     setNotificationLoading(true);
 
-    // Hard safety timeout — button always recovers even if native bridge hangs
-    const safetyTimer = setTimeout(() => {
-      console.error('[notifications] safety timeout fired — force-resetting loading state');
-      setNotificationLoading(false);
-      setNotificationDebug((prev) => ({
-        ...prev,
-        scheduleStatus: 'Enable flow timed out after 15s. The native bridge may not be responding. Check Xcode console.',
-      }));
-      toast.error('Notification setup timed out. Check Xcode console for details.', { duration: 6000 });
-    }, 15_000);
-
     try {
       console.log('[notifications] enable button tapped — starting flow');
-      
-      console.log('[notifications] step 1: requesting permission…');
-      const requestResult = await requestNotificationPermission();
-      console.log('[notifications] step 2: permission result =', requestResult);
+      await refreshNotificationDebug({
+        requestResult: null,
+        requestError: null,
+        scheduleStatus: 'Requesting notification permission…',
+        scheduleError: null,
+      });
+
+      console.log('[notifications] step 1: calling LocalNotifications.requestPermissions()…');
+      const permissionResponse = await requestNotificationPermission();
+      const requestResult = permissionResponse.status;
+      console.log('[notifications] step 2: permission result =', permissionResponse);
+
+      if (permissionResponse.error) {
+        const nextDebug = await refreshNotificationDebug({
+          requestResult,
+          requestError: permissionResponse.error,
+          scheduleStatus: `Permission request error: ${permissionResponse.error}`,
+          scheduleError: null,
+        });
+
+        console.error('[notifications] permission request failed', nextDebug);
+        toast.error(permissionResponse.error, { duration: 7000 });
+        return;
+      }
       
       const granted = requestResult === 'granted';
       let testScheduled = false;
+      let scheduleError: string | null = null;
+      let scheduleStatus: string | null = null;
 
       if (granted) {
-        console.log('[notifications] step 3: scheduling test notification…');
-        testScheduled = await scheduleTestNotification(8);
-        console.log('[notifications] step 4: test scheduled =', testScheduled);
+        console.log('[notifications] step 3: calling LocalNotifications.schedule() for a test notification…');
+        const testResult = await scheduleTestNotification(8);
+        testScheduled = testResult.ok;
+        scheduleError = testResult.error;
+        scheduleStatus = testResult.ok
+          ? `Permission granted. Test notification scheduled for ~8 seconds from now.${testResult.scheduledFor ? ` (${testResult.scheduledFor})` : ''}`
+          : `Test notification error: ${testResult.error ?? 'Unknown scheduling error.'}`;
+        console.log('[notifications] step 4: test notification result =', testResult);
+      } else {
+        scheduleStatus = 'Permission denied. Enable notifications in iPhone Settings → spaacetime → Notifications.';
       }
 
-      if (granted && notificationLevel !== 'off') {
+      if (granted && !scheduleError && notificationLevel !== 'off') {
         console.log('[notifications] step 5: rescheduling all task notifications…');
         await rescheduleAllNotifications(useTaskStore.getState().tasks, notificationLevel);
       }
 
       const nextDebug = await refreshNotificationDebug({
         requestResult,
-        scheduleStatus: granted
-          ? testScheduled
-            ? 'Permission granted. Test notification scheduled for ~8 seconds from now.'
-            : 'Permission granted, but test notification scheduling failed.'
-          : 'Permission denied. Enable notifications in iPhone Settings → spaacetime → Notifications.',
+        requestError: null,
+        scheduleStatus,
+        scheduleError,
       });
 
       console.log('[notifications] enable flow complete', nextDebug);
 
-      if (granted) {
+      if (granted && !scheduleError) {
         toast.success(testScheduled ? 'Notifications enabled. Test alert in ~8s.' : 'Notifications enabled.');
+      } else if (granted) {
+        toast.error(scheduleError ?? 'Test notification scheduling failed.', { duration: 7000 });
       } else {
         toast.error('Notifications are blocked. Go to iPhone Settings → spaacetime → Notifications.', {
           duration: 6000,
@@ -152,10 +170,10 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
       const msg = error instanceof Error ? error.message : String(error);
       await refreshNotificationDebug({
         scheduleStatus: `Enable flow failed: ${msg}`,
+        scheduleError: msg,
       });
-      toast.error('Failed to enable notifications. Check the debug panel below.');
+      toast.error(msg, { duration: 7000 });
     } finally {
-      clearTimeout(safetyTimer);
       setNotificationLoading(false);
     }
   };
@@ -426,7 +444,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
 
                     setNotificationLevel(opt.value);
 
-                    if (!isNative) {
+                    if (!isNativePlatform()) {
                       await refreshNotificationDebug({
                         scheduleStatus: 'Notification preferences are saved, but notifications only run in the native mobile app.',
                       });
@@ -488,7 +506,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               <button
                 type="button"
                 onClick={handleEnableNotifications}
-                disabled={!isNative || notificationLoading}
+                  disabled={!nativeRuntime || notificationLoading}
                 className="w-full flex items-center justify-center bg-primary/10 text-primary border border-primary/20 rounded-sm p-3 min-h-[48px] text-[12px] font-mono tracking-wider transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {notificationLoading ? 'ENABLING…' : 'ENABLE NOTIFICATIONS'}
@@ -496,12 +514,21 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
 
               <div className="rounded-sm border border-border/40 bg-background/70 p-3 space-y-1.5">
                 <div className="text-[9px] font-mono tracking-[0.14em] text-muted-foreground/60">DEBUG STATUS</div>
-                <div className="text-[10px] font-mono text-foreground/70">Platform: {notificationDebug.platform}</div>
-                <div className="text-[10px] font-mono text-foreground/70">Native Capacitor: {notificationDebug.isNative ? 'yes' : 'no'}</div>
-                <div className="text-[10px] font-mono text-foreground/70">Plugin loaded: {notificationDebug.pluginAvailable ? 'yes' : 'no'}</div>
+                <div className="text-[10px] font-mono text-foreground/70">Capacitor.isNativePlatform(): {notificationDebug.isNative ? 'true' : 'false'}</div>
+                <div className="text-[10px] font-mono text-foreground/70">Capacitor.getPlatform(): {notificationDebug.platform}</div>
+                <div className="text-[10px] font-mono text-foreground/70">Capacitor.isPluginAvailable('LocalNotifications'): {notificationDebug.pluginAvailable ? 'true' : 'false'}</div>
+                <div className="text-[10px] font-mono text-foreground/70">LocalNotifications.requestPermissions callable: {notificationDebug.requestPermissionsCallable ? 'yes' : 'no'}</div>
+                <div className="text-[10px] font-mono text-foreground/70">LocalNotifications.checkPermissions callable: {notificationDebug.checkPermissionsCallable ? 'yes' : 'no'}</div>
+                <div className="text-[10px] font-mono text-foreground/70">LocalNotifications.schedule callable: {notificationDebug.scheduleCallable ? 'yes' : 'no'}</div>
                 <div className="text-[10px] font-mono text-foreground/70">Permission status: {notificationDebug.permissionStatus}</div>
                 <div className="text-[10px] font-mono text-foreground/70">Last request result: {notificationDebug.requestResult ?? 'not requested yet'}</div>
+                {notificationDebug.requestError && (
+                  <div className="text-[10px] font-mono text-destructive/80 leading-relaxed">Last request error: {notificationDebug.requestError}</div>
+                )}
                 <div className="text-[10px] font-mono text-foreground/70 leading-relaxed">Last scheduling result: {notificationDebug.scheduleStatus ?? 'no scheduling attempt yet'}</div>
+                {notificationDebug.scheduleError && (
+                  <div className="text-[10px] font-mono text-destructive/80 leading-relaxed">Last scheduling error: {notificationDebug.scheduleError}</div>
+                )}
               </div>
             </div>
           </div>
