@@ -6,10 +6,22 @@ import { timeToMinutes } from '@/hooks/useCurrentTime';
 import { START_HOUR, END_HOUR } from '@/components/TimelineColumn';
 import { SCALE_MIN, SCALE_MAX } from '@/hooks/useTimeScale';
 
-/** Approximate height of sticky elements (nav bar + sticky controls) */
-const STICKY_OFFSET = 96;
 /** Padding (px) above and below the framed area */
 const FRAME_PADDING = 40;
+
+/** Height of sticky elements above the timeline content.
+ *  Mobile: sticky controls sit at top-0 (~36px), bottom nav is 64px.
+ *  Desktop: top nav (48px) + sticky controls (~36px) = 84px.
+ */
+function getStickyOffset(): number {
+  return window.innerWidth < 640 ? 36 : 84;
+}
+
+/** Usable viewport height below sticky elements (and above bottom nav on mobile) */
+function usableViewport(): number {
+  const bottomNav = window.innerWidth < 640 ? 64 : 0;
+  return window.innerHeight - getStickyOffset() - bottomNav;
+}
 
 interface FitViewButtonProps {
   tasks: Task[];
