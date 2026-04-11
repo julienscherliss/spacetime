@@ -257,6 +257,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             </div>
             <div className="text-[9px] font-mono text-muted-foreground/40 mt-1.5 leading-relaxed">
               {mobilityMode === 'disabled' && 'Due dates won\'t affect task priority levels'}
+              {mobilityMode === 'disabled' && <><br/>Tasks won\'t escalate when moved between days</>}
               {mobilityMode === 'normal' && 'Due this week → Semi · Due today → Fixed · Can still de-escalate manually'}
               {mobilityMode === 'elite' && 'Same as normal, but priority can only be escalated — never lowered'}
             </div>

@@ -541,7 +541,8 @@ export const useTaskStore = create<TaskState>()(
         }
 
         const crossDay = task.date !== newDate;
-        const newPriority = crossDay
+        const mobilityMode = useTimezoneStore.getState().mobilityMode;
+        const newPriority = (crossDay && mobilityMode !== 'disabled')
           ? Math.min(3, task.priority + 1) as Priority
           : task.priority;
         const targetIds = getLinkedScheduleTargetIds(get().tasks, task);
