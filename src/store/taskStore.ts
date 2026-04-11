@@ -48,6 +48,7 @@ export interface Task {
   archivedAt?: string;
   archiveReason?: 'completed' | 'deleted';
   attachments?: { name: string; url: string; type: string }[];
+  reminders?: number[]; // minutes before task start to notify (e.g. [5, 15, 60])
 }
 
 export interface DailyStats {
