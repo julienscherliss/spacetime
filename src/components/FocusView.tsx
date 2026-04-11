@@ -991,14 +991,7 @@ function MainFocusPanel({
       onPointerLeave={onHoldEnd}
       onPointerCancel={onHoldEnd}
     >
-      {/* ═══ BACKGROUND GRID — subtle structural lines ═══ */}
-      <div className="absolute inset-0 pointer-events-none" aria-hidden>
-        <div className="absolute inset-x-0 top-[33%] h-px bg-foreground/[0.03]" />
-        <div className="absolute inset-x-0 top-[66%] h-px bg-foreground/[0.03]" />
-        <div className="absolute inset-y-0 left-1/2 w-px bg-foreground/[0.02]" />
-        <div className="absolute top-0 bottom-0 left-4 w-px bg-foreground/[0.02]" />
-        <div className="absolute top-0 bottom-0 right-4 w-px bg-foreground/[0.02]" />
-      </div>
+      {/* Background grid removed for cleaner focus view */}
 
       {/* ═══ ZONE 1: TOP STATUS STRIP ═══ */}
       <div className="relative z-10 flex items-center justify-between px-5 py-3">
