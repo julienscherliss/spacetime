@@ -6,8 +6,15 @@ import { X, Search, Globe, Repeat, MapPin, Calendar as CalIcon, RefreshCw, Unplu
 import type { MobilityMode } from '@/store/timezoneStore';
 import { toast } from 'sonner';
 import { HelpPanel } from './HelpPanel';
-import type { NotificationLevel } from '@/utils/nativeNotifications';
-import { requestNotificationPermission, rescheduleAllNotifications } from '@/utils/nativeNotifications';
+import { isNative } from '@/utils/nativePlatform';
+import type { NotificationDebugSnapshot, NotificationLevel } from '@/utils/nativeNotifications';
+import {
+  checkNotificationPermission,
+  getNotificationDebugSnapshot,
+  requestNotificationPermission,
+  rescheduleAllNotifications,
+  scheduleTestNotification,
+} from '@/utils/nativeNotifications';
 import { useTaskStore } from '@/store/taskStore';
 
 interface SettingsPanelProps {
@@ -26,6 +33,15 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const [confirmPw, setConfirmPw] = useState('');
   const [pwLoading, setPwLoading] = useState(false);
   const [authProvider, setAuthProvider] = useState<'email' | 'google' | 'unknown'>('unknown');
+  const [notificationLoading, setNotificationLoading] = useState(false);
+  const [notificationDebug, setNotificationDebug] = useState<NotificationDebugSnapshot>({
+    platform: 'web',
+    isNative,
+    pluginAvailable: false,
+    permissionStatus: 'denied',
+    requestResult: null,
+    scheduleStatus: isNative ? null : 'Notifications only run inside the native mobile app.',
+  });
 
   // Detect auth provider when panel opens
   useEffect(() => {
@@ -40,6 +56,85 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   useEffect(() => {
     if (open) checkStatus();
   }, [open]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!open) return;
+
+    void (async () => {
+      const snapshot = await getNotificationDebugSnapshot();
+      if (!cancelled) {
+        setNotificationDebug((prev) => ({
+          ...snapshot,
+          requestResult: prev.requestResult,
+          scheduleStatus: prev.scheduleStatus ?? snapshot.scheduleStatus,
+        }));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  const refreshNotificationDebug = async (overrides: Partial<NotificationDebugSnapshot> = {}) => {
+    const snapshot = await getNotificationDebugSnapshot();
+    const nextState: NotificationDebugSnapshot = {
+      ...snapshot,
+      requestResult: overrides.requestResult ?? snapshot.requestResult,
+      scheduleStatus: overrides.scheduleStatus ?? snapshot.scheduleStatus,
+    };
+    setNotificationDebug(nextState);
+    return nextState;
+  };
+
+  const handleEnableNotifications = async () => {
+    if (!isNative) {
+      toast('Notifications only work in the Capacitor mobile app.');
+      return;
+    }
+
+    setNotificationLoading(true);
+
+    try {
+      console.log('[notifications] enable button tapped');
+      const requestResult = await requestNotificationPermission();
+      const granted = requestResult === 'granted';
+      const testScheduled = granted ? await scheduleTestNotification(8) : false;
+
+      if (granted && notificationLevel !== 'off') {
+        await rescheduleAllNotifications(useTaskStore.getState().tasks, notificationLevel);
+      }
+
+      const nextDebug = await refreshNotificationDebug({
+        requestResult,
+        scheduleStatus: granted
+          ? testScheduled
+            ? 'Permission granted. Test notification scheduled for ~8 seconds from now.'
+            : 'Permission granted, but test notification scheduling failed.'
+          : 'Permission denied. Enable notifications in iPhone Settings → spaacetime → Notifications.',
+      });
+
+      console.log('[notifications] enable flow complete', nextDebug);
+
+      if (granted) {
+        toast.success(testScheduled ? 'Notifications enabled. Test alert scheduled.' : 'Notifications enabled.');
+      } else {
+        toast.error('Notifications are blocked. Go to iPhone Settings → spaacetime → Notifications.', {
+          duration: 6000,
+        });
+      }
+    } catch (error) {
+      console.error('[notifications] enable flow failed', error);
+      await refreshNotificationDebug({
+        scheduleStatus: 'Enable flow failed. Check the console logs for details.',
+      });
+      toast.error('Failed to enable notifications. Check the debug panel below.');
+    } finally {
+      setNotificationLoading(false);
+    }
+  };
 
   const filtered = useMemo(() => {
     if (!search) return TIMEZONES.slice(0, 50);
@@ -307,18 +402,42 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
 
                     setNotificationLevel(opt.value);
 
+                    if (!isNative) {
+                      await refreshNotificationDebug({
+                        scheduleStatus: 'Notification preferences are saved, but notifications only run in the native mobile app.',
+                      });
+                      toast('Notification preferences only apply in the Capacitor mobile app.');
+                      return;
+                    }
+
                     if (opt.value === 'off') {
                       await rescheduleAllNotifications(useTaskStore.getState().tasks, 'off');
+                      await refreshNotificationDebug({
+                        requestResult: notificationDebug.requestResult,
+                        scheduleStatus: 'Task notifications turned off.',
+                      });
                       toast.success('Notifications turned off');
                       return;
                     }
 
-                    const status = await requestNotificationPermission();
-                    if (status === 'denied') {
-                      toast.error(
-                        'Notifications preference saved, but iPhone notifications are blocked. Go to Settings → spaacetime → Notifications to enable them.',
-                        { duration: 6000 }
-                      );
+                    const status = await checkNotificationPermission();
+                    const statusDebug = await refreshNotificationDebug({
+                      requestResult: notificationDebug.requestResult,
+                      scheduleStatus:
+                        status === 'granted'
+                          ? `Task notifications set to ${opt.label}.`
+                          : 'Preference saved. Tap Enable Notifications to trigger the iPhone permission prompt.',
+                    });
+
+                    console.log('[notifications] notification level changed', {
+                      level: opt.value,
+                      debug: statusDebug,
+                    });
+
+                    if (status !== 'granted') {
+                      toast.error('Tap Enable Notifications to request iPhone notification permission.', {
+                        duration: 5000,
+                      });
                       return;
                     }
 
@@ -340,6 +459,26 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               {notificationLevel === 'off' && 'No task notifications.'}
               {notificationLevel === 'important' && 'Notifications for FIXED and LOCK tasks only.'}
               {notificationLevel === 'all' && 'Notifications for all scheduled tasks (FLEX, SEMI, FIXED, LOCK).'}
+            </div>
+            <div className="mt-2 space-y-2">
+              <button
+                type="button"
+                onClick={handleEnableNotifications}
+                disabled={!isNative || notificationLoading}
+                className="w-full flex items-center justify-center bg-primary/10 text-primary border border-primary/20 rounded-sm p-3 min-h-[48px] text-[12px] font-mono tracking-wider transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {notificationLoading ? 'ENABLING…' : 'ENABLE NOTIFICATIONS'}
+              </button>
+
+              <div className="rounded-sm border border-border/40 bg-background/70 p-3 space-y-1.5">
+                <div className="text-[9px] font-mono tracking-[0.14em] text-muted-foreground/60">DEBUG STATUS</div>
+                <div className="text-[10px] font-mono text-foreground/70">Platform: {notificationDebug.platform}</div>
+                <div className="text-[10px] font-mono text-foreground/70">Native Capacitor: {notificationDebug.isNative ? 'yes' : 'no'}</div>
+                <div className="text-[10px] font-mono text-foreground/70">Plugin loaded: {notificationDebug.pluginAvailable ? 'yes' : 'no'}</div>
+                <div className="text-[10px] font-mono text-foreground/70">Permission status: {notificationDebug.permissionStatus}</div>
+                <div className="text-[10px] font-mono text-foreground/70">Last request result: {notificationDebug.requestResult ?? 'not requested yet'}</div>
+                <div className="text-[10px] font-mono text-foreground/70 leading-relaxed">Last scheduling result: {notificationDebug.scheduleStatus ?? 'no scheduling attempt yet'}</div>
+              </div>
             </div>
           </div>
 
