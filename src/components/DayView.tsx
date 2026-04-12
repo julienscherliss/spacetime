@@ -12,6 +12,7 @@ import { BlockedModal } from '@/components/BlockedModal';
 import { useTimeScale, SCALE_MIN, SCALE_MAX } from '@/hooks/useTimeScale';
 import { ChevronLeft, ChevronRight, X, CornerUpLeft } from 'lucide-react';
 import { FitViewButton } from '@/components/FitViewButton';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { AllDayEventStrip } from '@/components/AllDayEventStrip';
 import { TaskCluster } from '@/utils/taskClustering';
 

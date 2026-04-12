@@ -142,10 +142,7 @@ export function FitViewButton({ tasks, scrollRef, hourHeight, setScale, resetZoo
     let targetScale = (viewH - FRAME_PADDING * 2) / spanHours;
     targetScale = Math.max(SCALE_MIN, Math.min(SCALE_MAX, targetScale));
 
-    // Guard against absurd over-zoom for very few/short tasks
-    if (spanMinutes <= 30) {
-      targetScale = Math.min(targetScale, SCALE_MAX * 0.6);
-    }
+    // No artificial cap — zoom as much as needed to fit tasks in view
 
     // Recalculate positions with new scale — timeline top stays the same
     const midMin = (earliest + latest) / 2;
