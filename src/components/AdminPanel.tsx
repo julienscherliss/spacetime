@@ -60,7 +60,14 @@ export function AdminPanel({ open, onClose }: Props) {
     try {
       if (tab === 'users' || tab === 'overview') {
         const { data } = await supabase.from('subscriptions').select('*');
-        setUsers((data || []) as UserSub[]);
+        // Fetch profiles to get display names
+        const { data: profiles } = await supabase.from('profiles').select('id, display_name');
+        const profileMap = new Map((profiles || []).map(p => [p.id, p.display_name]));
+        const enriched = (data || []).map(u => ({
+          ...u,
+          display_name: profileMap.get(u.user_id) || null,
+        }));
+        setUsers(enriched as UserSub[]);
       }
       if (tab === 'promos' || tab === 'overview') {
         // Admin policy allows all access
