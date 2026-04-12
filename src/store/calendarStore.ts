@@ -72,7 +72,7 @@ async function callEdge(action: string, params: Record<string, any> = {}) {
   return data;
 }
 
-const CALENDAR_CACHE_TTL_MS = 2 * 60 * 1000;
+const CALENDAR_CACHE_TTL_MS = 5 * 60 * 1000;
 
 function addDays(dateStr: string, days: number): string {
   const date = new Date(`${dateStr}T12:00:00`);
