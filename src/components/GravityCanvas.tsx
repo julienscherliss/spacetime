@@ -6,11 +6,11 @@ import { useRef, useEffect } from 'react';
  * Inspired by the rubber-sheet analogy of general relativity.
  */
 
-const GRID_COLS = 60;
-const GRID_ROWS = 40;
-const CENTER_MASS = 12000;
-const CURSOR_MASS = 4000;
-const WARP_SOFTENING = 80; // prevents singularity at center
+const GRID_COLS = 50;
+const GRID_ROWS = 35;
+const CENTER_MASS = 80000;
+const CURSOR_MASS = 30000;
+const WARP_SOFTENING = 50;
 
 interface Node {
   restX: number;
@@ -106,7 +106,7 @@ export function GravityCanvas() {
       ctx.clearRect(0, 0, w, h);
 
       // Update node positions with gravitational warping
-      const lerp = 0.12; // smoothing
+      const lerp = 0.18;
       for (let row = 0; row < GRID_ROWS; row++) {
         for (let col = 0; col < GRID_COLS; col++) {
           const n = grid[row][col];
@@ -155,9 +155,9 @@ export function GravityCanvas() {
         // Line color based on average row strain
         const midNode = grid[row][Math.floor(GRID_COLS / 2)];
         const rowDist = Math.sqrt((midNode.restX - cx) ** 2 + (midNode.restY - cy) ** 2);
-        const intensity = Math.max(0.02, Math.min(0.12, 0.15 - rowDist / (Math.max(w, h) * 1.2)));
-        ctx.strokeStyle = `rgba(140, 110, 80, ${intensity})`;
-        ctx.lineWidth = 0.6;
+        const intensity = Math.max(0.06, Math.min(0.45, 0.5 - rowDist / (Math.max(w, h) * 0.8)));
+        ctx.strokeStyle = `rgba(160, 120, 80, ${intensity})`;
+        ctx.lineWidth = 1;
         ctx.stroke();
       }
 
@@ -175,9 +175,9 @@ export function GravityCanvas() {
 
         const midNode = grid[Math.floor(GRID_ROWS / 2)][col];
         const colDist = Math.sqrt((midNode.restX - cx) ** 2 + (midNode.restY - cy) ** 2);
-        const intensity = Math.max(0.02, Math.min(0.12, 0.15 - colDist / (Math.max(w, h) * 1.2)));
-        ctx.strokeStyle = `rgba(140, 110, 80, ${intensity})`;
-        ctx.lineWidth = 0.6;
+        const intensity = Math.max(0.06, Math.min(0.45, 0.5 - colDist / (Math.max(w, h) * 0.8)));
+        ctx.strokeStyle = `rgba(160, 120, 80, ${intensity})`;
+        ctx.lineWidth = 1;
         ctx.stroke();
       }
 
@@ -191,53 +191,69 @@ export function GravityCanvas() {
           // Skip nodes consumed inside the event horizon
           if (distToCenter < 30) continue;
 
-          // Size: bigger when strained (time dilation visualization)
-          const baseSize = 0.8;
-          const strainSize = Math.min(strain * 0.06, 2.5);
+          const baseSize = 1.2;
+          const strainSize = Math.min(strain * 0.12, 4);
           const r = baseSize + strainSize;
 
-          // Color: shifts warm under strain (gravitational redshift)
-          const warmth = Math.min(strain / 40, 1);
-          const hue = 40 - warmth * 28; // 40 (neutral) → 12 (burnt orange)
-          const sat = 5 + warmth * 65;
-          const lum = 55 + warmth * 20;
-          const alpha = 0.06 + warmth * 0.35;
+          const warmth = Math.min(strain / 20, 1);
+          const hue = 40 - warmth * 28;
+          const sat = 10 + warmth * 70;
+          const lum = 50 + warmth * 30;
+          const alpha = 0.15 + warmth * 0.6;
 
           ctx.beginPath();
           ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
           ctx.fillStyle = `hsla(${hue}, ${sat}%, ${lum}%, ${alpha})`;
           ctx.fill();
+
+          // Glow on highly strained nodes
+          if (warmth > 0.3) {
+            const glowGrad = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, r * 3);
+            glowGrad.addColorStop(0, `hsla(${hue}, ${sat}%, ${lum}%, ${warmth * 0.15})`);
+            glowGrad.addColorStop(1, `hsla(${hue}, ${sat}%, ${lum}%, 0)`);
+            ctx.beginPath();
+            ctx.arc(n.x, n.y, r * 3, 0, Math.PI * 2);
+            ctx.fillStyle = glowGrad;
+            ctx.fill();
+          }
         }
       }
 
       // === Event horizon ===
-      const bhGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 55);
+      const bhGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 70);
       bhGrad.addColorStop(0, 'rgba(0, 0, 0, 1)');
-      bhGrad.addColorStop(0.65, 'rgba(0, 0, 0, 0.98)');
-      bhGrad.addColorStop(0.85, 'rgba(0, 0, 0, 0.4)');
+      bhGrad.addColorStop(0.55, 'rgba(0, 0, 0, 1)');
+      bhGrad.addColorStop(0.8, 'rgba(0, 0, 0, 0.6)');
       bhGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.beginPath();
-      ctx.arc(cx, cy, 55, 0, Math.PI * 2);
+      ctx.arc(cx, cy, 70, 0, Math.PI * 2);
       ctx.fillStyle = bhGrad;
       ctx.fill();
 
-      // === Photon ring (thin bright ring at edge of event horizon) ===
+      // === Photon ring ===
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
-      const photonPulse = 0.06 + Math.sin(time.current * 3) * 0.015;
+      const photonPulse = 0.2 + Math.sin(time.current * 3) * 0.05;
       ctx.beginPath();
-      ctx.arc(cx, cy, 48, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(200, 140, 70, ${photonPulse})`;
-      ctx.lineWidth = 1.5;
+      ctx.arc(cx, cy, 58, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(220, 150, 70, ${photonPulse})`;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Second thinner ring
+      ctx.beginPath();
+      ctx.arc(cx, cy, 65, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(200, 130, 60, ${photonPulse * 0.4})`;
+      ctx.lineWidth = 1;
       ctx.stroke();
 
       // Outer halo
-      const haloGrad = ctx.createRadialGradient(cx, cy, 40, cx, cy, 90);
-      haloGrad.addColorStop(0, `rgba(180, 110, 50, ${0.03 + Math.sin(time.current * 2) * 0.01})`);
-      haloGrad.addColorStop(0.5, 'rgba(160, 90, 40, 0.01)');
+      const haloGrad = ctx.createRadialGradient(cx, cy, 50, cx, cy, 140);
+      haloGrad.addColorStop(0, `rgba(200, 120, 50, ${0.1 + Math.sin(time.current * 2) * 0.03})`);
+      haloGrad.addColorStop(0.4, 'rgba(180, 100, 40, 0.04)');
       haloGrad.addColorStop(1, 'rgba(140, 70, 30, 0)');
       ctx.beginPath();
-      ctx.arc(cx, cy, 90, 0, Math.PI * 2);
+      ctx.arc(cx, cy, 140, 0, Math.PI * 2);
       ctx.fillStyle = haloGrad;
       ctx.fill();
       ctx.restore();
@@ -246,12 +262,12 @@ export function GravityCanvas() {
       if (mouse.current.active) {
         const mx = mouse.current.x;
         const my = mouse.current.y;
-        const cGrad = ctx.createRadialGradient(mx, my, 0, mx, my, 60);
-        cGrad.addColorStop(0, 'rgba(180, 140, 80, 0.04)');
-        cGrad.addColorStop(0.5, 'rgba(180, 140, 80, 0.015)');
+        const cGrad = ctx.createRadialGradient(mx, my, 0, mx, my, 90);
+        cGrad.addColorStop(0, 'rgba(200, 150, 80, 0.1)');
+        cGrad.addColorStop(0.4, 'rgba(200, 150, 80, 0.04)');
         cGrad.addColorStop(1, 'rgba(180, 140, 80, 0)');
         ctx.beginPath();
-        ctx.arc(mx, my, 60, 0, Math.PI * 2);
+        ctx.arc(mx, my, 90, 0, Math.PI * 2);
         ctx.fillStyle = cGrad;
         ctx.fill();
       }
