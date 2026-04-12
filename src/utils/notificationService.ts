@@ -15,6 +15,12 @@
  * (start time + duration). The standard reminder fires before the task STARTS.
  * These are two separate notification families that should never overlap.
  *
+ * OVERDUE HEARTBEAT: Instead of pre-scheduling many future overdue notifications,
+ * we maintain at most ONE pending overdue heartbeat notification at a time,
+ * scheduled ~60s in the future. Each sync re-evaluates overdue state and either
+ * preserves, replaces, or cancels the heartbeat. This eliminates stale overdue
+ * queues and "scheduled in the past" errors.
+ *
  * DETERMINISTIC IDS: Every notification ID is deterministic based on taskId +
  * type + fire-minute. This ensures:
  *   - Stable IDs across syncs (no cancel/recreate churn)
@@ -76,9 +82,9 @@ const RESERVED_URGENT_SLOTS = 25;
 const REMINDER_ID_OFFSET = 1_000_000;
 const OVERDUE_ID_OFFSET = 2_000_000;
 
-const OVERDUE_WINDOW_MINUTES = 10;
-const MAX_OVERDUE_PER_TASK = 10;
-const MAX_OVERDUE_TOTAL = 20;
+/** Single fixed ID for the overdue heartbeat notification */
+const OVERDUE_HEARTBEAT_ID = OVERDUE_ID_OFFSET + 999_999;
+const OVERDUE_HEARTBEAT_DELAY_MS = 60_000;
 const SYNC_COALESCE_MS = 12_000;
 
 let syncInFlight = false;
@@ -152,13 +158,7 @@ function reminderNotificationId(taskId: string, absoluteMinute: number): number 
   return deterministicId(`${taskId}:reminder:${absoluteMinute}`, REMINDER_ID_OFFSET);
 }
 
-/**
- * Deterministic BATCH overdue notification ID based on fire minute only.
- * One overdue notification per minute slot, regardless of how many tasks are overdue.
- */
-function overdueBatchNotificationId(absoluteMinute: number): number {
-  return deterministicId(`overdue:batch:${absoluteMinute}`, OVERDUE_ID_OFFSET);
-}
+// Overdue heartbeat uses a single fixed ID — no per-minute or per-task IDs
 
 function isReminderNotificationId(id: number): boolean {
   return id >= REMINDER_ID_OFFSET && id < REMINDER_ID_OFFSET + 1_000_000;
@@ -238,10 +238,8 @@ interface DesiredComputation {
   desired: Map<number, DesiredNotification>;
   candidateCount: number;
   keptCount: number;
-  overdueCandidateCount: number;
-  overdueKeptCount: number;
+  overdueHeartbeat: boolean;
   skippedDueToCap: number;
-  overdueSkippedDueToCap: number;
   evictedFutureReminders: number;
 }
 
@@ -254,10 +252,8 @@ function computeDesired(
     desired: new Map(),
     candidateCount: 0,
     keptCount: 0,
-    overdueCandidateCount: 0,
-    overdueKeptCount: 0,
+    overdueHeartbeat: false,
     skippedDueToCap: 0,
-    overdueSkippedDueToCap: 0,
     evictedFutureReminders: 0,
   };
 
@@ -268,9 +264,6 @@ function computeDesired(
   const urgentCandidates: { id: number; data: DesiredNotification }[] = [];
   const futureCandidates: { id: number; data: DesiredNotification }[] = [];
   const seenSlots = new Set<string>();
-
-  // Next future minute — guarantees all scheduled slots are strictly in the future
-  const nextFutureMinuteMs = (Math.floor(now / 60_000) + 1) * 60_000;
 
   // ── Collect overdue eligible tasks ──
   const overdueTasks: Task[] = [];
@@ -330,10 +323,8 @@ function computeDesired(
     }
   }
 
-  // ── FAMILY B: Batched overdue stream ──
-  let overdueCandidateCount = 0;
+  // ── FAMILY B: Single overdue heartbeat ──
   if (overdueTasks.length > 0 && persistentOverdue) {
-    // Build summary title
     const sortedOverdue = [...overdueTasks].sort((a, b) => (a.priority as number) - (b.priority as number)).reverse();
     const firstName = sortedOverdue[0].title;
     const count = sortedOverdue.length;
@@ -345,33 +336,28 @@ function computeDesired(
       : sortedOverdue.map(t => t.title).join(', ');
     const overdueTaskIds = sortedOverdue.map(t => t.id).join(',');
 
-    log('overdue batch eligible tasks', {
+    const heartbeatFireMs = Date.now() + OVERDUE_HEARTBEAT_DELAY_MS;
+
+    log('overdue heartbeat eligible', {
       count,
       taskIds: sortedOverdue.map(t => t.id),
       titles: sortedOverdue.map(t => t.title),
+      heartbeatFireAt: new Date(heartbeatFireMs).toISOString(),
     });
 
-    const availableSlots = Math.min(OVERDUE_WINDOW_MINUTES, MAX_OVERDUE_TOTAL);
-
-    for (let i = 0; i < availableSlots; i++) {
-      const fireTimeMs = nextFutureMinuteMs + i * 60_000;
-
-      const absoluteMinute = absoluteMinuteFromMs(fireTimeMs);
-      const nId = overdueBatchNotificationId(absoluteMinute);
-
-      urgentCandidates.push({
-        id: nId,
-        data: {
-          title: `OVERDUE — ${summaryTitle}`,
-          body: summaryBody,
-          fireAt: new Date(fireTimeMs),
-          taskId: overdueTaskIds,
-          type: 'overdue',
-          isUrgent: true,
-        },
-      });
-      overdueCandidateCount++;
-    }
+    urgentCandidates.push({
+      id: OVERDUE_HEARTBEAT_ID,
+      data: {
+        title: `OVERDUE — ${summaryTitle}`,
+        body: summaryBody,
+        fireAt: new Date(heartbeatFireMs),
+        taskId: overdueTaskIds,
+        type: 'overdue',
+        isUrgent: true,
+      },
+    });
+  } else if (persistentOverdue) {
+    log('overdue heartbeat — no eligible tasks, will cancel any pending heartbeat');
   }
 
   urgentCandidates.sort((a, b) => a.data.fireAt.getTime() - b.data.fireAt.getTime());
@@ -395,9 +381,8 @@ function computeDesired(
     desired.set(candidate.id, candidate.data);
   }
 
-  const overdueKeptCount = [...desired.values()].filter((item) => item.type === 'overdue').length;
+  const hasOverdueHeartbeat = desired.has(OVERDUE_HEARTBEAT_ID) ? 1 : 0;
   const skippedDueToCap = Math.max(0, urgentCandidates.length + futureCandidates.length - desired.size);
-  const overdueSkippedDueToCap = Math.max(0, overdueCandidateCount - overdueKeptCount);
 
   log('queue allocation', {
     reservedUrgentSlots: RESERVED_URGENT_SLOTS,
@@ -406,20 +391,17 @@ function computeDesired(
     totalDesired: desired.size,
     cap: MAX_TASK_NOTIFICATIONS,
     evictedFuture: evictedFutureReminders,
-    overdueKept: overdueKeptCount,
-    overdueSkipped: overdueSkippedDueToCap,
-    overdueBatchMode: true,
+    overdueHeartbeat: hasOverdueHeartbeat,
     overdueEligibleTasks: overdueTasks.length,
   });
+
 
   return {
     desired,
     candidateCount: urgentCandidates.length + futureCandidates.length,
     keptCount: desired.size,
-    overdueCandidateCount,
-    overdueKeptCount,
+    overdueHeartbeat: hasOverdueHeartbeat === 1,
     skippedDueToCap,
-    overdueSkippedDueToCap,
     evictedFutureReminders,
   };
 }
@@ -690,11 +672,11 @@ export async function syncTaskNotifications(
       scheduled: notificationsToSchedule.length,
       canceled: toCancel.length,
       unchanged,
+      overdueHeartbeat: desiredResult.overdueHeartbeat,
       overdueScheduled,
       overdueCanceled,
       queueAfter: desired.size,
       evictedFuture: desiredResult.evictedFutureReminders,
-      reservedUrgentSlots: RESERVED_URGENT_SLOTS,
       cap: MAX_TASK_NOTIFICATIONS,
     });
 
