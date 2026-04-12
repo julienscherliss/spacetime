@@ -4,11 +4,16 @@ import { App as CapApp } from '@capacitor/app';
 import { supabase } from '@/integrations/supabase/client';
 
 /**
+ * Published app domain — used to route through the Lovable managed OAuth proxy.
+ */
+const APP_DOMAIN = 'https://spaacetime.lovable.app';
+
+/**
  * HTTPS callback URL (already in the Supabase allow-list).
  * The /auth/callback page acts as a "trampoline": it reads the tokens
  * from the URL and redirects into the native app via custom scheme.
  */
-const HTTPS_CALLBACK = 'https://spaacetime.lovable.app/auth/callback';
+const HTTPS_CALLBACK = `${APP_DOMAIN}/auth/callback`;
 
 /** Custom URL scheme the trampoline page redirects to */
 const APP_SCHEME_CALLBACK = 'spaacetime://auth/callback';
@@ -19,24 +24,14 @@ export function isNativePlatform(): boolean {
 }
 
 /**
- * Open Google OAuth in the system browser (not the in-app webview).
- * Uses the HTTPS callback URL so Supabase accepts it, then the
- * trampoline page bounces back into the app via custom URL scheme.
+ * Open Google OAuth in the system browser using the Lovable managed OAuth proxy.
+ * This avoids requiring Google OAuth secrets in the Supabase auth config directly —
+ * the /~oauth/initiate path on the published domain routes through Lovable's
+ * managed OAuth broker which handles credentials automatically.
  */
 export async function nativeGoogleSignIn(): Promise<void> {
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: HTTPS_CALLBACK,
-      skipBrowserRedirect: true,
-    },
-  });
-
-  if (error) throw error;
-
-  if (data.url) {
-    await Browser.open({ url: data.url, windowName: '_self' });
-  }
+  const oauthUrl = `${APP_DOMAIN}/~oauth/initiate?provider=google&redirect_uri=${encodeURIComponent(HTTPS_CALLBACK)}`;
+  await Browser.open({ url: oauthUrl, windowName: '_self' });
 }
 
 /**
