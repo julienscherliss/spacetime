@@ -88,10 +88,11 @@ const App = () => {
       <Sonner />
       <BrowserRouter>
         <Routes>
+          <Route path="/" element={<LandingRedirect />} />
           <Route path="/auth" element={<AuthRedirect />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/" element={<AuthGuard><Index /></AuthGuard>} />
+          <Route path="/app" element={<AuthGuard><Index /></AuthGuard>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
