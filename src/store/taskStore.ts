@@ -681,8 +681,9 @@ export const useTaskStore = create<TaskState>()(
             const start = new Date(`${t.date}T00:00:00`);
             start.setHours(h, m, 0, 0);
             const end = start.getTime() + (t.duration || 30) * 60_000;
+            const gracePeriodMs = 12 * 60 * 60 * 1000; // 12 hours after end time
 
-            if (nowMs > end) {
+            if (nowMs > end + gracePeriodMs) {
               return {
                 ...t,
                 inWaitingRoom: true,
