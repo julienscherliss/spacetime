@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Calendar as CalIcon } from 'lucide-react';
-import { useCalendarStore } from '@/store/calendarStore';
+import { useCalendarStore, eventSpansDate } from '@/store/calendarStore';
 
 interface AllDayEventStripProps {
   dates: string[];
@@ -10,38 +10,58 @@ interface AllDayEventStripProps {
 export function AllDayEventStrip({ dates, compact = false }: AllDayEventStripProps) {
   const events = useCalendarStore((s) => s.events);
   const calendars = useCalendarStore((s) => s.calendars);
+  const completedEventIds = useCalendarStore((s) => s.completedEventIds);
+  const deletedEventIds = useCalendarStore((s) => s.deletedEventIds);
   const setEditingEvent = useCalendarStore((s) => s.setEditingEvent);
 
   const eventsByDate = useMemo(() => {
     const grouped = new Map<string, typeof events>();
+    const visibleEvents = events.filter(e => !deletedEventIds.includes(e.id));
 
     dates.forEach((date) => {
       grouped.set(
         date,
-        events.filter((event) => event.isAllDay && event.date === date)
+        visibleEvents.filter((event) => event.isAllDay && eventSpansDate(event, date))
       );
     });
 
     return grouped;
-  }, [dates, events]);
+  }, [dates, events, deletedEventIds]);
 
   const hasAnyEvents = Array.from(eventsByDate.values()).some((dayEvents) => dayEvents.length > 0);
 
   if (!hasAnyEvents) return null;
 
-  const renderEvent = (event: (typeof events)[number]) => {
+  const renderEvent = (event: (typeof events)[number], date: string) => {
     const calendar = calendars.find((cal) => cal.google_calendar_id === event.calendarId);
+    const color = calendar?.color || 'hsl(var(--primary))';
+    const isCompleted = completedEventIds.includes(event.id);
+    const isMultiDay = !!event.endDate;
+    const isStart = event.date === date;
+    const isEnd = !event.endDate || event.endDate === date;
 
     return (
       <button
-        key={event.id}
+        key={`${event.id}-${date}`}
         onClick={() => setEditingEvent(event.id)}
-        className="w-full rounded-sm border border-border/40 bg-muted/40 px-2 py-1.5 text-left transition-colors hover:bg-muted/60"
-        style={{ borderLeftWidth: '3px', borderLeftColor: calendar?.color || 'hsl(var(--primary))' }}
+        className={`w-full px-2 py-1.5 text-left transition-colors hover:bg-muted/60 ${
+          isCompleted ? 'opacity-50' : ''
+        } ${isMultiDay
+          ? `${isStart ? 'rounded-l-sm' : ''} ${isEnd ? 'rounded-r-sm' : ''} ${!isStart && !isEnd ? '' : ''}`
+          : 'rounded-sm'
+        }`}
+        style={{
+          borderWidth: '1.5px',
+          borderColor: color,
+          borderStyle: 'solid',
+          backgroundColor: isCompleted ? undefined : `${color}08`,
+        }}
       >
         <div className="flex items-center gap-1.5">
           <CalIcon size={9} className="shrink-0 text-muted-foreground/35" />
-          <span className="truncate text-[10px] font-mono text-foreground/75">{event.title}</span>
+          <span className={`truncate text-[10px] font-mono ${
+            isCompleted ? 'line-through text-muted-foreground/30' : 'text-foreground/75'
+          }`}>{event.title}</span>
         </div>
       </button>
     );
@@ -54,7 +74,7 @@ export function AllDayEventStrip({ dates, compact = false }: AllDayEventStripPro
       <div className="mt-2 mb-3 rounded-sm border border-border/30 bg-card/70 p-2">
         <div className="mb-2 text-[9px] font-mono tracking-[0.18em] text-muted-foreground/45">ALL DAY</div>
         <div className="space-y-1.5">
-          {dayEvents.map(renderEvent)}
+          {dayEvents.map(e => renderEvent(e, dates[0]))}
         </div>
       </div>
     );
@@ -77,7 +97,7 @@ export function AllDayEventStrip({ dates, compact = false }: AllDayEventStripPro
                 })}
               </div>
               <div className="space-y-1">
-                {dayEvents.map(renderEvent)}
+                {dayEvents.map(e => renderEvent(e, date))}
               </div>
             </div>
           );

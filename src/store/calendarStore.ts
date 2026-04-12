@@ -16,6 +16,8 @@ export interface CalendarEvent {
   calendarId: string;
   title: string;
   date: string;
+  /** Inclusive end date for multi-day events, null for single-day */
+  endDate: string | null;
   time: string | null;
   duration: number;
   isAllDay: boolean;
@@ -37,6 +39,7 @@ interface CalendarState {
   lastFetchSignature: string | null;
   lastFetchedAt: number | null;
   completedEventIds: string[];
+  deletedEventIds: string[];
   eventCategories: Record<string, string>;
   editingEventId: string | null;
 
@@ -50,9 +53,13 @@ interface CalendarState {
   toggleCalendar: (calendarId: string, visible: boolean) => void;
   disconnect: () => Promise<void>;
   completeEvent: (eventId: string) => void;
+  uncompleteEvent: (eventId: string) => void;
+  deleteEvent: (eventId: string) => void;
+  reviveEvent: (eventId: string) => void;
   setEventCategory: (eventId: string, category: string) => void;
   setEditingEvent: (eventId: string | null) => void;
   isEventCompleted: (eventId: string) => boolean;
+  isEventDeleted: (eventId: string) => boolean;
 }
 
 function getDeviceId(): string {
@@ -98,6 +105,15 @@ function rangeCovers(
   return !!range && range.startDate <= startDate && range.endDate >= endDate;
 }
 
+/**
+ * Check if a multi-day event spans into the given date.
+ */
+export function eventSpansDate(event: CalendarEvent, date: string): boolean {
+  if (event.date === date) return true;
+  if (!event.endDate) return false;
+  return date >= event.date && date <= event.endDate;
+}
+
 export const useCalendarStore = create<CalendarState>()(
   persist(
     (set, get) => ({
@@ -113,6 +129,7 @@ export const useCalendarStore = create<CalendarState>()(
       lastFetchSignature: null,
       lastFetchedAt: null,
       completedEventIds: [] as string[],
+      deletedEventIds: [] as string[],
       eventCategories: {} as Record<string, string>,
       editingEventId: null,
 
@@ -211,7 +228,6 @@ export const useCalendarStore = create<CalendarState>()(
           return;
         }
 
-        // Check if we already have events for the requested range (show existing, don't flicker)
         const cachedEvents = Object.values(eventsById);
         const requestedRangeHasVisibleEvents = cachedEvents.some(
           (event) =>
@@ -220,13 +236,11 @@ export const useCalendarStore = create<CalendarState>()(
             event.date <= endDate
         );
 
-        // Wider buffer: ±3 weeks minimum
         const requestedSpan = getInclusiveDaySpan(startDate, endDate);
         const bufferDays = Math.max(requestedSpan * 3, 21);
         const bufferedStartDate = addDays(startDate, -bufferDays);
         const bufferedEndDate = addDays(endDate, bufferDays);
 
-        // Only show loading if we have NO cached events for this range
         set({ loading: !requestedRangeHasVisibleEvents });
 
         try {
@@ -238,10 +252,12 @@ export const useCalendarStore = create<CalendarState>()(
             timeZone,
           });
           if (Array.isArray(result)) {
-            // Merge new events into existing store by ID
             const merged = { ...eventsById };
             for (const event of result) {
-              merged[event.id] = event;
+              merged[event.id] = {
+                ...event,
+                endDate: event.endDate || null,
+              };
             }
             set({
               eventsById: merged,
@@ -273,7 +289,7 @@ export const useCalendarStore = create<CalendarState>()(
           calendars: s.calendars.map(c =>
             c.id === calendarId ? { ...c, visible } : c
           ),
-          lastFetchedAt: null, // Invalidate cache so next fetchEvents re-fetches
+          lastFetchedAt: null,
         }));
         callEdge('toggle_calendar', { calendarId, visible }).catch(console.error);
       },
@@ -295,6 +311,26 @@ export const useCalendarStore = create<CalendarState>()(
         }));
       },
 
+      uncompleteEvent: (eventId) => {
+        set((s) => ({
+          completedEventIds: s.completedEventIds.filter(id => id !== eventId),
+        }));
+      },
+
+      deleteEvent: (eventId) => {
+        set((s) => ({
+          deletedEventIds: s.deletedEventIds.includes(eventId)
+            ? s.deletedEventIds
+            : [...s.deletedEventIds, eventId],
+        }));
+      },
+
+      reviveEvent: (eventId) => {
+        set((s) => ({
+          deletedEventIds: s.deletedEventIds.filter(id => id !== eventId),
+        }));
+      },
+
       setEventCategory: (eventId, category) => {
         set((s) => ({
           eventCategories: { ...s.eventCategories, [eventId]: category },
@@ -304,6 +340,7 @@ export const useCalendarStore = create<CalendarState>()(
       setEditingEvent: (eventId) => set({ editingEventId: eventId }),
 
       isEventCompleted: (eventId) => get().completedEventIds.includes(eventId),
+      isEventDeleted: (eventId) => get().deletedEventIds.includes(eventId),
 
     }),
     {
@@ -316,9 +353,10 @@ export const useCalendarStore = create<CalendarState>()(
         eventsById: state.eventsById,
         events: state.events,
         lastFetchedRange: state.lastFetchedRange,
-          lastFetchSignature: state.lastFetchSignature,
-          lastFetchedAt: state.lastFetchedAt,
+        lastFetchSignature: state.lastFetchSignature,
+        lastFetchedAt: state.lastFetchedAt,
         completedEventIds: state.completedEventIds,
+        deletedEventIds: state.deletedEventIds,
         eventCategories: state.eventCategories,
       }),
     }
