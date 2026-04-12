@@ -123,13 +123,17 @@ export function ColorSchemePanel() {
             >
               {/* Mini priority swatch row */}
               <div className="flex gap-[2px]">
-                {([0, 1, 2, 3] as const).map(p => (
+                {([0, 1, 2] as const).map(p => (
                   <div
                     key={p}
                     className="w-[6px] h-[6px] rounded-[1px]"
                     style={{ backgroundColor: `hsl(${scheme.priorities[p].stroke})` }}
                   />
                 ))}
+                <div
+                  className="w-[6px] h-[6px] rounded-[1px]"
+                  style={{ backgroundColor: `hsl(${scheme.lockedFill})` }}
+                />
               </div>
               <span className="text-[7px] font-mono tracking-[0.15em] text-muted-foreground/60 whitespace-nowrap">
                 {scheme.name}
@@ -148,9 +152,10 @@ export function ColorSchemePanel() {
         >
           <div className="flex items-center gap-2">
             <div className="flex gap-[3px]">
-              {([0, 1, 2, 3] as const).map(p => (
+              {([0, 1, 2] as const).map(p => (
                 <ColorSwatch key={p} hsl={active.priorities[p].stroke} size={12} />
               ))}
+              <ColorSwatch hsl={active.lockedFill} size={12} />
             </div>
             <span className="text-[10px] font-mono tracking-[0.1em] text-foreground/70">{active.name}</span>
             {isCustom && (
