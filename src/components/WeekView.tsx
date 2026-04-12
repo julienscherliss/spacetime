@@ -196,31 +196,6 @@ export function WeekView() {
   );
 
   // Navigation controls placed in the sticky header gutter
-  const headerControls = (
-    <div className="flex items-center justify-center gap-0.5 pb-0.5">
-      <button
-        onClick={() => setWeekOffset(o => o - 1)}
-        className="p-0.5 rounded-sm text-muted-foreground/40 hover:text-foreground transition-colors"
-      >
-        <ChevronLeft size={12} strokeWidth={1.5} />
-      </button>
-      <button
-        onClick={goToCurrentWeek}
-        className={`text-[7px] font-mono tracking-wider leading-none transition-colors ${
-          isCurrentWeek ? 'text-primary' : 'text-muted-foreground/40 hover:text-foreground'
-        }`}
-      >
-        NOW
-      </button>
-      <button
-        onClick={() => setWeekOffset(o => o + 1)}
-        className="p-0.5 rounded-sm text-muted-foreground/40 hover:text-foreground transition-colors"
-      >
-        <ChevronRight size={12} strokeWidth={1.5} />
-      </button>
-    </div>
-  );
-
   return (
     <div
       ref={weekContainerRef}
@@ -257,7 +232,7 @@ export function WeekView() {
               today={today}
               compact={isMobile}
               dayCount={dayCount}
-              controls={headerControls}
+              controls={null}
             />
           </div>
           <div className="flex items-center gap-1 pr-1 shrink-0 self-center">
