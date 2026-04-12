@@ -9,7 +9,7 @@ import { useCarryStore } from '@/store/carryStore';
 import { useCurrentTime } from '@/hooks/useCurrentTime';
 import { TimelineColumn, START_HOUR } from '@/components/TimelineColumn';
 import { BlockedModal } from '@/components/BlockedModal';
-import { useTimeScale, SCALE_MIN, SCALE_MAX } from '@/hooks/useTimeScale';
+import { useTimeScale, SCALE_MIN, SCALE_MAX, animatePinchZoom } from '@/hooks/useTimeScale';
 import { ChevronLeft, ChevronRight, X, CornerUpLeft } from 'lucide-react';
 import { FitViewButton } from '@/components/FitViewButton';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -61,32 +61,40 @@ export function DayView() {
   const [clusterZoomed, setClusterZoomed] = useState(false);
   const preClusterScaleRef = useRef<number | null>(null);
   const preClusterScrollRef = useRef<number | null>(null);
+  const zoomCancelRef = useRef<(() => void) | null>(null);
+
+  const getTimelineDocTop = useCallback(() => {
+    if (!scrollRef.current) return 0;
+    return scrollRef.current.getBoundingClientRect().top + window.scrollY;
+  }, []);
 
   const handleZoomToCluster = useCallback((cluster: TaskCluster, targetHourHeight: number, scrollToMin: number) => {
+    // Cancel any in-flight zoom
+    zoomCancelRef.current?.();
+
     preClusterScaleRef.current = hourHeight;
     preClusterScrollRef.current = window.scrollY;
 
-    const clamped = Math.min(SCALE_MAX, Math.max(SCALE_MIN, targetHourHeight));
-    const stickyOffset = 96;
+    const stickyOffset = window.innerWidth < 640 ? 36 : 84;
     const viewportH = window.innerHeight - stickyOffset;
-    const clusterCenterMin = scrollToMin;
 
-    setScale(clamped);
     setClusterZoomed(true);
 
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const timelineTop = scrollRef.current
-          ? scrollRef.current.getBoundingClientRect().top + window.scrollY
-          : 0;
-        const centerDocY = timelineTop + ((clusterCenterMin - START_HOUR * 60) / 60) * clamped;
-        const targetScrollTop = Math.max(0, centerDocY - stickyOffset - viewportH / 2);
-        window.scrollTo({ top: targetScrollTop, behavior: 'auto' });
-      });
+    zoomCancelRef.current = animatePinchZoom({
+      fromScale: hourHeight,
+      toScale: targetHourHeight,
+      focalMin: scrollToMin,
+      focalViewportY: stickyOffset + viewportH / 2,
+      timelineDocTop: getTimelineDocTop(),
+      duration: 300,
+      setScale,
+      onComplete: () => { zoomCancelRef.current = null; },
     });
-  }, [hourHeight, setScale]);
+  }, [hourHeight, setScale, getTimelineDocTop]);
 
   const handleExitClusterZoom = useCallback(() => {
+    zoomCancelRef.current?.();
+
     if (preClusterScaleRef.current === null) {
       setClusterZoomed(false);
       return;
@@ -94,16 +102,29 @@ export function DayView() {
     const restoreScale = preClusterScaleRef.current;
     const restoreScroll = preClusterScrollRef.current ?? 0;
 
-    setScale(restoreScale);
+    // Compute what minute is at the center of the restore scroll position
+    const stickyOffset = window.innerWidth < 640 ? 36 : 84;
+    const viewportH = window.innerHeight - stickyOffset;
+    const timelineDocTop = getTimelineDocTop();
+    const centerDocY = restoreScroll + stickyOffset + viewportH / 2;
+    const centerMin = START_HOUR * 60 + ((centerDocY - timelineDocTop) / restoreScale) * 60;
 
-    queueMicrotask(() => {
-      window.scrollTo({ top: restoreScroll, behavior: 'auto' });
+    zoomCancelRef.current = animatePinchZoom({
+      fromScale: hourHeight,
+      toScale: restoreScale,
+      focalMin: centerMin,
+      focalViewportY: stickyOffset + viewportH / 2,
+      timelineDocTop,
+      duration: 300,
+      setScale,
+      onComplete: () => {
+        zoomCancelRef.current = null;
+        setClusterZoomed(false);
+        preClusterScaleRef.current = null;
+        preClusterScrollRef.current = null;
+      },
     });
-
-    setClusterZoomed(false);
-    preClusterScaleRef.current = null;
-    preClusterScrollRef.current = null;
-  }, [setScale]);
+  }, [hourHeight, setScale, getTimelineDocTop]);
 
   useEffect(() => {
     generateRecurringInstances(selectedDate, selectedDate);
