@@ -113,6 +113,19 @@ export function AdminPanel({ open, onClose }: Props) {
     loadData();
   }
 
+  async function resetTrial(userId: string) {
+    const trialEnd = new Date();
+    trialEnd.setDate(trialEnd.getDate() + 7);
+    await supabase.from('subscriptions').update({
+      status: 'trialing',
+      trial_start: new Date().toISOString(),
+      trial_end: trialEnd.toISOString(),
+      updated_at: new Date().toISOString(),
+    }).eq('user_id', userId);
+    toast.success('Trial reset (7 days)');
+    loadData();
+  }
+
   async function grantLifetime(userId: string) {
     await supabase.from('subscriptions').update({
       status: 'active',
