@@ -115,7 +115,7 @@ function animateZoom(
   requestAnimationFrame(tick);
 }
 
-export function FitViewButton({ tasks, scrollRef, hourHeight, setScale, resetZoom, nowMinutes }: FitViewButtonProps) {
+export function FitViewButton({ tasks, scrollRef, hourHeight, setScale, resetZoom, nowMinutes, hideButton }: FitViewButtonProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didLongPress = useRef(false);
