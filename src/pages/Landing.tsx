@@ -118,7 +118,7 @@ export default function Landing() {
             className="flex flex-col sm:flex-row items-center justify-center gap-3"
           >
             <button
-              onClick={() => navigate('/auth')}
+              onClick={() => navigate('/auth', { state: { plan: 'yearly' } })}
               className="group flex items-center gap-2 px-6 py-3 bg-foreground text-background text-[11px] font-mono tracking-widest rounded-sm hover:bg-foreground/90 transition-colors"
             >
               START FREE TRIAL

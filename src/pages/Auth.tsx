@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { lovable } from '@/integrations/lovable/index';
@@ -8,7 +9,9 @@ import { toast } from 'sonner';
 import { getAuthRedirectOrigin, debugLogAuthEnv } from '@/utils/authEnvironment';
 
 export default function Auth() {
-  const [mode, setMode] = useState<'login' | 'signup'>('login');
+  const location = useLocation();
+  const fromLanding = (location.state as any)?.plan;
+  const [mode, setMode] = useState<'login' | 'signup'>(fromLanding ? 'signup' : 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
