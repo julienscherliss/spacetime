@@ -611,8 +611,8 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               <span className="text-[11px] font-mono tracking-[0.12em] text-muted-foreground">SUBSCRIPTION</span>
             </div>
             {(() => {
-              const { subscription, trialDaysLeft } = useSubscription();
-              if (!subscription) return null;
+              const sub = subscription;
+              if (!sub) return null;
               if (subscription.lifetime_access) return (
                 <div className="bg-primary/5 border border-primary/20 rounded-sm p-3">
                   <div className="text-[12px] font-mono text-primary font-medium">LIFETIME ACCESS</div>
