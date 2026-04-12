@@ -391,7 +391,13 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                         if (webPerm !== 'granted') {
                           const result = await requestWebNotificationPermission();
                           if (result !== 'granted') {
-                            toast.error('Notifications blocked. Check your browser settings.', { duration: 6000 });
+                            const inIframe = window.self !== window.top;
+                            toast.error(
+                              inIframe
+                                ? 'Notifications are blocked in preview mode. Try on the published site.'
+                                : 'Notifications blocked. Check your browser settings.',
+                              { duration: 6000 }
+                            );
                             return;
                           }
                         }
