@@ -315,7 +315,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               <span className="text-[11px] font-mono tracking-[0.12em] text-muted-foreground">NOTIFICATIONS</span>
             </div>
             <div className="text-[10px] font-mono text-muted-foreground/50 mb-2">
-              Get reminders 5 min before scheduled tasks
+              5 min warning before task end + alarm at completion time
             </div>
             <div className="flex gap-1 bg-muted/30 border border-border/50 rounded-sm p-1">
               {([
