@@ -70,18 +70,19 @@ export function DayView() {
     const stickyOffset = 96;
     const viewportH = window.innerHeight - stickyOffset;
     const clusterCenterMin = scrollToMin;
-    const timelineTop = scrollRef.current
-      ? scrollRef.current.getBoundingClientRect().top + window.scrollY
-      : 0;
 
     setScale(clamped);
     setClusterZoomed(true);
 
-    const centerDocY = timelineTop + ((clusterCenterMin - START_HOUR * 60) / 60) * clamped;
-    const targetScrollTop = Math.max(0, centerDocY - stickyOffset - viewportH / 2);
-
-    queueMicrotask(() => {
-      window.scrollTo({ top: targetScrollTop, behavior: 'auto' });
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const timelineTop = scrollRef.current
+          ? scrollRef.current.getBoundingClientRect().top + window.scrollY
+          : 0;
+        const centerDocY = timelineTop + ((clusterCenterMin - START_HOUR * 60) / 60) * clamped;
+        const targetScrollTop = Math.max(0, centerDocY - stickyOffset - viewportH / 2);
+        window.scrollTo({ top: targetScrollTop, behavior: 'auto' });
+      });
     });
   }, [hourHeight, setScale]);
 
