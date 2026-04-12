@@ -188,6 +188,13 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             </div>
 
             {!connected ? (
+              nativeRuntime ? (
+                <div className="bg-muted/30 border border-border/50 rounded-sm p-3">
+                  <p className="text-[11px] font-mono text-muted-foreground/60 leading-relaxed">
+                    Google Calendar must be connected on the web app. Once connected there, your events will automatically appear here.
+                  </p>
+                </div>
+              ) : (
               <button
                 onClick={startAuth}
                 disabled={loading}
@@ -195,6 +202,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               >
                 {loading ? 'CONNECTING...' : 'CONNECT GOOGLE CALENDAR'}
               </button>
+              )
             ) : (
               <div className="space-y-2">
                 <div className="flex items-center justify-between bg-muted/30 border border-border/50 rounded-sm p-3 min-h-[48px]">

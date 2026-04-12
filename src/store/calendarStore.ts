@@ -149,6 +149,10 @@ export const useCalendarStore = create<CalendarState>()(
       },
 
       startAuth: async () => {
+        if (isNativePlatform()) {
+          // Block Google Calendar OAuth on native — must be done on web
+          return;
+        }
         const redirectUri = window.location.origin;
         const result = await callEdge('get_auth_url', {
           deviceId: get().deviceId,

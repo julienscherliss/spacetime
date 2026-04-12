@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useCalendarStore } from '@/store/calendarStore';
 import { X, RefreshCw, Unplug, Calendar as CalIcon } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { isNativePlatform } from '@/utils/nativePlatform';
 
 export function CalendarPanel() {
   const {
@@ -64,6 +65,13 @@ export function CalendarPanel() {
 
             <div className="p-4">
               {!connected ? (
+                isNativePlatform() ? (
+                  <div className="text-center py-6 px-2">
+                    <p className="text-[11px] font-mono text-muted-foreground/60 tracking-wider leading-relaxed">
+                      Google Calendar must be connected on the web app. Once connected there, your events will automatically appear here.
+                    </p>
+                  </div>
+                ) : (
                 <div className="text-center py-6">
                   <p className="text-[11px] font-mono text-muted-foreground/50 tracking-wider mb-4">
                     CONNECT GOOGLE CALENDAR
@@ -76,6 +84,7 @@ export function CalendarPanel() {
                     {loading ? 'CONNECTING...' : 'CONNECT'}
                   </button>
                 </div>
+                )
               ) : (
                 <>
                   <div className="flex items-center justify-between mb-4">
