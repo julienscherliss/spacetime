@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Clock, Layers, ArrowRight, Zap, Target, Calendar, Repeat, BarChart3 } from 'lucide-react';
+import { Layers, ArrowRight, Zap, Target, Calendar, Repeat, BarChart3 } from 'lucide-react';
+import faviconUrl from '/favicon.png';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -47,13 +49,15 @@ const features = [
 export default function Landing() {
   const navigate = useNavigate();
 
+  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
+
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary/20">
       {/* Nav */}
       <nav className="fixed top-0 inset-x-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/40">
         <div className="max-w-5xl mx-auto flex items-center justify-between px-6 py-4">
           <div className="flex items-center gap-2">
-            <Clock size={16} className="text-primary" />
+            <img src={faviconUrl} alt="Spacetime" className="w-4 h-4" />
             <span className="font-display text-sm font-bold tracking-tight">spacetime</span>
           </div>
           <button
@@ -238,19 +242,33 @@ export default function Landing() {
             variants={fadeUp}
             className="grid grid-cols-2 gap-3 mb-8"
           >
-            <div className="border border-border/50 rounded-md p-5">
+            <button
+              onClick={() => setSelectedPlan('monthly')}
+              className={`border rounded-md p-5 text-left transition-all ${
+                selectedPlan === 'monthly'
+                  ? 'border-foreground/40 bg-muted/20'
+                  : 'border-border/50 hover:border-foreground/20'
+              }`}
+            >
               <div className="text-[9px] font-mono text-muted-foreground/50 tracking-widest mb-2">MONTHLY</div>
               <div className="text-2xl font-display font-bold">$3</div>
               <div className="text-[10px] font-mono text-muted-foreground/50">/ month</div>
-            </div>
-            <div className="border border-primary/30 rounded-md p-5 relative">
+            </button>
+            <button
+              onClick={() => setSelectedPlan('yearly')}
+              className={`border rounded-md p-5 relative text-left transition-all ${
+                selectedPlan === 'yearly'
+                  ? 'border-primary/50 bg-primary/5'
+                  : 'border-primary/20 hover:border-primary/40'
+              }`}
+            >
               <div className="absolute -top-2 right-3 px-2 py-0.5 bg-primary text-primary-foreground text-[8px] font-mono tracking-wider rounded-full">
                 SAVE 33%
               </div>
               <div className="text-[9px] font-mono text-muted-foreground/50 tracking-widest mb-2">YEARLY</div>
               <div className="text-2xl font-display font-bold">$2</div>
               <div className="text-[10px] font-mono text-muted-foreground/50">/ mo · $24/yr</div>
-            </div>
+            </button>
           </motion.div>
 
           <motion.div
@@ -261,12 +279,15 @@ export default function Landing() {
             variants={fadeUp}
           >
             <button
-              onClick={() => navigate('/auth')}
+              onClick={() => navigate('/auth', { state: { plan: selectedPlan } })}
               className="group flex items-center gap-2 mx-auto px-6 py-3 bg-foreground text-background text-[11px] font-mono tracking-widest rounded-sm hover:bg-foreground/90 transition-colors"
             >
               BEGIN YOUR TRIAL
               <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
             </button>
+            <p className="text-[9px] font-mono text-muted-foreground/40 mt-3">
+              {selectedPlan === 'yearly' ? '$24 BILLED ANNUALLY AFTER TRIAL' : '$3 BILLED MONTHLY AFTER TRIAL'}
+            </p>
           </motion.div>
         </div>
       </section>
@@ -275,7 +296,7 @@ export default function Landing() {
       <footer className="border-t border-border/40 py-8 px-6">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Clock size={12} className="text-muted-foreground/40" />
+            <img src={faviconUrl} alt="Spacetime" className="w-3 h-3 opacity-40" />
             <span className="text-[10px] font-mono text-muted-foreground/40 tracking-wider">
               SPACETIME © {new Date().getFullYear()}
             </span>
