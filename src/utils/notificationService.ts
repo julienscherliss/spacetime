@@ -11,9 +11,9 @@
  * We intentionally stay well below that limit to preserve headroom and avoid
  * churn near the cap.
  *
- * OVERDUE THRESHOLD: A task is overdue when current time > task due time.
- * In this app, the due time is the scheduled task timestamp (date + time).
- * Duration does NOT affect notification overdue logic.
+ * OVERDUE THRESHOLD: A task is overdue when current time > task end time
+ * (start time + duration). The standard reminder fires before the task STARTS.
+ * These are two separate notification families that should never overlap.
  *
  * All native plugin interactions go through this module.
  * UI components should never call LocalNotifications directly.
@@ -175,15 +175,22 @@ function shouldNotify(task: Task, level: NotificationLevel): boolean {
   return (task.priority as number) >= 2;
 }
 
-/** "Due" = end of the scheduled block: start time + duration.
- *  If no duration, defaults to 30 min so a reminder still fires. */
-function getTaskDueMs(task: Task): number | null {
+/** Task START time in ms — used for standard reminders ("starts in 5 min") */
+function getTaskStartMs(task: Task): number | null {
   if (!task.time) return null;
   const [h, m] = task.time.split(':').map(Number);
   const dt = new Date(`${task.date}T00:00:00`);
   dt.setHours(h, m, 0, 0);
+  return dt.getTime();
+}
+
+/** Task END time (= overdue threshold) = start + duration.
+ *  If no duration, defaults to 30 min. */
+function getTaskDueMs(task: Task): number | null {
+  const startMs = getTaskStartMs(task);
+  if (startMs === null) return null;
   const durationMin = (task.duration && task.duration > 0) ? task.duration : 30;
-  return dt.getTime() + durationMin * 60_000;
+  return startMs + durationMin * 60_000;
 }
 
 function nextMinuteSlotStart(nowMs: number): number {
@@ -262,27 +269,36 @@ function computeDesired(
   const futureCandidates: { id: number; data: DesiredNotification }[] = [];
   let totalOverdueSlots = 0;
   let overdueCandidateCount = 0;
+  const seenSlots = new Set<string>();
 
   for (const task of tasks) {
     if (!shouldNotify(task, level)) continue;
     if (!task.time || task.completed) continue;
 
+    const taskStartMs = getTaskStartMs(task);
     const taskDueMs = getTaskDueMs(task);
-    if (taskDueMs === null) continue;
+    if (taskStartMs === null || taskDueMs === null) continue;
 
     const overdueActive = persistentOverdue && now > taskDueMs;
-    const firstOverdueSlotMs = overdueActive ? nextMinuteSlotStart(now) : null;
 
-    logDebug('overdue timing audit', {
+    logDebug('notification timing audit', {
       taskTitle: task.title,
       taskId: task.id,
-      dueTime: new Date(taskDueMs).toISOString(),
+      startTime: new Date(taskStartMs).toISOString(),
+      endTime: new Date(taskDueMs).toISOString(),
       currentTime: new Date(now).toISOString(),
       overdueActive,
-      firstScheduledOverdueTimestamp: firstOverdueSlotMs ? new Date(firstOverdueSlotMs).toISOString() : null,
     });
 
+    // ── FAMILY B: Persistent overdue reminders (only when truly overdue) ──
     if (overdueActive) {
+      const firstOverdueSlotMs = nextMinuteSlotStart(now);
+
+      logDebug('overdue slots', {
+        taskTitle: task.title,
+        firstSlot: new Date(firstOverdueSlotMs).toISOString(),
+      });
+
       const availableSlots = Math.min(
         OVERDUE_WINDOW_MINUTES,
         MAX_OVERDUE_PER_TASK,
@@ -294,12 +310,18 @@ function computeDesired(
         continue;
       }
 
-      const windowStartMs = firstOverdueSlotMs!;
-
       for (let i = 0; i < availableSlots; i++) {
-        const fireTimeMs = windowStartMs + i * 60_000;
+        const fireTimeMs = firstOverdueSlotMs + i * 60_000;
         const absoluteMinute = absoluteMinuteFromMs(fireTimeMs);
         const overdueMinutesAtFire = Math.max(1, Math.floor((fireTimeMs - taskDueMs) / 60_000));
+
+        // Dedup: skip if we already have a notification for this task+minute
+        const dedupKey = `${task.id}:overdue:${absoluteMinute}`;
+        if (seenSlots.has(dedupKey)) {
+          logDebug('overdue slot deduplicated', { dedupKey });
+          continue;
+        }
+        seenSlots.add(dedupKey);
 
         urgentCandidates.push({
           id: overdueNotificationId(task.id, absoluteMinute),
@@ -316,11 +338,21 @@ function computeDesired(
 
       totalOverdueSlots += availableSlots;
       overdueCandidateCount += availableSlots;
+      // When overdue, do NOT also schedule a standard reminder — skip to next task
       continue;
     }
 
-    const reminderAtMs = taskDueMs - LEAD_MINUTES * 60_000;
+    // ── FAMILY A: Standard reminder (fires before task START, not end) ──
+    const reminderAtMs = taskStartMs - LEAD_MINUTES * 60_000;
     if (reminderAtMs > now) {
+      // Dedup: skip if already seen
+      const dedupKey = `${task.id}:reminder:${absoluteMinuteFromMs(reminderAtMs)}`;
+      if (seenSlots.has(dedupKey)) {
+        logDebug('reminder slot deduplicated', { dedupKey });
+        continue;
+      }
+      seenSlots.add(dedupKey);
+
       const isUrgent = reminderAtMs <= urgentThresholdMs;
       const candidate = {
         id: taskNotificationId(task.id),
