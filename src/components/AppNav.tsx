@@ -114,8 +114,8 @@ export function AppNav() {
           ref={moreRef}
         >
           <div className="flex items-center justify-between px-2 py-1.5">
-            {/* Fit/scan button with long-press menu */}
-            <ScanButton />
+            {/* Fit/scan button with long-press menu — hidden on focus & month */}
+            {viewMode !== 'focus' && viewMode !== 'calendar' ? <ScanButton /> : <div className="w-[44px]" />}
 
             {/* View tabs — primary action */}
             <div className="flex items-center bg-muted/50 rounded-md p-0.5 gap-0.5">
