@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCalendarStore } from '@/store/calendarStore';
-import { X, Calendar as CalIcon, MapPin, Clock, Tag, Trash2, RotateCcw, EyeOff } from 'lucide-react';
+import { useTaskStore } from '@/store/taskStore';
+import { X, Calendar as CalIcon, MapPin, Clock, Tag, Trash2, RotateCcw, EyeOff, ArrowRightLeft } from 'lucide-react';
 import { formatTime12h } from '@/hooks/useCurrentTime';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useLibraryStore } from '@/store/libraryStore';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { TagPickerMenu } from '@/components/TagPickerMenu';
+import { toast } from 'sonner';
 
 function formatDuration(mins: number): string {
   if (mins < 60) return `${mins}m`;
@@ -65,6 +67,27 @@ export function CalendarEventEditPanel() {
     if (!cal) return;
     toggleCalendar(cal.id, false);
     setEditingEvent(null);
+  };
+
+  const canConvertToTask = !!event.time && !event.isAllDay;
+
+  const handleConvertToTask = () => {
+    if (!event || !canConvertToTask) return;
+    const addTask = useTaskStore.getState().addTask;
+    addTask({
+      title: event.title,
+      category: localCategory || undefined,
+      date: event.date,
+      time: event.time!,
+      duration: event.duration || 30,
+      type: 'one-time',
+      priority: 0,
+      description: event.description || undefined,
+    });
+    // Delete the calendar event
+    if (editingEventId) deleteEvent(editingEventId);
+    setEditingEvent(null);
+    toast.success('Converted to task');
   };
 
   const categoryLabel = localCategory
@@ -195,6 +218,17 @@ export function CalendarEventEditPanel() {
 
               {/* Actions */}
               <div className="border-t border-border/30 pt-3 space-y-2">
+                {/* Convert to task — only for timed events */}
+                {canConvertToTask && !isDeleted && (
+                  <button
+                    onClick={handleConvertToTask}
+                    className="w-full flex items-center justify-center gap-2 py-2 rounded-sm border border-primary/20 text-[10px] font-mono tracking-wider text-primary/70 hover:bg-primary/5 transition-colors"
+                  >
+                    <ArrowRightLeft size={11} />
+                    CONVERT TO TASK
+                  </button>
+                )}
+
                 {isDeleted ? (
                   <button
                     onClick={handleRevive}
