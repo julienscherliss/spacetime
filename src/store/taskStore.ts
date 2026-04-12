@@ -370,6 +370,7 @@ export const useTaskStore = create<TaskState>()(
       updateTask: (id, updates) => {
         if ('time' in updates || 'date' in updates || 'completed' in updates) {
           void cancelNotificationsForTask(id);
+        cancelWebNotificationsForTask(id);
         }
         set((s) => ({
           tasks: s.tasks.map((t) => {
@@ -423,6 +424,7 @@ export const useTaskStore = create<TaskState>()(
           editingTaskId: s.editingTaskId === id ? null : s.editingTaskId,
         }));
         void cancelNotificationsForTask(id);
+        cancelWebNotificationsForTask(id);
         const state = get();
         const today = new Date().toISOString().split('T')[0];
         const todayTasks = state.tasks.filter((t) => t.date === today && !t.archivedAt);
@@ -441,6 +443,7 @@ export const useTaskStore = create<TaskState>()(
           editingTaskId: s.editingTaskId === id ? null : s.editingTaskId,
         }));
         void cancelNotificationsForTask(id);
+        cancelWebNotificationsForTask(id);
       },
 
       archiveTask: (id, reason) => {
@@ -565,6 +568,7 @@ export const useTaskStore = create<TaskState>()(
         }));
         Array.from(targetIds).forEach((taskId) => {
           void cancelNotificationsForTask(taskId);
+        cancelWebNotificationsForTask(taskId);
         });
         return { blocked: false };
       },
@@ -585,6 +589,7 @@ export const useTaskStore = create<TaskState>()(
 
         Array.from(targetIds).forEach((taskId) => {
           void cancelNotificationsForTask(taskId);
+        cancelWebNotificationsForTask(taskId);
         });
       },
 
@@ -602,6 +607,7 @@ export const useTaskStore = create<TaskState>()(
 
         Array.from(targetIds).forEach((taskId) => {
           void cancelNotificationsForTask(taskId);
+        cancelWebNotificationsForTask(taskId);
         });
       },
 
