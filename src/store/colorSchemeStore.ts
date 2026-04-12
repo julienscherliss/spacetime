@@ -239,7 +239,7 @@ function presetsForMode(dark: boolean) {
 }
 
 function defaultIdForMode(dark: boolean) {
-  return dark ? 'dark-industrial' : 'industrial';
+  return dark ? 'dark-cobalt' : 'cobalt';
 }
 
 export const useColorSchemeStore = create<ColorSchemeState>()(
