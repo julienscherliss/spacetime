@@ -282,16 +282,6 @@ export function WeekView() {
         />
       </div>
 
-      <FitViewButton
-        tasks={visibleTasks}
-        scrollRef={scrollRef as React.RefObject<HTMLElement>}
-        hourHeight={hourHeight}
-        setScale={setScale}
-        resetZoom={resetZoom}
-        nowMinutes={nowMinutes}
-        hideButton={isMobile}
-      />
-
       <BlockedModal taskId="" open={false} onClose={() => {}} />
     </div>
   );
