@@ -7,6 +7,9 @@ import { supabase } from '@/integrations/supabase/client';
 const NATIVE_SCHEME = 'com.spaacetime.app';
 const NATIVE_CALLBACK = `${NATIVE_SCHEME}://auth/callback`;
 
+/** HTTPS callback — the only redirect URL allowed by Lovable Cloud */
+const HTTPS_CALLBACK = 'https://launchspacetime.com/auth/callback';
+
 /** True when running inside a native Capacitor shell (iOS / Android) */
 export function isNativePlatform(): boolean {
   return Capacitor.isNativePlatform();
@@ -15,18 +18,18 @@ export function isNativePlatform(): boolean {
 /**
  * Open Google OAuth via Supabase PKCE flow in the in-app browser.
  *
- * Uses `skipBrowserRedirect: true` so we get the URL back and open it
- * ourselves with Capacitor Browser. The `redirectTo` points to the custom
- * URL scheme so the OS routes the callback directly back into the app —
- * no web trampoline page needed.
+ * redirectTo uses the HTTPS callback page which acts as a bridge:
+ * it receives the code and immediately redirects to the custom URL scheme
+ * so the OS hands control back to the native app.
  */
 export async function nativeGoogleSignIn(): Promise<void> {
-  console.debug('[nativeAuth] starting Google sign-in, redirectTo:', NATIVE_CALLBACK);
+  console.debug('[nativeAuth] starting Google sign-in');
+  console.debug('[nativeAuth] redirectTo:', HTTPS_CALLBACK);
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: NATIVE_CALLBACK,
+      redirectTo: HTTPS_CALLBACK,
       skipBrowserRedirect: true,
     },
   });
@@ -37,49 +40,66 @@ export async function nativeGoogleSignIn(): Promise<void> {
   }
 
   if (data?.url) {
-    console.debug('[nativeAuth] opening OAuth URL in browser');
+    console.debug('[nativeAuth] opening OAuth URL in browser:', data.url);
     await Browser.open({ url: data.url, windowName: '_self' });
+  } else {
+    console.warn('[nativeAuth] no URL returned from signInWithOAuth');
   }
 }
 
 /**
- * Listen for deep-link callbacks after OAuth completes.
- * The OS routes `com.spaacetime.app://auth/callback?code=...` back to the app.
- * We extract the PKCE code, exchange it for a session, and close the browser.
+ * Listen for deep-link callbacks after the bridge page redirects
+ * to com.spaacetime.app://auth/callback?code=...
  *
- * Call once on app startup (e.g. in a top-level useEffect).
- * Returns a cleanup function that removes the listener.
+ * Call once on app startup. Returns a cleanup function.
  */
 export function setupDeepLinkListener(): () => void {
-  const handle = CapApp.addListener('appUrlOpen', async ({ url }) => {
-    console.debug('[nativeAuth] deep-link received:', url);
+  console.debug('[nativeAuth] registering deep-link listener');
 
-    if (!url.startsWith(`${NATIVE_SCHEME}://auth/callback`)) return;
+  const handle = CapApp.addListener('appUrlOpen', async ({ url }) => {
+    console.debug('[nativeAuth] appUrlOpen fired:', url);
+
+    if (!url.startsWith(`${NATIVE_SCHEME}://auth/callback`)) {
+      console.debug('[nativeAuth] ignoring non-auth deep link');
+      return;
+    }
 
     // Close the in-app browser
     try {
       await Browser.close();
+      console.debug('[nativeAuth] browser closed');
     } catch (_) {
-      /* browser may already be closed */
+      console.debug('[nativeAuth] browser already closed or failed to close');
     }
 
-    // PKCE flow: code arrives as a query parameter
+    // Extract code from query params
     try {
       const parsed = new URL(url);
       const code = parsed.searchParams.get('code');
+      const error_desc = parsed.searchParams.get('error_description');
+
+      if (error_desc) {
+        console.error('[nativeAuth] OAuth error:', error_desc);
+        return;
+      }
 
       if (code) {
-        console.debug('[nativeAuth] exchanging code for session');
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        console.debug('[nativeAuth] code received, exchanging for session...');
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
         if (error) {
-          console.error('[nativeAuth] exchangeCode error:', error.message);
+          console.error('[nativeAuth] exchangeCodeForSession error:', error.message);
         } else {
-          console.debug('[nativeAuth] session established successfully');
+          console.debug('[nativeAuth] session established, user:', data.session?.user?.email);
+          // Verify session is available
+          const { data: sessionData } = await supabase.auth.getSession();
+          console.debug('[nativeAuth] getSession confirms:', !!sessionData.session);
         }
         return;
       }
-    } catch (_) {
-      /* URL parsing may fail for hash-based URLs */
+
+      console.warn('[nativeAuth] no code found in callback URL');
+    } catch (e) {
+      console.error('[nativeAuth] error parsing callback URL:', e);
     }
 
     // Implicit flow fallback: tokens in hash fragment
@@ -88,13 +108,9 @@ export function setupDeepLinkListener(): () => void {
       const params = new URLSearchParams(hashPart);
       const access_token = params.get('access_token');
       const refresh_token = params.get('refresh_token');
-
       if (access_token && refresh_token) {
         console.debug('[nativeAuth] setting session from hash tokens');
-        const { error } = await supabase.auth.setSession({
-          access_token,
-          refresh_token,
-        });
+        const { error } = await supabase.auth.setSession({ access_token, refresh_token });
         if (error) {
           console.error('[nativeAuth] setSession error:', error.message);
         }
