@@ -298,7 +298,8 @@ export function ColorSchemePanel() {
                 <>
                   <button
                     onClick={() => {
-                      setActiveScheme('industrial');
+                      const fallback = isDark ? 'dark-industrial' : 'industrial';
+                      setActiveScheme(fallback);
                       deleteCustomScheme(active.id);
                       toast.success('Scheme deleted');
                     }}
@@ -309,7 +310,8 @@ export function ColorSchemePanel() {
                   </button>
                   <button
                     onClick={() => {
-                      setActiveScheme('industrial');
+                      const fallback = isDark ? 'dark-industrial' : 'industrial';
+                      setActiveScheme(fallback);
                       toast.success('Reset to default');
                     }}
                     className="flex items-center gap-1 px-2 py-1.5 rounded-[2px] text-[8px] font-mono tracking-widest text-muted-foreground/50 hover:text-foreground hover:bg-muted/40 transition-colors border border-border/30"
