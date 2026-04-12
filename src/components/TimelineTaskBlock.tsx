@@ -457,6 +457,7 @@ export function TimelineTaskBlock({
                   : `${task.isRoutine ? 'bg-background/60 backdrop-blur-sm' : 'bg-card'} hover:shadow-sm`
         } ${isOverdue && !hasRoutineConflict ? '' : ''}`}
         style={{
+          backgroundColor: isLocked ? 'hsl(var(--locked-fill))' : undefined,
           border: isLocked
             ? '1.5px solid hsl(var(--locked-fill))'
             : hasPriorityColor && !isActive && !hasRoutineConflict
