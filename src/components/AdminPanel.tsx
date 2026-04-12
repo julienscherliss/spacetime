@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Shield, Users, Tag, BarChart3, Plus, Trash2, Copy, Eye, EyeOff } from 'lucide-react';
+import { X, Shield, Users, Tag, BarChart3, Plus, Trash2, Copy, Eye, EyeOff, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -17,8 +17,12 @@ interface UserSub {
   plan: string | null;
   lifetime_access: boolean;
   trial_end: string;
+  trial_start: string;
   created_at: string;
-  email?: string;
+  current_period_end: string | null;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  display_name?: string;
 }
 
 interface PromoCode {
@@ -38,6 +42,7 @@ export function AdminPanel({ open, onClose }: Props) {
   const [users, setUsers] = useState<UserSub[]>([]);
   const [promos, setPromos] = useState<PromoCode[]>([]);
   const [loading, setLoading] = useState(false);
+  const [expandedUser, setExpandedUser] = useState<string | null>(null);
 
   // New promo form
   const [newCode, setNewCode] = useState('');
@@ -55,7 +60,14 @@ export function AdminPanel({ open, onClose }: Props) {
     try {
       if (tab === 'users' || tab === 'overview') {
         const { data } = await supabase.from('subscriptions').select('*');
-        setUsers((data || []) as UserSub[]);
+        // Fetch profiles to get display names
+        const { data: profiles } = await supabase.from('profiles').select('id, display_name');
+        const profileMap = new Map((profiles || []).map(p => [p.id, p.display_name]));
+        const enriched = (data || []).map(u => ({
+          ...u,
+          display_name: profileMap.get(u.user_id) || null,
+        }));
+        setUsers(enriched as UserSub[]);
       }
       if (tab === 'promos' || tab === 'overview') {
         // Admin policy allows all access
@@ -218,46 +230,83 @@ export function AdminPanel({ open, onClose }: Props) {
               {users.length === 0 ? (
                 <div className="text-center py-8 text-[10px] font-mono text-muted-foreground/40">NO USERS YET</div>
               ) : (
-                users.map(u => (
-                  <div key={u.user_id} className="border border-border/30 rounded-md p-3 bg-card/30">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-[10px] font-mono text-foreground/80 truncate max-w-[200px]">
-                        {u.user_id.slice(0, 8)}...
-                      </span>
-                      <span className={`text-[8px] font-mono tracking-wider px-1.5 py-0.5 rounded ${
-                        u.lifetime_access ? 'bg-primary/10 text-primary' :
-                        u.status === 'active' ? 'bg-green-500/10 text-green-600' :
-                        u.status === 'trialing' ? 'bg-yellow-500/10 text-yellow-600' :
-                        'bg-destructive/10 text-destructive'
-                      }`}>
-                        {u.lifetime_access ? 'LIFETIME' : u.status.toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="text-[9px] font-mono text-muted-foreground/50">
-                        {u.plan ? u.plan.toUpperCase() : 'NO PLAN'} · Joined {new Date(u.created_at).toLocaleDateString()}
-                      </div>
-                      <div className="flex gap-1">
-                        {!u.lifetime_access && (
-                          <button
-                            onClick={() => grantLifetime(u.user_id)}
-                            className="text-[8px] font-mono text-primary/60 hover:text-primary px-1.5 py-0.5 rounded border border-primary/20 hover:border-primary/40 transition-colors"
+                users.map(u => {
+                  const isExpanded = expandedUser === u.user_id;
+                  const trialEnd = new Date(u.trial_end);
+                  const trialDays = Math.max(0, Math.ceil((trialEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+                  return (
+                    <div key={u.user_id} className="border border-border/30 rounded-md bg-card/30 overflow-hidden">
+                      <button
+                        onClick={() => setExpandedUser(isExpanded ? null : u.user_id)}
+                        className="w-full flex items-center justify-between p-3 text-left hover:bg-muted/20 transition-colors"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-[11px] font-mono text-foreground truncate max-w-[180px]">
+                            {u.display_name || u.user_id.slice(0, 8) + '...'}
+                          </span>
+                          <span className={`text-[8px] font-mono tracking-wider px-1.5 py-0.5 rounded shrink-0 ${
+                            u.lifetime_access ? 'bg-primary/10 text-primary' :
+                            u.status === 'active' ? 'bg-green-500/10 text-green-600' :
+                            u.status === 'trialing' ? 'bg-yellow-500/10 text-yellow-600' :
+                            'bg-destructive/10 text-destructive'
+                          }`}>
+                            {u.lifetime_access ? 'LIFETIME' : u.status.toUpperCase()}
+                          </span>
+                        </div>
+                        {isExpanded ? <ChevronUp size={12} className="text-muted-foreground/40" /> : <ChevronDown size={12} className="text-muted-foreground/40" />}
+                      </button>
+
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.15 }}
+                            className="overflow-hidden"
                           >
-                            GRANT ∞
-                          </button>
+                            <div className="px-3 pb-3 space-y-2 border-t border-border/20 pt-2">
+                              <div className="grid grid-cols-2 gap-2">
+                                {[
+                                  { label: 'PLAN', value: u.plan ? u.plan.toUpperCase() : 'NONE' },
+                                  { label: 'JOINED', value: new Date(u.created_at).toLocaleDateString() },
+                                  { label: 'TRIAL ENDS', value: trialEnd.toLocaleDateString() },
+                                  { label: 'TRIAL DAYS LEFT', value: u.status === 'trialing' ? trialDays.toString() : '—' },
+                                  { label: 'PERIOD END', value: u.current_period_end ? new Date(u.current_period_end).toLocaleDateString() : '—' },
+                                  { label: 'STRIPE ID', value: u.stripe_customer_id ? u.stripe_customer_id.slice(0, 14) + '...' : '—' },
+                                ].map(d => (
+                                  <div key={d.label}>
+                                    <div className="text-[7px] font-mono text-muted-foreground/40 tracking-[0.12em]">{d.label}</div>
+                                    <div className="text-[10px] font-mono text-foreground/70">{d.value}</div>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="text-[7px] font-mono text-muted-foreground/30 truncate">ID: {u.user_id}</div>
+                              <div className="flex gap-1 pt-1">
+                                {!u.lifetime_access && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); grantLifetime(u.user_id); }}
+                                    className="text-[8px] font-mono text-primary/60 hover:text-primary px-1.5 py-0.5 rounded border border-primary/20 hover:border-primary/40 transition-colors"
+                                  >
+                                    GRANT ∞
+                                  </button>
+                                )}
+                                {(u.status === 'active' || u.lifetime_access) && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); revokeAccess(u.user_id); }}
+                                    className="text-[8px] font-mono text-destructive/60 hover:text-destructive px-1.5 py-0.5 rounded border border-destructive/20 hover:border-destructive/40 transition-colors"
+                                  >
+                                    REVOKE
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </motion.div>
                         )}
-                        {(u.status === 'active' || u.lifetime_access) && (
-                          <button
-                            onClick={() => revokeAccess(u.user_id)}
-                            className="text-[8px] font-mono text-destructive/60 hover:text-destructive px-1.5 py-0.5 rounded border border-destructive/20 hover:border-destructive/40 transition-colors"
-                          >
-                            REVOKE
-                          </button>
-                        )}
-                      </div>
+                      </AnimatePresence>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           )}
