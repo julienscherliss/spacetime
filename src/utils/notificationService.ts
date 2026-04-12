@@ -341,8 +341,11 @@ function computeDesired(
 
     log('overdue heartbeat eligible', {
       count,
-      taskIds: sortedOverdue.map(t => t.id),
-      titles: sortedOverdue.map(t => t.title),
+      now: new Date(Date.now()).toISOString(),
+      tasks: sortedOverdue.map(t => ({
+        id: t.id, title: t.title, date: t.date, time: t.time,
+        dueMs: getTaskDueMs(t), priority: t.priority,
+      })),
       heartbeatFireAt: new Date(heartbeatFireMs).toISOString(),
     });
 
