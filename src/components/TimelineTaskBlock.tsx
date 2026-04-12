@@ -447,7 +447,7 @@ export function TimelineTaskBlock({
       <div
         className={`h-full rounded-[2px] transition-all duration-200 ${
           isLocked
-            ? 'bg-foreground shadow-sm'
+            ? 'shadow-sm'
             : isActive
               ? 'bg-card shadow-sm'
               : hasRoutineConflict
@@ -458,7 +458,7 @@ export function TimelineTaskBlock({
         } ${isOverdue && !hasRoutineConflict ? '' : ''}`}
         style={{
           border: isLocked
-            ? '1.5px solid hsl(var(--foreground))'
+            ? '1.5px solid hsl(var(--locked-fill))'
             : hasPriorityColor && !isActive && !hasRoutineConflict
               ? `1.5px solid ${priorityBorderColor}`
               : isActive
