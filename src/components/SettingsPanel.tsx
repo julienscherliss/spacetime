@@ -17,6 +17,11 @@ import {
   syncTaskNotifications,
   scheduleTestNotification,
 } from '@/utils/notificationService';
+import {
+  requestWebNotificationPermission,
+  getWebNotificationPermission,
+  syncWebNotifications,
+} from '@/utils/webNotificationService';
 import { useTaskStore } from '@/store/taskStore';
 
 interface SettingsPanelProps {
