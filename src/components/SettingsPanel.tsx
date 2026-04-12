@@ -17,6 +17,11 @@ import {
   syncTaskNotifications,
   scheduleTestNotification,
 } from '@/utils/notificationService';
+import {
+  requestWebNotificationPermission,
+  getWebNotificationPermission,
+  syncWebNotifications,
+} from '@/utils/webNotificationService';
 import { useTaskStore } from '@/store/taskStore';
 
 interface SettingsPanelProps {
@@ -310,7 +315,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               <span className="text-[11px] font-mono tracking-[0.12em] text-muted-foreground">NOTIFICATIONS</span>
             </div>
             <div className="text-[10px] font-mono text-muted-foreground/50 mb-2">
-              Get reminders 5 min before scheduled tasks
+              5 min warning before task end + alarm at completion time
             </div>
             <div className="flex gap-1 bg-muted/30 border border-border/50 rounded-sm p-1">
               {([
@@ -326,52 +331,80 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                     e.preventDefault();
                     e.stopPropagation();
 
-                    if (!isNativePlatform()) {
-                      setNotificationLevel(opt.value);
-                      toast('Notification preferences only apply in the native mobile app.');
-                      return;
-                    }
-
-                    if (opt.value === 'off') {
-                      setNotificationLevel('off');
-                      await syncTaskNotifications(useTaskStore.getState().tasks, 'off', true, false);
-                      toast.success('Notifications turned off');
-                      return;
-                    }
-
-                    // Enabling: request permission if needed, then sync + test
-                    setNotificationLoading(true);
-                    try {
-                      const status = await getPermissionStatus();
-                      if (status !== 'granted') {
-                        const permResult = await requestPermissionFromUserAction();
-                        if (permResult.status !== 'granted') {
-                          toast.error('Notifications blocked. Go to iPhone Settings → spaacetime → Notifications.', { duration: 6000 });
-                          return;
-                        }
+                    if (isNativePlatform()) {
+                      // Native flow
+                      if (opt.value === 'off') {
+                        setNotificationLevel('off');
+                        await syncTaskNotifications(useTaskStore.getState().tasks, 'off', true, false);
+                        toast.success('Notifications turned off');
+                        return;
                       }
 
-                      setNotificationLevel(opt.value);
+                      setNotificationLoading(true);
+                      try {
+                        const status = await getPermissionStatus();
+                        if (status !== 'granted') {
+                          const permResult = await requestPermissionFromUserAction();
+                          if (permResult.status !== 'granted') {
+                            toast.error('Notifications blocked. Go to iPhone Settings → spaacetime → Notifications.', { duration: 6000 });
+                            return;
+                          }
+                        }
 
-                      // Schedule test notification
-                      const testResult = await scheduleTestNotification(8);
-                      console.log('[notifications] test result', testResult);
+                        setNotificationLevel(opt.value);
 
-                      const po = useTimezoneStore.getState().persistentOverdue;
-                      const syncResult = await syncTaskNotifications(useTaskStore.getState().tasks, opt.value, true, po);
-                      console.log('[notifications] level change sync', syncResult);
+                        const testResult = await scheduleTestNotification(8);
+                        console.log('[notifications] test result', testResult);
 
-                      toast.success(
-                        testResult.ok
-                          ? `Notifications set to ${opt.label}. Test alert in ~8s.`
-                          : `Notifications set to ${opt.label}.`
-                      );
-                    } catch (error) {
-                      console.error('[notifications] enable flow error', error);
-                      const msg = error instanceof Error ? error.message : String(error);
-                      toast.error(msg, { duration: 7000 });
-                    } finally {
-                      setNotificationLoading(false);
+                        const po = useTimezoneStore.getState().persistentOverdue;
+                        const syncResult = await syncTaskNotifications(useTaskStore.getState().tasks, opt.value, true, po);
+                        console.log('[notifications] level change sync', syncResult);
+
+                        toast.success(
+                          testResult.ok
+                            ? `Notifications set to ${opt.label}. Test alert in ~8s.`
+                            : `Notifications set to ${opt.label}.`
+                        );
+                      } catch (error) {
+                        console.error('[notifications] enable flow error', error);
+                        const msg = error instanceof Error ? error.message : String(error);
+                        toast.error(msg, { duration: 7000 });
+                      } finally {
+                        setNotificationLoading(false);
+                      }
+                    } else {
+                      // Web browser flow
+                      if (opt.value === 'off') {
+                        setNotificationLevel('off');
+                        syncWebNotifications(useTaskStore.getState().tasks, 'off');
+                        toast.success('Notifications turned off');
+                        return;
+                      }
+
+                      setNotificationLoading(true);
+                      try {
+                        const webPerm = getWebNotificationPermission();
+                        if (webPerm === 'unsupported') {
+                          toast.error('This browser does not support notifications.');
+                          return;
+                        }
+                        if (webPerm !== 'granted') {
+                          const result = await requestWebNotificationPermission();
+                          if (result !== 'granted') {
+                            toast.error('Notifications blocked. Check your browser settings.', { duration: 6000 });
+                            return;
+                          }
+                        }
+
+                        setNotificationLevel(opt.value);
+                        syncWebNotifications(useTaskStore.getState().tasks, opt.value);
+                        toast.success(`Notifications set to ${opt.label}.`);
+                      } catch (error) {
+                        console.error('[web-notifications] enable error', error);
+                        toast.error(error instanceof Error ? error.message : String(error), { duration: 7000 });
+                      } finally {
+                        setNotificationLoading(false);
+                      }
                     }
                   }}
                   className={`flex-1 py-2.5 rounded-[2px] text-[11px] font-mono tracking-wider transition-colors min-h-[44px] disabled:opacity-50 ${
