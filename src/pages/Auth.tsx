@@ -5,6 +5,7 @@ import { lovable } from '@/integrations/lovable/index';
 import { isNativePlatform, nativeGoogleSignIn } from '@/utils/nativeAuth';
 import { Mail, Lock, User, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
+import { getAuthRedirectOrigin, debugLogAuthEnv } from '@/utils/authEnvironment';
 
 export default function Auth() {
   const [mode, setMode] = useState<'login' | 'signup'>('login');

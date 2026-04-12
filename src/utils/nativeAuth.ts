@@ -2,18 +2,7 @@ import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import { App as CapApp } from '@capacitor/app';
 import { supabase } from '@/integrations/supabase/client';
-
-/**
- * Published app domain — used to route through the Lovable managed OAuth proxy.
- */
-const APP_DOMAIN = 'https://spaacetime.lovable.app';
-
-/**
- * HTTPS callback URL (already in the Supabase allow-list).
- * The /auth/callback page acts as a "trampoline": it reads the tokens
- * from the URL and redirects into the native app via custom scheme.
- */
-const HTTPS_CALLBACK = `${APP_DOMAIN}/auth/callback`;
+import { getOAuthProxyDomain, getAuthCallbackUrl, debugLogAuthEnv } from '@/utils/authEnvironment';
 
 /** Custom URL scheme the trampoline page redirects to */
 const APP_SCHEME_CALLBACK = 'spaacetime://auth/callback';
@@ -25,12 +14,17 @@ export function isNativePlatform(): boolean {
 
 /**
  * Open Google OAuth in the system browser using the Lovable managed OAuth proxy.
- * This avoids requiring Google OAuth secrets in the Supabase auth config directly —
- * the /~oauth/initiate path on the published domain routes through Lovable's
- * managed OAuth broker which handles credentials automatically.
+ * Routes through the production domain's /~oauth/initiate path which handles
+ * credentials automatically via Lovable's managed OAuth broker.
  */
 export async function nativeGoogleSignIn(): Promise<void> {
-  const oauthUrl = `${APP_DOMAIN}/~oauth/initiate?provider=google&redirect_uri=${encodeURIComponent(HTTPS_CALLBACK)}`;
+  const proxyDomain = getOAuthProxyDomain();
+  const callbackUrl = getAuthCallbackUrl();
+
+  debugLogAuthEnv('nativeGoogleSignIn');
+  console.debug('[nativeAuth] oauthProxy:', proxyDomain, 'callback:', callbackUrl);
+
+  const oauthUrl = `${proxyDomain}/~oauth/initiate?provider=google&redirect_uri=${encodeURIComponent(callbackUrl)}`;
   await Browser.open({ url: oauthUrl, windowName: '_self' });
 }
 
@@ -45,6 +39,8 @@ export function setupDeepLinkListener(): () => void {
   const handle = CapApp.addListener('appUrlOpen', async ({ url }) => {
     if (!url.includes('auth/callback')) return;
 
+    console.debug('[nativeAuth] deep-link received:', url);
+
     // Close the external browser tab
     try {
       await Browser.close();
@@ -53,7 +49,6 @@ export function setupDeepLinkListener(): () => void {
     }
 
     // Implicit flow: tokens arrive in the hash fragment
-    // e.g. spaacetime://auth/callback#access_token=...&refresh_token=...
     const hashPart = url.split('#')[1];
     if (hashPart) {
       const params = new URLSearchParams(hashPart);
