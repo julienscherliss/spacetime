@@ -282,8 +282,8 @@ function computeDesired(
     if (!shouldNotify(task, level)) continue;
     if (!task.time || task.completed) continue;
     // Filter out archived, waiting room, and non-today tasks
-    if (task.archived_at) continue;
-    if (task.in_waiting_room) continue;
+    if (task.archivedAt) continue;
+    if (task.inWaitingRoom) continue;
 
     const taskStartMs = getTaskStartMs(task);
     const taskDueMs = getTaskDueMs(task);
