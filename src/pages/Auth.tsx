@@ -5,6 +5,7 @@ import { lovable } from '@/integrations/lovable/index';
 import { isNativePlatform, nativeGoogleSignIn } from '@/utils/nativeAuth';
 import { Mail, Lock, User, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
+import { getAuthRedirectOrigin, debugLogAuthEnv } from '@/utils/authEnvironment';
 
 export default function Auth() {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
@@ -17,6 +18,7 @@ export default function Auth() {
     e.preventDefault();
     if (!email || !password) return;
     setLoading(true);
+    debugLogAuthEnv('emailAuth');
     try {
       if (mode === 'signup') {
         const { error } = await supabase.auth.signUp({
@@ -24,7 +26,7 @@ export default function Auth() {
           password,
           options: {
             data: { full_name: name },
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: getAuthRedirectOrigin(),
           },
         });
         if (error) throw error;
@@ -42,17 +44,17 @@ export default function Auth() {
 
   const handleGoogle = async () => {
     setLoading(true);
+    debugLogAuthEnv('googleSignIn');
     try {
       if (isNativePlatform()) {
-        // Native: open OAuth in system browser, deep-link callback
         await nativeGoogleSignIn();
-        // Browser is open — loading clears when deep link returns session
         return;
       }
 
       // Web: use Lovable managed OAuth
+      const redirectOrigin = getAuthRedirectOrigin();
       const result = await lovable.auth.signInWithOAuth('google', {
-        redirect_uri: window.location.origin,
+        redirect_uri: redirectOrigin,
       });
       if (result.error) {
         toast.error(result.error.message || 'Google sign-in failed');

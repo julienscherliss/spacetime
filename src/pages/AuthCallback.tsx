@@ -1,11 +1,12 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { debugLogAuthEnv } from '@/utils/authEnvironment';
 
 /**
  * OAuth callback trampoline page.
  *
- * On the WEB this page simply extracts the hash tokens and sets the session,
+ * On the WEB this page extracts the hash tokens and sets the session,
  * then redirects to /.
  *
  * On a NATIVE Capacitor build the external browser lands here (HTTPS URL).
@@ -16,19 +17,10 @@ export default function AuthCallback() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    debugLogAuthEnv('AuthCallback');
+
     const hash = window.location.hash;
     const search = window.location.search;
-
-    // Detect if we should bounce to the native app.
-    // The native app opens this page in the *system browser*, not inside
-    // the Capacitor webview, so Capacitor.isNativePlatform() would be false.
-    // Instead we check for a `native=1` query param that we append when
-    // building the redirect URL (or we can check the User-Agent, but
-    // the simplest reliable method is: if the page is being served at
-    // spaacetime.lovable.app AND there are auth tokens in the hash,
-    // attempt the native redirect).  If the custom scheme isn't handled
-    // (i.e. user is on desktop web), we just fall through to the normal
-    // web session flow.
 
     const hasTokens = hash.includes('access_token');
     const hasCode = search.includes('code=');
@@ -38,6 +30,8 @@ export default function AuthCallback() {
     // we fall through to the web flow below.
     if (hasTokens || hasCode) {
       const nativeUrl = `spaacetime://auth/callback${search}${hash}`;
+
+      console.debug('[AuthCallback] attempting native redirect:', nativeUrl);
 
       // Attempt to open the native app
       const iframe = document.createElement('iframe');
@@ -55,8 +49,6 @@ export default function AuthCallback() {
     // directly in the browser session.
     const timer = setTimeout(async () => {
       if (hasTokens) {
-        // Implicit flow — Supabase client auto-detects hash tokens
-        // on page load, but we can also force it:
         const params = new URLSearchParams(hash.slice(1));
         const access_token = params.get('access_token');
         const refresh_token = params.get('refresh_token');
