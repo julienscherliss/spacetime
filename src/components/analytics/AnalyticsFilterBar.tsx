@@ -47,14 +47,14 @@ export function AnalyticsFilterBar({ filters, onChange }: Props) {
   ].filter(Boolean).length;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 min-w-0 w-full overflow-hidden">
       {/* Primary row: time range pills */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none -mx-1 px-1">
         {timeRanges.map(tr => (
           <button
             key={tr.value}
             onClick={() => onChange({ timeRange: tr.value })}
-            className={`shrink-0 px-3 py-1.5 rounded text-[10px] font-mono tracking-wider transition-all border ${
+            className={`shrink-0 px-2.5 py-1.5 rounded text-[10px] font-mono tracking-wider transition-all border ${
               filters.timeRange === tr.value
                 ? 'bg-foreground text-background border-foreground'
                 : 'bg-transparent text-muted-foreground border-border/50 hover:border-foreground/30 hover:text-foreground/70'
@@ -66,7 +66,7 @@ export function AnalyticsFilterBar({ filters, onChange }: Props) {
       </div>
 
       {/* Secondary row: group by + data type + expand */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 overflow-x-auto scrollbar-none -mx-1 px-1">
         <div className="flex items-center gap-1">
           <span className="text-[9px] font-mono text-muted-foreground/50 tracking-widest mr-1">GROUP</span>
           {groupByOptions.map(g => (
