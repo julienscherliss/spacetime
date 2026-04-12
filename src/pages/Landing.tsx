@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Layers, ArrowRight, Zap, Target, Calendar, Repeat, BarChart3 } from 'lucide-react';
+import { GravityCanvas } from '@/components/GravityCanvas';
 import faviconUrl from '/favicon.png';
 
 const fadeUp = {
