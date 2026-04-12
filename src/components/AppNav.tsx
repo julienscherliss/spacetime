@@ -277,6 +277,13 @@ export function AppNav() {
           {/* Utility separator */}
           <div className="w-px h-4 bg-border/25 mx-1.5" />
 
+          {/* Trial indicator */}
+          {subscription?.status === 'trialing' && trialDaysLeft > 0 && (
+            <div className="text-[8px] font-mono text-muted-foreground/40 tracking-wider px-1.5">
+              {trialDaysLeft}D TRIAL
+            </div>
+          )}
+
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('toggle-settings'))}
             className={`${navItemBase} ${navItemInactive} px-2`}
