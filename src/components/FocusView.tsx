@@ -145,7 +145,14 @@ export function FocusView() {
 
   // Hold-to-complete handlers
   const startHold = useCallback(() => {
-    if (!activeTask) return;
+    // Determine which task to complete: active task, or most overdue task
+    const targetTask = activeTask || overdueTasks.reduce<typeof activeTask>((a, b) => {
+      if (!a) return b;
+      const endA = timeToMinutes(a.time!) + (a.duration || 30);
+      const endB = timeToMinutes(b.time!) + (b.duration || 30);
+      return (nowMinutes - endA) > (nowMinutes - endB) ? a : b;
+    }, null);
+    if (!targetTask) return;
     setIsHolding(true);
     holdStartRef.current = Date.now();
     if (navigator.vibrate) navigator.vibrate(10);
@@ -154,7 +161,7 @@ export function FocusView() {
       const p = Math.min(1, el / HOLD_DURATION);
       setHoldProgress(p);
       if (p >= 1) {
-        completeTask(activeTask.id);
+        completeTask(targetTask.id);
         setIsHolding(false);
         setHoldProgress(0);
         if (navigator.vibrate) navigator.vibrate(30);
@@ -163,7 +170,7 @@ export function FocusView() {
       holdTimerRef.current = requestAnimationFrame(tick);
     };
     holdTimerRef.current = requestAnimationFrame(tick);
-  }, [activeTask, completeTask]);
+  }, [activeTask, overdueTasks, nowMinutes, completeTask]);
 
   const cancelHold = useCallback(() => {
     if (holdTimerRef.current) {
@@ -908,28 +915,61 @@ function MainFocusPanel({
     const nextH = String(Math.floor(Math.max(0, minsToNext) / 60)).padStart(2, '0');
     const nextM = String(Math.max(0, minsToNext) % 60).padStart(2, '0');
 
+    // Pick the most overdue task for ring display
+    const mostOverdueTask = hasOverdue ? overdueTasks.reduce((a, b) => {
+      const endA = timeToMinutes(a.time!) + (a.duration || 30);
+      const endB = timeToMinutes(b.time!) + (b.duration || 30);
+      return (nowMinutes - endA) > (nowMinutes - endB) ? a : b;
+    }) : null;
+
+    // Compute progress for the overdue ring (full = 100% since task ended)
+    const overdueRingProgress = 1; // task is fully elapsed
+
     return (
-      <div className="flex flex-col h-full">
+      <div
+        className="flex flex-col h-full"
+        onPointerDown={hasOverdue ? onHoldStart : undefined}
+        onPointerUp={hasOverdue ? onHoldEnd : undefined}
+        onPointerLeave={hasOverdue ? onHoldEnd : undefined}
+        onPointerCancel={hasOverdue ? onHoldEnd : undefined}
+      >
         {/* ── Top status strip ── */}
         <div className="flex items-center justify-between px-5 py-3">
-          <span className="text-[9px] font-mono tracking-[0.2em] text-muted-foreground/30 uppercase">Focus</span>
-          <span className="text-[9px] font-mono text-muted-foreground/20 tabular-nums tracking-wider">—</span>
+          <span className="text-[9px] font-mono tracking-[0.2em] text-muted-foreground/30 uppercase">
+            {hasOverdue ? 'OVERDUE' : 'Focus'}
+          </span>
+          <span className="text-[9px] font-mono text-muted-foreground/20 tabular-nums tracking-wider">
+            {hasOverdue && mostOverdueTask?.time
+              ? `${formatTime12h(mostOverdueTask.time)} – ${formatTime12h(timeToMinutes(mostOverdueTask.time) + (mostOverdueTask.duration || 30))}`
+              : '—'}
+          </span>
         </div>
 
         {/* ── Center ── */}
         <div className="flex-1 flex flex-col items-center justify-center px-6">
           {hasOverdue ? (
-            <>
-              <div className="font-display text-[64px] sm:text-[80px] font-bold text-primary/70 leading-none tabular-nums tracking-tight select-none">
-                {overdueH}:{overdueM}
+            <div className="relative" style={{ width: 280, height: 280 }}>
+              <SegmentedProgressRing
+                progress={overdueRingProgress}
+                size={280}
+                segments={60}
+                barWidth={4}
+                barLength={14}
+                holdProgress={holdProgress}
+                color="destructive"
+              />
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <div className="font-display text-[64px] sm:text-[80px] font-bold text-red-500/70 leading-none tabular-nums tracking-tight select-none">
+                  {overdueH}:{overdueM}
+                </div>
+                <h1 className="mt-3 text-sm font-display font-medium text-red-500/60 leading-tight text-center uppercase max-w-[220px]">
+                  {overdueTasks.length === 1 ? overdueTasks[0].title : `${overdueTasks.length} tasks`}
+                </h1>
+                <span className="mt-1 text-[10px] font-mono text-red-500/40 tracking-[0.15em] uppercase">
+                  Overdue
+                </span>
               </div>
-              <h1 className="mt-3 text-sm font-display font-medium text-primary/60 leading-tight text-center uppercase">
-                {overdueTasks.length === 1 ? overdueTasks[0].title : `${overdueTasks.length} tasks`}
-              </h1>
-              <span className="mt-1 text-[10px] font-mono text-primary/35 tracking-[0.15em] uppercase">
-                Overdue
-              </span>
-            </>
+            </div>
           ) : (
             <>
               <div className="font-display text-[64px] sm:text-[80px] font-bold text-foreground/8 leading-none tabular-nums tracking-tight select-none">
@@ -1014,6 +1054,7 @@ function MainFocusPanel({
             barWidth={4}
             barLength={14}
             holdProgress={holdProgress}
+            color={isGracePeriod ? 'destructive' : 'default'}
           />
 
           <div className="absolute inset-0 flex flex-col items-center justify-center">

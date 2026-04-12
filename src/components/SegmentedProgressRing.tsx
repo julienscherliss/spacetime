@@ -5,6 +5,7 @@ interface SegmentedProgressRingProps {
   barWidth?: number;
   barLength?: number;
   holdProgress?: number; // 0 to 1, orange overlay
+  color?: 'default' | 'destructive'; // ring color theme
 }
 
 export function SegmentedProgressRing({
@@ -14,12 +15,16 @@ export function SegmentedProgressRing({
   barWidth = 4,
   barLength = 14,
   holdProgress = 0,
+  color = 'default',
 }: SegmentedProgressRingProps) {
   const cx = size / 2;
   const cy = size / 2;
   const radius = (size - barLength) / 2;
   const filledCount = Math.round(progress * segments);
   const holdFilledCount = Math.round(holdProgress * segments);
+
+  const holdColor = color === 'destructive' ? 'hsl(var(--destructive))' : 'hsl(var(--primary))';
+  const barColor = color === 'destructive' ? 'hsl(0 72% 51%)' : undefined; // red-500 equivalent
 
   return (
     <svg
@@ -44,10 +49,10 @@ export function SegmentedProgressRing({
             y1={y1}
             x2={x2}
             y2={y2}
-            stroke={isHoldFilled ? 'hsl(var(--primary))' : 'currentColor'}
+            stroke={isHoldFilled ? holdColor : barColor || 'currentColor'}
             strokeWidth={barWidth}
             strokeLinecap="butt"
-            className={isHoldFilled ? '' : 'text-foreground'}
+            className={isHoldFilled || barColor ? '' : 'text-foreground'}
             style={{
               opacity: isHoldFilled ? 0.75 : isFilled ? 0.55 : 0.08,
               transition: 'opacity 100ms ease, stroke 100ms ease',
