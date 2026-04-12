@@ -15,6 +15,12 @@
  * (start time + duration). The standard reminder fires before the task STARTS.
  * These are two separate notification families that should never overlap.
  *
+ * OVERDUE HEARTBEAT: Instead of pre-scheduling many future overdue notifications,
+ * we maintain at most ONE pending overdue heartbeat notification at a time,
+ * scheduled ~60s in the future. Each sync re-evaluates overdue state and either
+ * preserves, replaces, or cancels the heartbeat. This eliminates stale overdue
+ * queues and "scheduled in the past" errors.
+ *
  * DETERMINISTIC IDS: Every notification ID is deterministic based on taskId +
  * type + fire-minute. This ensures:
  *   - Stable IDs across syncs (no cancel/recreate churn)
