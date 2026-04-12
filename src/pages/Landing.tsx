@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Layers, ArrowRight, Zap, Target, Calendar, Repeat, BarChart3 } from 'lucide-react';
+import { GravityCanvas } from '@/components/GravityCanvas';
 import faviconUrl from '/favicon.png';
 
 const fadeUp = {
@@ -69,9 +70,15 @@ export default function Landing() {
         </div>
       </nav>
 
-      {/* Hero */}
-      <section className="pt-32 pb-20 px-6">
-        <div className="max-w-3xl mx-auto text-center">
+      {/* Hero with gravity animation */}
+      <section className="relative min-h-screen flex items-center justify-center px-6 overflow-hidden">
+        <div className="absolute inset-0 bg-background">
+          <GravityCanvas />
+        </div>
+        {/* Gradient overlay so text is readable */}
+        <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-transparent to-background pointer-events-none" />
+
+        <div className="relative z-10 max-w-3xl mx-auto text-center">
           <motion.div
             initial="hidden"
             animate="visible"
@@ -79,7 +86,7 @@ export default function Landing() {
             variants={fadeUp}
             className="mb-6"
           >
-            <div className="inline-block px-3 py-1 border border-border/60 rounded-full mb-6">
+            <div className="inline-block px-3 py-1 border border-border/60 rounded-full mb-6 bg-background/40 backdrop-blur-sm">
               <span className="text-[9px] font-mono text-muted-foreground/60 tracking-[0.2em]">
                 TIME MANAGEMENT · REIMAGINED
               </span>
@@ -130,11 +137,6 @@ export default function Landing() {
           </motion.div>
         </div>
       </section>
-
-      {/* Visual divider */}
-      <div className="max-w-5xl mx-auto px-6">
-        <div className="h-px bg-border/40" />
-      </div>
 
       {/* Features */}
       <section className="py-20 px-6">
