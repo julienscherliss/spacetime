@@ -28,6 +28,7 @@ interface CalendarState {
   connected: boolean;
   email: string | null;
   calendars: GoogleCalendar[];
+  eventsById: Record<string, CalendarEvent>;
   events: CalendarEvent[];
   loading: boolean;
   panelOpen: boolean;
@@ -71,7 +72,7 @@ async function callEdge(action: string, params: Record<string, any> = {}) {
   return data;
 }
 
-const CALENDAR_CACHE_TTL_MS = 2 * 60 * 1000;
+const CALENDAR_CACHE_TTL_MS = 5 * 60 * 1000;
 
 function addDays(dateStr: string, days: number): string {
   const date = new Date(`${dateStr}T12:00:00`);
@@ -103,6 +104,7 @@ export const useCalendarStore = create<CalendarState>()(
       connected: false,
       email: null,
       calendars: [],
+      eventsById: {} as Record<string, CalendarEvent>,
       events: [],
       loading: false,
       panelOpen: false,
@@ -180,7 +182,7 @@ export const useCalendarStore = create<CalendarState>()(
           lastFetchedRange,
           lastFetchSignature,
           lastFetchedAt,
-          events: cachedEvents,
+          eventsById,
         } = get();
         const timeZone = useTimezoneStore.getState().timezone;
         const visibleCalIds = calendars
@@ -190,6 +192,7 @@ export const useCalendarStore = create<CalendarState>()(
 
         if (visibleCalIds.length === 0) {
           set({
+            eventsById: {},
             events: [],
             loading: false,
             lastFetchedRange: null,
@@ -205,10 +208,11 @@ export const useCalendarStore = create<CalendarState>()(
         const cacheIsFresh = !!lastFetchedAt && Date.now() - lastFetchedAt < CALENDAR_CACHE_TTL_MS;
 
         if (cacheCoversRequestedRange && cacheIsFresh) {
-          set({ loading: false });
           return;
         }
 
+        // Check if we already have events for the requested range (show existing, don't flicker)
+        const cachedEvents = Object.values(eventsById);
         const requestedRangeHasVisibleEvents = cachedEvents.some(
           (event) =>
             visibleCalIds.includes(event.calendarId) &&
@@ -216,12 +220,14 @@ export const useCalendarStore = create<CalendarState>()(
             event.date <= endDate
         );
 
+        // Wider buffer: ±3 weeks minimum
         const requestedSpan = getInclusiveDaySpan(startDate, endDate);
-        const bufferDays = Math.max(requestedSpan, 2);
+        const bufferDays = Math.max(requestedSpan * 3, 21);
         const bufferedStartDate = addDays(startDate, -bufferDays);
         const bufferedEndDate = addDays(endDate, bufferDays);
 
-        set({ loading: !cacheCoversRequestedRange && !requestedRangeHasVisibleEvents });
+        // Only show loading if we have NO cached events for this range
+        set({ loading: !requestedRangeHasVisibleEvents });
 
         try {
           const result = await callEdge('events', {
@@ -232,8 +238,14 @@ export const useCalendarStore = create<CalendarState>()(
             timeZone,
           });
           if (Array.isArray(result)) {
+            // Merge new events into existing store by ID
+            const merged = { ...eventsById };
+            for (const event of result) {
+              merged[event.id] = event;
+            }
             set({
-              events: result,
+              eventsById: merged,
+              events: Object.values(merged),
               loading: false,
               lastFetchedRange: { startDate: bufferedStartDate, endDate: bufferedEndDate },
               lastFetchSignature: fetchSignature,
@@ -261,15 +273,15 @@ export const useCalendarStore = create<CalendarState>()(
           calendars: s.calendars.map(c =>
             c.id === calendarId ? { ...c, visible } : c
           ),
+          lastFetchedAt: null, // Invalidate cache so next fetchEvents re-fetches
         }));
-        // Persist to DB
         callEdge('toggle_calendar', { calendarId, visible }).catch(console.error);
       },
 
       disconnect: async () => {
         try {
           await callEdge('disconnect', { deviceId: get().deviceId });
-          set({ connected: false, email: null, calendars: [], events: [] });
+          set({ connected: false, email: null, calendars: [], eventsById: {}, events: [] });
         } catch (e) {
           console.error('Disconnect error:', e);
         }
@@ -301,6 +313,7 @@ export const useCalendarStore = create<CalendarState>()(
         connected: state.connected,
         email: state.email,
         calendars: state.calendars,
+        eventsById: state.eventsById,
         events: state.events,
         lastFetchedRange: state.lastFetchedRange,
           lastFetchSignature: state.lastFetchSignature,
