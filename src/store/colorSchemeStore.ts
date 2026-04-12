@@ -245,8 +245,8 @@ function defaultIdForMode(dark: boolean) {
 export const useColorSchemeStore = create<ColorSchemeState>()(
   persist(
     (set, get) => ({
-      activeLightSchemeId: 'industrial',
-      activeDarkSchemeId: 'dark-industrial',
+      activeLightSchemeId: 'cobalt',
+      activeDarkSchemeId: 'dark-cobalt',
       isDark: false,
       customSchemes: [],
 
