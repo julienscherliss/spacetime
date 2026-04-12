@@ -223,10 +223,18 @@ export function FitViewButton({ tasks, scrollRef, hourHeight, setScale, resetZoo
       longPressTimer.current = null;
     }
     if (!didLongPress.current && !pointerMoved.current) {
-      fitToTasks();
+      const now = Date.now();
+      if (now - lastTapTime.current < 350) {
+        // Double tap → focus zoom
+        focusCurrent();
+        lastTapTime.current = 0;
+      } else {
+        lastTapTime.current = now;
+        fitToTasks();
+      }
     }
     startPos.current = null;
-  }, [fitToTasks]);
+  }, [fitToTasks, focusCurrent]);
 
   const handlePointerCancel = useCallback(() => {
     if (longPressTimer.current) {
