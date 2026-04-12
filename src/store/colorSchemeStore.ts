@@ -365,7 +365,7 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
           return {
             ...persisted,
             activeLightSchemeId: persisted.activeSchemeId,
-            activeDarkSchemeId: 'dark-industrial',
+            activeDarkSchemeId: 'dark-cobalt',
           };
         }
         return persisted;
