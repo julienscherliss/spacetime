@@ -104,6 +104,7 @@ export const useCalendarStore = create<CalendarState>()(
       connected: false,
       email: null,
       calendars: [],
+      eventsById: {} as Record<string, CalendarEvent>,
       events: [],
       loading: false,
       panelOpen: false,
