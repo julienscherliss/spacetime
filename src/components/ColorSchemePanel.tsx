@@ -67,7 +67,9 @@ function ColorInput({ label, value, onChange }: { label: string; value: string; 
 }
 
 export function ColorSchemePanel() {
-  const activeSchemeId = useColorSchemeStore(s => s.activeSchemeId);
+  const activeLightSchemeId = useColorSchemeStore(s => s.activeLightSchemeId);
+  const activeDarkSchemeId = useColorSchemeStore(s => s.activeDarkSchemeId);
+  const isDark = useColorSchemeStore(s => s.isDark);
   const customSchemes = useColorSchemeStore(s => s.customSchemes);
   const setActiveScheme = useColorSchemeStore(s => s.setActiveScheme);
   const addCustomScheme = useColorSchemeStore(s => s.addCustomScheme);
@@ -76,6 +78,7 @@ export function ColorSchemePanel() {
   const duplicateScheme = useColorSchemeStore(s => s.duplicateScheme);
   const allSchemes = useColorSchemeStore(s => s.allSchemes);
 
+  const activeSchemeId = isDark ? activeDarkSchemeId : activeLightSchemeId;
   const schemes = allSchemes();
   const active = schemes.find(s => s.id === activeSchemeId) || schemes[0];
 
@@ -295,7 +298,8 @@ export function ColorSchemePanel() {
                 <>
                   <button
                     onClick={() => {
-                      setActiveScheme('industrial');
+                      const fallback = isDark ? 'dark-industrial' : 'industrial';
+                      setActiveScheme(fallback);
                       deleteCustomScheme(active.id);
                       toast.success('Scheme deleted');
                     }}
@@ -306,7 +310,8 @@ export function ColorSchemePanel() {
                   </button>
                   <button
                     onClick={() => {
-                      setActiveScheme('industrial');
+                      const fallback = isDark ? 'dark-industrial' : 'industrial';
+                      setActiveScheme(fallback);
                       toast.success('Reset to default');
                     }}
                     className="flex items-center gap-1 px-2 py-1.5 rounded-[2px] text-[8px] font-mono tracking-widest text-muted-foreground/50 hover:text-foreground hover:bg-muted/40 transition-colors border border-border/30"

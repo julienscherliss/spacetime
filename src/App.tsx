@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useColorSchemeStore } from "@/store/colorSchemeStore";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -47,6 +48,8 @@ const App = () => {
   const darkMode = useTimezoneStore((s) => s.darkMode);
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
+    // Sync color scheme store with dark mode and apply matching scheme
+    useColorSchemeStore.getState().setDarkMode(darkMode);
   }, [darkMode]);
 
   // Register deep-link listener for native OAuth callback
