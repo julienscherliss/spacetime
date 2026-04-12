@@ -45,7 +45,8 @@ function CalendarEventBlocks({ date, hourHeight, showTimeLabels }: { date: strin
   const eventCategories = useCalendarStore((s) => s.eventCategories);
   const completeEvent = useCalendarStore((s) => s.completeEvent);
   const setEditingEvent = useCalendarStore((s) => s.setEditingEvent);
-  const events = allEvents.filter(e => !deletedEventIds.includes(e.id) && eventSpansDate(e, date));
+  const visibleCalIds = new Set(calendars.filter(c => c.visible).map(c => c.google_calendar_id));
+  const events = allEvents.filter(e => !deletedEventIds.includes(e.id) && visibleCalIds.has(e.calendarId) && eventSpansDate(e, date));
   const timeLabelsLeft = showTimeLabels ? '3.25rem' : '2px';
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [flashId, setFlashId] = useState<string | null>(null);
