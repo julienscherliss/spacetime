@@ -571,6 +571,46 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             )}
           </div>
 
+          {/* Subscription status */}
+          <div className="border-t border-border/30 pt-4">
+            <div className="flex items-center gap-1.5 mb-2">
+              <Lock size={12} strokeWidth={1.5} className="text-muted-foreground" />
+              <span className="text-[11px] font-mono tracking-[0.12em] text-muted-foreground">SUBSCRIPTION</span>
+            </div>
+            {(() => {
+              const { subscription, trialDaysLeft } = useSubscription();
+              if (!subscription) return null;
+              if (subscription.lifetime_access) return (
+                <div className="bg-primary/5 border border-primary/20 rounded-sm p-3">
+                  <div className="text-[12px] font-mono text-primary font-medium">LIFETIME ACCESS</div>
+                  <div className="text-[10px] font-mono text-muted-foreground/50 mt-0.5">No expiration</div>
+                </div>
+              );
+              if (subscription.status === 'active') return (
+                <div className="bg-muted/30 border border-border/50 rounded-sm p-3">
+                  <div className="text-[12px] font-mono text-foreground font-medium">
+                    {subscription.plan === 'yearly' ? 'YEARLY' : 'MONTHLY'} PLAN
+                  </div>
+                  <div className="text-[10px] font-mono text-muted-foreground/50 mt-0.5">Active subscription</div>
+                </div>
+              );
+              if (subscription.status === 'trialing') return (
+                <div className="bg-muted/30 border border-border/50 rounded-sm p-3">
+                  <div className="text-[12px] font-mono text-foreground font-medium">FREE TRIAL</div>
+                  <div className="text-[10px] font-mono text-muted-foreground/50 mt-0.5">
+                    {trialDaysLeft} day{trialDaysLeft !== 1 ? 's' : ''} remaining
+                  </div>
+                </div>
+              );
+              return (
+                <div className="bg-destructive/5 border border-destructive/20 rounded-sm p-3">
+                  <div className="text-[12px] font-mono text-destructive font-medium">EXPIRED</div>
+                  <div className="text-[10px] font-mono text-muted-foreground/50 mt-0.5">Subscribe to continue</div>
+                </div>
+              );
+            })()}
+          </div>
+
           {/* Admin (only for admins) */}
           {isAdmin && (
             <div className="border-t border-border/30 pt-4">
