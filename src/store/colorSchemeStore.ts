@@ -239,14 +239,14 @@ function presetsForMode(dark: boolean) {
 }
 
 function defaultIdForMode(dark: boolean) {
-  return dark ? 'dark-cobalt' : 'cobalt';
+  return dark ? 'dark-citrus' : 'cobalt';
 }
 
 export const useColorSchemeStore = create<ColorSchemeState>()(
   persist(
     (set, get) => ({
       activeLightSchemeId: 'cobalt',
-      activeDarkSchemeId: 'dark-cobalt',
+      activeDarkSchemeId: 'dark-citrus',
       isDark: false,
       customSchemes: [],
 
@@ -365,7 +365,7 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
           return {
             ...persisted,
             activeLightSchemeId: persisted.activeSchemeId,
-            activeDarkSchemeId: 'dark-cobalt',
+            activeDarkSchemeId: 'dark-citrus',
           };
         }
         return persisted;
