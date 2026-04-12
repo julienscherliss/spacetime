@@ -67,7 +67,9 @@ function ColorInput({ label, value, onChange }: { label: string; value: string; 
 }
 
 export function ColorSchemePanel() {
-  const activeSchemeId = useColorSchemeStore(s => s.activeSchemeId);
+  const activeLightSchemeId = useColorSchemeStore(s => s.activeLightSchemeId);
+  const activeDarkSchemeId = useColorSchemeStore(s => s.activeDarkSchemeId);
+  const isDark = useColorSchemeStore(s => s.isDark);
   const customSchemes = useColorSchemeStore(s => s.customSchemes);
   const setActiveScheme = useColorSchemeStore(s => s.setActiveScheme);
   const addCustomScheme = useColorSchemeStore(s => s.addCustomScheme);
@@ -76,6 +78,7 @@ export function ColorSchemePanel() {
   const duplicateScheme = useColorSchemeStore(s => s.duplicateScheme);
   const allSchemes = useColorSchemeStore(s => s.allSchemes);
 
+  const activeSchemeId = isDark ? activeDarkSchemeId : activeLightSchemeId;
   const schemes = allSchemes();
   const active = schemes.find(s => s.id === activeSchemeId) || schemes[0];
 
