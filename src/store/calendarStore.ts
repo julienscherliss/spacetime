@@ -150,7 +150,7 @@ export const useCalendarStore = create<CalendarState>()(
 
       startAuth: async () => {
         if (isNativePlatform()) {
-          // Block Google Calendar OAuth on native — must be done on web
+          console.debug('[calendarStore] startAuth blocked on native — Google Calendar must be connected on web');
           return;
         }
         const redirectUri = window.location.origin;
