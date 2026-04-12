@@ -30,6 +30,8 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const nativeRuntime = isNativePlatform();
   const [search, setSearch] = useState('');
   const [helpOpen, setHelpOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
+  const { isAdmin } = useSubscription();
   const [pwMode, setPwMode] = useState<'closed' | 'change' | 'reset'>('closed');
   const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
