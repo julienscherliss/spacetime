@@ -160,7 +160,7 @@ export function CalendarView() {
   return (
     <div
       ref={containerRef}
-      className="max-w-2xl mx-auto px-3 sm:px-4 py-4"
+      className={`max-w-2xl mx-auto px-3 sm:px-4 py-4 ${isMobile ? 'flex flex-col justify-center min-h-[calc(100vh-8rem)]' : ''}`}
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
