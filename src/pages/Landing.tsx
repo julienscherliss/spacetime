@@ -138,11 +138,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Visual divider */}
-      <div className="max-w-5xl mx-auto px-6">
-        <div className="h-px bg-border/40" />
-      </div>
-
       {/* Features */}
       <section className="py-20 px-6">
         <div className="max-w-5xl mx-auto">
