@@ -269,15 +269,21 @@ function computeDesired(
   const futureCandidates: { id: number; data: DesiredNotification }[] = [];
   const seenSlots = new Set<string>();
 
-  // Current minute floor for overdue batch window
-  const currentMinuteFloorMs = Math.floor(now / 60_000) * 60_000;
+  // Next future minute — guarantees all scheduled slots are strictly in the future
+  const nextFutureMinuteMs = (Math.floor(now / 60_000) + 1) * 60_000;
 
   // ── Collect overdue eligible tasks ──
   const overdueTasks: Task[] = [];
 
+  // Today string for date filtering
+  const todayStr = new Date(now).toISOString().slice(0, 10);
+
   for (const task of tasks) {
     if (!shouldNotify(task, level)) continue;
     if (!task.time || task.completed) continue;
+    // Filter out archived, waiting room, and non-today tasks
+    if (task.archived_at) continue;
+    if (task.in_waiting_room) continue;
 
     const taskStartMs = getTaskStartMs(task);
     const taskDueMs = getTaskDueMs(task);
@@ -286,8 +292,11 @@ function computeDesired(
     const isOverdue = now > taskDueMs;
 
     if (isOverdue && persistentOverdue) {
-      overdueTasks.push(task);
-      // Skip standard reminder for overdue tasks
+      // Only consider today's tasks as overdue-eligible
+      if (task.date === todayStr) {
+        overdueTasks.push(task);
+      }
+      // Skip standard reminder for overdue tasks either way
       continue;
     }
 
@@ -336,7 +345,7 @@ function computeDesired(
       : sortedOverdue.map(t => t.title).join(', ');
     const overdueTaskIds = sortedOverdue.map(t => t.id).join(',');
 
-    logDebug('overdue batch eligible tasks', {
+    log('overdue batch eligible tasks', {
       count,
       taskIds: sortedOverdue.map(t => t.id),
       titles: sortedOverdue.map(t => t.title),
@@ -345,10 +354,7 @@ function computeDesired(
     const availableSlots = Math.min(OVERDUE_WINDOW_MINUTES, MAX_OVERDUE_TOTAL);
 
     for (let i = 0; i < availableSlots; i++) {
-      const fireTimeMs = currentMinuteFloorMs + i * 60_000;
-
-      // Skip slots that are already past (with small grace)
-      if (fireTimeMs < now - 10_000) continue;
+      const fireTimeMs = nextFutureMinuteMs + i * 60_000;
 
       const absoluteMinute = absoluteMinuteFromMs(fireTimeMs);
       const nId = overdueBatchNotificationId(absoluteMinute);
@@ -359,7 +365,7 @@ function computeDesired(
           title: `OVERDUE — ${summaryTitle}`,
           body: summaryBody,
           fireAt: new Date(fireTimeMs),
-          taskId: overdueTaskIds, // comma-separated for debugging
+          taskId: overdueTaskIds,
           type: 'overdue',
           isUrgent: true,
         },
@@ -642,6 +648,7 @@ export async function syncTaskNotifications(
       return { scheduled: 0, canceled: toCancel.length, unchanged: 0, skipped: true, reason: 'stale' };
     }
 
+    const scheduleNow = Date.now();
     const notificationsToSchedule = toSchedule
       .map((id) => {
         const item = desired.get(id)!;
@@ -654,7 +661,16 @@ export async function syncTaskNotifications(
           extra: { taskId: item.taskId, type: item.type },
         };
       })
-      .filter((item, index, arr) => arr.findIndex((candidate) => candidate.id === item.id) === index);
+      .filter((item, index, arr) => arr.findIndex((candidate) => candidate.id === item.id) === index)
+      // Final safety: never schedule in the past
+      .filter((item) => {
+        const fireMs = item.schedule.at.getTime();
+        if (fireMs <= scheduleNow) {
+          log('skipped past-time notification', { id: item.id, fireAt: item.schedule.at.toISOString(), now: new Date(scheduleNow).toISOString() });
+          return false;
+        }
+        return true;
+      });
 
     if (notificationsToSchedule.length > 0) {
       for (let i = 0; i < notificationsToSchedule.length; i += 25) {
