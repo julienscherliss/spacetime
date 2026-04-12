@@ -218,6 +218,17 @@ export function CalendarEventEditPanel() {
 
               {/* Actions */}
               <div className="border-t border-border/30 pt-3 space-y-2">
+                {/* Convert to task — only for timed events */}
+                {canConvertToTask && !isDeleted && (
+                  <button
+                    onClick={handleConvertToTask}
+                    className="w-full flex items-center justify-center gap-2 py-2 rounded-sm border border-primary/20 text-[10px] font-mono tracking-wider text-primary/70 hover:bg-primary/5 transition-colors"
+                  >
+                    <ArrowRightLeft size={11} />
+                    CONVERT TO TASK
+                  </button>
+                )}
+
                 {isDeleted ? (
                   <button
                     onClick={handleRevive}
