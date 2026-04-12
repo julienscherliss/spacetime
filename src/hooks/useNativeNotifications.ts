@@ -6,35 +6,26 @@ import { syncTaskNotifications, getCurrentSyncFingerprint } from '@/utils/notifi
 import type { Task } from '@/store/taskStore';
 import type { NotificationLevel } from '@/utils/notificationService';
 
-function notificationFingerprint(tasks: Task[], level: NotificationLevel, persistentOverdue: boolean): string {
+function notificationFingerprint(tasks: Task[], level: NotificationLevel): string {
   if (level === 'off') return 'off';
-
-  const shouldNotify = (t: Task) => {
-    if (level === 'all') return true;
-    return (t.priority as number) >= 2;
-  };
-
-  const nowMinute = persistentOverdue ? Math.floor(Date.now() / 60_000) : 0;
   const parts = tasks
-    .filter(t => shouldNotify(t) && t.time && !t.completed)
-    .map(t => `${t.id}:${t.date}:${t.time}:${t.priority}:${t.title}:${t.completed}`)
+    .filter(t => t.time && !t.completed)
+    .map(t => `${t.id}:${t.date}:${t.time}:${t.duration}:${t.priority}:${t.title}:${t.completed}`)
     .sort();
-  return `${level}:po=${persistentOverdue}:m=${nowMinute}:${parts.join('|')}`;
+  return `${level}:${parts.join('|')}`;
 }
 
 export function useNativeNotifications() {
   const tasks = useTaskStore((s) => s.tasks);
   const level = useTimezoneStore((s) => s.notificationLevel);
-  const persistentOverdue = useTimezoneStore((s) => s.persistentOverdue);
   const lastFpRef = useRef('');
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
   const mountedRef = useRef(false);
-  const overdueIntervalRef = useRef<ReturnType<typeof setInterval>>();
 
   useEffect(() => {
     if (!isNativePlatform()) return;
 
-    const fp = notificationFingerprint(tasks, level, persistentOverdue);
+    const fp = notificationFingerprint(tasks, level);
     if (fp === lastFpRef.current) return;
 
     const serviceFp = getCurrentSyncFingerprint();
@@ -50,25 +41,9 @@ export function useNativeNotifications() {
 
     clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
-      void syncTaskNotifications(tasks, level, false, persistentOverdue);
+      void syncTaskNotifications(tasks, level, false);
     }, delay);
 
     return () => clearTimeout(timerRef.current);
-  }, [tasks, level, persistentOverdue]);
-
-  useEffect(() => {
-    if (!isNativePlatform()) return;
-
-    clearInterval(overdueIntervalRef.current);
-
-    if (persistentOverdue && level !== 'off') {
-      overdueIntervalRef.current = setInterval(() => {
-        const currentTasks = useTaskStore.getState().tasks;
-        const currentLevel = useTimezoneStore.getState().notificationLevel;
-        void syncTaskNotifications(currentTasks, currentLevel, false, true);
-      }, 60_000);
-    }
-
-    return () => clearInterval(overdueIntervalRef.current);
-  }, [persistentOverdue, level]);
+  }, [tasks, level]);
 }
