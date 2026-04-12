@@ -8,7 +8,9 @@ import "@fontsource/jetbrains-mono/500.css";
 import App from "./App.tsx";
 import "./index.css";
 import { applyNativeFixes } from "./utils/nativePlatform";
+import { initColorScheme } from "./store/colorSchemeStore";
 
 applyNativeFixes();
+initColorScheme();
 
 createRoot(document.getElementById("root")!).render(<App />);

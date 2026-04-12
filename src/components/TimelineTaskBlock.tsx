@@ -447,7 +447,7 @@ export function TimelineTaskBlock({
       <div
         className={`h-full rounded-[2px] transition-all duration-200 ${
           isLocked
-            ? 'bg-foreground shadow-sm'
+            ? 'shadow-sm'
             : isActive
               ? 'bg-card shadow-sm'
               : hasRoutineConflict
@@ -457,8 +457,9 @@ export function TimelineTaskBlock({
                   : `${task.isRoutine ? 'bg-background/60 backdrop-blur-sm' : 'bg-card'} hover:shadow-sm`
         } ${isOverdue && !hasRoutineConflict ? '' : ''}`}
         style={{
+          backgroundColor: isLocked ? 'hsl(var(--locked-fill))' : undefined,
           border: isLocked
-            ? '1.5px solid hsl(var(--foreground))'
+            ? '1.5px solid hsl(var(--locked-fill))'
             : hasPriorityColor && !isActive && !hasRoutineConflict
               ? `1.5px solid ${priorityBorderColor}`
               : isActive
@@ -496,9 +497,12 @@ export function TimelineTaskBlock({
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                   {canShowTitle && (
-                    <div className={`text-[12px] font-mono leading-tight truncate ${
-                      task.completed ? 'line-through text-muted-foreground/40' : isLocked ? 'text-background font-medium' : isOverdue ? 'text-destructive/70 font-medium' : isActive ? 'text-foreground font-medium' : 'text-foreground/75'
-                    }`}>
+                    <div
+                      className={`text-[12px] font-mono leading-tight truncate ${
+                        task.completed ? 'line-through text-muted-foreground/40' : isLocked ? 'font-medium' : isOverdue ? 'text-destructive/70 font-medium' : isActive ? 'text-foreground font-medium' : 'text-foreground/75'
+                      }`}
+                      style={isLocked && !task.completed ? { color: 'hsl(var(--locked-text))' } : undefined}
+                    >
                       {task.title}
                     </div>
                   )}

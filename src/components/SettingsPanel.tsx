@@ -6,6 +6,7 @@ import { X, Search, Globe, Repeat, MapPin, Calendar as CalIcon, RefreshCw, Unplu
 import type { MobilityMode } from '@/store/timezoneStore';
 import { toast } from 'sonner';
 import { HelpPanel } from './HelpPanel';
+import { ColorSchemePanel } from './ColorSchemePanel';
 import { isNativePlatform } from '@/utils/nativePlatform';
 import type { NotificationLevel } from '@/utils/notificationService';
 import {
@@ -409,7 +410,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             </div>
             <button
               onClick={() => setDarkMode(!darkMode)}
-              className="w-full flex items-center justify-between bg-muted/30 border border-border/50 rounded-sm p-3 min-h-[48px]"
+              className="w-full flex items-center justify-between bg-muted/30 border border-border/50 rounded-sm p-3 min-h-[48px] mb-3"
             >
               <div className="text-left">
                 <div className="text-[12px] font-mono text-foreground">Dark mode</div>
@@ -423,6 +424,9 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 <div className="w-4 h-4 rounded-full bg-white shadow-sm" />
               </div>
             </button>
+
+            {/* Color Scheme Editor */}
+            <ColorSchemePanel />
           </div>
 
           {/* Change Password */}
