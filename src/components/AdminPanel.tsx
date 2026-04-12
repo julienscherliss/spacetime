@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Shield, Users, Tag, BarChart3, Plus, Trash2, Copy, Eye, EyeOff } from 'lucide-react';
+import { X, Shield, Users, Tag, BarChart3, Plus, Trash2, Copy, Eye, EyeOff, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
