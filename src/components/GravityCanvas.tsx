@@ -191,22 +191,31 @@ export function GravityCanvas() {
           // Skip nodes consumed inside the event horizon
           if (distToCenter < 30) continue;
 
-          // Size: bigger when strained (time dilation visualization)
-          const baseSize = 0.8;
-          const strainSize = Math.min(strain * 0.06, 2.5);
+          const baseSize = 1.2;
+          const strainSize = Math.min(strain * 0.12, 4);
           const r = baseSize + strainSize;
 
-          // Color: shifts warm under strain (gravitational redshift)
-          const warmth = Math.min(strain / 40, 1);
-          const hue = 40 - warmth * 28; // 40 (neutral) → 12 (burnt orange)
-          const sat = 5 + warmth * 65;
-          const lum = 55 + warmth * 20;
-          const alpha = 0.06 + warmth * 0.35;
+          const warmth = Math.min(strain / 20, 1);
+          const hue = 40 - warmth * 28;
+          const sat = 10 + warmth * 70;
+          const lum = 50 + warmth * 30;
+          const alpha = 0.15 + warmth * 0.6;
 
           ctx.beginPath();
           ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
           ctx.fillStyle = `hsla(${hue}, ${sat}%, ${lum}%, ${alpha})`;
           ctx.fill();
+
+          // Glow on highly strained nodes
+          if (warmth > 0.3) {
+            const glowGrad = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, r * 3);
+            glowGrad.addColorStop(0, `hsla(${hue}, ${sat}%, ${lum}%, ${warmth * 0.15})`);
+            glowGrad.addColorStop(1, `hsla(${hue}, ${sat}%, ${lum}%, 0)`);
+            ctx.beginPath();
+            ctx.arc(n.x, n.y, r * 3, 0, Math.PI * 2);
+            ctx.fillStyle = glowGrad;
+            ctx.fill();
+          }
         }
       }
 
