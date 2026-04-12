@@ -145,7 +145,14 @@ export function FocusView() {
 
   // Hold-to-complete handlers
   const startHold = useCallback(() => {
-    if (!activeTask) return;
+    // Determine which task to complete: active task, or most overdue task
+    const targetTask = activeTask || overdueTasks.reduce<typeof activeTask>((a, b) => {
+      if (!a) return b;
+      const endA = timeToMinutes(a.time!) + (a.duration || 30);
+      const endB = timeToMinutes(b.time!) + (b.duration || 30);
+      return (nowMinutes - endA) > (nowMinutes - endB) ? a : b;
+    }, null);
+    if (!targetTask) return;
     setIsHolding(true);
     holdStartRef.current = Date.now();
     if (navigator.vibrate) navigator.vibrate(10);
@@ -154,7 +161,7 @@ export function FocusView() {
       const p = Math.min(1, el / HOLD_DURATION);
       setHoldProgress(p);
       if (p >= 1) {
-        completeTask(activeTask.id);
+        completeTask(targetTask.id);
         setIsHolding(false);
         setHoldProgress(0);
         if (navigator.vibrate) navigator.vibrate(30);
@@ -163,7 +170,7 @@ export function FocusView() {
       holdTimerRef.current = requestAnimationFrame(tick);
     };
     holdTimerRef.current = requestAnimationFrame(tick);
-  }, [activeTask, completeTask]);
+  }, [activeTask, overdueTasks, nowMinutes, completeTask]);
 
   const cancelHold = useCallback(() => {
     if (holdTimerRef.current) {
