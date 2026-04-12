@@ -281,7 +281,7 @@ export const useCalendarStore = create<CalendarState>()(
       disconnect: async () => {
         try {
           await callEdge('disconnect', { deviceId: get().deviceId });
-          set({ connected: false, email: null, calendars: [], events: [] });
+          set({ connected: false, email: null, calendars: [], eventsById: {}, events: [] });
         } catch (e) {
           console.error('Disconnect error:', e);
         }
@@ -313,6 +313,7 @@ export const useCalendarStore = create<CalendarState>()(
         connected: state.connected,
         email: state.email,
         calendars: state.calendars,
+        eventsById: state.eventsById,
         events: state.events,
         lastFetchedRange: state.lastFetchedRange,
           lastFetchSignature: state.lastFetchSignature,
