@@ -158,13 +158,7 @@ function reminderNotificationId(taskId: string, absoluteMinute: number): number 
   return deterministicId(`${taskId}:reminder:${absoluteMinute}`, REMINDER_ID_OFFSET);
 }
 
-/**
- * Deterministic BATCH overdue notification ID based on fire minute only.
- * One overdue notification per minute slot, regardless of how many tasks are overdue.
- */
-function overdueBatchNotificationId(absoluteMinute: number): number {
-  return deterministicId(`overdue:batch:${absoluteMinute}`, OVERDUE_ID_OFFSET);
-}
+// Overdue heartbeat uses a single fixed ID — no per-minute or per-task IDs
 
 function isReminderNotificationId(id: number): boolean {
   return id >= REMINDER_ID_OFFSET && id < REMINDER_ID_OFFSET + 1_000_000;
