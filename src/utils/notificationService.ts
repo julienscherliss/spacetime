@@ -11,9 +11,9 @@
  * We intentionally stay well below that limit to preserve headroom and avoid
  * churn near the cap.
  *
- * OVERDUE THRESHOLD: A task is overdue when current time > task due time.
- * In this app, the due time is the scheduled task timestamp (date + time).
- * Duration does NOT affect notification overdue logic.
+ * OVERDUE THRESHOLD: A task is overdue when current time > task end time
+ * (start time + duration). The standard reminder fires before the task STARTS.
+ * These are two separate notification families that should never overlap.
  *
  * All native plugin interactions go through this module.
  * UI components should never call LocalNotifications directly.
