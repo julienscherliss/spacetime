@@ -192,19 +192,19 @@ const DARK_PRESETS: ColorScheme[] = [
     lockedText: '0 0% 6%',
   },
   {
-    id: 'dark-ember',
-    name: 'EMBER',
+    id: 'dark-clay',
+    name: 'CLAY',
     preset: true,
     darkMode: true,
     priorities: {
-      0: { stroke: '30 15% 45%',  fill: '30 10% 15%' },
-      1: { stroke: '25 48% 55%',  fill: '25 30% 19%' },
-      2: { stroke: '14 68% 58%',  fill: '14 45% 23%' },
-      3: { stroke: '4 62% 60%',   fill: '4 42% 22%' },
+      0: { stroke: '30 10% 48%',   fill: '30 6% 16%' },
+      1: { stroke: '22 38% 56%',   fill: '22 22% 20%' },
+      2: { stroke: '14 65% 60%',   fill: '14 42% 24%' },
+      3: { stroke: '8 68% 62%',    fill: '8 48% 24%' },
     },
-    accent: '14 68% 58%',
-    lockedFill: '10 52% 58%',
-    lockedText: '10 15% 8%',
+    accent: '14 65% 58%',
+    lockedFill: '8 60% 55%',
+    lockedText: '30 12% 8%',
   },
 ];
 
