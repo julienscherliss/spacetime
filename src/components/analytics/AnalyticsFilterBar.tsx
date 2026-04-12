@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, SlidersHorizontal, X } from 'lucide-react';
 import { useLibraryStore } from '@/store/libraryStore';
-import type { AnalyticsFilters, TimeRange, GroupBy, DataType } from '@/hooks/useAnalyticsData';
+import type { AnalyticsFilters, TimeRange, DataType } from '@/hooks/useAnalyticsData';
 
 const timeRanges: { value: TimeRange; label: string }[] = [
   { value: 'today', label: 'TODAY' },
@@ -11,13 +11,6 @@ const timeRanges: { value: TimeRange; label: string }[] = [
   { value: 'last-week', label: 'LAST WEEK' },
   { value: 'this-month', label: 'THIS MONTH' },
   { value: 'last-month', label: 'LAST MONTH' },
-];
-
-const groupByOptions: { value: GroupBy; label: string }[] = [
-  { value: 'day', label: 'DAY' },
-  { value: 'week', label: 'WEEK' },
-  { value: 'month', label: 'MONTH' },
-  { value: 'tag', label: 'TAG' },
 ];
 
 const dataTypes: { value: DataType; label: string }[] = [
@@ -42,7 +35,6 @@ export function AnalyticsFilterBar({ filters, onChange }: Props) {
     filters.incompleteOnly,
     filters.routinesOnly,
     filters.recurringOnly,
-    filters.priorities.length > 0,
     filters.compareMode !== 'none',
   ].filter(Boolean).length;
 
@@ -65,27 +57,8 @@ export function AnalyticsFilterBar({ filters, onChange }: Props) {
         ))}
       </div>
 
-      {/* Secondary row: group by + data type + expand */}
+      {/* Secondary row: data type + expand */}
       <div className="flex items-center gap-3 overflow-x-auto scrollbar-none -mx-1 px-1">
-        <div className="flex items-center gap-1">
-          <span className="text-[9px] font-mono text-muted-foreground/50 tracking-widest mr-1">GROUP</span>
-          {groupByOptions.map(g => (
-            <button
-              key={g.value}
-              onClick={() => onChange({ groupBy: g.value })}
-              className={`px-2 py-1 rounded text-[9px] font-mono tracking-wider transition-all ${
-                filters.groupBy === g.value
-                  ? 'bg-primary/10 text-primary border border-primary/20'
-                  : 'text-muted-foreground/50 hover:text-foreground/60'
-              }`}
-            >
-              {g.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="w-px h-4 bg-border/30" />
-
         <div className="flex items-center gap-1">
           <span className="text-[9px] font-mono text-muted-foreground/50 tracking-widest mr-1">SHOW</span>
           {dataTypes.map(dt => (
@@ -220,7 +193,6 @@ export function AnalyticsFilterBar({ filters, onChange }: Props) {
                     incompleteOnly: false,
                     routinesOnly: false,
                     recurringOnly: false,
-                    priorities: [],
                     compareMode: 'none',
                   })}
                   className="flex items-center gap-1 text-[9px] font-mono text-destructive/70 hover:text-destructive tracking-wide"
