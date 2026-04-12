@@ -216,31 +216,6 @@ export function ColorSchemePanel() {
               </div>
             ))}
 
-            {/* Locked task colors */}
-            <div className="pt-2">
-              <div className="flex items-center gap-2 mb-1">
-                <div className="h-px flex-1 bg-border/30" />
-                <span className="text-[7px] font-mono text-muted-foreground/30 tracking-[0.2em]">LOCK STATE</span>
-                <div className="h-px flex-1 bg-border/30" />
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1">
-                  <ColorSwatch hsl={active.lockedFill} size={10} />
-                  <span className="text-[8px] font-mono text-muted-foreground/40">FILL</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <ColorSwatch hsl={active.lockedText} size={10} />
-                  <span className="text-[8px] font-mono text-muted-foreground/40">TEXT</span>
-                </div>
-              </div>
-              {isCustom && (
-                <div className="flex gap-4 mt-1.5 pl-0">
-                  <ColorInput label="FILL" value={active.lockedFill} onChange={(v) => updateCustomScheme(active.id, { lockedFill: v })} />
-                  <ColorInput label="TEXT" value={active.lockedText} onChange={(v) => updateCustomScheme(active.id, { lockedText: v })} />
-                </div>
-              )}
-            </div>
-
             {/* Preview bar */}
             <div className="pt-2">
               <div className="flex items-center gap-2 mb-1">
@@ -249,7 +224,7 @@ export function ColorSchemePanel() {
                 <div className="h-px flex-1 bg-border/30" />
               </div>
               <div className="flex gap-1">
-                {([0, 1, 2, 3] as const).map(p => (
+                {([0, 1, 2] as const).map(p => (
                   <div
                     key={p}
                     className="flex-1 h-6 rounded-[2px] flex items-center justify-center"
@@ -263,10 +238,12 @@ export function ColorSchemePanel() {
                     </span>
                   </div>
                 ))}
+                {/* P3 / LOCK — single block using locked fill + text */}
                 <div
                   className="flex-1 h-6 rounded-[2px] flex items-center justify-center"
                   style={{
                     backgroundColor: `hsl(${active.lockedFill})`,
+                    border: `1.5px solid hsl(${active.priorities[3].stroke} / 0.5)`,
                   }}
                 >
                   <span className="text-[7px] font-mono font-medium" style={{ color: `hsl(${active.lockedText})` }}>
@@ -275,6 +252,21 @@ export function ColorSchemePanel() {
                 </div>
               </div>
             </div>
+
+            {/* Lock state colors (editable for custom) */}
+            {isCustom && (
+              <div className="pt-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="h-px flex-1 bg-border/30" />
+                  <span className="text-[7px] font-mono text-muted-foreground/30 tracking-[0.2em]">LOCK FILL / TEXT</span>
+                  <div className="h-px flex-1 bg-border/30" />
+                </div>
+                <div className="flex gap-4 pl-0">
+                  <ColorInput label="FILL" value={active.lockedFill} onChange={(v) => updateCustomScheme(active.id, { lockedFill: v })} />
+                  <ColorInput label="TEXT" value={active.lockedText} onChange={(v) => updateCustomScheme(active.id, { lockedText: v })} />
+                </div>
+              </div>
+            )}
 
             {/* Actions */}
             <div className="flex gap-1.5 pt-2 border-t border-border/20">
