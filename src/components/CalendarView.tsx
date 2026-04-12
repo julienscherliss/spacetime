@@ -1,13 +1,15 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
-import { useLibraryStore } from '@/store/libraryStore';
+
 import { PriorityBadge } from '@/components/PriorityBadge';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { formatTime12h } from '@/hooks/useCurrentTime';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 export function CalendarView() {
   const { tasks, routinesEnabled, setEditingTask, generateRecurringInstances, setViewMode, setNavigateToDate } = useTaskStore();
+  const isMobile = useIsMobile();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
@@ -43,17 +45,20 @@ export function CalendarView() {
         swipeOffsetRef.current = dx;
         setSwipeOffset(dx);
       }
-      if (swipeAxisRef.current === 'vertical' && Math.abs(dy) > 30) {
+      if (swipeAxisRef.current === 'vertical' && Math.abs(dy) > 10) {
         e.preventDefault();
+        setSwiping(true);
+        swipeOffsetRef.current = dy;
+        setSwipeOffset(dy);
       }
     };
 
     const onTouchEnd = (e: TouchEvent) => {
       if (!touchStartRef.current) return;
-      const dy = e.changedTouches[0].clientY - touchStartRef.current.y;
       const dx = swipeOffsetRef.current;
 
       if (swipeAxisRef.current === 'horizontal' && Math.abs(dx) > 60) {
+        // Swipe right → previous month, swipe left → next month
         if (dx > 0) {
           setCurrentMonth(m => new Date(m.getFullYear(), m.getMonth() - 1));
         } else {
@@ -61,11 +66,15 @@ export function CalendarView() {
         }
       }
 
-      if (swipeAxisRef.current === 'vertical' && Math.abs(dy) > 80) {
-        if (dy < -80) {
-          useLibraryStore.getState().setPanelOpen(true);
-        } else if (dy > 80) {
-          window.dispatchEvent(new CustomEvent('toggle-waiting-room'));
+      if (swipeAxisRef.current === 'vertical') {
+        const dy = e.changedTouches[0].clientY - touchStartRef.current.y;
+        if (Math.abs(dy) > 60) {
+          // Swipe up → next month, swipe down → previous month
+          if (dy < 0) {
+            setCurrentMonth(m => new Date(m.getFullYear(), m.getMonth() + 1));
+          } else {
+            setCurrentMonth(m => new Date(m.getFullYear(), m.getMonth() - 1));
+          }
         }
       }
 
@@ -151,7 +160,7 @@ export function CalendarView() {
   return (
     <div
       ref={containerRef}
-      className="max-w-2xl mx-auto px-3 sm:px-4 py-4"
+      className={`max-w-2xl mx-auto px-3 sm:px-4 py-4 ${isMobile ? 'flex flex-col justify-center min-h-[calc(100vh-8rem)]' : ''}`}
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
