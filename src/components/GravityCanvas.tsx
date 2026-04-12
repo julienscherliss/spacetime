@@ -1,78 +1,54 @@
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect } from 'react';
 
-interface Particle {
+/**
+ * Spacetime Fabric — a persistent grid of nodes representing the fabric of spacetime.
+ * Mass (center black hole + cursor) warps the grid. Nothing spawns or disappears.
+ * Inspired by the rubber-sheet analogy of general relativity.
+ */
+
+const GRID_COLS = 60;
+const GRID_ROWS = 40;
+const CENTER_MASS = 12000;
+const CURSOR_MASS = 4000;
+const WARP_SOFTENING = 80; // prevents singularity at center
+
+interface Node {
+  restX: number;
+  restY: number;
   x: number;
   y: number;
-  vx: number;
-  vy: number;
-  radius: number;
-  opacity: number;
-  life: number;
-  maxLife: number;
-  orbitBias: number; // tangential velocity bias for orbital paths
-  trail: { x: number; y: number; alpha: number }[];
+  prevX: number;
+  prevY: number;
 }
-
-const PARTICLE_COUNT = 350;
-const BLACK_HOLE_RADIUS = 50;
-const GRAVITY_STRENGTH = 600;
-const MOUSE_GRAVITY = 500;
-const MOUSE_REPEL_RADIUS = 80;
-const FRICTION = 0.995;
-const SPAWN_MARGIN = 250;
-const TRAIL_LENGTH = 8;
-const GRID_LINE_COUNT = 16;
 
 export function GravityCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const particles = useRef<Particle[]>([]);
+  const nodes = useRef<Node[][]>([]);
   const mouse = useRef({ x: -9999, y: -9999, active: false });
-  const animFrame = useRef<number>(0);
+  const animFrame = useRef(0);
   const dims = useRef({ w: 0, h: 0 });
   const time = useRef(0);
-
-  const spawnParticle = useCallback((scattered = false): Particle => {
-    const w = dims.current.w;
-    const h = dims.current.h;
-    const cx = w / 2;
-    const cy = h / 2;
-
-    let x: number, y: number;
-    if (scattered) {
-      // Distribute across canvas but away from center
-      const angle = Math.random() * Math.PI * 2;
-      const dist = BLACK_HOLE_RADIUS * 2 + Math.random() * Math.max(w, h) * 0.5;
-      x = cx + Math.cos(angle) * dist;
-      y = cy + Math.sin(angle) * dist;
-    } else {
-      const side = Math.random();
-      if (side < 0.25) { x = -SPAWN_MARGIN; y = Math.random() * (h + SPAWN_MARGIN * 2) - SPAWN_MARGIN; }
-      else if (side < 0.5) { x = w + SPAWN_MARGIN; y = Math.random() * (h + SPAWN_MARGIN * 2) - SPAWN_MARGIN; }
-      else if (side < 0.75) { x = Math.random() * (w + SPAWN_MARGIN * 2) - SPAWN_MARGIN; y = -SPAWN_MARGIN; }
-      else { x = Math.random() * (w + SPAWN_MARGIN * 2) - SPAWN_MARGIN; y = h + SPAWN_MARGIN; }
-    }
-
-    const angle = Math.atan2(cy - y, cx - x) + (Math.random() - 0.5) * 1.5;
-    const speed = 0.2 + Math.random() * 0.6;
-    const orbitBias = 0.3 + Math.random() * 0.7; // how much tangential vs radial
-
-    return {
-      x, y,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
-      radius: 0.4 + Math.random() * 2.2,
-      opacity: 0.1 + Math.random() * 0.55,
-      life: scattered ? Math.random() * 300 : 0,
-      maxLife: 500 + Math.random() * 800,
-      orbitBias,
-      trail: [],
-    };
-  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d', { alpha: true })!;
+
+    function buildGrid() {
+      const { w, h } = dims.current;
+      const spacingX = w / (GRID_COLS - 1);
+      const spacingY = h / (GRID_ROWS - 1);
+      const grid: Node[][] = [];
+      for (let row = 0; row < GRID_ROWS; row++) {
+        grid[row] = [];
+        for (let col = 0; col < GRID_COLS; col++) {
+          const rx = col * spacingX;
+          const ry = row * spacingY;
+          grid[row][col] = { restX: rx, restY: ry, x: rx, y: ry, prevX: rx, prevY: ry };
+        }
+      }
+      nodes.current = grid;
+    }
 
     const resize = () => {
       const dpr = window.devicePixelRatio || 1;
@@ -81,12 +57,11 @@ export function GravityCanvas() {
       canvas.width = rect.width * dpr;
       canvas.height = rect.height * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      buildGrid();
     };
 
     resize();
     window.addEventListener('resize', resize);
-
-    particles.current = Array.from({ length: PARTICLE_COUNT }, () => spawnParticle(true));
 
     const handlePointer = (e: MouseEvent | TouchEvent) => {
       const rect = canvas.getBoundingClientRect();
@@ -104,258 +79,180 @@ export function GravityCanvas() {
     canvas.addEventListener('mouseleave', handlePointerLeave);
     canvas.addEventListener('touchend', handlePointerLeave);
 
+    // Warp function: displace a point toward a mass source
+    function warp(
+      restX: number, restY: number,
+      massX: number, massY: number, mass: number
+    ): [number, number] {
+      const dx = massX - restX;
+      const dy = massY - restY;
+      const distSq = dx * dx + dy * dy;
+      const dist = Math.sqrt(distSq);
+      const force = mass / (distSq + WARP_SOFTENING * WARP_SOFTENING);
+      return [
+        (dx / (dist || 1)) * force,
+        (dy / (dist || 1)) * force,
+      ];
+    }
+
     const animate = () => {
       const { w, h } = dims.current;
       if (w === 0 || h === 0) { animFrame.current = requestAnimationFrame(animate); return; }
       const cx = w / 2;
       const cy = h / 2;
-      time.current += 0.008;
+      time.current += 0.006;
+      const grid = nodes.current;
 
       ctx.clearRect(0, 0, w, h);
 
-      // === SPACETIME GRID (warped by gravity) ===
-      ctx.save();
-      ctx.strokeStyle = 'rgba(100, 100, 100, 0.04)';
-      ctx.lineWidth = 0.5;
+      // Update node positions with gravitational warping
+      const lerp = 0.12; // smoothing
+      for (let row = 0; row < GRID_ROWS; row++) {
+        for (let col = 0; col < GRID_COLS; col++) {
+          const n = grid[row][col];
+          let wx = 0, wy = 0;
 
-      const gridSpacing = Math.max(w, h) / GRID_LINE_COUNT;
+          // Central black hole warp
+          const [bx, by] = warp(n.restX, n.restY, cx, cy, CENTER_MASS);
+          wx += bx;
+          wy += by;
+
+          // Cursor warp
+          if (mouse.current.active) {
+            const [mx, my] = warp(n.restX, n.restY, mouse.current.x, mouse.current.y, CURSOR_MASS);
+            wx += mx;
+            wy += my;
+          }
+
+          const targetX = n.restX + wx;
+          const targetY = n.restY + wy;
+          n.prevX = n.x;
+          n.prevY = n.y;
+          n.x += (targetX - n.x) * lerp;
+          n.y += (targetY - n.y) * lerp;
+        }
+      }
+
+      // === Draw grid lines ===
       // Horizontal lines
-      for (let i = -GRID_LINE_COUNT; i <= GRID_LINE_COUNT * 2; i++) {
+      for (let row = 0; row < GRID_ROWS; row++) {
         ctx.beginPath();
-        const baseY = i * gridSpacing;
-        for (let gx = 0; gx <= w; gx += 8) {
-          const dx = gx - cx;
-          const dy = baseY - cy;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          const warp = dist < 400 ? (BLACK_HOLE_RADIUS * 120) / (dist * dist + 200) : 0;
-          const warpedY = baseY + (dy / (dist || 1)) * warp;
-          if (gx === 0) ctx.moveTo(gx, warpedY);
-          else ctx.lineTo(gx, warpedY);
+        for (let col = 0; col < GRID_COLS; col++) {
+          const n = grid[row][col];
+          // Calculate strain (how much this node has moved from rest)
+          const strain = Math.sqrt(
+            (n.x - n.restX) ** 2 + (n.y - n.restY) ** 2
+          );
+          const distToCenter = Math.sqrt((n.x - cx) ** 2 + (n.y - cy) ** 2);
+
+          if (col === 0) {
+            ctx.moveTo(n.x, n.y);
+          } else {
+            ctx.lineTo(n.x, n.y);
+          }
         }
+
+        // Line color based on average row strain
+        const midNode = grid[row][Math.floor(GRID_COLS / 2)];
+        const rowDist = Math.sqrt((midNode.restX - cx) ** 2 + (midNode.restY - cy) ** 2);
+        const intensity = Math.max(0.02, Math.min(0.12, 0.15 - rowDist / (Math.max(w, h) * 1.2)));
+        ctx.strokeStyle = `rgba(140, 110, 80, ${intensity})`;
+        ctx.lineWidth = 0.6;
         ctx.stroke();
       }
+
       // Vertical lines
-      for (let i = -GRID_LINE_COUNT; i <= GRID_LINE_COUNT * 2; i++) {
+      for (let col = 0; col < GRID_COLS; col++) {
         ctx.beginPath();
-        const baseX = i * gridSpacing;
-        for (let gy = 0; gy <= h; gy += 8) {
-          const dx = baseX - cx;
-          const dy = gy - cy;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          const warp = dist < 400 ? (BLACK_HOLE_RADIUS * 120) / (dist * dist + 200) : 0;
-          const warpedX = baseX + (dx / (dist || 1)) * warp;
-          if (gy === 0) ctx.moveTo(warpedX, gy);
-          else ctx.lineTo(warpedX, gy);
+        for (let row = 0; row < GRID_ROWS; row++) {
+          const n = grid[row][col];
+          if (row === 0) {
+            ctx.moveTo(n.x, n.y);
+          } else {
+            ctx.lineTo(n.x, n.y);
+          }
         }
-        ctx.stroke();
-      }
-      ctx.restore();
 
-      // === ACCRETION DISK ===
-      ctx.save();
-      ctx.globalCompositeOperation = 'screen';
-      const diskRadius = BLACK_HOLE_RADIUS * 2.5;
-      for (let ring = 0; ring < 3; ring++) {
-        const r = BLACK_HOLE_RADIUS * 1.1 + ring * 20;
-        const baseAlpha = 0.02 - ring * 0.005;
-        const rotation = time.current * (0.3 - ring * 0.08);
-        ctx.beginPath();
-        ctx.ellipse(cx, cy, r + Math.sin(time.current + ring) * 3, r * 0.25, rotation, 0, Math.PI * 2);
-        const diskGrad = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, r * 1.2);
-        diskGrad.addColorStop(0, `rgba(200, 120, 50, ${baseAlpha * 2})`);
-        diskGrad.addColorStop(0.5, `rgba(180, 80, 30, ${baseAlpha})`);
-        diskGrad.addColorStop(1, 'rgba(150, 60, 20, 0)');
-        ctx.strokeStyle = diskGrad;
-        ctx.lineWidth = 8 - ring * 2;
-        ctx.stroke();
-      }
-      ctx.restore();
-
-      // === GRAVITATIONAL LENSING RINGS ===
-      for (let i = 5; i >= 1; i--) {
-        const r = BLACK_HOLE_RADIUS + i * 14;
-        const pulse = 1 + Math.sin(time.current * 2 + i * 0.5) * 0.02;
-        ctx.beginPath();
-        ctx.arc(cx, cy, r * pulse, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(140, 100, 70, ${0.015 * i})`;
-        ctx.lineWidth = 0.5;
+        const midNode = grid[Math.floor(GRID_ROWS / 2)][col];
+        const colDist = Math.sqrt((midNode.restX - cx) ** 2 + (midNode.restY - cy) ** 2);
+        const intensity = Math.max(0.02, Math.min(0.12, 0.15 - colDist / (Math.max(w, h) * 1.2)));
+        ctx.strokeStyle = `rgba(140, 110, 80, ${intensity})`;
+        ctx.lineWidth = 0.6;
         ctx.stroke();
       }
 
-      // === PHOTON SPHERE ===
-      ctx.save();
-      ctx.globalCompositeOperation = 'screen';
-      const photonR = BLACK_HOLE_RADIUS * 1.5;
-      const photonGrad = ctx.createRadialGradient(cx, cy, photonR - 3, cx, cy, photonR + 6);
-      photonGrad.addColorStop(0, 'rgba(200, 140, 70, 0)');
-      photonGrad.addColorStop(0.4, `rgba(200, 140, 70, ${0.03 + Math.sin(time.current * 3) * 0.01})`);
-      photonGrad.addColorStop(0.6, `rgba(220, 160, 80, ${0.02 + Math.sin(time.current * 3 + 1) * 0.01})`);
-      photonGrad.addColorStop(1, 'rgba(200, 140, 70, 0)');
-      ctx.beginPath();
-      ctx.arc(cx, cy, photonR + 6, 0, Math.PI * 2);
-      ctx.fillStyle = photonGrad;
-      ctx.fill();
-      ctx.restore();
+      // === Draw nodes (intersection dots) ===
+      for (let row = 0; row < GRID_ROWS; row++) {
+        for (let col = 0; col < GRID_COLS; col++) {
+          const n = grid[row][col];
+          const strain = Math.sqrt((n.x - n.restX) ** 2 + (n.y - n.restY) ** 2);
+          const distToCenter = Math.sqrt((n.x - cx) ** 2 + (n.y - cy) ** 2);
 
-      // === BLACK HOLE (event horizon) ===
-      const bhGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, BLACK_HOLE_RADIUS * 1.2);
+          // Skip nodes consumed inside the event horizon
+          if (distToCenter < 30) continue;
+
+          // Size: bigger when strained (time dilation visualization)
+          const baseSize = 0.8;
+          const strainSize = Math.min(strain * 0.06, 2.5);
+          const r = baseSize + strainSize;
+
+          // Color: shifts warm under strain (gravitational redshift)
+          const warmth = Math.min(strain / 40, 1);
+          const hue = 40 - warmth * 28; // 40 (neutral) → 12 (burnt orange)
+          const sat = 5 + warmth * 65;
+          const lum = 55 + warmth * 20;
+          const alpha = 0.06 + warmth * 0.35;
+
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+          ctx.fillStyle = `hsla(${hue}, ${sat}%, ${lum}%, ${alpha})`;
+          ctx.fill();
+        }
+      }
+
+      // === Event horizon ===
+      const bhGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 55);
       bhGrad.addColorStop(0, 'rgba(0, 0, 0, 1)');
-      bhGrad.addColorStop(0.6, 'rgba(0, 0, 0, 1)');
-      bhGrad.addColorStop(0.85, 'rgba(0, 0, 0, 0.7)');
+      bhGrad.addColorStop(0.65, 'rgba(0, 0, 0, 0.98)');
+      bhGrad.addColorStop(0.85, 'rgba(0, 0, 0, 0.4)');
       bhGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.beginPath();
-      ctx.arc(cx, cy, BLACK_HOLE_RADIUS * 1.2, 0, Math.PI * 2);
+      ctx.arc(cx, cy, 55, 0, Math.PI * 2);
       ctx.fillStyle = bhGrad;
       ctx.fill();
 
-      // === PARTICLES ===
-      for (let i = 0; i < particles.current.length; i++) {
-        const p = particles.current[i];
-        p.life++;
-
-        // Store trail point
-        if (p.life % 2 === 0) {
-          p.trail.push({ x: p.x, y: p.y, alpha: p.opacity * 0.3 });
-          if (p.trail.length > TRAIL_LENGTH) p.trail.shift();
-        }
-
-        const dx = cx - p.x;
-        const dy = cy - p.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        const distSafe = Math.max(dist, 15);
-
-        // Radial gravity
-        const gForce = GRAVITY_STRENGTH / (distSafe * distSafe);
-        const radialX = (dx / dist) * gForce;
-        const radialY = (dy / dist) * gForce;
-
-        // Tangential force for orbital motion
-        const tangentX = (-dy / dist) * gForce * p.orbitBias;
-        const tangentY = (dx / dist) * gForce * p.orbitBias;
-
-        p.vx += radialX * (1 - p.orbitBias * 0.5) + tangentX;
-        p.vy += radialY * (1 - p.orbitBias * 0.5) + tangentY;
-
-        // Mouse interaction — close = repel, medium = orbit, far = attract
-        if (mouse.current.active) {
-          const mdx = mouse.current.x - p.x;
-          const mdy = mouse.current.y - p.y;
-          const mDist = Math.sqrt(mdx * mdx + mdy * mdy);
-          const mDistSafe = Math.max(mDist, 20);
-
-          if (mDist < MOUSE_REPEL_RADIUS) {
-            // Repel close particles outward
-            const repelForce = (MOUSE_REPEL_RADIUS - mDist) * 0.008;
-            p.vx -= (mdx / mDistSafe) * repelForce;
-            p.vy -= (mdy / mDistSafe) * repelForce;
-          } else if (mDist < 250) {
-            // Orbital swirl around cursor
-            const mForce = MOUSE_GRAVITY / (mDistSafe * mDistSafe);
-            const mTangentX = (-mdy / mDistSafe) * mForce * 0.6;
-            const mTangentY = (mdx / mDistSafe) * mForce * 0.6;
-            p.vx += (mdx / mDistSafe) * mForce * 0.4 + mTangentX;
-            p.vy += (mdy / mDistSafe) * mForce * 0.4 + mTangentY;
-          } else {
-            const mForce = MOUSE_GRAVITY * 0.5 / (mDistSafe * mDistSafe);
-            p.vx += (mdx / mDistSafe) * mForce;
-            p.vy += (mdy / mDistSafe) * mForce;
-          }
-        }
-
-        p.vx *= FRICTION;
-        p.vy *= FRICTION;
-        p.x += p.vx;
-        p.y += p.vy;
-
-        // Respawn
-        if (dist < BLACK_HOLE_RADIUS * 0.35 || p.life > p.maxLife ||
-            p.x < -SPAWN_MARGIN * 2 || p.x > w + SPAWN_MARGIN * 2 ||
-            p.y < -SPAWN_MARGIN * 2 || p.y > h + SPAWN_MARGIN * 2) {
-          particles.current[i] = spawnParticle();
-          continue;
-        }
-
-        // Visual calculations
-        const fadeIn = Math.min(p.life / 80, 1);
-        const fadeOut = p.life > p.maxLife - 120 ? (p.maxLife - p.life) / 120 : 1;
-        const proximity = Math.max(0, 1 - dist / (Math.max(w, h) * 0.55));
-        const alpha = p.opacity * fadeIn * fadeOut * (proximity * 0.5 + 0.5);
-
-        const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
-        const stretch = Math.min(speed * 3, 10);
-        const moveAngle = Math.atan2(p.vy, p.vx);
-
-        // Draw trail
-        if (p.trail.length > 1 && speed > 0.5) {
-          ctx.save();
-          ctx.globalCompositeOperation = 'screen';
-          for (let t = 0; t < p.trail.length - 1; t++) {
-            const tp = p.trail[t];
-            const trailAlpha = (t / p.trail.length) * alpha * 0.15 * (speed / 3);
-            ctx.beginPath();
-            ctx.arc(tp.x, tp.y, p.radius * 0.4, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(200, 140, 80, ${Math.min(trailAlpha, 0.08)})`;
-            ctx.fill();
-          }
-          ctx.restore();
-        }
-
-        // Draw particle
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate(moveAngle);
-
-        // Glow for fast/close particles
-        if (speed > 1.5 || proximity > 0.6) {
-          const glowR = (p.radius + stretch) * 2.5;
-          const glowGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, glowR);
-          const glowAlpha = Math.min(alpha * 0.12 * (proximity + speed * 0.1), 0.1);
-          glowGrad.addColorStop(0, `rgba(200, 130, 60, ${glowAlpha})`);
-          glowGrad.addColorStop(1, 'rgba(200, 130, 60, 0)');
-          ctx.beginPath();
-          ctx.ellipse(0, 0, glowR, glowR * 0.6, 0, 0, Math.PI * 2);
-          ctx.fillStyle = glowGrad;
-          ctx.fill();
-        }
-
-        ctx.beginPath();
-        ctx.ellipse(0, 0, p.radius + stretch, Math.max(p.radius * 0.5, 0.3), 0, 0, Math.PI * 2);
-
-        // Color: orange-hot near center, cool silver far away
-        const hue = proximity > 0.5 ? 15 + proximity * 15 : 30 + (1 - proximity) * 15;
-        const sat = proximity > 0.5 ? 50 + proximity * 40 : 3 + proximity * 15;
-        const lum = 45 + proximity * 35;
-        ctx.fillStyle = `hsla(${hue}, ${sat}%, ${lum}%, ${alpha})`;
-        ctx.fill();
-        ctx.restore();
-      }
-
-      // === EVENT HORIZON GLOW ===
+      // === Photon ring (thin bright ring at edge of event horizon) ===
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
-      const ehR = BLACK_HOLE_RADIUS * 2.2;
-      const ehGrad = ctx.createRadialGradient(cx, cy, BLACK_HOLE_RADIUS * 0.7, cx, cy, ehR);
-      const ehPulse = 0.025 + Math.sin(time.current * 2) * 0.008;
-      ehGrad.addColorStop(0, `rgba(200, 110, 40, ${ehPulse})`);
-      ehGrad.addColorStop(0.4, `rgba(180, 90, 30, ${ehPulse * 0.5})`);
-      ehGrad.addColorStop(1, 'rgba(160, 70, 20, 0)');
+      const photonPulse = 0.06 + Math.sin(time.current * 3) * 0.015;
       ctx.beginPath();
-      ctx.arc(cx, cy, ehR, 0, Math.PI * 2);
-      ctx.fillStyle = ehGrad;
+      ctx.arc(cx, cy, 48, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(200, 140, 70, ${photonPulse})`;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Outer halo
+      const haloGrad = ctx.createRadialGradient(cx, cy, 40, cx, cy, 90);
+      haloGrad.addColorStop(0, `rgba(180, 110, 50, ${0.03 + Math.sin(time.current * 2) * 0.01})`);
+      haloGrad.addColorStop(0.5, 'rgba(160, 90, 40, 0.01)');
+      haloGrad.addColorStop(1, 'rgba(140, 70, 30, 0)');
+      ctx.beginPath();
+      ctx.arc(cx, cy, 90, 0, Math.PI * 2);
+      ctx.fillStyle = haloGrad;
       ctx.fill();
       ctx.restore();
 
-      // === MOUSE WARP INDICATOR ===
+      // === Cursor gravity well indicator ===
       if (mouse.current.active) {
         const mx = mouse.current.x;
         const my = mouse.current.y;
-        const mGrad = ctx.createRadialGradient(mx, my, 0, mx, my, MOUSE_REPEL_RADIUS);
-        mGrad.addColorStop(0, 'rgba(200, 150, 80, 0.015)');
-        mGrad.addColorStop(0.5, 'rgba(200, 150, 80, 0.008)');
-        mGrad.addColorStop(1, 'rgba(200, 150, 80, 0)');
+        const cGrad = ctx.createRadialGradient(mx, my, 0, mx, my, 60);
+        cGrad.addColorStop(0, 'rgba(180, 140, 80, 0.04)');
+        cGrad.addColorStop(0.5, 'rgba(180, 140, 80, 0.015)');
+        cGrad.addColorStop(1, 'rgba(180, 140, 80, 0)');
         ctx.beginPath();
-        ctx.arc(mx, my, MOUSE_REPEL_RADIUS, 0, Math.PI * 2);
-        ctx.fillStyle = mGrad;
+        ctx.arc(mx, my, 60, 0, Math.PI * 2);
+        ctx.fillStyle = cGrad;
         ctx.fill();
       }
 
@@ -373,7 +270,7 @@ export function GravityCanvas() {
       canvas.removeEventListener('mouseleave', handlePointerLeave);
       canvas.removeEventListener('touchend', handlePointerLeave);
     };
-  }, [spawnParticle]);
+  }, []);
 
   return (
     <canvas
