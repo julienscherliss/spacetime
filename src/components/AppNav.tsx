@@ -351,7 +351,8 @@ function ScanButton() {
   }, []);
 
   return (
-    <div className="relative">
+    <div className="flex items-center gap-0">
+      {/* Fit Tasks — Scan + "T" */}
       <button
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -359,11 +360,29 @@ function ScanButton() {
         onPointerCancel={handlePointerCancel}
         onClick={(e) => e.preventDefault()}
         onContextMenu={(e) => e.preventDefault()}
-        className="flex items-center justify-center w-[44px] h-[44px] rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors touch-none select-none"
-        title="Fit to tasks (hold for options)"
+        className="relative flex items-center justify-center w-[40px] h-[44px] rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors touch-none select-none"
+        title="Fit tasks (double-tap to focus)"
       >
         <Scan size={18} strokeWidth={1.5} />
+        <span className="absolute inset-0 flex items-center justify-center text-[8px] font-mono font-bold leading-none pointer-events-none" style={{ marginTop: '0.5px' }}>
+          T
+        </span>
       </button>
+
+      {/* Frame All — Scan + "A" */}
+      <button
+        onClick={() => window.dispatchEvent(new CustomEvent('frame-all'))}
+        onContextMenu={(e) => e.preventDefault()}
+        className="relative flex items-center justify-center w-[40px] h-[44px] rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors touch-none select-none"
+        title="Frame all hours"
+      >
+        <Scan size={18} strokeWidth={1.5} />
+        <span className="absolute inset-0 flex items-center justify-center text-[8px] font-mono font-bold leading-none pointer-events-none" style={{ marginTop: '0.5px' }}>
+          A
+        </span>
+      </button>
+
+      {/* Long-press popover */}
       <Popover open={menuOpen} onOpenChange={setMenuOpen}>
         <PopoverTrigger asChild>
           <span className="absolute inset-0 pointer-events-none" />
