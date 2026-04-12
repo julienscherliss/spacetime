@@ -265,9 +265,6 @@ function computeDesired(
   const futureCandidates: { id: number; data: DesiredNotification }[] = [];
   const seenSlots = new Set<string>();
 
-  // Next future minute — guarantees all scheduled slots are strictly in the future
-  const nextFutureMinuteMs = (Math.floor(now / 60_000) + 1) * 60_000;
-
   // ── Collect overdue eligible tasks ──
   const overdueTasks: Task[] = [];
 
