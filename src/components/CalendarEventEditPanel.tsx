@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCalendarStore } from '@/store/calendarStore';
-import { X, Calendar as CalIcon, MapPin, Clock, Tag, Trash2, RotateCcw, EyeOff } from 'lucide-react';
+import { useTaskStore } from '@/store/taskStore';
+import { X, Calendar as CalIcon, MapPin, Clock, Tag, Trash2, RotateCcw, EyeOff, ArrowRightLeft } from 'lucide-react';
 import { formatTime12h } from '@/hooks/useCurrentTime';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useLibraryStore } from '@/store/libraryStore';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { TagPickerMenu } from '@/components/TagPickerMenu';
+import { toast } from 'sonner';
 
 function formatDuration(mins: number): string {
   if (mins < 60) return `${mins}m`;
