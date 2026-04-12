@@ -675,7 +675,9 @@ export const useTaskStore = create<TaskState>()(
           tasks: s.tasks.map((t) => {
             if (t.completed || t.inWaitingRoom || t.archivedAt) return t;
             if (!t.time) return t;
-            if (t.date !== now.toISOString().split('T')[0]) return t;
+            // Check today and past days (not future days)
+            const todayStr = now.toISOString().split('T')[0];
+            if (t.date > todayStr) return t;
 
             const [h, m] = t.time.split(':').map(Number);
             const start = new Date(`${t.date}T00:00:00`);
