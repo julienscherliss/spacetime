@@ -28,6 +28,7 @@ interface CalendarState {
   connected: boolean;
   email: string | null;
   calendars: GoogleCalendar[];
+  eventsById: Record<string, CalendarEvent>;
   events: CalendarEvent[];
   loading: boolean;
   panelOpen: boolean;
