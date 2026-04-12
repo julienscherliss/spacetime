@@ -621,12 +621,10 @@ export function isNotificationDebugMode(): boolean {
 
 export function setupNotificationTapListener(
   onTap: (taskId: string | null) => void,
-): (() => void) | undefined {
-  if (!Capacitor.isNativePlatform()) return undefined;
-
+): (() => void) {
+  // Always remove previous listener if any, then register fresh
   if (tapListenerRegistered) {
-    log('tap listener already registered — skipping duplicate');
-    return undefined;
+    log('tap listener already registered — replacing');
   }
 
   tapListenerRegistered = true;
