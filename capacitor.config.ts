@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'app.lovable.9e3e0ce65e59410282833dbdc7dde026',
-  appName: 'spaacetime',
+  appName: 'Spacetime',
   webDir: 'dist',
   server: {
     // For local development with hot-reload, uncomment the url below:
