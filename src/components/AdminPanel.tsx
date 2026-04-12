@@ -113,6 +113,19 @@ export function AdminPanel({ open, onClose }: Props) {
     loadData();
   }
 
+  async function resetTrial(userId: string) {
+    const trialEnd = new Date();
+    trialEnd.setDate(trialEnd.getDate() + 7);
+    await supabase.from('subscriptions').update({
+      status: 'trialing',
+      trial_start: new Date().toISOString(),
+      trial_end: trialEnd.toISOString(),
+      updated_at: new Date().toISOString(),
+    }).eq('user_id', userId);
+    toast.success('Trial reset (7 days)');
+    loadData();
+  }
+
   async function grantLifetime(userId: string) {
     await supabase.from('subscriptions').update({
       status: 'active',
@@ -282,13 +295,21 @@ export function AdminPanel({ open, onClose }: Props) {
                                 ))}
                               </div>
                               <div className="text-[7px] font-mono text-muted-foreground/30 truncate">ID: {u.user_id}</div>
-                              <div className="flex gap-1 pt-1">
+                              <div className="flex gap-1 pt-1 flex-wrap">
                                 {!u.lifetime_access && (
                                   <button
                                     onClick={(e) => { e.stopPropagation(); grantLifetime(u.user_id); }}
                                     className="text-[8px] font-mono text-primary/60 hover:text-primary px-1.5 py-0.5 rounded border border-primary/20 hover:border-primary/40 transition-colors"
                                   >
                                     GRANT ∞
+                                  </button>
+                                )}
+                                {u.status === 'cancelled' && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); resetTrial(u.user_id); }}
+                                    className="text-[8px] font-mono text-yellow-600/60 hover:text-yellow-600 px-1.5 py-0.5 rounded border border-yellow-500/20 hover:border-yellow-500/40 transition-colors"
+                                  >
+                                    RESET TRIAL
                                   </button>
                                 )}
                                 {(u.status === 'active' || u.lifetime_access) && (
