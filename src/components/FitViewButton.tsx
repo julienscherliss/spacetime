@@ -30,6 +30,7 @@ interface FitViewButtonProps {
   setScale: (v: number) => void;
   resetZoom: () => void;
   nowMinutes: number;
+  hideButton?: boolean;
 }
 
 function getTaskBounds(tasks: Task[]): { earliest: number; latest: number } | null {
