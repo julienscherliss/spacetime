@@ -153,10 +153,11 @@ function reminderNotificationId(taskId: string, absoluteMinute: number): number 
 }
 
 /**
- * Deterministic overdue notification ID based on taskId + fire minute.
+ * Deterministic BATCH overdue notification ID based on fire minute only.
+ * One overdue notification per minute slot, regardless of how many tasks are overdue.
  */
-function overdueNotificationId(taskId: string, absoluteMinute: number): number {
-  return deterministicId(`${taskId}:overdue:${absoluteMinute}`, OVERDUE_ID_OFFSET);
+function overdueBatchNotificationId(absoluteMinute: number): number {
+  return deterministicId(`overdue:batch:${absoluteMinute}`, OVERDUE_ID_OFFSET);
 }
 
 function isReminderNotificationId(id: number): boolean {
