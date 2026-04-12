@@ -7,13 +7,16 @@ import { Capacitor } from '@capacitor/core';
  *   production-web  → https://launchspacetime.com
  *   preview-web     → *.lovable.app (preview/sandbox)
  *   local-dev       → http://localhost:*
- *   native-ios      → uses production domain for OAuth proxy, deep-links back via custom scheme
+ *   native-ios      → uses Supabase PKCE with custom URL scheme
  */
 
 const PRODUCTION_DOMAIN = 'https://launchspacetime.com';
 
-/** The Lovable-managed OAuth proxy domain (used only for native flows) */
+/** The Lovable-managed OAuth proxy domain (used for localhost web dev only) */
 const LOVABLE_PROXY_DOMAIN = 'https://spaacetime.lovable.app';
+
+/** Custom URL scheme for native deep linking */
+const NATIVE_SCHEME_CALLBACK = 'com.spaacetime.app://auth/callback';
 
 export type AuthEnv = 'production-web' | 'preview-web' | 'local-dev' | 'native-ios';
 
@@ -28,6 +31,7 @@ export function detectAuthEnv(): AuthEnv {
 
 /**
  * Returns the base origin to use for auth redirects in the current environment.
+ * For native iOS this returns the custom scheme callback URL.
  */
 export function getAuthRedirectOrigin(): string {
   const env = detectAuthEnv();
@@ -35,8 +39,7 @@ export function getAuthRedirectOrigin(): string {
     case 'production-web':
       return PRODUCTION_DOMAIN;
     case 'native-ios':
-      // Native uses the production domain's OAuth proxy
-      return PRODUCTION_DOMAIN;
+      return NATIVE_SCHEME_CALLBACK; // full callback URL for native
     case 'preview-web':
     case 'local-dev':
       return window.location.origin;
@@ -44,18 +47,17 @@ export function getAuthRedirectOrigin(): string {
 }
 
 /**
- * Returns the full callback URL for OAuth flows (web).
+ * Returns the full callback URL for OAuth flows.
  */
 export function getAuthCallbackUrl(): string {
+  const env = detectAuthEnv();
+  if (env === 'native-ios') return NATIVE_SCHEME_CALLBACK;
   return `${getAuthRedirectOrigin()}/auth/callback`;
 }
 
 /**
  * Returns the domain to use for the Lovable managed OAuth proxy (`/~oauth/initiate`).
- *
- * For production & preview, this is the same origin (the proxy works on custom domains).
- * For native iOS, we use the production custom domain.
- * For localhost, we fall back to the lovable.app proxy since localhost can't host it.
+ * Only used for web flows. Native iOS uses Supabase PKCE directly.
  */
 export function getOAuthProxyDomain(): string {
   const env = detectAuthEnv();
@@ -67,7 +69,6 @@ export function getOAuthProxyDomain(): string {
     case 'native-ios':
       return PRODUCTION_DOMAIN;
     case 'local-dev':
-      // The /~oauth proxy doesn't run on localhost; use the lovable.app domain
       return LOVABLE_PROXY_DOMAIN;
   }
 }
@@ -76,11 +77,8 @@ export function getOAuthProxyDomain(): string {
  * Log auth environment info for debugging.
  */
 export function debugLogAuthEnv(context: string): void {
-  if (import.meta.env.DEV || import.meta.env.MODE === 'development') {
-    const env = detectAuthEnv();
-    console.debug(`[auth:${context}] environment: ${env}`);
-    console.debug(`[auth:${context}] redirectOrigin: ${getAuthRedirectOrigin()}`);
-    console.debug(`[auth:${context}] callbackUrl: ${getAuthCallbackUrl()}`);
-    console.debug(`[auth:${context}] oauthProxy: ${getOAuthProxyDomain()}`);
-  }
+  const env = detectAuthEnv();
+  console.debug(`[auth:${context}] environment: ${env}`);
+  console.debug(`[auth:${context}] redirectOrigin: ${getAuthRedirectOrigin()}`);
+  console.debug(`[auth:${context}] callbackUrl: ${getAuthCallbackUrl()}`);
 }
