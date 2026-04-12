@@ -197,7 +197,7 @@ export function WeekView() {
 
   // Navigation controls placed in the sticky header gutter
   const headerControls = (
-    <div className="flex flex-col items-center gap-0.5 pb-0.5">
+    <div className="flex items-center justify-center gap-0.5 pb-0.5">
       <button
         onClick={() => setWeekOffset(o => o - 1)}
         className="p-0.5 rounded-sm text-muted-foreground/40 hover:text-foreground transition-colors"
@@ -229,11 +229,23 @@ export function WeekView() {
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Bold title row — scrolls away naturally */}
-      <div className="pt-3 pb-2">
+      {/* Bold title row with navigation — scrolls away naturally */}
+      <div className="pt-3 pb-2 flex items-center gap-2">
         <h2 className="text-lg sm:text-xl font-display font-bold text-foreground tracking-tight">
           {monthLabel}
         </h2>
+        <button
+          onClick={() => setWeekOffset(o => o - 1)}
+          className="p-1 rounded-sm text-muted-foreground/40 hover:text-foreground transition-colors"
+        >
+          <ChevronLeft size={16} strokeWidth={1.5} />
+        </button>
+        <button
+          onClick={() => setWeekOffset(o => o + 1)}
+          className="p-1 rounded-sm text-muted-foreground/40 hover:text-foreground transition-colors"
+        >
+          <ChevronRight size={16} strokeWidth={1.5} />
+        </button>
       </div>
 
       {/* Sticky weekday/date header with controls — top-0 on mobile (bottom nav), top-12 on desktop */}
