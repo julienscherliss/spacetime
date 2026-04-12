@@ -242,10 +242,24 @@ async function fetchEvents(deviceId: string, timeMin: string, timeMax: string, c
       const startTime = normalizedStart.time;
 
       let durationMin = 60;
-      if (!isAllDay && end) {
+      let endDate: string | null = null;
+
+      if (isAllDay && end) {
+        // Google all-day events use exclusive end date (e.g. start=Jan 1, end=Jan 3 means 2 days)
+        // Subtract one day to get inclusive end date
+        const endD = new Date(`${end}T12:00:00`);
+        endD.setDate(endD.getDate() - 1);
+        const endStr = `${endD.getFullYear()}-${String(endD.getMonth() + 1).padStart(2, '0')}-${String(endD.getDate()).padStart(2, '0')}`;
+        endDate = endStr > startDate ? endStr : null;
+      } else if (!isAllDay && end) {
         const startMs = new Date(start).getTime();
         const endMs = new Date(end).getTime();
         durationMin = Math.round((endMs - startMs) / 60000);
+        // Check if timed event spans multiple days
+        const normalizedEnd = formatEventDateTime(end, timeZone);
+        if (normalizedEnd.date > startDate) {
+          endDate = normalizedEnd.date;
+        }
       }
 
       allEvents.push({
@@ -253,6 +267,7 @@ async function fetchEvents(deviceId: string, timeMin: string, timeMax: string, c
         calendarId: calId,
         title: event.summary || "(No title)",
         date: startDate,
+        endDate,
         time: startTime,
         duration: durationMin,
         isAllDay,

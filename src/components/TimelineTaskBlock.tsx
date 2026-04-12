@@ -85,12 +85,13 @@ export function TimelineTaskBlock({
   const isDraggingThis = useScheduledDragStore((s) => s.active && s.taskId === task.id);
   const isCarried = useCarryStore((s) => s.carried?.taskId === task.id);
 
-  const borderLeftColor = {
-    0: 'hsl(var(--priority-0) / 0.3)',
+  const priorityBorderColor = {
+    0: '',
     1: 'hsl(var(--priority-1) / 0.5)',
     2: 'hsl(var(--priority-2) / 0.6)',
     3: 'hsl(var(--priority-3) / 0.7)',
-  }[task.priority];
+  }[task.priority] || '';
+  const hasPriorityColor = task.priority >= 1;
 
   const snapTo15 = (mins: number) => Math.round(mins / 15) * 15;
 
@@ -440,16 +441,25 @@ export function TimelineTaskBlock({
       <div
         className={`h-full rounded-[2px] transition-all duration-200 ${
           isActive
-            ? 'bg-card border border-primary/20 shadow-sm'
+            ? 'bg-card shadow-sm'
             : hasRoutineConflict
-              ? 'bg-card border border-[hsl(var(--routine-conflict)/0.5)] shadow-sm'
+              ? 'bg-card shadow-sm'
               : showUnlinkedOutline
-                ? `${task.isRoutine ? 'bg-background/60 backdrop-blur-sm' : 'bg-card'} border border-border/60 border-dashed hover:border-[hsl(var(--task-hover))] hover:shadow-sm`
-                : `${task.isRoutine ? 'bg-background/60 backdrop-blur-sm border border-[hsl(var(--task-border))]' : 'bg-card border border-[hsl(var(--task-border))]'} hover:border-[hsl(var(--task-hover))] hover:shadow-sm`
-        } ${isOverdue && !hasRoutineConflict ? 'border-destructive/30' : ''}`}
+                ? `${task.isRoutine ? 'bg-background/60 backdrop-blur-sm' : 'bg-card'} border-dashed hover:shadow-sm`
+                : `${task.isRoutine ? 'bg-background/60 backdrop-blur-sm' : 'bg-card'} hover:shadow-sm`
+        } ${isOverdue && !hasRoutineConflict ? '' : ''}`}
         style={{
-          borderLeftColor: hasRoutineConflict ? 'hsl(var(--routine-conflict) / 0.7)' : borderLeftColor,
-          borderLeftWidth: task.priority >= 2 ? '3px' : '2px',
+          border: hasPriorityColor && !isActive && !hasRoutineConflict
+            ? `1.5px solid ${priorityBorderColor}`
+            : isActive
+              ? '1px solid hsl(var(--primary) / 0.2)'
+              : hasRoutineConflict
+                ? '1px solid hsl(var(--routine-conflict) / 0.5)'
+                : isOverdue
+                  ? '1px solid hsl(var(--destructive) / 0.3)'
+                  : showUnlinkedOutline
+                    ? '1px dashed hsl(var(--border) / 0.6)'
+                    : '1px solid hsl(var(--task-border))',
           boxShadow: '0 1px 2px 0 hsl(var(--foreground) / 0.04)',
         }}
       >

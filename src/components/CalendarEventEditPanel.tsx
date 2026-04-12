@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCalendarStore } from '@/store/calendarStore';
-import { X, Calendar as CalIcon, MapPin, Clock, Check, Tag } from 'lucide-react';
+import { X, Calendar as CalIcon, MapPin, Clock, Check, Tag, Trash2, RotateCcw, Circle } from 'lucide-react';
 import { formatTime12h } from '@/hooks/useCurrentTime';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useLibraryStore } from '@/store/libraryStore';
@@ -42,14 +42,19 @@ export function CalendarEventEditPanel() {
   const events = useCalendarStore((s) => s.events);
   const calendars = useCalendarStore((s) => s.calendars);
   const completedEventIds = useCalendarStore((s) => s.completedEventIds);
+  const deletedEventIds = useCalendarStore((s) => s.deletedEventIds);
   const eventCategories = useCalendarStore((s) => s.eventCategories);
   const completeEvent = useCalendarStore((s) => s.completeEvent);
+  const uncompleteEvent = useCalendarStore((s) => s.uncompleteEvent);
+  const deleteEvent = useCalendarStore((s) => s.deleteEvent);
+  const reviveEvent = useCalendarStore((s) => s.reviveEvent);
   const setEventCategory = useCalendarStore((s) => s.setEventCategory);
   const setEditingEvent = useCalendarStore((s) => s.setEditingEvent);
   const isMobile = useIsMobile();
 
   const event = events.find((e) => e.id === editingEventId);
   const isCompleted = editingEventId ? completedEventIds.includes(editingEventId) : false;
+  const isDeleted = editingEventId ? deletedEventIds.includes(editingEventId) : false;
   const category = editingEventId ? eventCategories[editingEventId] || '' : '';
   const cal = event ? calendars.find((c) => c.google_calendar_id === event.calendarId) : null;
   const color = cal?.color || '#4285f4';
@@ -67,6 +72,26 @@ export function CalendarEventEditPanel() {
       setEventCategory(editingEventId, localCategory);
     }
     setEditingEvent(null);
+  };
+
+  const handleToggleComplete = () => {
+    if (!editingEventId) return;
+    if (isCompleted) {
+      uncompleteEvent(editingEventId);
+    } else {
+      completeEvent(editingEventId);
+    }
+  };
+
+  const handleDelete = () => {
+    if (!editingEventId) return;
+    deleteEvent(editingEventId);
+    setEditingEvent(null);
+  };
+
+  const handleRevive = () => {
+    if (!editingEventId) return;
+    reviveEvent(editingEventId);
   };
 
   return (
@@ -109,7 +134,7 @@ export function CalendarEventEditPanel() {
               {/* Title */}
               <div>
                 <h3 className={`text-[14px] font-mono font-medium leading-snug ${
-                  isCompleted ? 'line-through text-muted-foreground/40' : 'text-foreground'
+                  isCompleted ? 'line-through text-muted-foreground/40' : isDeleted ? 'text-muted-foreground/30' : 'text-foreground'
                 }`}>
                   {event.title}
                 </h3>
@@ -125,6 +150,9 @@ export function CalendarEventEditPanel() {
                 {isCompleted && (
                   <span className="text-[9px] font-mono text-primary/60 tracking-wider mt-1 block">COMPLETED</span>
                 )}
+                {isDeleted && (
+                  <span className="text-[9px] font-mono text-destructive/60 tracking-wider mt-1 block">DELETED</span>
+                )}
               </div>
 
               {/* Time info */}
@@ -135,6 +163,16 @@ export function CalendarEventEditPanel() {
                     <span>
                       {formatTime12h(event.time)}
                       {event.duration && ` · ${formatDuration(event.duration)}`}
+                    </span>
+                  </div>
+                )}
+                {event.endDate && (
+                  <div className="flex items-center gap-2 text-[11px] font-mono text-muted-foreground/60">
+                    <CalIcon size={12} strokeWidth={1.5} className="shrink-0" />
+                    <span>
+                      {new Date(`${event.date}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      {' → '}
+                      {new Date(`${event.endDate}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </span>
                   </div>
                 )}
@@ -155,6 +193,7 @@ export function CalendarEventEditPanel() {
                 </div>
               )}
 
+              {/* Tag */}
               <div className="border-t border-border/30 pt-3">
                 <div className="flex items-center gap-1.5 mb-2">
                   <Tag size={11} strokeWidth={1.5} className="text-muted-foreground/40" />
@@ -169,11 +208,54 @@ export function CalendarEventEditPanel() {
                 />
               </div>
 
-              {/* Locked notice */}
+              {/* Actions */}
+              <div className="border-t border-border/30 pt-3 space-y-2">
+                {isDeleted ? (
+                  <button
+                    onClick={handleRevive}
+                    className="w-full flex items-center justify-center gap-2 py-2 rounded-sm border border-border text-[10px] font-mono tracking-wider text-foreground/60 hover:bg-muted/50 transition-colors"
+                  >
+                    <RotateCcw size={11} />
+                    RESTORE EVENT
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      onClick={handleToggleComplete}
+                      className={`w-full flex items-center justify-center gap-2 py-2 rounded-sm border text-[10px] font-mono tracking-wider transition-colors ${
+                        isCompleted
+                          ? 'border-border text-muted-foreground/50 hover:bg-muted/50'
+                          : 'border-primary/30 text-primary hover:bg-primary/5'
+                      }`}
+                    >
+                      {isCompleted ? (
+                        <>
+                          <Circle size={11} />
+                          MARK INCOMPLETE
+                        </>
+                      ) : (
+                        <>
+                          <Check size={11} />
+                          MARK COMPLETE
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={handleDelete}
+                      className="w-full flex items-center justify-center gap-2 py-2 rounded-sm border border-destructive/20 text-[10px] font-mono tracking-wider text-destructive/60 hover:bg-destructive/5 transition-colors"
+                    >
+                      <Trash2 size={11} />
+                      DELETE
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {/* Source info */}
               <div className="border-t border-border/30 pt-3">
                 <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground/30 tracking-wider">
                   <CalIcon size={10} />
-                  <span>SYNCED FROM GOOGLE CALENDAR · LOCKED</span>
+                  <span>SYNCED FROM GOOGLE CALENDAR</span>
                 </div>
               </div>
             </div>
