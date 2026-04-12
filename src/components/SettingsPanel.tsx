@@ -36,7 +36,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const [search, setSearch] = useState('');
   const [helpOpen, setHelpOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
-  const { isAdmin } = useSubscription();
+  const { isAdmin, subscription, trialDaysLeft } = useSubscription();
   const [pwMode, setPwMode] = useState<'closed' | 'change' | 'reset'>('closed');
   const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
@@ -611,23 +611,23 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               <span className="text-[11px] font-mono tracking-[0.12em] text-muted-foreground">SUBSCRIPTION</span>
             </div>
             {(() => {
-              const { subscription, trialDaysLeft } = useSubscription();
-              if (!subscription) return null;
-              if (subscription.lifetime_access) return (
+              const sub = subscription;
+              if (!sub) return null;
+              if (sub.lifetime_access) return (
                 <div className="bg-primary/5 border border-primary/20 rounded-sm p-3">
                   <div className="text-[12px] font-mono text-primary font-medium">LIFETIME ACCESS</div>
                   <div className="text-[10px] font-mono text-muted-foreground/50 mt-0.5">No expiration</div>
                 </div>
               );
-              if (subscription.status === 'active') return (
+              if (sub.status === 'active') return (
                 <div className="bg-muted/30 border border-border/50 rounded-sm p-3">
                   <div className="text-[12px] font-mono text-foreground font-medium">
-                    {subscription.plan === 'yearly' ? 'YEARLY' : 'MONTHLY'} PLAN
+                    {sub.plan === 'yearly' ? 'YEARLY' : 'MONTHLY'} PLAN
                   </div>
                   <div className="text-[10px] font-mono text-muted-foreground/50 mt-0.5">Active subscription</div>
                 </div>
               );
-              if (subscription.status === 'trialing') return (
+              if (sub.status === 'trialing') return (
                 <div className="bg-muted/30 border border-border/50 rounded-sm p-3">
                   <div className="text-[12px] font-mono text-foreground font-medium">FREE TRIAL</div>
                   <div className="text-[10px] font-mono text-muted-foreground/50 mt-0.5">
