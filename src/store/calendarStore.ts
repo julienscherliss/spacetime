@@ -273,8 +273,8 @@ export const useCalendarStore = create<CalendarState>()(
           calendars: s.calendars.map(c =>
             c.id === calendarId ? { ...c, visible } : c
           ),
+          lastFetchedAt: null, // Invalidate cache so next fetchEvents re-fetches
         }));
-        // Persist to DB
         callEdge('toggle_calendar', { calendarId, visible }).catch(console.error);
       },
 
