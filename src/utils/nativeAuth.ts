@@ -1,7 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import { App as CapApp } from '@capacitor/app';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client'; // used in setupDeepLinkListener
 
 /** Custom URL scheme registered in iOS Info.plist */
 const NATIVE_SCHEME = 'com.spaacetime.app';
