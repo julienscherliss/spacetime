@@ -268,13 +268,9 @@ function computeDesired(
   // ── Collect overdue eligible tasks ──
   const overdueTasks: Task[] = [];
 
-  // Today string for date filtering
-  const todayStr = new Date(now).toISOString().slice(0, 10);
-
   for (const task of tasks) {
-    if (!shouldNotify(task, level)) continue;
-    if (!task.time || task.completed) continue;
-    // Filter out archived, waiting room, and non-today tasks
+    if (!task.time) continue;
+    if (task.completed) continue;
     if (task.archivedAt) continue;
     if (task.inWaitingRoom) continue;
 
@@ -282,16 +278,21 @@ function computeDesired(
     const taskDueMs = getTaskDueMs(task);
     if (taskStartMs === null || taskDueMs === null) continue;
 
+    // Overdue = task end time is in the past (matches UI logic for any date)
     const isOverdue = now > taskDueMs;
 
     if (isOverdue && persistentOverdue) {
-      // Only consider today's tasks as overdue-eligible
-      if (task.date === todayStr) {
+      if (shouldNotify(task, level)) {
         overdueTasks.push(task);
+      } else {
+        logDebug('overdue excluded by priority filter', {
+          taskId: task.id, title: task.title, priority: task.priority, level,
+        });
       }
-      // Skip standard reminder for overdue tasks either way
       continue;
     }
+
+    if (!shouldNotify(task, level)) continue;
 
     // ── FAMILY A: Standard reminder (fires before task START) ──
     const reminderAtMs = taskStartMs - LEAD_MINUTES * 60_000;
@@ -340,8 +341,11 @@ function computeDesired(
 
     log('overdue heartbeat eligible', {
       count,
-      taskIds: sortedOverdue.map(t => t.id),
-      titles: sortedOverdue.map(t => t.title),
+      now: new Date(Date.now()).toISOString(),
+      tasks: sortedOverdue.map(t => ({
+        id: t.id, title: t.title, date: t.date, time: t.time,
+        dueMs: getTaskDueMs(t), priority: t.priority,
+      })),
       heartbeatFireAt: new Date(heartbeatFireMs).toISOString(),
     });
 
