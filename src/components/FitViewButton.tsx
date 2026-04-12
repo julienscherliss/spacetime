@@ -4,20 +4,15 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { Task } from '@/store/taskStore';
 import { timeToMinutes } from '@/hooks/useCurrentTime';
 import { START_HOUR, END_HOUR } from '@/components/TimelineColumn';
-import { SCALE_MIN, SCALE_MAX } from '@/hooks/useTimeScale';
+import { SCALE_MIN, SCALE_MAX, animatePinchZoom } from '@/hooks/useTimeScale';
 
 /** Padding (px) above and below the framed area */
 const FRAME_PADDING = 40;
 
-/** Height of sticky elements above the timeline content.
- *  Mobile: sticky controls sit at top-0 (~36px), bottom nav is 64px.
- *  Desktop: top nav (48px) + sticky controls (~36px) = 84px.
- */
 function getStickyOffset(): number {
   return window.innerWidth < 640 ? 36 : 84;
 }
 
-/** Usable viewport height below sticky elements (and above bottom nav on mobile) */
 function usableViewport(): number {
   const bottomNav = window.innerWidth < 640 ? 64 : 0;
   return window.innerHeight - getStickyOffset() - bottomNav;
@@ -66,53 +61,10 @@ function getActiveTaskCenter(tasks: Task[], nowMinutes: number): number {
   return nowMinutes;
 }
 
-/**
- * Returns the document-level top offset of the timeline content area.
- * This is where minute 0 of START_HOUR lives in document coordinates.
- */
 function getTimelineDocTop(scrollRef: React.RefObject<HTMLElement>): number {
   if (!scrollRef.current) return 0;
   const rect = scrollRef.current.getBoundingClientRect();
   return rect.top + window.scrollY;
-}
-
-/** Convert a minute value to a document Y position given hourHeight and timeline origin */
-function minToDocY(min: number, hourHeight: number, timelineTop: number): number {
-  return timelineTop + ((min - START_HOUR * 60) / 60) * hourHeight;
-}
-
-
-function animateZoom(
-  fromScale: number,
-  toScale: number,
-  fromScroll: number,
-  toScroll: number,
-  duration: number,
-  onFrame: (scale: number) => void,
-) {
-  const startTime = performance.now();
-
-  function easeInOut(t: number) {
-    return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-  }
-
-  function tick(now: number) {
-    const elapsed = now - startTime;
-    const progress = Math.min(1, elapsed / duration);
-    const eased = easeInOut(progress);
-
-    const currentScale = fromScale + (toScale - fromScale) * eased;
-    const currentScroll = fromScroll + (toScroll - fromScroll) * eased;
-
-    onFrame(currentScale);
-    window.scrollTo({ top: currentScroll, behavior: 'auto' });
-
-    if (progress < 1) {
-      requestAnimationFrame(tick);
-    }
-  }
-
-  requestAnimationFrame(tick);
 }
 
 export function FitViewButton({ tasks, scrollRef, hourHeight, setScale, resetZoom, nowMinutes, hideButton }: FitViewButtonProps) {
@@ -122,74 +74,94 @@ export function FitViewButton({ tasks, scrollRef, hourHeight, setScale, resetZoo
   const pointerMoved = useRef(false);
   const startPos = useRef<{ x: number; y: number } | null>(null);
   const lastTapTime = useRef(0);
+  const zoomCancelRef = useRef<(() => void) | null>(null);
 
   const fitToTasks = useCallback(() => {
+    zoomCancelRef.current?.();
     const bounds = getTaskBounds(tasks);
     const viewH = usableViewport();
+    const stickyOffset = getStickyOffset();
     const timelineTop = getTimelineDocTop(scrollRef);
 
     if (!bounds) {
-      // No tasks — center on current time
-      const nowDocY = minToDocY(nowMinutes, hourHeight, timelineTop);
-      const targetScroll = Math.max(0, nowDocY - getStickyOffset() - viewH / 2);
-      animateZoom(hourHeight, hourHeight, window.scrollY, targetScroll, 250, () => {});
+      // No tasks — animate to center on current time
+      zoomCancelRef.current = animatePinchZoom({
+        fromScale: hourHeight,
+        toScale: hourHeight,
+        focalMin: nowMinutes,
+        focalViewportY: stickyOffset + viewH / 2,
+        timelineDocTop: timelineTop,
+        duration: 250,
+        setScale,
+        onComplete: () => { zoomCancelRef.current = null; },
+      });
       return;
     }
 
     const { earliest, latest } = bounds;
-    const spanMinutes = latest - earliest;
-    const spanHours = spanMinutes / 60;
-
-    // Calculate scale to fit the task span within usable viewport with padding
+    const spanHours = (latest - earliest) / 60;
     let targetScale = (viewH - FRAME_PADDING * 2) / spanHours;
     targetScale = Math.max(SCALE_MIN, Math.min(SCALE_MAX, targetScale));
 
-    // No artificial cap — zoom as much as needed to fit tasks in view
-
-    // Recalculate positions with new scale — timeline top stays the same
     const midMin = (earliest + latest) / 2;
-    const midDocY = timelineTop + ((midMin - START_HOUR * 60) / 60) * targetScale;
-    const targetScroll = Math.max(0, midDocY - getStickyOffset() - viewH / 2);
 
-    animateZoom(hourHeight, targetScale, window.scrollY, targetScroll, 250, (scale) => {
-      setScale(scale);
+    zoomCancelRef.current = animatePinchZoom({
+      fromScale: hourHeight,
+      toScale: targetScale,
+      focalMin: midMin,
+      focalViewportY: stickyOffset + viewH / 2,
+      timelineDocTop: timelineTop,
+      duration: 250,
+      setScale,
+      onComplete: () => { zoomCancelRef.current = null; },
     });
   }, [tasks, scrollRef, hourHeight, setScale, nowMinutes]);
 
   const focusCurrent = useCallback(() => {
+    zoomCancelRef.current?.();
     const viewH = usableViewport();
+    const stickyOffset = getStickyOffset();
     const timelineTop = getTimelineDocTop(scrollRef);
     const centerMin = getActiveTaskCenter(tasks, nowMinutes);
 
-    // Fixed 5-hour window
     const windowHours = 5;
     let targetScale = viewH / windowHours;
     targetScale = Math.max(SCALE_MIN, Math.min(SCALE_MAX, targetScale));
 
-    const centerDocY = timelineTop + ((centerMin - START_HOUR * 60) / 60) * targetScale;
-    const targetScroll = Math.max(0, centerDocY - getStickyOffset() - viewH / 2);
-
-    animateZoom(hourHeight, targetScale, window.scrollY, targetScroll, 250, (scale) => {
-      setScale(scale);
+    zoomCancelRef.current = animatePinchZoom({
+      fromScale: hourHeight,
+      toScale: targetScale,
+      focalMin: centerMin,
+      focalViewportY: stickyOffset + viewH / 2,
+      timelineDocTop: timelineTop,
+      duration: 250,
+      setScale,
+      onComplete: () => { zoomCancelRef.current = null; },
     });
     setMenuOpen(false);
   }, [scrollRef, hourHeight, nowMinutes, tasks, setScale]);
 
   const frameAll = useCallback(() => {
+    zoomCancelRef.current?.();
     const viewH = usableViewport();
+    const stickyOffset = getStickyOffset();
     const timelineTop = getTimelineDocTop(scrollRef);
 
-    // Show full timeline
     const totalHours = END_HOUR - START_HOUR;
     let targetScale = (viewH - FRAME_PADDING) / totalHours;
     targetScale = Math.max(SCALE_MIN, Math.min(SCALE_MAX, targetScale));
 
     const midMin = ((START_HOUR + END_HOUR) / 2) * 60;
-    const midDocY = timelineTop + ((midMin - START_HOUR * 60) / 60) * targetScale;
-    const targetScroll = Math.max(0, midDocY - getStickyOffset() - viewH / 2);
 
-    animateZoom(hourHeight, targetScale, window.scrollY, targetScroll, 250, (scale) => {
-      setScale(scale);
+    zoomCancelRef.current = animatePinchZoom({
+      fromScale: hourHeight,
+      toScale: targetScale,
+      focalMin: midMin,
+      focalViewportY: stickyOffset + viewH / 2,
+      timelineDocTop: timelineTop,
+      duration: 250,
+      setScale,
+      onComplete: () => { zoomCancelRef.current = null; },
     });
     setMenuOpen(false);
   }, [scrollRef, hourHeight, setScale]);
@@ -226,7 +198,6 @@ export function FitViewButton({ tasks, scrollRef, hourHeight, setScale, resetZoo
     if (!didLongPress.current && !pointerMoved.current) {
       const now = Date.now();
       if (now - lastTapTime.current < 350) {
-        // Double tap → focus zoom
         focusCurrent();
         lastTapTime.current = 0;
       } else {
@@ -248,6 +219,7 @@ export function FitViewButton({ tasks, scrollRef, hourHeight, setScale, resetZoo
   useEffect(() => {
     return () => {
       if (longPressTimer.current) clearTimeout(longPressTimer.current);
+      zoomCancelRef.current?.();
     };
   }, []);
 
@@ -266,7 +238,6 @@ export function FitViewButton({ tasks, scrollRef, hourHeight, setScale, resetZoo
     };
   }, [fitToTasks, focusCurrent, frameAll]);
 
-  // When hideButton is true, still mount for event listeners but render nothing visible
   if (hideButton) return null;
 
   return (

@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { START_HOUR } from '@/components/TimelineColumn';
 
 export const SCALE_MIN = 28;
 export const SCALE_DEFAULT = 56;
@@ -23,6 +24,75 @@ function saveScale(view: string, scale: number) {
   try {
     localStorage.setItem(STORAGE_KEY_PREFIX + view, String(scale));
   } catch {}
+}
+
+/**
+ * Shared animated zoom that uses the EXACT same focal-point math as pinch gestures.
+ *
+ * Pinch math (from bindPinchZoom):
+ *   timePos = (scrollTop + focalViewportY) / oldScale
+ *   newScrollTop = timePos * newScale - focalViewportY
+ *
+ * This function animates scale from A→B and on every frame recomputes scroll
+ * using the same formula, keeping focalMin pinned at focalViewportY.
+ *
+ * Returns a cancel function.
+ */
+export function animatePinchZoom(opts: {
+  fromScale: number;
+  toScale: number;
+  /** The time (minutes from midnight) to keep visually pinned */
+  focalMin: number;
+  /** The viewport-Y coordinate where focalMin should stay */
+  focalViewportY: number;
+  /** Document-top of the timeline container (scrollRef.getBoundingClientRect().top + scrollY) */
+  timelineDocTop: number;
+  /** Animation duration in ms */
+  duration: number;
+  /** Scale setter — called every frame */
+  setScale: (v: number) => void;
+  /** Called once when animation completes */
+  onComplete?: () => void;
+}): () => void {
+  const { fromScale, toScale: rawTo, focalMin, focalViewportY, timelineDocTop, duration, setScale, onComplete } = opts;
+  const toScale = clamp(rawTo, SCALE_MIN, SCALE_MAX);
+  const startTime = performance.now();
+  let cancelled = false;
+
+  // Pinch easing — same feel as a quick physical pinch
+  function easeOut(t: number) {
+    return 1 - Math.pow(1 - t, 3);
+  }
+
+  // Convert focalMin to the timeline-relative pixel offset (independent of scale)
+  // At any given scale s: docY = timelineDocTop + ((focalMin - START_HOUR*60) / 60) * s
+  // We want: window.scrollY = docY - focalViewportY
+  const focalTimeHours = (focalMin - START_HOUR * 60) / 60;
+
+  function tick(now: number) {
+    if (cancelled) return;
+    const elapsed = now - startTime;
+    const progress = Math.min(1, elapsed / duration);
+    const eased = easeOut(progress);
+
+    const currentScale = fromScale + (toScale - fromScale) * eased;
+    setScale(currentScale);
+
+    // Exact pinch focal-point scroll: keep focalMin at focalViewportY
+    const docY = timelineDocTop + focalTimeHours * currentScale;
+    const targetScroll = Math.max(0, docY - focalViewportY);
+    window.scrollTo({ top: targetScroll, behavior: 'auto' });
+
+    if (progress < 1) {
+      requestAnimationFrame(tick);
+    } else {
+      onComplete?.();
+    }
+  }
+
+  requestAnimationFrame(tick);
+
+  return () => { cancelled = true; };
 }
 
 export function useTimeScale(view: 'day' | 'week') {
@@ -61,7 +131,6 @@ export function useTimeScale(view: 'day' | 'week') {
     if (!container) return;
     const handler = (e: WheelEvent) => {
       if (isDraggingRef.current) return;
-      // Support both Alt+scroll (explicit) and Ctrl+scroll (Mac trackpad pinch)
       if (!e.altKey && !e.ctrlKey) return;
       e.preventDefault();
       const sensitivity = e.ctrlKey ? SCROLL_SENSITIVITY * 2.5 : SCROLL_SENSITIVITY;
@@ -96,7 +165,6 @@ export function useTimeScale(view: 'day' | 'week') {
         initialDistance = getDistance(e.touches);
         initialScale = loadScale(view);
         initialScrollTop = container.scrollTop;
-        // Store the gesture midpoint relative to the container's viewport
         const rect = container.getBoundingClientRect();
         gestureMidY = getMidY(e.touches) - rect.top;
       }
@@ -109,13 +177,10 @@ export function useTimeScale(view: 'day' | 'week') {
       const ratio = dist / initialDistance;
       const newScale = clamp(initialScale * ratio, SCALE_MIN, SCALE_MAX);
 
-      // Calculate the "time position" under the gesture midpoint at the start
-      // timePos = (scrollTop + gestureMidY) / initialScale  (in "hours" units)
       const timePos = (initialScrollTop + gestureMidY) / initialScale;
 
       setHourHeight(newScale);
 
-      // Adjust scroll so the same time position stays under the gesture midpoint
       container.scrollTop = timePos * newScale - gestureMidY;
     };
 
