@@ -7,8 +7,8 @@ import { supabase } from '@/integrations/supabase/client'; // used in setupDeepL
 const NATIVE_SCHEME = 'com.spaacetime.app';
 const NATIVE_CALLBACK = `${NATIVE_SCHEME}://auth/callback`;
 
-/** HTTPS callback — the only redirect URL allowed by Lovable Cloud */
-const HTTPS_CALLBACK = 'https://launchspacetime.com/auth/callback';
+/** HTTPS callback bridge for native handoff; `native=1` prevents Safari from consuming the login */
+const HTTPS_CALLBACK = 'https://launchspacetime.com/auth/callback?native=1';
 
 /** True when running inside a native Capacitor shell (iOS / Android) */
 export function isNativePlatform(): boolean {

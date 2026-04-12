@@ -2,21 +2,11 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
-/** Custom URL scheme for native app handoff */
 const NATIVE_SCHEME_CALLBACK = 'com.spaacetime.app://auth/callback';
 
-/**
- * OAuth callback bridge page.
- *
- * Serves two purposes:
- * 1. NATIVE bridge — receives ?code=... from Google OAuth, immediately redirects
- *    to the custom URL scheme so the native app picks up the code via deep link.
- * 2. WEB fallback — if the native redirect doesn't fire (desktop browser),
- *    exchanges the code for a session directly and navigates to /.
- */
 export default function AuthCallback() {
   const navigate = useNavigate();
-  const [status, setStatus] = useState<'redirecting' | 'fallback' | 'error'>('redirecting');
+  const [status, setStatus] = useState<'redirecting' | 'manual' | 'completing' | 'error'>('redirecting');
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
@@ -27,8 +17,8 @@ export default function AuthCallback() {
     const code = params.get('code');
     const authError = params.get('error');
     const errorDesc = params.get('error_description');
+    const nativeBridge = params.get('native') === '1';
 
-    // Handle OAuth error
     if (authError) {
       setStatus('error');
       setErrorMessage(errorDesc || authError || 'Authentication failed');
@@ -38,38 +28,38 @@ export default function AuthCallback() {
     const hasTokens = hash.includes('access_token');
 
     if (code) {
-      // Build the native deep link URL with the code
       const nativeUrl = `${NATIVE_SCHEME_CALLBACK}?code=${encodeURIComponent(code)}`;
 
-      // Attempt native handoff immediately
-      window.location.href = nativeUrl;
+      if (nativeBridge) {
+        console.debug('[AuthCallback] native bridge detected, returning to app');
+        window.location.replace(nativeUrl);
 
-      // If we're still here after 1.5s, the native app didn't open.
-      // Fall back to web session handling.
-      const fallbackTimer = setTimeout(async () => {
-        setStatus('fallback');
+        const manualTimer = window.setTimeout(() => {
+          setStatus('manual');
+        }, 1200);
 
-        // Web fallback: exchange code for session in the browser
-        try {
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
+        return () => window.clearTimeout(manualTimer);
+      }
+
+      setStatus('completing');
+      supabase.auth.exchangeCodeForSession(code)
+        .then(({ error }) => {
           if (error) {
-            console.error('[AuthCallback] web fallback exchangeCode error:', error.message);
+            console.error('[AuthCallback] exchangeCodeForSession error:', error.message);
             setStatus('error');
             setErrorMessage(error.message);
             return;
           }
           navigate('/', { replace: true });
-        } catch (e: any) {
+        })
+        .catch((e: any) => {
           setStatus('error');
           setErrorMessage(e.message || 'Failed to complete sign in');
-        }
-      }, 1500);
-
-      return () => clearTimeout(fallbackTimer);
+        });
+      return;
     }
 
     if (hasTokens) {
-      // Implicit flow — handle tokens directly (web only)
       const hashParams = new URLSearchParams(hash.slice(1));
       const access_token = hashParams.get('access_token');
       const refresh_token = hashParams.get('refresh_token');
@@ -89,7 +79,6 @@ export default function AuthCallback() {
       return;
     }
 
-    // No code or tokens — just redirect home
     navigate('/', { replace: true });
   }, [navigate]);
 
@@ -111,20 +100,28 @@ export default function AuthCallback() {
         </>
       )}
 
-      {status === 'fallback' && (
+      {status === 'manual' && (
+        <>
+          <div className="text-[11px] font-mono text-muted-foreground/40 tracking-widest text-center max-w-xs leading-relaxed">
+            SIGN-IN FINISHED. TAP BELOW TO RETURN TO THE APP.
+          </div>
+          {manualOpenUrl && (
+            <a
+              href={manualOpenUrl}
+              className="px-4 py-2.5 rounded-sm border border-primary/20 bg-card text-primary font-mono text-[11px] tracking-wider hover:bg-primary/5 transition-colors text-center"
+            >
+              OPEN APP
+            </a>
+          )}
+        </>
+      )}
+
+      {status === 'completing' && (
         <>
           <div className="text-[11px] font-mono text-muted-foreground/40 tracking-widest text-center">
             COMPLETING SIGN IN...
           </div>
           <div className="w-6 h-6 border-2 border-muted-foreground/20 border-t-primary rounded-full animate-spin" />
-          {manualOpenUrl && (
-            <a
-              href={manualOpenUrl}
-              className="mt-4 px-4 py-2.5 rounded-sm border border-border bg-card text-foreground font-mono text-[11px] tracking-wider hover:bg-muted/50 transition-colors text-center"
-            >
-              TAP HERE TO OPEN APP
-            </a>
-          )}
         </>
       )}
 
