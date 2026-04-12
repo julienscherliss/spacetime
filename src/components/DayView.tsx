@@ -69,7 +69,7 @@ export function DayView() {
     const clamped = Math.min(SCALE_MAX, Math.max(SCALE_MIN, targetHourHeight));
     const stickyOffset = 96;
     const viewportH = window.innerHeight - stickyOffset;
-    const clusterCenterMin = (cluster.startMin + cluster.endMin) / 2;
+    const clusterCenterMin = scrollToMin;
     const timelineTop = scrollRef.current
       ? scrollRef.current.getBoundingClientRect().top + window.scrollY
       : 0;
