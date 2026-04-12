@@ -279,7 +279,7 @@ export function AppNav() {
 
           {/* Trial indicator */}
           {subscription?.status === 'trialing' && trialDaysLeft > 0 && (
-            <div className="text-[8px] font-mono text-muted-foreground/40 tracking-wider px-1.5">
+            <div className="text-[8px] font-mono text-primary/70 tracking-wider px-1.5">
               {trialDaysLeft}D TRIAL
             </div>
           )}
