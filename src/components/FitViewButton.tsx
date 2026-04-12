@@ -30,6 +30,7 @@ interface FitViewButtonProps {
   setScale: (v: number) => void;
   resetZoom: () => void;
   nowMinutes: number;
+  hideButton?: boolean;
 }
 
 function getTaskBounds(tasks: Task[]): { earliest: number; latest: number } | null {
@@ -114,7 +115,7 @@ function animateZoom(
   requestAnimationFrame(tick);
 }
 
-export function FitViewButton({ tasks, scrollRef, hourHeight, setScale, resetZoom, nowMinutes }: FitViewButtonProps) {
+export function FitViewButton({ tasks, scrollRef, hourHeight, setScale, resetZoom, nowMinutes, hideButton }: FitViewButtonProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didLongPress = useRef(false);
@@ -264,6 +265,9 @@ export function FitViewButton({ tasks, scrollRef, hourHeight, setScale, resetZoo
       window.removeEventListener('frame-all', handleFrame);
     };
   }, [fitToTasks, focusCurrent, frameAll]);
+
+  // When hideButton is true, still mount for event listeners but render nothing visible
+  if (hideButton) return null;
 
   return (
     <div className="relative">

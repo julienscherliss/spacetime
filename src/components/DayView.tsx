@@ -303,16 +303,15 @@ export function DayView() {
               <span className="tracking-wider">EXIT ZOOM</span>
             </button>
           )}
-          {!isMobile && (
-            <FitViewButton
-              tasks={dayTasks}
-              scrollRef={scrollRef as React.RefObject<HTMLElement>}
-              hourHeight={hourHeight}
-              setScale={setScale}
-              resetZoom={resetZoom}
-              nowMinutes={nowMinutes}
-            />
-          )}
+          <FitViewButton
+            tasks={dayTasks}
+            scrollRef={scrollRef as React.RefObject<HTMLElement>}
+            hourHeight={hourHeight}
+            setScale={setScale}
+            resetZoom={resetZoom}
+            nowMinutes={nowMinutes}
+            hideButton={isMobile}
+          />
         </div>
       </div>
 
