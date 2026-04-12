@@ -17,8 +17,12 @@ interface UserSub {
   plan: string | null;
   lifetime_access: boolean;
   trial_end: string;
+  trial_start: string;
   created_at: string;
-  email?: string;
+  current_period_end: string | null;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  display_name?: string;
 }
 
 interface PromoCode {
