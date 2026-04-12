@@ -5,7 +5,7 @@
  *   - Permission flow: check/request only, never triggers scheduling
  *   - Test notification flow: isolated, uses dedicated ID namespace
  *   - Task notification flow: diff-based sync, idempotent, guarded against concurrent runs
- *   - Overdue notification flow: stable per-minute slots with a bounded sliding window
+ *   - Overdue notification flow: single batched overdue stream (one per minute, not per task)
  *
  * iOS limit: max 64 pending local notifications.
  * We intentionally stay well below that limit to preserve headroom and avoid
@@ -153,10 +153,11 @@ function reminderNotificationId(taskId: string, absoluteMinute: number): number 
 }
 
 /**
- * Deterministic overdue notification ID based on taskId + fire minute.
+ * Deterministic BATCH overdue notification ID based on fire minute only.
+ * One overdue notification per minute slot, regardless of how many tasks are overdue.
  */
-function overdueNotificationId(taskId: string, absoluteMinute: number): number {
-  return deterministicId(`${taskId}:overdue:${absoluteMinute}`, OVERDUE_ID_OFFSET);
+function overdueBatchNotificationId(absoluteMinute: number): number {
+  return deterministicId(`overdue:batch:${absoluteMinute}`, OVERDUE_ID_OFFSET);
 }
 
 function isReminderNotificationId(id: number): boolean {
@@ -266,13 +267,13 @@ function computeDesired(
   const urgentThresholdMs = now + 10 * 60_000;
   const urgentCandidates: { id: number; data: DesiredNotification }[] = [];
   const futureCandidates: { id: number; data: DesiredNotification }[] = [];
-  let totalOverdueSlots = 0;
-  let overdueCandidateCount = 0;
   const seenSlots = new Set<string>();
 
-  // Current minute floor — overdue notifications for the current minute
-  // must stay in the desired set so they aren't canceled before firing.
+  // Current minute floor for overdue batch window
   const currentMinuteFloorMs = Math.floor(now / 60_000) * 60_000;
+
+  // ── Collect overdue eligible tasks ──
+  const overdueTasks: Task[] = [];
 
   for (const task of tasks) {
     if (!shouldNotify(task, level)) continue;
@@ -282,69 +283,11 @@ function computeDesired(
     const taskDueMs = getTaskDueMs(task);
     if (taskStartMs === null || taskDueMs === null) continue;
 
-    const overdueActive = persistentOverdue && now > taskDueMs;
+    const isOverdue = now > taskDueMs;
 
-    logDebug('notification timing audit', {
-      taskTitle: task.title,
-      taskId: task.id,
-      startTime: new Date(taskStartMs).toISOString(),
-      endTime: new Date(taskDueMs).toISOString(),
-      currentTime: new Date(now).toISOString(),
-      overdueActive,
-    });
-
-    // ── FAMILY B: Persistent overdue reminders (only when truly overdue) ──
-    if (overdueActive) {
-      // Start from current minute floor so the current-minute notification
-      // remains in the desired set and is preserved (not canceled/recreated).
-      const firstSlotMs = currentMinuteFloorMs;
-
-      const availableSlots = Math.min(
-        OVERDUE_WINDOW_MINUTES,
-        MAX_OVERDUE_PER_TASK,
-        Math.max(0, MAX_OVERDUE_TOTAL - totalOverdueSlots),
-      );
-
-      if (availableSlots <= 0) {
-        logDebug('overdue task skipped due to cap', { title: task.title, taskId: task.id });
-        continue;
-      }
-
-      let slotsAdded = 0;
-      for (let i = 0; i < availableSlots; i++) {
-        const fireTimeMs = firstSlotMs + i * 60_000;
-
-        // Skip slots in the past (before now minus 10 seconds grace)
-        if (fireTimeMs < now - 10_000) continue;
-
-        const absoluteMinute = absoluteMinuteFromMs(fireTimeMs);
-        const overdueMinutesAtFire = Math.max(1, Math.floor((fireTimeMs - taskDueMs) / 60_000));
-
-        const dedupKey = `${task.id}:overdue:${absoluteMinute}`;
-        if (seenSlots.has(dedupKey)) {
-          logDebug('overdue slot deduplicated', { dedupKey });
-          continue;
-        }
-        seenSlots.add(dedupKey);
-
-        const nId = overdueNotificationId(task.id, absoluteMinute);
-        urgentCandidates.push({
-          id: nId,
-          data: {
-            title: `OVERDUE — ${task.title}`,
-            body: `${overdueMinutesAtFire} min overdue · was ${task.time}`,
-            fireAt: new Date(fireTimeMs),
-            taskId: task.id,
-            type: 'overdue',
-            isUrgent: true,
-          },
-        });
-        slotsAdded++;
-      }
-
-      totalOverdueSlots += slotsAdded;
-      overdueCandidateCount += slotsAdded;
-      // When overdue, do NOT also schedule a standard reminder — skip to next task
+    if (isOverdue && persistentOverdue) {
+      overdueTasks.push(task);
+      // Skip standard reminder for overdue tasks
       continue;
     }
 
@@ -352,11 +295,8 @@ function computeDesired(
     const reminderAtMs = taskStartMs - LEAD_MINUTES * 60_000;
     if (reminderAtMs > now) {
       const absoluteMinute = absoluteMinuteFromMs(reminderAtMs);
-      const dedupKey = `${task.id}:reminder:${absoluteMinute}`;
-      if (seenSlots.has(dedupKey)) {
-        logDebug('reminder slot deduplicated', { dedupKey });
-        continue;
-      }
+      const dedupKey = `reminder:${task.id}:${absoluteMinute}`;
+      if (seenSlots.has(dedupKey)) continue;
       seenSlots.add(dedupKey);
 
       const isUrgent = reminderAtMs <= urgentThresholdMs;
@@ -378,6 +318,53 @@ function computeDesired(
       } else {
         futureCandidates.push(candidate);
       }
+    }
+  }
+
+  // ── FAMILY B: Batched overdue stream ──
+  let overdueCandidateCount = 0;
+  if (overdueTasks.length > 0 && persistentOverdue) {
+    // Build summary title
+    const sortedOverdue = [...overdueTasks].sort((a, b) => (a.priority as number) - (b.priority as number)).reverse();
+    const firstName = sortedOverdue[0].title;
+    const count = sortedOverdue.length;
+    const summaryTitle = count === 1
+      ? `${firstName} is overdue`
+      : `${firstName} and ${count - 1} more overdue`;
+    const summaryBody = count === 1
+      ? `Was scheduled for ${sortedOverdue[0].time}`
+      : sortedOverdue.map(t => t.title).join(', ');
+    const overdueTaskIds = sortedOverdue.map(t => t.id).join(',');
+
+    logDebug('overdue batch eligible tasks', {
+      count,
+      taskIds: sortedOverdue.map(t => t.id),
+      titles: sortedOverdue.map(t => t.title),
+    });
+
+    const availableSlots = Math.min(OVERDUE_WINDOW_MINUTES, MAX_OVERDUE_TOTAL);
+
+    for (let i = 0; i < availableSlots; i++) {
+      const fireTimeMs = currentMinuteFloorMs + i * 60_000;
+
+      // Skip slots that are already past (with small grace)
+      if (fireTimeMs < now - 10_000) continue;
+
+      const absoluteMinute = absoluteMinuteFromMs(fireTimeMs);
+      const nId = overdueBatchNotificationId(absoluteMinute);
+
+      urgentCandidates.push({
+        id: nId,
+        data: {
+          title: `OVERDUE — ${summaryTitle}`,
+          body: summaryBody,
+          fireAt: new Date(fireTimeMs),
+          taskId: overdueTaskIds, // comma-separated for debugging
+          type: 'overdue',
+          isUrgent: true,
+        },
+      });
+      overdueCandidateCount++;
     }
   }
 
@@ -415,6 +402,8 @@ function computeDesired(
     evictedFuture: evictedFutureReminders,
     overdueKept: overdueKeptCount,
     overdueSkipped: overdueSkippedDueToCap,
+    overdueBatchMode: true,
+    overdueEligibleTasks: overdueTasks.length,
   });
 
   return {
