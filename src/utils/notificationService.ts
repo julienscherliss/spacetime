@@ -252,10 +252,8 @@ function computeDesired(
     desired: new Map(),
     candidateCount: 0,
     keptCount: 0,
-    overdueCandidateCount: 0,
-    overdueKeptCount: 0,
+    overdueHeartbeat: false,
     skippedDueToCap: 0,
-    overdueSkippedDueToCap: 0,
     evictedFutureReminders: 0,
   };
 
