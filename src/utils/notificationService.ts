@@ -269,6 +269,7 @@ function computeDesired(
   const futureCandidates: { id: number; data: DesiredNotification }[] = [];
   let totalOverdueSlots = 0;
   let overdueCandidateCount = 0;
+  const seenSlots = new Set<string>();
 
   for (const task of tasks) {
     if (!shouldNotify(task, level)) continue;
