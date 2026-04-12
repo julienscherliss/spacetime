@@ -65,20 +65,14 @@ Deno.serve(async (req) => {
     // Get the origin for redirect
     const origin = req.headers.get("origin") || "https://spaacetime.lovable.app";
 
-    const priceData = plan === "monthly"
-      ? { unit_amount: 300, currency: "usd", recurring: { interval: "month" as const } }
-      : { unit_amount: 2400, currency: "usd", recurring: { interval: "year" as const } };
+    const priceId = plan === "monthly"
+      ? "price_1TLVMV4DAf6jX51sIWtfWsc8"
+      : "price_1TLVNk4DAf6jX51sORd1VJsE";
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: "subscription",
-      line_items: [{
-        price_data: {
-          ...priceData,
-          product_data: { name: plan === "monthly" ? "Spacetime Monthly" : "Spacetime Yearly" },
-        },
-        quantity: 1,
-      }],
+      line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${origin}/?checkout=success`,
       cancel_url: `${origin}/?checkout=cancelled`,
       metadata: { user_id: user.id, plan },
