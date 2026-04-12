@@ -241,7 +241,8 @@ export function FitViewButton({ tasks, scrollRef, hourHeight, setScale, resetZoo
   if (hideButton) return null;
 
   return (
-    <div className="relative">
+    <div className="flex items-center gap-0.5">
+      {/* Fit Tasks button — Scan icon with "T" */}
       <button
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -249,11 +250,29 @@ export function FitViewButton({ tasks, scrollRef, hourHeight, setScale, resetZoo
         onPointerCancel={handlePointerCancel}
         onClick={(e) => e.preventDefault()}
         onContextMenu={(e) => e.preventDefault()}
-        className="p-1.5 rounded-sm text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors touch-none select-none"
-        title="Fit tasks (hold for options)"
+        className="relative p-1.5 rounded-sm text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors touch-none select-none"
+        title="Fit tasks (double-tap to focus)"
       >
         <Scan size={16} strokeWidth={1.5} />
+        <span className="absolute inset-0 flex items-center justify-center text-[7px] font-mono font-bold leading-none pointer-events-none" style={{ marginTop: '0.5px' }}>
+          T
+        </span>
       </button>
+
+      {/* Frame All button — Scan icon with "A" */}
+      <button
+        onClick={frameAll}
+        onContextMenu={(e) => e.preventDefault()}
+        className="relative p-1.5 rounded-sm text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors touch-none select-none"
+        title="Frame all hours"
+      >
+        <Scan size={16} strokeWidth={1.5} />
+        <span className="absolute inset-0 flex items-center justify-center text-[7px] font-mono font-bold leading-none pointer-events-none" style={{ marginTop: '0.5px' }}>
+          A
+        </span>
+      </button>
+
+      {/* Long-press popover (still available from fit-tasks button) */}
       <Popover open={menuOpen} onOpenChange={setMenuOpen}>
         <PopoverTrigger asChild>
           <span className="absolute inset-0 pointer-events-none" />
