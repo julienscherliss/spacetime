@@ -1047,6 +1047,7 @@ function MainFocusPanel({
             barWidth={4}
             barLength={14}
             holdProgress={holdProgress}
+            color={isGracePeriod ? 'destructive' : 'default'}
           />
 
           <div className="absolute inset-0 flex flex-col items-center justify-center">
