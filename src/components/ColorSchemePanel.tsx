@@ -196,8 +196,8 @@ export function ColorSchemePanel() {
               <div className="h-px flex-1 bg-border/30" />
             </div>
 
-            {/* Priority rows */}
-            {([0, 1, 2, 3] as const).map(p => (
+            {/* Priority rows P0–P2 */}
+            {([0, 1, 2] as const).map(p => (
               <div key={p} className="space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="text-[8px] font-mono tracking-[0.12em] w-8 shrink-0" style={{ color: `hsl(${active.priorities[p].stroke})` }}>
@@ -215,6 +215,24 @@ export function ColorSchemePanel() {
                 )}
               </div>
             ))}
+
+            {/* P3 / LOCK row — uses locked fill/text */}
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[8px] font-mono tracking-[0.12em] w-8 shrink-0" style={{ color: `hsl(${active.priorities[3].stroke})` }}>
+                  P3
+                </span>
+                <span className="text-[8px] font-mono text-muted-foreground/40 tracking-widest flex-1">LOCK</span>
+                <ColorSwatch hsl={active.lockedFill} size={10} />
+                <ColorSwatch hsl={active.lockedText} size={10} />
+              </div>
+              {isCustom && (
+                <div className="flex gap-4 pl-10">
+                  <ColorInput label="FILL" value={active.lockedFill} onChange={(v) => updateCustomScheme(active.id, { lockedFill: v })} />
+                  <ColorInput label="TEXT" value={active.lockedText} onChange={(v) => updateCustomScheme(active.id, { lockedText: v })} />
+                </div>
+              )}
+            </div>
 
             {/* Preview bar */}
             <div className="pt-2">
