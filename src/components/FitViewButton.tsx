@@ -266,6 +266,9 @@ export function FitViewButton({ tasks, scrollRef, hourHeight, setScale, resetZoo
     };
   }, [fitToTasks, focusCurrent, frameAll]);
 
+  // When hideButton is true, still mount for event listeners but render nothing visible
+  if (hideButton) return null;
+
   return (
     <div className="relative">
       <button
