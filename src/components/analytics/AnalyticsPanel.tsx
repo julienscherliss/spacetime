@@ -100,6 +100,7 @@ export function AnalyticsPanel({ open, onClose }: Props) {
               <ModuleCard title="TREND">
                 <TimeOverTimeChart
                   data={data.dayBreakdown}
+                  prevData={data.prevDayBreakdown}
                   dataType={filters.dataType}
                   compareMode={filters.compareMode}
                 />
@@ -114,50 +115,6 @@ export function AnalyticsPanel({ open, onClose }: Props) {
                   <NeglectedTags />
                 </ModuleCard>
               </div>
-
-              {/* Planned vs Completed quick card */}
-              {data.totals.taskCount > 0 && (
-                <ModuleCard title="PLANNED VS COMPLETED">
-                  <div className="flex items-center gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[9px] font-mono text-muted-foreground/50">PLANNED</span>
-                        <span className="text-[10px] font-mono text-foreground/70 tabular-nums">
-                          {Math.floor(data.totals.scheduledMinutes / 60)}h {data.totals.scheduledMinutes % 60}m
-                        </span>
-                      </div>
-                      <div className="h-2 bg-muted/50 rounded-sm overflow-hidden">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: '100%' }}
-                          transition={{ duration: 0.5 }}
-                          className="h-full bg-foreground/50 rounded-sm"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[9px] font-mono text-muted-foreground/50">COMPLETED</span>
-                        <span className="text-[10px] font-mono text-foreground/70 tabular-nums">
-                          {Math.floor(data.totals.completedMinutes / 60)}h {data.totals.completedMinutes % 60}m
-                        </span>
-                      </div>
-                      <div className="h-2 bg-muted/50 rounded-sm overflow-hidden">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{
-                            width: `${data.totals.scheduledMinutes > 0
-                              ? (data.totals.completedMinutes / data.totals.scheduledMinutes) * 100
-                              : 0}%`
-                          }}
-                          transition={{ duration: 0.5, delay: 0.1 }}
-                          className="h-full bg-primary/60 rounded-sm"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </ModuleCard>
-              )}
             </div>
 
             {/* Empty state */}

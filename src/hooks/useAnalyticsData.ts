@@ -5,38 +5,33 @@ import { useCalendarStore } from '@/store/calendarStore';
 import {
   startOfWeek, endOfWeek, startOfMonth, endOfMonth,
   subDays, subWeeks, subMonths, format, parseISO, isWithinInterval,
-  eachDayOfInterval, differenceInDays, startOfDay, addDays,
+  eachDayOfInterval, differenceInDays, startOfDay,
 } from 'date-fns';
 
 export type TimeRange = 'today' | 'yesterday' | 'this-week' | 'last-week' | 'this-month' | 'last-month' | 'custom';
-export type GroupBy = 'day' | 'week' | 'month' | 'tag';
-export type DataType = 'scheduled-time' | 'completed-time' | 'task-count' | 'completion-rate' | 'overdue';
+export type DataType = 'scheduled-time' | 'completed-time' | 'task-count' | 'completion-rate';
 
 export interface AnalyticsFilters {
   timeRange: TimeRange;
   customStart?: string;
   customEnd?: string;
-  groupBy: GroupBy;
   dataType: DataType;
   tags: string[];
   completedOnly: boolean;
   incompleteOnly: boolean;
   routinesOnly: boolean;
   recurringOnly: boolean;
-  priorities: number[];
   compareMode: 'none' | 'previous-period' | 'planned-vs-completed';
 }
 
 export const defaultFilters: AnalyticsFilters = {
   timeRange: 'this-week',
-  groupBy: 'day',
   dataType: 'scheduled-time',
   tags: [],
   completedOnly: false,
   incompleteOnly: false,
   routinesOnly: false,
   recurringOnly: false,
-  priorities: [],
   compareMode: 'none',
 };
 
@@ -76,21 +71,14 @@ function getPreviousPeriodRange(start: Date, end: Date): { start: Date; end: Dat
 
 function filterTasks(tasks: Task[], filters: AnalyticsFilters, start: Date, end: Date): Task[] {
   return tasks.filter(t => {
-    // Exclude archived-deleted
     if (t.archiveReason === 'deleted') return false;
-    // Date range
     const d = parseISO(t.date);
     if (!isWithinInterval(d, { start, end })) return false;
-    // Tags
     if (filters.tags.length > 0 && !filters.tags.includes(t.category || '')) return false;
-    // Completion
     if (filters.completedOnly && !t.completed) return false;
     if (filters.incompleteOnly && t.completed) return false;
-    // Routines
     if (filters.routinesOnly && !t.isRoutine) return false;
     if (filters.recurringOnly && t.type !== 'recurring') return false;
-    // Priority
-    if (filters.priorities.length > 0 && !filters.priorities.includes(t.priority)) return false;
     return true;
   });
 }
@@ -127,6 +115,7 @@ export interface AnalyticsData {
   prevTasks: Task[];
   tagBreakdown: TagBreakdown[];
   dayBreakdown: DayBreakdown[];
+  prevDayBreakdown: DayBreakdown[];
   heatmap: HeatmapCell[];
   totals: {
     scheduledMinutes: number;
@@ -143,6 +132,22 @@ export interface AnalyticsData {
     completionRate: number;
   };
   allTags: string[];
+}
+
+function buildDayBreakdown(tasks: Task[], start: Date, end: Date): DayBreakdown[] {
+  const days = eachDayOfInterval({ start, end });
+  return days.map(d => {
+    const dateStr = format(d, 'yyyy-MM-dd');
+    const dayTasks = tasks.filter(t => t.date === dateStr);
+    return {
+      date: dateStr,
+      label: format(d, 'EEE dd'),
+      scheduledMinutes: dayTasks.reduce((sum, t) => sum + (t.duration || 30), 0),
+      completedMinutes: dayTasks.filter(t => t.completed).reduce((sum, t) => sum + (t.duration || 30), 0),
+      taskCount: dayTasks.length,
+      completedCount: dayTasks.filter(t => t.completed).length,
+    };
+  });
 }
 
 export function useAnalyticsData(filters: AnalyticsFilters): AnalyticsData {
@@ -196,7 +201,6 @@ export function useAnalyticsData(filters: AnalyticsFilters): AnalyticsData {
     const tasks = filterTasks(combinedTasks, filters, range.start, range.end);
     const prevTasks = filterTasks(combinedTasks, filters, prevRange.start, prevRange.end);
 
-    // All unique tags from all tasks
     const allTags = [...new Set(combinedTasks.map(t => t.category || '').filter(Boolean))];
 
     // Tag breakdown
@@ -218,20 +222,9 @@ export function useAnalyticsData(filters: AnalyticsFilters): AnalyticsData {
     });
     const tagBreakdown = [...tagMap.values()].sort((a, b) => b.scheduledMinutes - a.scheduledMinutes);
 
-    // Day breakdown
-    const days = eachDayOfInterval({ start: range.start, end: range.end });
-    const dayBreakdown: DayBreakdown[] = days.map(d => {
-      const dateStr = format(d, 'yyyy-MM-dd');
-      const dayTasks = tasks.filter(t => t.date === dateStr);
-      return {
-        date: dateStr,
-        label: format(d, 'EEE dd'),
-        scheduledMinutes: dayTasks.reduce((sum, t) => sum + (t.duration || 30), 0),
-        completedMinutes: dayTasks.filter(t => t.completed).reduce((sum, t) => sum + (t.duration || 30), 0),
-        taskCount: dayTasks.length,
-        completedCount: dayTasks.filter(t => t.completed).length,
-      };
-    });
+    // Day breakdowns for current and previous period
+    const dayBreakdown = buildDayBreakdown(tasks, range.start, range.end);
+    const prevDayBreakdown = buildDayBreakdown(prevTasks, prevRange.start, prevRange.end);
 
     // Heatmap (last 12 weeks)
     const heatmapStart = subDays(range.end, 83);
@@ -245,7 +238,7 @@ export function useAnalyticsData(filters: AnalyticsFilters): AnalyticsData {
         return {
           date: dateStr,
           value: dayTasks.reduce((sum, t) => sum + (t.duration || 30), 0),
-          dayOfWeek: d.getDay() === 0 ? 6 : d.getDay() - 1, // Mon=0
+          dayOfWeek: d.getDay() === 0 ? 6 : d.getDay() - 1,
           weekIndex: Math.floor(differenceInDays(d, firstMonday) / 7),
         };
       });
@@ -271,6 +264,7 @@ export function useAnalyticsData(filters: AnalyticsFilters): AnalyticsData {
       prevTasks,
       tagBreakdown,
       dayBreakdown,
+      prevDayBreakdown,
       heatmap,
       totals: calcTotals(tasks),
       prevTotals: calcTotals(prevTasks),
