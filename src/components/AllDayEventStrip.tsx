@@ -16,7 +16,8 @@ export function AllDayEventStrip({ dates, compact = false }: AllDayEventStripPro
 
   const eventsByDate = useMemo(() => {
     const grouped = new Map<string, typeof events>();
-    const visibleEvents = events.filter(e => !deletedEventIds.includes(e.id));
+    const visibleCalIds = new Set(calendars.filter(c => c.visible).map(c => c.google_calendar_id));
+    const visibleEvents = events.filter(e => !deletedEventIds.includes(e.id) && visibleCalIds.has(e.calendarId));
 
     dates.forEach((date) => {
       grouped.set(
@@ -26,7 +27,7 @@ export function AllDayEventStrip({ dates, compact = false }: AllDayEventStripPro
     });
 
     return grouped;
-  }, [dates, events, deletedEventIds]);
+  }, [dates, events, deletedEventIds, calendars]);
 
   const hasAnyEvents = Array.from(eventsByDate.values()).some((dayEvents) => dayEvents.length > 0);
 

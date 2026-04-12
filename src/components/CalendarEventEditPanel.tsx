@@ -169,10 +169,6 @@ export function CalendarEventEditPanel() {
 
               {/* Tag - dropdown style matching TaskEditPanel */}
               <div className="border-t border-border/30 pt-3">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <Tag size={11} strokeWidth={1.5} className="text-muted-foreground/40" />
-                  <span className="text-[10px] font-mono tracking-[0.12em] text-muted-foreground/40">TAG</span>
-                </div>
                 <Popover open={showCatPicker} onOpenChange={setShowCatPicker}>
                   <PopoverTrigger asChild>
                     <button className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
