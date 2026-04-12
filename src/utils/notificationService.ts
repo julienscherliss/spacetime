@@ -5,7 +5,7 @@
  *   - Permission flow: check/request only, never triggers scheduling
  *   - Test notification flow: isolated, uses dedicated ID namespace
  *   - Task notification flow: diff-based sync, idempotent, guarded against concurrent runs
- *   - Overdue notification flow: stable per-minute slots with a bounded sliding window
+ *   - Overdue notification flow: single batched overdue stream (one per minute, not per task)
  *
  * iOS limit: max 64 pending local notifications.
  * We intentionally stay well below that limit to preserve headroom and avoid
