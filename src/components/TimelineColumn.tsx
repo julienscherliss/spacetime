@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect, Fragment, useMemo } from 'react';
 import { useTaskStore, Task } from '@/store/taskStore';
-import { useCalendarStore, CalendarEvent } from '@/store/calendarStore';
+import { useCalendarStore, CalendarEvent, eventSpansDate } from '@/store/calendarStore';
 import { useLibraryStore } from '@/store/libraryStore';
 import { useTouchDragStore } from '@/store/touchDragStore';
 import { useScheduledDragStore } from '@/store/scheduledDragStore';
@@ -41,10 +41,11 @@ function CalendarEventBlocks({ date, hourHeight, showTimeLabels }: { date: strin
   const allEvents = useCalendarStore((s) => s.events);
   const calendars = useCalendarStore((s) => s.calendars);
   const completedEventIds = useCalendarStore((s) => s.completedEventIds);
+  const deletedEventIds = useCalendarStore((s) => s.deletedEventIds);
   const eventCategories = useCalendarStore((s) => s.eventCategories);
   const completeEvent = useCalendarStore((s) => s.completeEvent);
   const setEditingEvent = useCalendarStore((s) => s.setEditingEvent);
-  const events = allEvents.filter(e => e.date === date);
+  const events = allEvents.filter(e => !deletedEventIds.includes(e.id) && eventSpansDate(e, date));
   const timeLabelsLeft = showTimeLabels ? '3.25rem' : '2px';
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [flashId, setFlashId] = useState<string | null>(null);
@@ -81,17 +82,20 @@ function CalendarEventBlocks({ date, hourHeight, showTimeLabels }: { date: strin
 
         return (
           <div
-            key={`gcal-${event.id}`}
+            key={`gcal-${event.id}-${date}`}
             data-task-block
             className="absolute right-1 z-[5] cursor-default group select-none"
             style={{ top, height, left: timeLabelsLeft }}
             onClick={() => handleClick(event.id)}
           >
             <div
-              className={`h-full rounded-[2px] border border-border/30 overflow-hidden transition-colors ${
-                isCompleted ? 'bg-muted/15 opacity-50' : 'bg-muted/30 hover:bg-muted/40'
+              className={`h-full rounded-[2px] overflow-hidden transition-colors ${
+                isCompleted ? 'opacity-50' : 'hover:bg-muted/40'
               }`}
-              style={{ borderLeftWidth: '3px', borderLeftColor: color }}
+              style={{
+                border: `1.5px solid ${color}`,
+                backgroundColor: isCompleted ? undefined : `${color}08`,
+              }}
             >
               <div className="flex items-start h-full px-2 py-0.5 overflow-hidden relative">
                 <div className="flex-1 min-w-0">
