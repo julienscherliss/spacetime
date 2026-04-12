@@ -6,6 +6,7 @@ import { useLibraryStore } from '@/store/libraryStore';
 import { useTimezoneStore, getTzAbbr } from '@/store/timezoneStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useSubscription } from '@/hooks/useSubscription';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import {
   Focus, List, CalendarDays, Grid3X3, Repeat,
@@ -24,6 +25,7 @@ export function AppNav() {
   const { panelOpen: libPanelOpen, setPanelOpen: setLibPanelOpen } = useLibraryStore();
   const libCount = useLibraryStore((s) => s.items.length);
   const { signOut } = useAuth();
+  const { subscription, trialDaysLeft } = useSubscription();
   const waitingCount = tasks.filter((t) => t.inWaitingRoom && !t.completed && !t.archivedAt).length;
   const isMobile = useIsMobile();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -274,6 +276,13 @@ export function AppNav() {
 
           {/* Utility separator */}
           <div className="w-px h-4 bg-border/25 mx-1.5" />
+
+          {/* Trial indicator */}
+          {subscription?.status === 'trialing' && trialDaysLeft > 0 && (
+            <div className="text-[8px] font-mono text-muted-foreground/40 tracking-wider px-1.5">
+              {trialDaysLeft}D TRIAL
+            </div>
+          )}
 
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('toggle-settings'))}
