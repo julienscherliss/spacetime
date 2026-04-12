@@ -271,20 +271,23 @@ export function ColorSchemePanel() {
               </div>
             </div>
 
-            {/* Lock state colors (editable for custom) */}
-            {isCustom && (
-              <div className="pt-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="h-px flex-1 bg-border/30" />
-                  <span className="text-[7px] font-mono text-muted-foreground/30 tracking-[0.2em]">LOCK FILL / TEXT</span>
-                  <div className="h-px flex-1 bg-border/30" />
-                </div>
-                <div className="flex gap-4 pl-0">
-                  <ColorInput label="FILL" value={active.lockedFill} onChange={(v) => updateCustomScheme(active.id, { lockedFill: v })} />
-                  <ColorInput label="TEXT" value={active.lockedText} onChange={(v) => updateCustomScheme(active.id, { lockedText: v })} />
-                </div>
+            {/* Site highlight color */}
+            <div className="pt-2">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="h-px flex-1 bg-border/30" />
+                <span className="text-[7px] font-mono text-muted-foreground/30 tracking-[0.2em]">SITE HIGHLIGHT</span>
+                <div className="h-px flex-1 bg-border/30" />
               </div>
-            )}
+              <div className="flex items-center gap-3">
+                <ColorSwatch hsl={active.accent} size={14} />
+                <span className="text-[8px] font-mono text-muted-foreground/40 flex-1">NOW LINE · DATES · ROUTINES · OVERDUE</span>
+              </div>
+              {isCustom && (
+                <div className="mt-1.5">
+                  <ColorInput label="COLOR" value={active.accent} onChange={(v) => updateCustomScheme(active.id, { accent: v })} />
+                </div>
+              )}
+            </div>
 
             {/* Actions */}
             <div className="flex gap-1.5 pt-2 border-t border-border/20">
