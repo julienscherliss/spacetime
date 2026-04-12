@@ -82,9 +82,9 @@ const RESERVED_URGENT_SLOTS = 25;
 const REMINDER_ID_OFFSET = 1_000_000;
 const OVERDUE_ID_OFFSET = 2_000_000;
 
-const OVERDUE_WINDOW_MINUTES = 10;
-const MAX_OVERDUE_PER_TASK = 10;
-const MAX_OVERDUE_TOTAL = 20;
+/** Single fixed ID for the overdue heartbeat notification */
+const OVERDUE_HEARTBEAT_ID = OVERDUE_ID_OFFSET + 999_999;
+const OVERDUE_HEARTBEAT_DELAY_MS = 60_000;
 const SYNC_COALESCE_MS = 12_000;
 
 let syncInFlight = false;
