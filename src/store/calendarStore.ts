@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '@/integrations/supabase/client';
 import { useTimezoneStore } from '@/store/timezoneStore';
+import { isNativePlatform } from '@/utils/nativePlatform';
 
 export interface GoogleCalendar {
   id: string;
@@ -148,6 +149,10 @@ export const useCalendarStore = create<CalendarState>()(
       },
 
       startAuth: async () => {
+        if (isNativePlatform()) {
+          // Block Google Calendar OAuth on native — must be done on web
+          return;
+        }
         const redirectUri = window.location.origin;
         const result = await callEdge('get_auth_url', {
           deviceId: get().deviceId,
