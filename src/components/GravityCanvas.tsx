@@ -262,12 +262,12 @@ export function GravityCanvas() {
       if (mouse.current.active) {
         const mx = mouse.current.x;
         const my = mouse.current.y;
-        const cGrad = ctx.createRadialGradient(mx, my, 0, mx, my, 60);
-        cGrad.addColorStop(0, 'rgba(180, 140, 80, 0.04)');
-        cGrad.addColorStop(0.5, 'rgba(180, 140, 80, 0.015)');
+        const cGrad = ctx.createRadialGradient(mx, my, 0, mx, my, 90);
+        cGrad.addColorStop(0, 'rgba(200, 150, 80, 0.1)');
+        cGrad.addColorStop(0.4, 'rgba(200, 150, 80, 0.04)');
         cGrad.addColorStop(1, 'rgba(180, 140, 80, 0)');
         ctx.beginPath();
-        ctx.arc(mx, my, 60, 0, Math.PI * 2);
+        ctx.arc(mx, my, 90, 0, Math.PI * 2);
         ctx.fillStyle = cGrad;
         ctx.fill();
       }
