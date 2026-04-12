@@ -51,8 +51,21 @@ function AuthRedirect() {
       </div>
     );
   }
-  if (user) return <Navigate to="/" replace />;
+  if (user) return <Navigate to="/app" replace />;
   return <Auth />;
+}
+
+function LandingRedirect() {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-[11px] font-mono text-muted-foreground/40 tracking-widest">LOADING...</div>
+      </div>
+    );
+  }
+  if (user) return <Navigate to="/app" replace />;
+  return <Landing />;
 }
 
 const App = () => {
