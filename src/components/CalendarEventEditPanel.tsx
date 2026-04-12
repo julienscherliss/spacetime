@@ -69,6 +69,27 @@ export function CalendarEventEditPanel() {
     setEditingEvent(null);
   };
 
+  const canConvertToTask = !!event.time && !event.isAllDay;
+
+  const handleConvertToTask = () => {
+    if (!event || !canConvertToTask) return;
+    const addTask = useTaskStore.getState().addTask;
+    addTask({
+      title: event.title,
+      category: localCategory || undefined,
+      date: event.date,
+      time: event.time!,
+      duration: event.duration || 30,
+      type: 'one-time',
+      priority: 0,
+      description: event.description || undefined,
+    });
+    // Delete the calendar event
+    if (editingEventId) deleteEvent(editingEventId);
+    setEditingEvent(null);
+    toast.success('Converted to task');
+  };
+
   const categoryLabel = localCategory
     ? (useLibraryStore.getState().categories.find(c => c.value === localCategory)?.label || localCategory)
     : '';
