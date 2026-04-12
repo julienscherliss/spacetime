@@ -16,35 +16,22 @@ export function isNativePlatform(): boolean {
 }
 
 /**
- * Open Google OAuth via Supabase PKCE flow in the in-app browser.
+ * Open Google OAuth via the Lovable OAuth proxy in the in-app browser.
  *
- * redirectTo uses the HTTPS callback page which acts as a bridge:
- * it receives the code and immediately redirects to the custom URL scheme
- * so the OS hands control back to the native app.
+ * The native app can't use supabase.auth.signInWithOAuth directly because
+ * Google OAuth secrets are managed by the Lovable proxy, not set in Supabase.
+ * Instead, we hit the /~oauth/initiate endpoint on the production domain,
+ * which handles the full OAuth flow and redirects back to our HTTPS callback.
  */
 export async function nativeGoogleSignIn(): Promise<void> {
-  console.debug('[nativeAuth] starting Google sign-in');
-  console.debug('[nativeAuth] redirectTo:', HTTPS_CALLBACK);
+  console.debug('[nativeAuth] starting Google sign-in via Lovable proxy');
 
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: HTTPS_CALLBACK,
-      skipBrowserRedirect: true,
-    },
-  });
+  // Build the OAuth initiate URL through the Lovable proxy
+  const redirectUri = encodeURIComponent(HTTPS_CALLBACK);
+  const oauthUrl = `https://launchspacetime.com/~oauth/initiate?provider=google&redirect_uri=${redirectUri}`;
 
-  if (error) {
-    console.error('[nativeAuth] signInWithOAuth error:', error.message);
-    throw error;
-  }
-
-  if (data?.url) {
-    console.debug('[nativeAuth] opening OAuth URL in browser:', data.url);
-    await Browser.open({ url: data.url, windowName: '_self' });
-  } else {
-    console.warn('[nativeAuth] no URL returned from signInWithOAuth');
-  }
+  console.debug('[nativeAuth] opening OAuth URL in browser:', oauthUrl);
+  await Browser.open({ url: oauthUrl, windowName: '_self' });
 }
 
 /**
