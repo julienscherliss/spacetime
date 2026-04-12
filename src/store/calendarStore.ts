@@ -182,7 +182,7 @@ export const useCalendarStore = create<CalendarState>()(
           lastFetchedRange,
           lastFetchSignature,
           lastFetchedAt,
-          events: cachedEvents,
+          eventsById,
         } = get();
         const timeZone = useTimezoneStore.getState().timezone;
         const visibleCalIds = calendars
@@ -192,6 +192,7 @@ export const useCalendarStore = create<CalendarState>()(
 
         if (visibleCalIds.length === 0) {
           set({
+            eventsById: {},
             events: [],
             loading: false,
             lastFetchedRange: null,
@@ -207,10 +208,11 @@ export const useCalendarStore = create<CalendarState>()(
         const cacheIsFresh = !!lastFetchedAt && Date.now() - lastFetchedAt < CALENDAR_CACHE_TTL_MS;
 
         if (cacheCoversRequestedRange && cacheIsFresh) {
-          set({ loading: false });
           return;
         }
 
+        // Check if we already have events for the requested range (show existing, don't flicker)
+        const cachedEvents = Object.values(eventsById);
         const requestedRangeHasVisibleEvents = cachedEvents.some(
           (event) =>
             visibleCalIds.includes(event.calendarId) &&
@@ -218,12 +220,14 @@ export const useCalendarStore = create<CalendarState>()(
             event.date <= endDate
         );
 
+        // Wider buffer: ±3 weeks minimum
         const requestedSpan = getInclusiveDaySpan(startDate, endDate);
-        const bufferDays = Math.max(requestedSpan, 2);
+        const bufferDays = Math.max(requestedSpan * 3, 21);
         const bufferedStartDate = addDays(startDate, -bufferDays);
         const bufferedEndDate = addDays(endDate, bufferDays);
 
-        set({ loading: !cacheCoversRequestedRange && !requestedRangeHasVisibleEvents });
+        // Only show loading if we have NO cached events for this range
+        set({ loading: !requestedRangeHasVisibleEvents });
 
         try {
           const result = await callEdge('events', {
@@ -234,8 +238,14 @@ export const useCalendarStore = create<CalendarState>()(
             timeZone,
           });
           if (Array.isArray(result)) {
+            // Merge new events into existing store by ID
+            const merged = { ...eventsById };
+            for (const event of result) {
+              merged[event.id] = event;
+            }
             set({
-              events: result,
+              eventsById: merged,
+              events: Object.values(merged),
               loading: false,
               lastFetchedRange: { startDate: bufferedStartDate, endDate: bufferedEndDate },
               lastFetchSignature: fetchSignature,
