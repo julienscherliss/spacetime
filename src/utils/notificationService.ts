@@ -330,10 +330,8 @@ function computeDesired(
     }
   }
 
-  // ── FAMILY B: Batched overdue stream ──
-  let overdueCandidateCount = 0;
+  // ── FAMILY B: Single overdue heartbeat ──
   if (overdueTasks.length > 0 && persistentOverdue) {
-    // Build summary title
     const sortedOverdue = [...overdueTasks].sort((a, b) => (a.priority as number) - (b.priority as number)).reverse();
     const firstName = sortedOverdue[0].title;
     const count = sortedOverdue.length;
@@ -345,33 +343,28 @@ function computeDesired(
       : sortedOverdue.map(t => t.title).join(', ');
     const overdueTaskIds = sortedOverdue.map(t => t.id).join(',');
 
-    log('overdue batch eligible tasks', {
+    const heartbeatFireMs = Date.now() + OVERDUE_HEARTBEAT_DELAY_MS;
+
+    log('overdue heartbeat eligible', {
       count,
       taskIds: sortedOverdue.map(t => t.id),
       titles: sortedOverdue.map(t => t.title),
+      heartbeatFireAt: new Date(heartbeatFireMs).toISOString(),
     });
 
-    const availableSlots = Math.min(OVERDUE_WINDOW_MINUTES, MAX_OVERDUE_TOTAL);
-
-    for (let i = 0; i < availableSlots; i++) {
-      const fireTimeMs = nextFutureMinuteMs + i * 60_000;
-
-      const absoluteMinute = absoluteMinuteFromMs(fireTimeMs);
-      const nId = overdueBatchNotificationId(absoluteMinute);
-
-      urgentCandidates.push({
-        id: nId,
-        data: {
-          title: `OVERDUE — ${summaryTitle}`,
-          body: summaryBody,
-          fireAt: new Date(fireTimeMs),
-          taskId: overdueTaskIds,
-          type: 'overdue',
-          isUrgent: true,
-        },
-      });
-      overdueCandidateCount++;
-    }
+    urgentCandidates.push({
+      id: OVERDUE_HEARTBEAT_ID,
+      data: {
+        title: `OVERDUE — ${summaryTitle}`,
+        body: summaryBody,
+        fireAt: new Date(heartbeatFireMs),
+        taskId: overdueTaskIds,
+        type: 'overdue',
+        isUrgent: true,
+      },
+    });
+  } else if (persistentOverdue) {
+    log('overdue heartbeat — no eligible tasks, will cancel any pending heartbeat');
   }
 
   urgentCandidates.sort((a, b) => a.data.fireAt.getTime() - b.data.fireAt.getTime());
@@ -395,9 +388,8 @@ function computeDesired(
     desired.set(candidate.id, candidate.data);
   }
 
-  const overdueKeptCount = [...desired.values()].filter((item) => item.type === 'overdue').length;
+  const hasOverdueHeartbeat = desired.has(OVERDUE_HEARTBEAT_ID) ? 1 : 0;
   const skippedDueToCap = Math.max(0, urgentCandidates.length + futureCandidates.length - desired.size);
-  const overdueSkippedDueToCap = Math.max(0, overdueCandidateCount - overdueKeptCount);
 
   log('queue allocation', {
     reservedUrgentSlots: RESERVED_URGENT_SLOTS,
@@ -406,11 +398,10 @@ function computeDesired(
     totalDesired: desired.size,
     cap: MAX_TASK_NOTIFICATIONS,
     evictedFuture: evictedFutureReminders,
-    overdueKept: overdueKeptCount,
-    overdueSkipped: overdueSkippedDueToCap,
-    overdueBatchMode: true,
+    overdueHeartbeat: hasOverdueHeartbeat,
     overdueEligibleTasks: overdueTasks.length,
   });
+
 
   return {
     desired,
