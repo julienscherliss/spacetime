@@ -7,7 +7,9 @@ import type { MobilityMode } from '@/store/timezoneStore';
 import { toast } from 'sonner';
 import { HelpPanel } from './HelpPanel';
 import { ColorSchemePanel } from './ColorSchemePanel';
+import { AdminPanel } from './AdminPanel';
 import { isNativePlatform } from '@/utils/nativePlatform';
+import { useSubscription } from '@/hooks/useSubscription';
 import type { NotificationLevel } from '@/utils/notificationService';
 import {
   getPermissionStatus,
