@@ -219,44 +219,6 @@ export function GravityCanvas() {
         }
       }
 
-      // === Event horizon ===
-      const bhGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 70);
-      bhGrad.addColorStop(0, 'rgba(0, 0, 0, 1)');
-      bhGrad.addColorStop(0.55, 'rgba(0, 0, 0, 1)');
-      bhGrad.addColorStop(0.8, 'rgba(0, 0, 0, 0.6)');
-      bhGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.beginPath();
-      ctx.arc(cx, cy, 70, 0, Math.PI * 2);
-      ctx.fillStyle = bhGrad;
-      ctx.fill();
-
-      // === Photon ring ===
-      ctx.save();
-      ctx.globalCompositeOperation = 'screen';
-      const photonPulse = 0.2 + Math.sin(time.current * 3) * 0.05;
-      ctx.beginPath();
-      ctx.arc(cx, cy, 58, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(220, 150, 70, ${photonPulse})`;
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // Second thinner ring
-      ctx.beginPath();
-      ctx.arc(cx, cy, 65, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(200, 130, 60, ${photonPulse * 0.4})`;
-      ctx.lineWidth = 1;
-      ctx.stroke();
-
-      // Outer halo
-      const haloGrad = ctx.createRadialGradient(cx, cy, 50, cx, cy, 140);
-      haloGrad.addColorStop(0, `rgba(200, 120, 50, ${0.1 + Math.sin(time.current * 2) * 0.03})`);
-      haloGrad.addColorStop(0.4, 'rgba(180, 100, 40, 0.04)');
-      haloGrad.addColorStop(1, 'rgba(140, 70, 30, 0)');
-      ctx.beginPath();
-      ctx.arc(cx, cy, 140, 0, Math.PI * 2);
-      ctx.fillStyle = haloGrad;
-      ctx.fill();
-      ctx.restore();
 
       // === Cursor gravity well indicator ===
       if (mouse.current.active) {
