@@ -403,10 +403,8 @@ function computeDesired(
     desired,
     candidateCount: urgentCandidates.length + futureCandidates.length,
     keptCount: desired.size,
-    overdueCandidateCount,
-    overdueKeptCount,
+    overdueHeartbeat: hasOverdueHeartbeat === 1,
     skippedDueToCap,
-    overdueSkippedDueToCap,
     evictedFutureReminders,
   };
 }
