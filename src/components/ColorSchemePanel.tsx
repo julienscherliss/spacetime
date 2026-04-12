@@ -267,8 +267,6 @@ export function ColorSchemePanel() {
                 </div>
               </div>
             )}
-              </div>
-            </div>
 
             {/* Actions */}
             <div className="flex gap-1.5 pt-2 border-t border-border/20">
