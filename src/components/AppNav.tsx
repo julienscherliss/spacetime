@@ -303,6 +303,7 @@ function ScanButton() {
   const didLongPress = useRef(false);
   const pointerMoved = useRef(false);
   const startPos = useRef<{ x: number; y: number } | null>(null);
+  const lastTapTime = useRef(0);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     didLongPress.current = false;
@@ -327,7 +328,15 @@ function ScanButton() {
   const handlePointerUp = useCallback(() => {
     if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
     if (!didLongPress.current && !pointerMoved.current) {
-      window.dispatchEvent(new CustomEvent('fit-to-tasks'));
+      const now = Date.now();
+      if (now - lastTapTime.current < 350) {
+        // Double tap → focus zoom
+        window.dispatchEvent(new CustomEvent('focus-current'));
+        lastTapTime.current = 0;
+      } else {
+        lastTapTime.current = now;
+        window.dispatchEvent(new CustomEvent('fit-to-tasks'));
+      }
     }
     startPos.current = null;
   }, []);
