@@ -106,7 +106,7 @@ export function GravityCanvas() {
       ctx.clearRect(0, 0, w, h);
 
       // Update node positions with gravitational warping
-      const lerp = 0.12; // smoothing
+      const lerp = 0.18;
       for (let row = 0; row < GRID_ROWS; row++) {
         for (let col = 0; col < GRID_COLS; col++) {
           const n = grid[row][col];
