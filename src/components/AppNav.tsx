@@ -6,6 +6,7 @@ import { useLibraryStore } from '@/store/libraryStore';
 import { useTimezoneStore, getTzAbbr } from '@/store/timezoneStore';
 import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useSubscription } from '@/hooks/useSubscription';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import {
   Focus, List, CalendarDays, Grid3X3, Repeat,
