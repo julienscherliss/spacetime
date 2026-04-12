@@ -1128,6 +1128,18 @@ export function TimelineColumn({
                 startHour={START_HOUR}
                 hasRoutineConflict={hasConflict}
                 isCompact={cluster.titleFits === false}
+                onZoomIn={cluster.titleFits === false && onZoomToCluster ? () => {
+                  const viewportH = window.innerHeight * 0.7;
+                  const singleCluster: TaskCluster = {
+                    type: 'single',
+                    tasks: [task],
+                    startMin: timeToMinutes(task.time!),
+                    endMin: timeToMinutes(task.time!) + (task.duration || 30),
+                  };
+                  const targetZoom = getZoomForCluster(singleCluster, viewportH);
+                  const centerMin = (singleCluster.startMin + singleCluster.endMin) / 2;
+                  onZoomToCluster(singleCluster, targetZoom, centerMin);
+                } : undefined}
               />
             );
           });

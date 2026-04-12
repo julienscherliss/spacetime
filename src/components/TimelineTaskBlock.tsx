@@ -32,6 +32,7 @@ interface TimelineTaskBlockProps {
   startHour: number;
   hasRoutineConflict?: boolean;
   isCompact?: boolean;
+  onZoomIn?: () => void;
 }
 
 const DRAG_THRESHOLD = 8;
@@ -74,6 +75,7 @@ export function TimelineTaskBlock({
   startHour,
   hasRoutineConflict = false,
   isCompact = false,
+  onZoomIn,
 }: TimelineTaskBlockProps) {
   const taskMinutes = task.time ? parseInt(task.time.split(':')[0], 10) * 60 + parseInt(task.time.split(':')[1], 10) : 0;
   const taskEndMinutes = taskMinutes + (task.duration || 30);
@@ -358,7 +360,11 @@ export function TimelineTaskBlock({
         } else {
           clickTimerRef.current = setTimeout(() => {
             clickTimerRef.current = null;
-            handleTaskClick(task.id);
+            if (isCompact && onZoomIn) {
+              onZoomIn();
+            } else {
+              handleTaskClick(task.id);
+            }
           }, 250);
         }
       }
