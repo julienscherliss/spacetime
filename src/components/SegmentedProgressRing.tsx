@@ -23,7 +23,7 @@ export function SegmentedProgressRing({
   const filledCount = Math.round(progress * segments);
   const holdFilledCount = Math.round(holdProgress * segments);
 
-  const holdColor = color === 'destructive' ? 'hsl(var(--destructive))' : 'hsl(var(--primary))';
+  const holdColor = color === 'destructive' ? 'hsl(var(--foreground))' : 'hsl(var(--primary))';
   const barColor = color === 'destructive' ? 'hsl(0 72% 51%)' : undefined; // red-500 equivalent
 
   return (
