@@ -238,10 +238,8 @@ interface DesiredComputation {
   desired: Map<number, DesiredNotification>;
   candidateCount: number;
   keptCount: number;
-  overdueCandidateCount: number;
-  overdueKeptCount: number;
+  overdueHeartbeat: boolean;
   skippedDueToCap: number;
-  overdueSkippedDueToCap: number;
   evictedFutureReminders: number;
 }
 
