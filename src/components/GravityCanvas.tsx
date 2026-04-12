@@ -6,11 +6,11 @@ import { useRef, useEffect } from 'react';
  * Inspired by the rubber-sheet analogy of general relativity.
  */
 
-const GRID_COLS = 60;
-const GRID_ROWS = 40;
-const CENTER_MASS = 12000;
-const CURSOR_MASS = 4000;
-const WARP_SOFTENING = 80; // prevents singularity at center
+const GRID_COLS = 50;
+const GRID_ROWS = 35;
+const CENTER_MASS = 80000;
+const CURSOR_MASS = 30000;
+const WARP_SOFTENING = 50;
 
 interface Node {
   restX: number;
