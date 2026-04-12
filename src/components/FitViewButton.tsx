@@ -121,6 +121,16 @@ export function FitViewButton({ tasks, scrollRef, hourHeight, setScale, resetZoo
   const pointerMoved = useRef(false);
   const startPos = useRef<{ x: number; y: number } | null>(null);
   const lastTapTime = useRef(0);
+
+  const fitToTasks = useCallback(() => {
+    const bounds = getTaskBounds(tasks);
+    const viewH = usableViewport();
+    const timelineTop = getTimelineDocTop(scrollRef);
+
+    if (!bounds) {
+      // No tasks — center on current time
+      const nowDocY = minToDocY(nowMinutes, hourHeight, timelineTop);
+      const targetScroll = Math.max(0, nowDocY - getStickyOffset() - viewH / 2);
       animateZoom(hourHeight, hourHeight, window.scrollY, targetScroll, 250, () => {});
       return;
     }
