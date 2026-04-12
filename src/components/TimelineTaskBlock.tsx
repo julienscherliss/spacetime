@@ -85,12 +85,13 @@ export function TimelineTaskBlock({
   const isDraggingThis = useScheduledDragStore((s) => s.active && s.taskId === task.id);
   const isCarried = useCarryStore((s) => s.carried?.taskId === task.id);
 
-  const borderLeftColor = {
-    0: 'hsl(var(--priority-0) / 0.3)',
+  const priorityBorderColor = {
+    0: '',
     1: 'hsl(var(--priority-1) / 0.5)',
     2: 'hsl(var(--priority-2) / 0.6)',
     3: 'hsl(var(--priority-3) / 0.7)',
-  }[task.priority];
+  }[task.priority] || '';
+  const hasPriorityColor = task.priority >= 1;
 
   const snapTo15 = (mins: number) => Math.round(mins / 15) * 15;
 
