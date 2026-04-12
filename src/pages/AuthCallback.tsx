@@ -4,14 +4,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { debugLogAuthEnv } from '@/utils/authEnvironment';
 
 /**
- * OAuth callback trampoline page.
+ * OAuth callback page for WEB flows only.
  *
- * On the WEB this page extracts the hash tokens and sets the session,
- * then redirects to /.
+ * Native Capacitor flows use the custom URL scheme (com.spaacetime.app://)
+ * and never hit this page — they're handled by the deep-link listener in nativeAuth.ts.
  *
- * On a NATIVE Capacitor build the external browser lands here (HTTPS URL).
- * We redirect to the custom URL scheme so the OS hands control back to the
- * native app, which picks up the tokens via the deep-link listener.
+ * This page handles:
+ * - Hash-based implicit flow tokens
+ * - PKCE authorization codes
  */
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -25,29 +25,7 @@ export default function AuthCallback() {
     const hasTokens = hash.includes('access_token');
     const hasCode = search.includes('code=');
 
-    // Try native redirect — if the custom scheme is registered, the OS
-    // will open the app.  If not (desktop browser), nothing happens and
-    // we fall through to the web flow below.
-    if (hasTokens || hasCode) {
-      const nativeUrl = `spaacetime://auth/callback${search}${hash}`;
-
-      console.debug('[AuthCallback] attempting native redirect:', nativeUrl);
-
-      // Attempt to open the native app
-      const iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      iframe.src = nativeUrl;
-      document.body.appendChild(iframe);
-
-      // Also try window.location for browsers that block iframe schemes
-      setTimeout(() => {
-        window.location.href = nativeUrl;
-      }, 100);
-    }
-
-    // Web fallback: if we're still here after a moment, handle tokens
-    // directly in the browser session.
-    const timer = setTimeout(async () => {
+    const handleCallback = async () => {
       if (hasTokens) {
         const params = new URLSearchParams(hash.slice(1));
         const access_token = params.get('access_token');
@@ -63,8 +41,10 @@ export default function AuthCallback() {
         }
       }
       navigate('/', { replace: true });
-    }, 500);
+    };
 
+    // Small delay to allow any native scheme redirect to fire first
+    const timer = setTimeout(handleCallback, 300);
     return () => clearTimeout(timer);
   }, [navigate]);
 
