@@ -386,6 +386,12 @@ export function applyScheme(scheme: ColorScheme) {
   root.style.setProperty('--scheme-accent', scheme.accent);
   root.style.setProperty('--locked-fill', scheme.lockedFill);
   root.style.setProperty('--locked-text', scheme.lockedText);
+  // Override site highlight color (now line, date, routines, overdue, etc.)
+  root.style.setProperty('--primary', scheme.accent);
+  root.style.setProperty('--accent', scheme.accent);
+  root.style.setProperty('--ring', scheme.accent);
+  root.style.setProperty('--sidebar-primary', scheme.accent);
+  root.style.setProperty('--sidebar-ring', scheme.accent);
 }
 
 /** Call on app boot to restore the persisted scheme */
