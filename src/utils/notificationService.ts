@@ -672,11 +672,11 @@ export async function syncTaskNotifications(
       scheduled: notificationsToSchedule.length,
       canceled: toCancel.length,
       unchanged,
+      overdueHeartbeat: desiredResult.overdueHeartbeat,
       overdueScheduled,
       overdueCanceled,
       queueAfter: desired.size,
       evictedFuture: desiredResult.evictedFutureReminders,
-      reservedUrgentSlots: RESERVED_URGENT_SLOTS,
       cap: MAX_TASK_NOTIFICATIONS,
     });
 
