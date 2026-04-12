@@ -206,9 +206,9 @@ export function WeekView() {
     >
       {/* Bold title row with navigation — scrolls away naturally */}
       <div className="pt-3 pb-2 flex items-center gap-2">
-        <h2 className="text-lg sm:text-xl font-display font-bold text-foreground tracking-tight">
+        <button onClick={goToCurrentWeek} className="text-lg sm:text-xl font-display font-bold text-foreground tracking-tight hover:text-primary transition-colors">
           {monthLabel}
-        </h2>
+        </button>
         <button
           onClick={() => setWeekOffset(o => o - 1)}
           className="p-1 rounded-sm text-muted-foreground/40 hover:text-foreground transition-colors"
