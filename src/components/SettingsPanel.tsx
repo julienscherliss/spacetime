@@ -7,7 +7,9 @@ import type { MobilityMode } from '@/store/timezoneStore';
 import { toast } from 'sonner';
 import { HelpPanel } from './HelpPanel';
 import { ColorSchemePanel } from './ColorSchemePanel';
+import { AdminPanel } from './AdminPanel';
 import { isNativePlatform } from '@/utils/nativePlatform';
+import { useSubscription } from '@/hooks/useSubscription';
 import type { NotificationLevel } from '@/utils/notificationService';
 import {
   getPermissionStatus,
@@ -28,6 +30,8 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const nativeRuntime = isNativePlatform();
   const [search, setSearch] = useState('');
   const [helpOpen, setHelpOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
+  const { isAdmin } = useSubscription();
   const [pwMode, setPwMode] = useState<'closed' | 'change' | 'reset'>('closed');
   const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
@@ -567,6 +571,19 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             )}
           </div>
 
+          {/* Admin (only for admins) */}
+          {isAdmin && (
+            <div className="border-t border-border/30 pt-4">
+              <button
+                onClick={() => setAdminOpen(true)}
+                className="w-full flex items-center justify-center gap-2 bg-primary/5 border border-primary/20 rounded-sm p-3 min-h-[48px] text-[12px] font-mono tracking-wider text-primary hover:text-primary hover:bg-primary/10 transition-colors"
+              >
+                <Shield size={14} strokeWidth={1.5} />
+                <span>ADMIN</span>
+              </button>
+            </div>
+          )}
+
           {/* Help */}
           <div className="border-t border-border/30 pt-4">
             <button
@@ -582,6 +599,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
     </div>
 
     <HelpPanel open={helpOpen} onClose={() => setHelpOpen(false)} />
+    <AdminPanel open={adminOpen} onClose={() => setAdminOpen(false)} />
     </>
   );
 }
