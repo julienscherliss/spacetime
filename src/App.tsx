@@ -47,6 +47,8 @@ const App = () => {
   const darkMode = useTimezoneStore((s) => s.darkMode);
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
+    // Sync color scheme store with dark mode and apply matching scheme
+    useColorSchemeStore.getState().setDarkMode(darkMode);
   }, [darkMode]);
 
   // Register deep-link listener for native OAuth callback
