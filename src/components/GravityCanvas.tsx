@@ -155,9 +155,9 @@ export function GravityCanvas() {
         // Line color based on average row strain
         const midNode = grid[row][Math.floor(GRID_COLS / 2)];
         const rowDist = Math.sqrt((midNode.restX - cx) ** 2 + (midNode.restY - cy) ** 2);
-        const intensity = Math.max(0.02, Math.min(0.12, 0.15 - rowDist / (Math.max(w, h) * 1.2)));
-        ctx.strokeStyle = `rgba(140, 110, 80, ${intensity})`;
-        ctx.lineWidth = 0.6;
+        const intensity = Math.max(0.06, Math.min(0.45, 0.5 - rowDist / (Math.max(w, h) * 0.8)));
+        ctx.strokeStyle = `rgba(160, 120, 80, ${intensity})`;
+        ctx.lineWidth = 1;
         ctx.stroke();
       }
 
