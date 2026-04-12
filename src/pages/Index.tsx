@@ -58,7 +58,9 @@ const Index = () => {
 
   // Switch to focus view when a notification is tapped
   useEffect(() => {
-    const cleanup = setupNotificationTapListener((_taskId) => {
+    if (!isNativePlatform()) return;
+    const cleanup = setupNotificationTapListener((taskId) => {
+      console.log('[Index] notification tap → switching to focus view, taskId:', taskId);
       useTaskStore.getState().setViewMode('focus');
     });
     return cleanup;
