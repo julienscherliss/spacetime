@@ -114,8 +114,8 @@ export function AppNav() {
           ref={moreRef}
         >
           <div className="flex items-center justify-between px-2 py-1.5">
-            {/* Fit/scan button with long-press menu */}
-            <ScanButton />
+            {/* Fit/scan button with long-press menu — hidden on focus & month */}
+            {viewMode !== 'focus' && viewMode !== 'calendar' ? <ScanButton /> : <div className="w-[44px]" />}
 
             {/* View tabs — primary action */}
             <div className="flex items-center bg-muted/50 rounded-md p-0.5 gap-0.5">
@@ -303,6 +303,7 @@ function ScanButton() {
   const didLongPress = useRef(false);
   const pointerMoved = useRef(false);
   const startPos = useRef<{ x: number; y: number } | null>(null);
+  const lastTapTime = useRef(0);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     didLongPress.current = false;
@@ -327,7 +328,15 @@ function ScanButton() {
   const handlePointerUp = useCallback(() => {
     if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
     if (!didLongPress.current && !pointerMoved.current) {
-      window.dispatchEvent(new CustomEvent('fit-to-tasks'));
+      const now = Date.now();
+      if (now - lastTapTime.current < 350) {
+        // Double tap → focus zoom
+        window.dispatchEvent(new CustomEvent('focus-current'));
+        lastTapTime.current = 0;
+      } else {
+        lastTapTime.current = now;
+        window.dispatchEvent(new CustomEvent('fit-to-tasks'));
+      }
     }
     startPos.current = null;
   }, []);

@@ -12,6 +12,7 @@ import { BlockedModal } from '@/components/BlockedModal';
 import { useTimeScale, SCALE_MIN, SCALE_MAX } from '@/hooks/useTimeScale';
 import { ChevronLeft, ChevronRight, X, CornerUpLeft } from 'lucide-react';
 import { FitViewButton } from '@/components/FitViewButton';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { AllDayEventStrip } from '@/components/AllDayEventStrip';
 import { TaskCluster } from '@/utils/taskClustering';
 
@@ -25,6 +26,7 @@ export function DayView() {
   const { tasks, routinesEnabled, generateRecurringInstances, navigateToDate, setNavigateToDate,
     currentDate, setCurrentDate,
     listReturnZoom, setListReturnZoom, showListReturn, setShowListReturn, setDaySubMode } = useTaskStore();
+  const isMobile = useIsMobile();
   const { minutes: nowMinutes, dateStr: today } = useCurrentTime(15000);
   const [selectedDate, _setSelectedDate] = useState(navigateToDate || currentDate || today);
 
@@ -301,14 +303,16 @@ export function DayView() {
               <span className="tracking-wider">EXIT ZOOM</span>
             </button>
           )}
-          <FitViewButton
-            tasks={dayTasks}
-            scrollRef={scrollRef as React.RefObject<HTMLElement>}
-            hourHeight={hourHeight}
-            setScale={setScale}
-            resetZoom={resetZoom}
-            nowMinutes={nowMinutes}
-          />
+          {!isMobile && (
+            <FitViewButton
+              tasks={dayTasks}
+              scrollRef={scrollRef as React.RefObject<HTMLElement>}
+              hourHeight={hourHeight}
+              setScale={setScale}
+              resetZoom={resetZoom}
+              nowMinutes={nowMinutes}
+            />
+          )}
         </div>
       </div>
 
