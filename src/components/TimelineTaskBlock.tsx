@@ -440,26 +440,30 @@ export function TimelineTaskBlock({
     >
       <div
         className={`h-full rounded-[2px] transition-all duration-200 ${
-          isActive
-            ? 'bg-card shadow-sm'
-            : hasRoutineConflict
+          isLocked
+            ? 'bg-foreground shadow-sm'
+            : isActive
               ? 'bg-card shadow-sm'
-              : showUnlinkedOutline
-                ? `${task.isRoutine ? 'bg-background/60 backdrop-blur-sm' : 'bg-card'} border-dashed hover:shadow-sm`
-                : `${task.isRoutine ? 'bg-background/60 backdrop-blur-sm' : 'bg-card'} hover:shadow-sm`
+              : hasRoutineConflict
+                ? 'bg-card shadow-sm'
+                : showUnlinkedOutline
+                  ? `${task.isRoutine ? 'bg-background/60 backdrop-blur-sm' : 'bg-card'} border-dashed hover:shadow-sm`
+                  : `${task.isRoutine ? 'bg-background/60 backdrop-blur-sm' : 'bg-card'} hover:shadow-sm`
         } ${isOverdue && !hasRoutineConflict ? '' : ''}`}
         style={{
-          border: hasPriorityColor && !isActive && !hasRoutineConflict
-            ? `1.5px solid ${priorityBorderColor}`
-            : isActive
-              ? '1px solid hsl(var(--primary) / 0.2)'
-              : hasRoutineConflict
-                ? '1px solid hsl(var(--routine-conflict) / 0.5)'
-                : isOverdue
-                  ? '1px solid hsl(var(--destructive) / 0.3)'
-                  : showUnlinkedOutline
-                    ? '1px dashed hsl(var(--border) / 0.6)'
-                    : '1px solid hsl(var(--task-border))',
+          border: isLocked
+            ? '1.5px solid hsl(var(--foreground))'
+            : hasPriorityColor && !isActive && !hasRoutineConflict
+              ? `1.5px solid ${priorityBorderColor}`
+              : isActive
+                ? '1px solid hsl(var(--primary) / 0.2)'
+                : hasRoutineConflict
+                  ? '1px solid hsl(var(--routine-conflict) / 0.5)'
+                  : isOverdue
+                    ? '1px solid hsl(var(--destructive) / 0.3)'
+                    : showUnlinkedOutline
+                      ? '1px dashed hsl(var(--border) / 0.6)'
+                      : '1px solid hsl(var(--task-border))',
           boxShadow: '0 1px 2px 0 hsl(var(--foreground) / 0.04)',
         }}
       >
@@ -487,7 +491,7 @@ export function TimelineTaskBlock({
                 <div className="flex-1 min-w-0">
                   {canShowTitle && (
                     <div className={`text-[12px] font-mono leading-tight truncate ${
-                      task.completed ? 'line-through text-muted-foreground/40' : isOverdue ? 'text-destructive/70 font-medium' : isActive ? 'text-foreground font-medium' : 'text-foreground/75'
+                      task.completed ? 'line-through text-muted-foreground/40' : isLocked ? 'text-background font-medium' : isOverdue ? 'text-destructive/70 font-medium' : isActive ? 'text-foreground font-medium' : 'text-foreground/75'
                     }`}>
                       {task.title}
                     </div>
