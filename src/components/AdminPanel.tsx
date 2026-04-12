@@ -42,6 +42,7 @@ export function AdminPanel({ open, onClose }: Props) {
   const [users, setUsers] = useState<UserSub[]>([]);
   const [promos, setPromos] = useState<PromoCode[]>([]);
   const [loading, setLoading] = useState(false);
+  const [expandedUser, setExpandedUser] = useState<string | null>(null);
 
   // New promo form
   const [newCode, setNewCode] = useState('');
