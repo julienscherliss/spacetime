@@ -3,6 +3,7 @@ import { useTaskStore } from '@/store/taskStore';
 import { useCalendarStore } from '@/store/calendarStore';
 import { AppNav } from '@/components/AppNav';
 import { setupNotificationTapListener } from '@/utils/notificationService';
+import { isNativePlatform } from '@/utils/nativePlatform';
 import { FocusView } from '@/components/FocusView';
 import { DayView } from '@/components/DayView';
 import { DayListView } from '@/components/DayListView';
