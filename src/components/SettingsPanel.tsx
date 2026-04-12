@@ -212,7 +212,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                       {email || 'Google account'}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5">
+                   <div className="flex items-center gap-1.5">
                     <button
                       onClick={refreshCalendarData}
                       className="p-2 text-muted-foreground/40 hover:text-foreground transition-colors rounded-sm hover:bg-muted/40"
@@ -220,6 +220,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                     >
                       <RefreshCw size={14} strokeWidth={1.5} />
                     </button>
+                    {!nativeRuntime && (
                     <button
                       onClick={disconnect}
                       className="p-2 text-muted-foreground/40 hover:text-destructive transition-colors rounded-sm hover:bg-destructive/5"
@@ -227,6 +228,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                     >
                       <Unplug size={14} strokeWidth={1.5} />
                     </button>
+                    )}
                   </div>
                 </div>
 

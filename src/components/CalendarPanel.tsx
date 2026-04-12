@@ -99,6 +99,7 @@ export function CalendarPanel() {
                       >
                         <RefreshCw size={12} strokeWidth={1.5} />
                       </button>
+                      {!isNativePlatform() && (
                       <button
                         onClick={disconnect}
                         className="p-1.5 text-muted-foreground/30 hover:text-destructive transition-colors"
@@ -106,6 +107,7 @@ export function CalendarPanel() {
                       >
                         <Unplug size={12} strokeWidth={1.5} />
                       </button>
+                      )}
                     </div>
                   </div>
 
