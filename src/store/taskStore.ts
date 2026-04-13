@@ -372,24 +372,39 @@ export const useTaskStore = create<TaskState>()(
           void cancelNotificationsForTask(id);
         cancelWebNotificationsForTask(id);
         }
-        set((s) => ({
-          tasks: s.tasks.map((t) => {
-            if (t.id !== id) return t;
-            const mobilityMode = useTimezoneStore.getState().mobilityMode;
-            let merged = { ...t, ...updates };
-            if ('recurrence' in updates) {
-              merged.type = deriveType(merged.recurrence);
-            }
-            if (mobilityMode === 'elite' && 'priority' in updates && updates.priority !== undefined) {
-              const today = new Date().toISOString().split('T')[0];
-              const effectiveMin = computeEffectivePriority(t, today);
-              if ((updates.priority as number) < effectiveMin) {
-                merged.priority = effectiveMin;
+        set((s) => {
+          const sourceTask = s.tasks.find((t) => t.id === id);
+          // Determine linked-group propagation fields
+          const linkedFields: Partial<Task> = {};
+          if (sourceTask?.linked && sourceTask.linkedGroupId) {
+            if ('description' in updates) linkedFields.description = updates.description;
+            if ('subtasks' in updates) linkedFields.subtasks = updates.subtasks;
+          }
+          const hasLinkedUpdates = Object.keys(linkedFields).length > 0;
+
+          return {
+            tasks: s.tasks.map((t) => {
+              // Propagate description/subtasks to linked group members
+              if (hasLinkedUpdates && t.id !== id && t.linked && t.linkedGroupId === sourceTask!.linkedGroupId && !t.completed) {
+                return { ...t, ...linkedFields };
               }
-            }
-            return merged;
-          }),
-        }));
+              if (t.id !== id) return t;
+              const mobilityMode = useTimezoneStore.getState().mobilityMode;
+              let merged = { ...t, ...updates };
+              if ('recurrence' in updates) {
+                merged.type = deriveType(merged.recurrence);
+              }
+              if (mobilityMode === 'elite' && 'priority' in updates && updates.priority !== undefined) {
+                const today = new Date().toISOString().split('T')[0];
+                const effectiveMin = computeEffectivePriority(t, today);
+                if ((updates.priority as number) < effectiveMin) {
+                  merged.priority = effectiveMin;
+                }
+              }
+              return merged;
+            }),
+          };
+        });
       },
 
       updateFutureInstances: (taskId, fromDate, updates) => {
