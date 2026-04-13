@@ -100,7 +100,7 @@ export default function Landing() {
             variants={fadeUp}
             className="font-display text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.1] mb-6"
           >
-            your time
+            rediscover your time
           </motion.h1>
 
           <motion.p
