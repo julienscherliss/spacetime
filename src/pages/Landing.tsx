@@ -1,7 +1,8 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FeatureCarousel } from '@/components/FeatureCarousel';
+// FeatureCarousel temporarily removed — will re-add with video content
+// import { FeatureCarousel } from '@/components/FeatureCarousel';
 import { Layers, ArrowRight, Zap, Target, Calendar, Repeat, BarChart3 } from 'lucide-react';
 import { GravityCanvas } from '@/components/GravityCanvas';
 import faviconUrl from '/favicon.png';
