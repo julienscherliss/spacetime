@@ -88,7 +88,7 @@ export default function Auth() {
       >
         <div className="text-center mb-8">
           <h1 className="text-2xl font-display font-bold text-foreground tracking-tight">
-            SPACE<span className="text-primary"> </span>TIME
+            SPACETIME
           </h1>
           <p className="text-[11px] font-mono text-muted-foreground/50 tracking-widest mt-1">
             {mode === 'login' ? 'SIGN IN' : 'CREATE ACCOUNT'}
