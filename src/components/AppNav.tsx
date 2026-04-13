@@ -287,6 +287,22 @@ export function AppNav() {
             </button>
           )}
 
+          {/* Active subscription — show countdown when ≤7 days until renewal */}
+          {subscription?.status === 'active' && subscription.current_period_end && (() => {
+            const end = new Date(subscription.current_period_end);
+            const now = new Date();
+            const daysLeft = Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+            if (daysLeft > 7) return null;
+            return (
+              <button
+                onClick={() => window.dispatchEvent(new CustomEvent('toggle-subscribe'))}
+                className="text-[8px] font-mono text-primary/70 tracking-wider px-1.5 hover:text-primary hover:bg-primary/5 rounded-md py-1 transition-colors"
+              >
+                {daysLeft}D LEFT
+              </button>
+            );
+          })()}
+
           {/* Cancelling indicator — shows days remaining */}
           {subscription?.status === 'cancelling' && cancellingDaysLeft > 0 && (
             <button

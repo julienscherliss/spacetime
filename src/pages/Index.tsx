@@ -38,7 +38,7 @@ const Index = () => {
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [subscribeOpen, setSubscribeOpen] = useState(false);
-  const { trialDaysLeft, refresh: refreshSub } = useSubscription();
+  const { trialDaysLeft, cancellingDaysLeft, subscription, refresh: refreshSub } = useSubscription();
   const [helpSection, setHelpSection] = useState<string | undefined>();
 
   // Handle Google Calendar OAuth callback
@@ -181,6 +181,8 @@ const Index = () => {
                 trialDaysLeft={trialDaysLeft}
                 trialExpired={false}
                 onAccessGranted={() => { refreshSub(); setSubscribeOpen(false); }}
+                subscriptionStatus={subscription?.status}
+                cancellingDaysLeft={cancellingDaysLeft}
               />
             </motion.div>
           </motion.div>

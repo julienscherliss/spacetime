@@ -8,9 +8,11 @@ interface Props {
   trialDaysLeft: number;
   trialExpired: boolean;
   onAccessGranted: () => void;
+  subscriptionStatus?: string;
+  cancellingDaysLeft?: number;
 }
 
-export function Paywall({ trialDaysLeft, trialExpired, onAccessGranted }: Props) {
+export function Paywall({ trialDaysLeft, trialExpired, onAccessGranted, subscriptionStatus, cancellingDaysLeft }: Props) {
   const [promoCode, setPromoCode] = useState('');
   const [promoLoading, setPromoLoading] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
@@ -96,13 +98,23 @@ export function Paywall({ trialDaysLeft, trialExpired, onAccessGranted }: Props)
             <p className="text-[11px] font-mono text-destructive/70 tracking-wide">
               YOUR FREE TRIAL HAS ENDED
             </p>
+          ) : subscriptionStatus === 'cancelling' && cancellingDaysLeft !== undefined ? (
+            <p className="text-[11px] font-mono text-destructive/70 tracking-wide">
+              {cancellingDaysLeft} DAY{cancellingDaysLeft !== 1 ? 'S' : ''} LEFT OF YOUR SUBSCRIPTION
+            </p>
+          ) : subscriptionStatus === 'active' ? (
+            <p className="text-[11px] font-mono text-primary/70 tracking-wide">
+              MANAGE YOUR SUBSCRIPTION
+            </p>
           ) : (
             <p className="text-[11px] font-mono text-muted-foreground/60 tracking-wide">
               {trialDaysLeft} DAY{trialDaysLeft !== 1 ? 'S' : ''} LEFT IN YOUR FREE TRIAL
             </p>
           )}
           <p className="text-[10px] font-mono text-muted-foreground/40 mt-1">
-            SUBSCRIBE TO CONTINUE USING SPACETIME
+            {subscriptionStatus === 'active' || subscriptionStatus === 'cancelling'
+              ? 'RENEW OR CHANGE YOUR PLAN'
+              : 'SUBSCRIBE TO CONTINUE USING SPACETIME'}
           </p>
         </div>
 
