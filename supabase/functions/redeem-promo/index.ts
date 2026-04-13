@@ -1,5 +1,9 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.101.1";
-import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.101.1/cors";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -40,12 +44,14 @@ Deno.serve(async (req) => {
     );
 
     // Find promo code
-    const { data: promo } = await adminSupabase
+    const { data: promo, error: promoError } = await adminSupabase
       .from("promo_codes")
       .select("*")
       .eq("code", code.toUpperCase())
       .eq("active", true)
       .maybeSingle();
+
+    console.log("Promo lookup:", { code: code.toUpperCase(), promo, promoError });
 
     if (!promo) {
       return new Response(JSON.stringify({ error: "Invalid or expired promo code" }), {
@@ -94,11 +100,25 @@ Deno.serve(async (req) => {
 
     // Apply effect
     if (promo.type === "lifetime") {
-      await adminSupabase.from("subscriptions").update({
-        status: "active",
-        lifetime_access: true,
-        updated_at: new Date().toISOString(),
-      }).eq("user_id", user.id);
+      // Upsert subscription — handles both existing and missing subscription rows
+      const { error: upsertError } = await adminSupabase.from("subscriptions").upsert(
+        {
+          user_id: user.id,
+          status: "active",
+          lifetime_access: true,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id" }
+      );
+
+      console.log("Subscription upsert result:", { userId: user.id, upsertError });
+
+      if (upsertError) {
+        console.error("Failed to grant lifetime access:", upsertError);
+        return new Response(JSON.stringify({ error: "Failed to apply promo code" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
       return new Response(JSON.stringify({ success: true, message: "Lifetime access granted!" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
