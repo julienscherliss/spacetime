@@ -8,7 +8,7 @@ import { useRef, useEffect } from 'react';
 
 const GRID_COLS = 50;
 const GRID_ROWS = 35;
-const CENTER_MASS = 75000;
+const CENTER_MASS = 0;
 const CURSOR_MASS = 36000;
 const WARP_SOFTENING = 80;
 
