@@ -160,6 +160,32 @@ const Index = () => {
       <ArchivePanel open={archiveOpen} onClose={() => setArchiveOpen(false)} />
       <AnalyticsPanel open={analyticsOpen} onClose={() => setAnalyticsOpen(false)} />
       <HelpPanel open={helpOpen} onClose={() => { setHelpOpen(false); setHelpSection(undefined); }} initialSection={helpSection} />
+
+      {/* Subscribe dialog */}
+      <AnimatePresence>
+        {subscribeOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setSubscribeOpen(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Paywall
+                trialDaysLeft={trialDaysLeft}
+                trialExpired={false}
+                onAccessGranted={() => { refreshSub(); setSubscribeOpen(false); }}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
