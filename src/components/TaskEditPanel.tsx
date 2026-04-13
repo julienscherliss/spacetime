@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Priority, RecurrencePattern, CustomUnit } from '@/store/taskStore';
-import { SubtaskList, Subtask, SubtaskListHandle } from '@/components/SubtaskList';
+import { SubtaskList, Subtask } from '@/components/SubtaskList';
 import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar, Inbox, CalendarCheck, XCircle, Paperclip, ExternalLink, Check, AlertTriangle, Tag, Upload, FileText, Bell } from 'lucide-react';
 import { useTimezoneStore } from '@/store/timezoneStore';
 import { supabase } from '@/integrations/supabase/client';
@@ -178,7 +178,6 @@ export function TaskEditPanel() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scopeTriggeredRef = useRef(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
-  const subtaskListRef = useRef<SubtaskListHandle>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isRecurring = !!(task?.recurrence || task?.isRecurrenceInstance) && recurrenceType !== 'none';
