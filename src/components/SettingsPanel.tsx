@@ -701,3 +701,47 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
     </>
   );
 }
+
+function ManageSubscriptionButton() {
+  const [loading, setLoading] = useState(false);
+
+  const handleManage = async () => {
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { toast.error('Please sign in first'); return; }
+
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const res = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/customer-portal`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        }
+      );
+      const data = await res.json();
+      if (data.url) {
+        window.open(data.url, '_blank');
+      } else {
+        toast.error(data.error || 'Failed to open subscription management');
+      }
+    } catch (err) {
+      toast.error('Failed to open subscription management');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleManage}
+      disabled={loading}
+      className="w-full flex items-center justify-center gap-2 bg-muted/30 border border-border/50 rounded-sm p-3 min-h-[48px] text-[12px] font-mono tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-50"
+    >
+      {loading ? 'LOADING...' : 'MANAGE SUBSCRIPTION'}
+    </button>
+  );
+}
