@@ -84,9 +84,9 @@ export default function Landing() {
             animate="visible"
             custom={0}
             variants={fadeUp}
-            className="mb-6"
+            className="mb-8"
           >
-            <div className="inline-block px-3 py-1 border border-border/60 rounded-full mb-6 bg-background/40 backdrop-blur-sm">
+            <div className="inline-block px-3 py-1 border border-border/60 rounded-full bg-background/40 backdrop-blur-sm">
               <span className="text-[9px] font-mono text-muted-foreground/60 tracking-[0.2em]">
                 TIME MANAGEMENT · REIMAGINED
               </span>
