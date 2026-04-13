@@ -378,7 +378,10 @@ export const useTaskStore = create<TaskState>()(
           const linkedFields: Partial<Task> = {};
           if (sourceTask?.linked && sourceTask.linkedGroupId) {
             if ('description' in updates) linkedFields.description = updates.description;
-            if ('subtasks' in updates) linkedFields.subtasks = updates.subtasks;
+            if ('subtasks' in updates && updates.subtasks) {
+              // Sync subtask titles/order but preserve each task's own completion state
+              linkedFields.subtasks = updates.subtasks;
+            }
           }
           const hasLinkedUpdates = Object.keys(linkedFields).length > 0;
 
@@ -386,7 +389,18 @@ export const useTaskStore = create<TaskState>()(
             tasks: s.tasks.map((t) => {
               // Propagate description/subtasks to linked group members
               if (hasLinkedUpdates && t.id !== id && t.linked && t.linkedGroupId === sourceTask!.linkedGroupId && !t.completed) {
-                return { ...t, ...linkedFields };
+                const merged: Partial<Task> = { ...linkedFields };
+                // Preserve the target task's own subtask completion states
+                if (merged.subtasks && t.subtasks) {
+                  const existingCompletionMap = new Map(
+                    (t.subtasks as Subtask[]).map((st) => [st.id, st.completed])
+                  );
+                  merged.subtasks = (merged.subtasks as Subtask[]).map((st) => ({
+                    ...st,
+                    completed: existingCompletionMap.get(st.id) ?? st.completed,
+                  }));
+                }
+                return { ...t, ...merged };
               }
               if (t.id !== id) return t;
               const mobilityMode = useTimezoneStore.getState().mobilityMode;
