@@ -732,6 +732,17 @@ export function TaskEditPanel() {
                   value={title}
                   onChange={(e) => {
                     const val = e.target.value;
+                    const slashIdx = val.indexOf('//');
+                    if (slashIdx !== -1) {
+                      const before = val.substring(0, slashIdx);
+                      const after = val.substring(slashIdx + 2);
+                      setTitle(before);
+                      setTimeout(() => {
+                        subtaskListRef.current?.setInputValue(after);
+                        subtaskListRef.current?.focus();
+                      }, 0);
+                      return;
+                    }
                     setTitle(val);
                     const newLinks = detectNewLinks(val, linkAttachments);
                     if (newLinks.length > 0) {
