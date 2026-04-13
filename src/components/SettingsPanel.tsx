@@ -626,25 +626,44 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 </div>
               );
               if (sub.status === 'active') return (
-                <div className="bg-muted/30 border border-border/50 rounded-sm p-3">
-                  <div className="text-[12px] font-mono text-foreground font-medium">
-                    {sub.plan === 'yearly' ? 'YEARLY' : 'MONTHLY'} PLAN
+                <div className="space-y-2">
+                  <div className="bg-muted/30 border border-border/50 rounded-sm p-3">
+                    <div className="text-[12px] font-mono text-foreground font-medium">
+                      {sub.plan === 'yearly' ? 'YEARLY' : 'MONTHLY'} PLAN
+                    </div>
+                    <div className="text-[10px] font-mono text-muted-foreground/50 mt-0.5">Active subscription</div>
                   </div>
-                  <div className="text-[10px] font-mono text-muted-foreground/50 mt-0.5">Active subscription</div>
+                  <ManageSubscriptionButton />
                 </div>
               );
               if (sub.status === 'trialing') return (
-                <div className="bg-muted/30 border border-border/50 rounded-sm p-3">
-                  <div className="text-[12px] font-mono text-foreground font-medium">FREE TRIAL</div>
-                  <div className="text-[10px] font-mono text-muted-foreground/50 mt-0.5">
-                    {trialDaysLeft} day{trialDaysLeft !== 1 ? 's' : ''} remaining
+                <div className="space-y-2">
+                  <div className="bg-muted/30 border border-border/50 rounded-sm p-3">
+                    <div className="text-[12px] font-mono text-foreground font-medium">FREE TRIAL</div>
+                    <div className="text-[10px] font-mono text-muted-foreground/50 mt-0.5">
+                      {trialDaysLeft} day{trialDaysLeft !== 1 ? 's' : ''} remaining
+                    </div>
                   </div>
+                  <button
+                    onClick={() => window.dispatchEvent(new CustomEvent('toggle-subscribe'))}
+                    className="w-full flex items-center justify-center gap-2 bg-primary/10 border border-primary/20 rounded-sm p-3 min-h-[48px] text-[12px] font-mono tracking-wider text-primary hover:bg-primary/15 transition-colors"
+                  >
+                    SUBSCRIBE NOW
+                  </button>
                 </div>
               );
               return (
-                <div className="bg-destructive/5 border border-destructive/20 rounded-sm p-3">
-                  <div className="text-[12px] font-mono text-destructive font-medium">EXPIRED</div>
-                  <div className="text-[10px] font-mono text-muted-foreground/50 mt-0.5">Subscribe to continue</div>
+                <div className="space-y-2">
+                  <div className="bg-destructive/5 border border-destructive/20 rounded-sm p-3">
+                    <div className="text-[12px] font-mono text-destructive font-medium">EXPIRED</div>
+                    <div className="text-[10px] font-mono text-muted-foreground/50 mt-0.5">Subscribe to continue</div>
+                  </div>
+                  <button
+                    onClick={() => window.dispatchEvent(new CustomEvent('toggle-subscribe'))}
+                    className="w-full flex items-center justify-center gap-2 bg-primary/10 border border-primary/20 rounded-sm p-3 min-h-[48px] text-[12px] font-mono tracking-wider text-primary hover:bg-primary/15 transition-colors"
+                  >
+                    SUBSCRIBE NOW
+                  </button>
                 </div>
               );
             })()}
