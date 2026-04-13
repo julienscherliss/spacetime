@@ -25,11 +25,39 @@ export function AppNav() {
   const { panelOpen: libPanelOpen, setPanelOpen: setLibPanelOpen } = useLibraryStore();
   const libCount = useLibraryStore((s) => s.items.length);
   const { signOut } = useAuth();
-  const { subscription, trialDaysLeft, cancellingDaysLeft } = useSubscription();
+  const { subscription, trialDaysLeft, cancellingDaysLeft, isAdmin } = useSubscription();
+  const [hasNewUsers, setHasNewUsers] = useState(false);
   const waitingCount = tasks.filter((t) => t.inWaitingRoom && !t.completed && !t.archivedAt).length;
   const isMobile = useIsMobile();
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
+
+  // Admin: check for new users
+  useEffect(() => {
+    if (!isAdmin) return;
+    const checkNewUsers = async () => {
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
+      const lastSeen = parseInt(localStorage.getItem('admin_seen_user_count') || '0', 10);
+      if (count && count > lastSeen) {
+        setHasNewUsers(true);
+      }
+    };
+    checkNewUsers();
+  }, [isAdmin]);
+
+  // Clear new-user badge when settings opens
+  useEffect(() => {
+    if (!isAdmin) return;
+    const handler = async () => {
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
+      if (count) localStorage.setItem('admin_seen_user_count', String(count));
+      setHasNewUsers(false);
+    };
+    window.addEventListener('toggle-settings', handler);
+    return () => window.removeEventListener('toggle-settings', handler);
+  }, [isAdmin]);
 
   // Close overflow menu on outside click
   useEffect(() => {
@@ -315,11 +343,16 @@ export function AppNav() {
 
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('toggle-settings'))}
-            className={`${navItemBase} ${navItemInactive} px-2`}
+            className={`${navItemBase} ${navItemInactive} px-2 relative`}
             title="Settings"
           >
             <Settings size={13} strokeWidth={1.5} />
             <span className="text-[9px] text-muted-foreground/25">{getTzAbbr(useTimezoneStore.getState().timezone)}</span>
+            {hasNewUsers && (
+              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-destructive flex items-center justify-center">
+                <X size={6} className="text-destructive-foreground" strokeWidth={3} />
+              </span>
+            )}
           </button>
           <button
             onClick={signOut}
