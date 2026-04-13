@@ -22,6 +22,8 @@ import { HelpPanel } from '@/components/HelpPanel';
 import { InventoryDropZones } from '@/components/InventoryDropZones';
 import { CarryIndicator } from '@/components/CarryIndicator';
 import { AnalyticsPanel } from '@/components/analytics/AnalyticsPanel';
+import { Paywall } from '@/components/Paywall';
+import { useSubscription } from '@/hooks/useSubscription';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNativeNotifications } from '@/hooks/useNativeNotifications';
 import { useWebNotifications } from '@/hooks/useWebNotifications';
@@ -35,6 +37,8 @@ const Index = () => {
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [subscribeOpen, setSubscribeOpen] = useState(false);
+  const { trialDaysLeft, refresh: refreshSub } = useSubscription();
   const [helpSection, setHelpSection] = useState<string | undefined>();
 
   // Handle Google Calendar OAuth callback
@@ -115,6 +119,13 @@ const Index = () => {
     return () => window.removeEventListener('open-help', handler);
   }, []);
 
+  // Listen for subscribe panel toggle
+  useEffect(() => {
+    const handler = () => setSubscribeOpen((o) => !o);
+    window.addEventListener('toggle-subscribe', handler);
+    return () => window.removeEventListener('toggle-subscribe', handler);
+  }, []);
+
   return (
     <div className={`min-h-screen bg-background pb-16 sm:pb-0`}>
       <AppNav />
@@ -149,6 +160,32 @@ const Index = () => {
       <ArchivePanel open={archiveOpen} onClose={() => setArchiveOpen(false)} />
       <AnalyticsPanel open={analyticsOpen} onClose={() => setAnalyticsOpen(false)} />
       <HelpPanel open={helpOpen} onClose={() => { setHelpOpen(false); setHelpSection(undefined); }} initialSection={helpSection} />
+
+      {/* Subscribe dialog */}
+      <AnimatePresence>
+        {subscribeOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setSubscribeOpen(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Paywall
+                trialDaysLeft={trialDaysLeft}
+                trialExpired={false}
+                onAccessGranted={() => { refreshSub(); setSubscribeOpen(false); }}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
