@@ -287,6 +287,16 @@ export function AppNav() {
             </button>
           )}
 
+          {/* Cancelling indicator — shows days remaining */}
+          {subscription?.status === 'cancelling' && cancellingDaysLeft > 0 && (
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('toggle-subscribe'))}
+              className="text-[8px] font-mono text-destructive/70 tracking-wider px-1.5 hover:text-destructive hover:bg-destructive/5 rounded-md py-1 transition-colors"
+            >
+              {cancellingDaysLeft}D LEFT
+            </button>
+          )}
+
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('toggle-settings'))}
             className={`${navItemBase} ${navItemInactive} px-2`}
