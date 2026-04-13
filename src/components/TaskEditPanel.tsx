@@ -931,6 +931,19 @@ export function TaskEditPanel() {
                                 onClick={() => {
                                   setIsLinked(false);
                                   setRecurrenceType('none');
+                                  if (task) {
+                                    updateTask(task.id, {
+                                      linked: false,
+                                      linkedGroupId: undefined,
+                                      recurrence: undefined,
+                                      type: 'one-time',
+                                      isRecurrenceInstance: false,
+                                      recurrenceParentId: undefined,
+                                      seriesId: undefined,
+                                      detachedFromSeries: true,
+                                      isRoutine: false,
+                                    });
+                                  }
                                   if (navigator.vibrate) navigator.vibrate(15);
                                 }}
                                 className="text-[8px] font-mono tracking-wider text-destructive/50 hover:text-destructive/80 transition-colors"
