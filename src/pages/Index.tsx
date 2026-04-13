@@ -37,6 +37,8 @@ const Index = () => {
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [subscribeOpen, setSubscribeOpen] = useState(false);
+  const { trialDaysLeft, refresh: refreshSub } = useSubscription();
   const [helpSection, setHelpSection] = useState<string | undefined>();
 
   // Handle Google Calendar OAuth callback
