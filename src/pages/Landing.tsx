@@ -52,6 +52,8 @@ export default function Landing() {
   const navigate = useNavigate();
 
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
+  const [carouselIndex, setCarouselIndex] = useState<number | null>(null);
+  const carouselRef = useRef<HTMLDivElement>(null);
 
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary/20">
