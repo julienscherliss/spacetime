@@ -40,7 +40,7 @@ export function AppNav() {
       const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
       const lastSeen = parseInt(localStorage.getItem('admin_seen_user_count') || '0', 10);
       if (count && count > lastSeen) {
-        setHasNewUsers(true);
+        setNewUserCount(count - lastSeen);
       }
     };
     checkNewUsers();
@@ -53,7 +53,7 @@ export function AppNav() {
       const { supabase } = await import('@/integrations/supabase/client');
       const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
       if (count) localStorage.setItem('admin_seen_user_count', String(count));
-      setHasNewUsers(false);
+      setNewUserCount(0);
     };
     window.addEventListener('toggle-settings', handler);
     return () => window.removeEventListener('toggle-settings', handler);
