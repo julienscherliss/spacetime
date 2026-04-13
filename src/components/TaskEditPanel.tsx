@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Priority, RecurrencePattern, CustomUnit } from '@/store/taskStore';
-import { SubtaskList, Subtask } from '@/components/SubtaskList';
+import { SubtaskList, Subtask, SubtaskListHandle } from '@/components/SubtaskList';
 import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar, Inbox, CalendarCheck, XCircle, Paperclip, ExternalLink, Check, AlertTriangle, Tag, Upload, FileText, Bell } from 'lucide-react';
 import { useTimezoneStore } from '@/store/timezoneStore';
 import { supabase } from '@/integrations/supabase/client';
@@ -178,6 +178,7 @@ export function TaskEditPanel() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scopeTriggeredRef = useRef(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const subtaskListRef = useRef<SubtaskListHandle>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isRecurring = !!(task?.recurrence || task?.isRecurrenceInstance) && recurrenceType !== 'none';
@@ -756,6 +757,18 @@ export function TaskEditPanel() {
                 value={description}
                 onChange={(e) => {
                   const val = e.target.value;
+                  // Detect // shortcut to jump to subtask input
+                  const slashIdx = val.indexOf('//');
+                  if (slashIdx !== -1) {
+                    const before = val.substring(0, slashIdx);
+                    const after = val.substring(slashIdx + 2);
+                    setDescription(before);
+                    setTimeout(() => {
+                      subtaskListRef.current?.setInputValue(after);
+                      subtaskListRef.current?.focus();
+                    }, 0);
+                    return;
+                  }
                   setDescription(val);
                   const ta = e.target;
                   ta.style.height = 'auto';
@@ -967,7 +980,7 @@ export function TaskEditPanel() {
 
               {/* ─── Subtasks ─── */}
               <div className="mb-4">
-                <SubtaskList subtasks={subtasks} onChange={setSubtasks} />
+                <SubtaskList ref={subtaskListRef} subtasks={subtasks} onChange={setSubtasks} />
               </div>
 
               {/* ─── Attachments ─── */}
