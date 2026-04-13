@@ -96,5 +96,5 @@ export function useSubscription() {
     setSubscription(sub as Subscription | null);
   };
 
-  return { subscription, loading, hasAccess, trialDaysLeft, isAdmin, refresh };
+  return { subscription, loading, hasAccess, trialDaysLeft, cancellingDaysLeft, isAdmin, refresh };
 }
