@@ -25,7 +25,8 @@ export function AppNav() {
   const { panelOpen: libPanelOpen, setPanelOpen: setLibPanelOpen } = useLibraryStore();
   const libCount = useLibraryStore((s) => s.items.length);
   const { signOut } = useAuth();
-  const { subscription, trialDaysLeft, cancellingDaysLeft } = useSubscription();
+  const { subscription, trialDaysLeft, cancellingDaysLeft, isAdmin } = useSubscription();
+  const [hasNewUsers, setHasNewUsers] = useState(false);
   const waitingCount = tasks.filter((t) => t.inWaitingRoom && !t.completed && !t.archivedAt).length;
   const isMobile = useIsMobile();
   const [moreOpen, setMoreOpen] = useState(false);
