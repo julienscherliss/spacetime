@@ -16,7 +16,6 @@ Deno.serve(async (req) => {
 
   if (webhookSecret && sig) {
     try {
-      // Must use async version in Deno runtime
       event = await stripe.webhooks.constructEventAsync(body, sig, webhookSecret);
     } catch (err) {
       console.error("Webhook signature verification failed:", err);
@@ -31,6 +30,15 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
+  function safeTimestamp(ts: unknown): string | null {
+    if (typeof ts !== "number" || ts <= 0) return null;
+    try {
+      return new Date(ts * 1000).toISOString();
+    } catch {
+      return null;
+    }
+  }
+
   try {
     console.log("Processing webhook event:", event.type);
 
@@ -42,7 +50,6 @@ Deno.serve(async (req) => {
         console.log("Checkout completed:", { userId, plan, subscription: session.subscription, customerId: session.customer });
 
         if (userId && session.subscription) {
-          // Upsert to handle cases where subscription row may not exist
           const { error } = await supabase.from("subscriptions").upsert(
             {
               user_id: userId,
@@ -63,7 +70,6 @@ Deno.serve(async (req) => {
         const sub = event.data.object as Stripe.Subscription;
         const customerId = sub.customer as string;
 
-        // Try finding by stripe_customer_id first, then by stripe_subscription_id
         let { data: subRow } = await supabase
           .from("subscriptions")
           .select("user_id")
@@ -80,14 +86,30 @@ Deno.serve(async (req) => {
         }
 
         if (subRow) {
-          const status = sub.status === "active" ? "active" : sub.status === "trialing" ? "trialing" : "cancelled";
-          await supabase.from("subscriptions").update({
+          // Determine status: if cancel_at_period_end is true, user cancelled but still has access
+          let status: string;
+          if (sub.cancel_at_period_end) {
+            status = "cancelling";
+          } else if (sub.status === "active") {
+            status = "active";
+          } else if (sub.status === "trialing") {
+            status = "trialing";
+          } else {
+            status = "cancelled";
+          }
+
+          const updateData: Record<string, unknown> = {
             status,
-            current_period_start: new Date((sub as any).current_period_start * 1000).toISOString(),
-            current_period_end: new Date((sub as any).current_period_end * 1000).toISOString(),
             updated_at: new Date().toISOString(),
-          }).eq("user_id", subRow.user_id);
-          console.log("Subscription updated:", { userId: subRow.user_id, status });
+          };
+
+          const periodStart = safeTimestamp((sub as any).current_period_start);
+          const periodEnd = safeTimestamp((sub as any).current_period_end);
+          if (periodStart) updateData.current_period_start = periodStart;
+          if (periodEnd) updateData.current_period_end = periodEnd;
+
+          await supabase.from("subscriptions").update(updateData).eq("user_id", subRow.user_id);
+          console.log("Subscription updated:", { userId: subRow.user_id, status, periodEnd });
         } else {
           console.warn("No subscription row found for customer:", customerId);
         }
