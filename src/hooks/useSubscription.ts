@@ -57,6 +57,13 @@ export function useSubscription() {
     if (!subscription) return false;
     if (subscription.lifetime_access) return true;
     if (subscription.status === 'active') return true;
+    if (subscription.status === 'cancelling') {
+      // Still has access until current_period_end
+      if (subscription.current_period_end) {
+        return new Date(subscription.current_period_end) > new Date();
+      }
+      return true;
+    }
     if (subscription.status === 'trialing') {
       return new Date(subscription.trial_end) > new Date();
     }
@@ -66,6 +73,14 @@ export function useSubscription() {
   const trialDaysLeft = (() => {
     if (!subscription || subscription.status !== 'trialing') return 0;
     const end = new Date(subscription.trial_end);
+    const now = new Date();
+    return Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+  })();
+
+  const cancellingDaysLeft = (() => {
+    if (!subscription || subscription.status !== 'cancelling') return 0;
+    if (!subscription.current_period_end) return 0;
+    const end = new Date(subscription.current_period_end);
     const now = new Date();
     return Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
   })();
