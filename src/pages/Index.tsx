@@ -22,6 +22,8 @@ import { HelpPanel } from '@/components/HelpPanel';
 import { InventoryDropZones } from '@/components/InventoryDropZones';
 import { CarryIndicator } from '@/components/CarryIndicator';
 import { AnalyticsPanel } from '@/components/analytics/AnalyticsPanel';
+import { Paywall } from '@/components/Paywall';
+import { useSubscription } from '@/hooks/useSubscription';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNativeNotifications } from '@/hooks/useNativeNotifications';
 import { useWebNotifications } from '@/hooks/useWebNotifications';

@@ -277,11 +277,14 @@ export function AppNav() {
           {/* Utility separator */}
           <div className="w-px h-4 bg-border/25 mx-1.5" />
 
-          {/* Trial indicator */}
+          {/* Trial indicator — clickable to open subscription */}
           {subscription?.status === 'trialing' && trialDaysLeft > 0 && (
-            <div className="text-[8px] font-mono text-primary/70 tracking-wider px-1.5">
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('toggle-subscribe'))}
+              className="text-[8px] font-mono text-primary/70 tracking-wider px-1.5 hover:text-primary hover:bg-primary/5 rounded-md py-1 transition-colors"
+            >
               {trialDaysLeft}D TRIAL
-            </div>
+            </button>
           )}
 
           <button
