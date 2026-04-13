@@ -32,6 +32,33 @@ export function AppNav() {
   const [moreOpen, setMoreOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
 
+  // Admin: check for new users
+  useEffect(() => {
+    if (!isAdmin) return;
+    const checkNewUsers = async () => {
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
+      const lastSeen = parseInt(localStorage.getItem('admin_seen_user_count') || '0', 10);
+      if (count && count > lastSeen) {
+        setHasNewUsers(true);
+      }
+    };
+    checkNewUsers();
+  }, [isAdmin]);
+
+  // Clear new-user badge when settings opens
+  useEffect(() => {
+    if (!isAdmin) return;
+    const handler = async () => {
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
+      if (count) localStorage.setItem('admin_seen_user_count', String(count));
+      setHasNewUsers(false);
+    };
+    window.addEventListener('toggle-settings', handler);
+    return () => window.removeEventListener('toggle-settings', handler);
+  }, [isAdmin]);
+
   // Close overflow menu on outside click
   useEffect(() => {
     if (!moreOpen) return;
