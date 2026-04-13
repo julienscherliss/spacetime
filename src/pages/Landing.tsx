@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { FeatureCarousel } from '@/components/FeatureCarousel';
 import { Layers, ArrowRight, Zap, Target, Calendar, Repeat, BarChart3 } from 'lucide-react';
 import { GravityCanvas } from '@/components/GravityCanvas';
 import faviconUrl from '/favicon.png';
