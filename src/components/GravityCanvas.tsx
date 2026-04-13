@@ -8,9 +8,9 @@ import { useRef, useEffect } from 'react';
 
 const GRID_COLS = 50;
 const GRID_ROWS = 35;
-const CENTER_MASS = 80000;
-const CURSOR_MASS = 30000;
-const WARP_SOFTENING = 50;
+const CENTER_MASS = 25000;
+const CURSOR_MASS = 12000;
+const WARP_SOFTENING = 100;
 
 interface Node {
   restX: number;
