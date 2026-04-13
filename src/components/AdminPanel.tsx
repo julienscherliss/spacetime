@@ -115,14 +115,14 @@ export function AdminPanel({ open, onClose }: Props) {
 
   async function resetTrial(userId: string) {
     const trialEnd = new Date();
-    trialEnd.setDate(trialEnd.getDate() + 7);
+    trialEnd.setDate(trialEnd.getDate() + 30);
     await supabase.from('subscriptions').update({
       status: 'trialing',
       trial_start: new Date().toISOString(),
       trial_end: trialEnd.toISOString(),
       updated_at: new Date().toISOString(),
     }).eq('user_id', userId);
-    toast.success('Trial reset (7 days)');
+    toast.success('Trial reset (30 days)');
     loadData();
   }
 
