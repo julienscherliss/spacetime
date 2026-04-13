@@ -180,7 +180,7 @@ export function TaskEditPanel() {
   const titleInputRef = useRef<HTMLInputElement>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const isRecurring = !!(task?.recurrence || task?.isRecurrenceInstance);
+  const isRecurring = !!(task?.recurrence || task?.isRecurrenceInstance) && recurrenceType !== 'none';
 
   useEffect(() => {
     if (task) {
