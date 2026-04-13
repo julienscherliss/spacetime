@@ -134,94 +134,42 @@ export function GravityCanvas() {
       }
 
       // === Draw grid lines ===
-      const CULL_RADIUS = 80; // hide lines/nodes that get sucked too close to center
-
-      // Horizontal lines — break at the cull zone
+      // Horizontal lines
       for (let row = 0; row < GRID_ROWS; row++) {
-        let drawing = false;
         ctx.beginPath();
         for (let col = 0; col < GRID_COLS; col++) {
           const n = grid[row][col];
-          const distToCenter = Math.sqrt((n.x - cx) ** 2 + (n.y - cy) ** 2);
-
-          if (distToCenter < CULL_RADIUS) {
-            // Break the line here
-            if (drawing) {
-              const midNode = grid[row][Math.floor(GRID_COLS / 2)];
-              const rowDist = Math.sqrt((midNode.restX - cx) ** 2 + (midNode.restY - cy) ** 2);
-              const intensity = Math.max(0.06, Math.min(0.45, 0.5 - rowDist / (Math.max(w, h) * 0.8)));
-              ctx.strokeStyle = `rgba(160, 120, 80, ${intensity})`;
-              ctx.lineWidth = 1;
-              ctx.stroke();
-              ctx.beginPath();
-              drawing = false;
-            }
-            continue;
-          }
-
-          if (!drawing) {
-            ctx.moveTo(n.x, n.y);
-            drawing = true;
-          } else {
-            ctx.lineTo(n.x, n.y);
-          }
+          if (col === 0) ctx.moveTo(n.x, n.y);
+          else ctx.lineTo(n.x, n.y);
         }
-        if (drawing) {
-          const midNode = grid[row][Math.floor(GRID_COLS / 2)];
-          const rowDist = Math.sqrt((midNode.restX - cx) ** 2 + (midNode.restY - cy) ** 2);
-          const intensity = Math.max(0.06, Math.min(0.45, 0.5 - rowDist / (Math.max(w, h) * 0.8)));
-          ctx.strokeStyle = `rgba(160, 120, 80, ${intensity})`;
-          ctx.lineWidth = 1;
-          ctx.stroke();
-        }
+        const midNode = grid[row][Math.floor(GRID_COLS / 2)];
+        const rowDist = Math.sqrt((midNode.restX - cx) ** 2 + (midNode.restY - cy) ** 2);
+        const intensity = Math.max(0.06, Math.min(0.45, 0.5 - rowDist / (Math.max(w, h) * 0.8)));
+        ctx.strokeStyle = `rgba(160, 120, 80, ${intensity})`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
       }
 
-      // Vertical lines — break at the cull zone
+      // Vertical lines
       for (let col = 0; col < GRID_COLS; col++) {
-        let drawing = false;
         ctx.beginPath();
         for (let row = 0; row < GRID_ROWS; row++) {
           const n = grid[row][col];
-          const distToCenter = Math.sqrt((n.x - cx) ** 2 + (n.y - cy) ** 2);
-
-          if (distToCenter < CULL_RADIUS) {
-            if (drawing) {
-              const midNode = grid[Math.floor(GRID_ROWS / 2)][col];
-              const colDist = Math.sqrt((midNode.restX - cx) ** 2 + (midNode.restY - cy) ** 2);
-              const intensity = Math.max(0.06, Math.min(0.45, 0.5 - colDist / (Math.max(w, h) * 0.8)));
-              ctx.strokeStyle = `rgba(160, 120, 80, ${intensity})`;
-              ctx.lineWidth = 1;
-              ctx.stroke();
-              ctx.beginPath();
-              drawing = false;
-            }
-            continue;
-          }
-
-          if (!drawing) {
-            ctx.moveTo(n.x, n.y);
-            drawing = true;
-          } else {
-            ctx.lineTo(n.x, n.y);
-          }
+          if (row === 0) ctx.moveTo(n.x, n.y);
+          else ctx.lineTo(n.x, n.y);
         }
-        if (drawing) {
-          const midNode = grid[Math.floor(GRID_ROWS / 2)][col];
-          const colDist = Math.sqrt((midNode.restX - cx) ** 2 + (midNode.restY - cy) ** 2);
-          const intensity = Math.max(0.06, Math.min(0.45, 0.5 - colDist / (Math.max(w, h) * 0.8)));
-          ctx.strokeStyle = `rgba(160, 120, 80, ${intensity})`;
-          ctx.lineWidth = 1;
-          ctx.stroke();
-        }
+        const midNode = grid[Math.floor(GRID_ROWS / 2)][col];
+        const colDist = Math.sqrt((midNode.restX - cx) ** 2 + (midNode.restY - cy) ** 2);
+        const intensity = Math.max(0.06, Math.min(0.45, 0.5 - colDist / (Math.max(w, h) * 0.8)));
+        ctx.strokeStyle = `rgba(160, 120, 80, ${intensity})`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
       }
 
-      // === Draw nodes (intersection dots) ===
+      // === Draw nodes ===
       for (let row = 0; row < GRID_ROWS; row++) {
         for (let col = 0; col < GRID_COLS; col++) {
           const n = grid[row][col];
-          const distToCenter = Math.sqrt((n.x - cx) ** 2 + (n.y - cy) ** 2);
-          if (distToCenter < CULL_RADIUS) continue;
-
           const strain = Math.sqrt((n.x - n.restX) ** 2 + (n.y - n.restY) ** 2);
 
           const baseSize = 1.2;
