@@ -26,7 +26,7 @@ export function AppNav() {
   const libCount = useLibraryStore((s) => s.items.length);
   const { signOut } = useAuth();
   const { subscription, trialDaysLeft, cancellingDaysLeft, isAdmin } = useSubscription();
-  const [hasNewUsers, setHasNewUsers] = useState(false);
+  const [newUserCount, setNewUserCount] = useState(0);
   const waitingCount = tasks.filter((t) => t.inWaitingRoom && !t.completed && !t.archivedAt).length;
   const isMobile = useIsMobile();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -40,7 +40,7 @@ export function AppNav() {
       const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
       const lastSeen = parseInt(localStorage.getItem('admin_seen_user_count') || '0', 10);
       if (count && count > lastSeen) {
-        setHasNewUsers(true);
+        setNewUserCount(count - lastSeen);
       }
     };
     checkNewUsers();
@@ -53,7 +53,7 @@ export function AppNav() {
       const { supabase } = await import('@/integrations/supabase/client');
       const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
       if (count) localStorage.setItem('admin_seen_user_count', String(count));
-      setHasNewUsers(false);
+      setNewUserCount(0);
     };
     window.addEventListener('toggle-settings', handler);
     return () => window.removeEventListener('toggle-settings', handler);
@@ -348,9 +348,9 @@ export function AppNav() {
           >
             <Settings size={13} strokeWidth={1.5} />
             <span className="text-[9px] text-muted-foreground/25">{getTzAbbr(useTimezoneStore.getState().timezone)}</span>
-            {hasNewUsers && (
-              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-destructive flex items-center justify-center">
-                <X size={6} className="text-destructive-foreground" strokeWidth={3} />
+            {newUserCount > 0 && (
+              <span className="absolute -top-1 -right-1.5 min-w-[14px] h-[14px] rounded-full bg-destructive flex items-center justify-center px-0.5">
+                <span className="text-[7px] font-mono font-bold text-destructive-foreground leading-none">{newUserCount}</span>
               </span>
             )}
           </button>
