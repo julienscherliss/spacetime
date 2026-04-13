@@ -35,8 +35,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   if (!user) return <Navigate to="/auth" replace />;
 
   if (!hasAccess) {
-    const trialExpired = trialDaysLeft === 0;
-    return <Paywall trialDaysLeft={trialDaysLeft} trialExpired={trialExpired} onAccessGranted={refresh} />;
+    return <Paywall trialDaysLeft={0} trialExpired={true} onAccessGranted={refresh} />;
   }
 
   return <>{children}</>;
