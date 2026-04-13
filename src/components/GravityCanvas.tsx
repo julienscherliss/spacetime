@@ -145,7 +145,7 @@ export function GravityCanvas() {
         const midNode = grid[row][Math.floor(GRID_COLS / 2)];
         const rowDist = Math.sqrt((midNode.restX - cx) ** 2 + (midNode.restY - cy) ** 2);
         const intensity = Math.max(0.06, Math.min(0.45, 0.5 - rowDist / (Math.max(w, h) * 0.8)));
-        ctx.strokeStyle = `rgba(160, 120, 80, ${intensity})`;
+        ctx.strokeStyle = `rgba(80, 120, 180, ${intensity})`;
         ctx.lineWidth = 1;
         ctx.stroke();
       }
@@ -161,7 +161,7 @@ export function GravityCanvas() {
         const midNode = grid[Math.floor(GRID_ROWS / 2)][col];
         const colDist = Math.sqrt((midNode.restX - cx) ** 2 + (midNode.restY - cy) ** 2);
         const intensity = Math.max(0.06, Math.min(0.45, 0.5 - colDist / (Math.max(w, h) * 0.8)));
-        ctx.strokeStyle = `rgba(160, 120, 80, ${intensity})`;
+        ctx.strokeStyle = `rgba(80, 120, 180, ${intensity})`;
         ctx.lineWidth = 1;
         ctx.stroke();
       }
@@ -177,9 +177,9 @@ export function GravityCanvas() {
           const r = baseSize + strainSize;
 
           const warmth = Math.min(strain / 20, 1);
-          const hue = 40 - warmth * 28;
-          const sat = 10 + warmth * 70;
-          const lum = 50 + warmth * 30;
+          const hue = 210 + warmth * 15;
+          const sat = 15 + warmth * 55;
+          const lum = 50 + warmth * 25;
           const alpha = 0.15 + warmth * 0.6;
 
           ctx.beginPath();
@@ -205,9 +205,9 @@ export function GravityCanvas() {
         const mx = mouse.current.x;
         const my = mouse.current.y;
         const cGrad = ctx.createRadialGradient(mx, my, 0, mx, my, 90);
-        cGrad.addColorStop(0, 'rgba(200, 150, 80, 0.1)');
-        cGrad.addColorStop(0.4, 'rgba(200, 150, 80, 0.04)');
-        cGrad.addColorStop(1, 'rgba(180, 140, 80, 0)');
+        cGrad.addColorStop(0, 'rgba(80, 140, 220, 0.1)');
+        cGrad.addColorStop(0.4, 'rgba(80, 140, 220, 0.04)');
+        cGrad.addColorStop(1, 'rgba(70, 130, 200, 0)');
         ctx.beginPath();
         ctx.arc(mx, my, 90, 0, Math.PI * 2);
         ctx.fillStyle = cGrad;
