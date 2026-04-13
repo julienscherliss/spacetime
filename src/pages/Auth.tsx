@@ -154,8 +154,26 @@ export default function Auth() {
               required
               minLength={6}
               className="w-full bg-muted/40 border border-border rounded-sm pl-8 pr-3 py-2.5 text-sm font-mono text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:ring-1 focus:ring-primary/30"
-            />
+          />
           </div>
+          {mode === 'login' && (
+            <div className="text-right">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!email) { toast.error('Enter your email first'); return; }
+                  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                    redirectTo: `${getAuthRedirectOrigin()}/reset-password`,
+                  });
+                  if (error) toast.error(error.message);
+                  else toast.success('Password reset link sent to your email');
+                }}
+                className="text-[9px] font-mono text-primary/60 hover:text-primary hover:underline transition-colors"
+              >
+                FORGOT PASSWORD?
+              </button>
+            </div>
+          )}
           <button
             type="submit"
             disabled={loading}
