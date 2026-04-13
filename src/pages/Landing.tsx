@@ -42,7 +42,7 @@ const features = [
   },
   {
     icon: Zap,
-    label: 'WAITING ROOM',
+    label: 'LIBRARY',
     desc: 'Tasks without a day. A staging area for things that matter but don\'t have a slot yet.',
   },
 ];
@@ -100,9 +100,7 @@ export default function Landing() {
             variants={fadeUp}
             className="font-display text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.1] mb-6"
           >
-            Your time is a
-            <br />
-            <span className="text-primary">physical space.</span>
+            your time
           </motion.h1>
 
           <motion.p
@@ -110,11 +108,9 @@ export default function Landing() {
             animate="visible"
             custom={2}
             variants={fadeUp}
-            className="text-sm sm:text-base font-mono text-muted-foreground/60 max-w-lg mx-auto leading-relaxed mb-10"
+            className="text-sm font-mono max-w-lg mx-auto leading-relaxed mb-10 sm:text-[sidebar-accent-foreground] text-popover-foreground opacity-85"
           >
-            Spacetime turns your schedule into a tangible landscape. 
-            Drag tasks through time. Watch priorities escalate. 
-            Build routines that stick. No bloat — just clarity.
+            Spacetime turns your schedule into a tangible landscape. A system for testing, refining, and reshaping how you spend your time. Watch priorities escalate. Build routines that stick. Clearing space for what matters.
           </motion.p>
 
           <motion.div
@@ -132,7 +128,7 @@ export default function Landing() {
               <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
             </button>
             <span className="text-[9px] font-mono text-muted-foreground/40 tracking-wider">
-              7 DAYS FREE · THEN $2/MO
+              30 DAYS FREE · THEN $2/MO
             </span>
           </motion.div>
         </div>
@@ -229,10 +225,10 @@ export default function Landing() {
               PRICING
             </span>
             <h2 className="font-display text-2xl font-bold tracking-tight mb-2">
-              Start free. Stay sharp.
+              Fully featured. 30 days free.
             </h2>
             <p className="text-[12px] font-mono text-muted-foreground/50 mb-8">
-              7-day free trial · No credit card required
+              30-day free trial · No credit card required
             </p>
           </motion.div>
 
