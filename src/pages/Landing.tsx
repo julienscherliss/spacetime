@@ -98,7 +98,7 @@ export default function Landing() {
             animate="visible"
             custom={1}
             variants={fadeUp}
-            className="font-display text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.1] mb-6"
+            className="font-display text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.1] mb-8"
           >
             <span className="block text-primary">rediscover</span>
             your time
