@@ -605,12 +605,40 @@ export function TaskEditPanel() {
                 {recurrenceType !== 'none' ? recurrenceLabel(buildRecurrence()) : ''}
               </button>
 
-              {/* Unlink chip — only shown for linked recurring tasks, one-way action */}
-              {recurrenceType !== 'none' && isLinked && (
+              {/* Routine chip — visible when task is recurring */}
+              {recurrenceType !== 'none' && (
+                <button
+                  onClick={() => setIsRoutine(!isRoutine)}
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
+                    isRoutine
+                      ? 'text-foreground/70 bg-muted/40'
+                      : 'text-muted-foreground/35 bg-muted/25 hover:bg-muted/40'
+                  }`}
+                >
+                  {isRoutine ? 'Routine' : 'Not routine'}
+                </button>
+              )}
+
+              {/* Unlink chip — only shown for linked recurring tasks, fully detaches */}
+              {isRecurring && isLinked && (
                 <button
                   onClick={() => {
                     setIsLinked(false);
                     setRecurrenceType('none');
+                    // Mark task as fully detached from its series
+                    if (task) {
+                      updateTask(task.id, {
+                        linked: false,
+                        linkedGroupId: undefined,
+                        recurrence: undefined,
+                        type: 'one-time',
+                        isRecurrenceInstance: false,
+                        recurrenceParentId: undefined,
+                        seriesId: undefined,
+                        detachedFromSeries: true,
+                        isRoutine: false,
+                      });
+                    }
                     if (navigator.vibrate) navigator.vibrate(15);
                   }}
                   className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors text-destructive/60 bg-destructive/10 hover:bg-destructive/15"

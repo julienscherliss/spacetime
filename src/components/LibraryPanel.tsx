@@ -238,6 +238,9 @@ function QuickDuePicker({ dueDate, setDueDate }: { dueDate: string; setDueDate: 
     <Popover>
       <PopoverTrigger asChild>
         <button
+          data-touch-ignore
+          onPointerDown={(e) => e.stopPropagation()}
+          onPointerUp={(e) => e.stopPropagation()}
           className={`p-2 transition-colors shrink-0 ${
             dueDate ? 'text-primary' : 'text-muted-foreground/40 hover:text-muted-foreground'
           }`}
