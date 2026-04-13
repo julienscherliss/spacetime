@@ -24,12 +24,46 @@ const queryClient = new QueryClient();
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
   const { hasAccess, trialDaysLeft, loading: subLoading, refresh } = useSubscription();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [checkoutPolling, setCheckoutPolling] = useState(false);
   useDataSync(user);
 
-  if (authLoading || subLoading) {
+  // Poll subscription after successful checkout to wait for webhook
+  useEffect(() => {
+    if (searchParams.get("checkout") !== "success") return;
+    setCheckoutPolling(true);
+    let attempts = 0;
+    const maxAttempts = 15;
+    const interval = setInterval(async () => {
+      attempts++;
+      await refresh();
+      if (attempts >= maxAttempts) {
+        clearInterval(interval);
+        setCheckoutPolling(false);
+        // Clean up URL
+        searchParams.delete("checkout");
+        setSearchParams(searchParams, { replace: true });
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [searchParams.get("checkout")]);
+
+  // Stop polling once access is granted
+  useEffect(() => {
+    if (hasAccess && checkoutPolling) {
+      setCheckoutPolling(false);
+      searchParams.delete("checkout");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [hasAccess, checkoutPolling]);
+
+  if (authLoading || subLoading || checkoutPolling) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-[11px] font-mono text-muted-foreground/40 tracking-widest">LOADING...</div>
+        <div className="text-[11px] font-mono text-muted-foreground/40 tracking-widest">
+          {checkoutPolling ? 'ACTIVATING YOUR SUBSCRIPTION...' : 'LOADING...'}
+        </div>
       </div>
     );
   }
