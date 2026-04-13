@@ -122,7 +122,7 @@ export const useLibraryStore = create<LibraryState>()(
       items: [],
       categories: [],
       panelOpen: false,
-      sortMode: 'recent',
+      sortMode: 'due',
       filterCategory: 'all',
       filters: {
         category: 'all',
