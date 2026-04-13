@@ -111,6 +111,11 @@ export function Paywall({ trialDaysLeft, trialExpired, onAccessGranted, subscrip
               {trialDaysLeft} DAY{trialDaysLeft !== 1 ? 'S' : ''} LEFT IN YOUR FREE TRIAL
             </p>
           )}
+          <p className="text-[10px] font-mono text-muted-foreground/40 mt-1">
+            {subscriptionStatus === 'active' || subscriptionStatus === 'cancelling'
+              ? 'RENEW OR CHANGE YOUR PLAN'
+              : 'SUBSCRIBE TO CONTINUE USING SPACETIME'}
+          </p>
         </div>
 
         {/* Plans */}
