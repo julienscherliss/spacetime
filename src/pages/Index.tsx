@@ -119,6 +119,13 @@ const Index = () => {
     return () => window.removeEventListener('open-help', handler);
   }, []);
 
+  // Listen for subscribe panel toggle
+  useEffect(() => {
+    const handler = () => setSubscribeOpen((o) => !o);
+    window.addEventListener('toggle-subscribe', handler);
+    return () => window.removeEventListener('toggle-subscribe', handler);
+  }, []);
+
   return (
     <div className={`min-h-screen bg-background pb-16 sm:pb-0`}>
       <AppNav />
