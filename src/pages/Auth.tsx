@@ -24,7 +24,7 @@ export default function Auth() {
     debugLogAuthEnv('emailAuth');
     try {
       if (mode === 'signup') {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -33,6 +33,12 @@ export default function Auth() {
           },
         });
         if (error) throw error;
+        // Supabase returns a fake user with no identities for existing accounts
+        if (data.user && data.user.identities && data.user.identities.length === 0) {
+          toast.error('An account with this email already exists. Try signing in or resetting your password.');
+          setMode('login');
+          return;
+        }
         toast.success('Check your email to verify your account');
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
