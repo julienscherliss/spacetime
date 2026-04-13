@@ -155,13 +155,7 @@ export default function Landing() {
             </span>
           </motion.div>
 
-          {/* Feature carousel */}
-          <div ref={carouselRef} className="mb-10">
-            <FeatureCarousel
-              activeIndex={carouselIndex}
-              onSlideChange={(i) => setCarouselIndex(i)}
-            />
-          </div>
+          {/* Feature carousel — temporarily removed, waiting for video assets */}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {features.map((f, i) => (
@@ -172,10 +166,7 @@ export default function Landing() {
                 viewport={{ once: true, margin: '-40px' }}
                 custom={i}
                 variants={fadeUp}
-                onClick={() => {
-                  setCarouselIndex(i);
-                  carouselRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }}
+                onClick={() => {}}
                 className="group border border-border/40 rounded-md p-5 hover:border-foreground/20 transition-all text-left cursor-pointer"
               >
                 <f.icon
