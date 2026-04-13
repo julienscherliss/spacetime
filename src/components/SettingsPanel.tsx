@@ -36,7 +36,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const [search, setSearch] = useState('');
   const [helpOpen, setHelpOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
-  const { isAdmin, subscription, trialDaysLeft } = useSubscription();
+  const { isAdmin, subscription, trialDaysLeft, cancellingDaysLeft } = useSubscription();
   const [pwMode, setPwMode] = useState<'closed' | 'change' | 'reset'>('closed');
   const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
