@@ -26,7 +26,7 @@ export function AppNav() {
   const libCount = useLibraryStore((s) => s.items.length);
   const { signOut } = useAuth();
   const { subscription, trialDaysLeft, cancellingDaysLeft, isAdmin } = useSubscription();
-  const [hasNewUsers, setHasNewUsers] = useState(false);
+  const [newUserCount, setNewUserCount] = useState(0);
   const waitingCount = tasks.filter((t) => t.inWaitingRoom && !t.completed && !t.archivedAt).length;
   const isMobile = useIsMobile();
   const [moreOpen, setMoreOpen] = useState(false);
