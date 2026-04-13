@@ -1,8 +1,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.101.1";
-import Stripe from "https://esm.sh/stripe@17.7.0?target=deno";
-import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.101.1/cors";
+import Stripe from "https://esm.sh/stripe@18.5.0";
 
-const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, { apiVersion: "2024-12-18.acacia" });
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
+const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, { apiVersion: "2025-08-27.basil" });
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -37,7 +41,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check for existing Stripe customer or create one
     const adminSupabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -56,13 +59,15 @@ Deno.serve(async (req) => {
         metadata: { user_id: user.id },
       });
       customerId = customer.id;
+      // Upsert subscription with stripe_customer_id
       await adminSupabase
         .from("subscriptions")
-        .update({ stripe_customer_id: customerId })
-        .eq("user_id", user.id);
+        .upsert(
+          { user_id: user.id, stripe_customer_id: customerId },
+          { onConflict: "user_id" }
+        );
     }
 
-    // Get the origin for redirect
     const origin = req.headers.get("origin") || "https://spaacetime.lovable.app";
 
     const priceId = plan === "monthly"
