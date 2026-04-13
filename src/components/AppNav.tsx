@@ -343,11 +343,16 @@ export function AppNav() {
 
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('toggle-settings'))}
-            className={`${navItemBase} ${navItemInactive} px-2`}
+            className={`${navItemBase} ${navItemInactive} px-2 relative`}
             title="Settings"
           >
             <Settings size={13} strokeWidth={1.5} />
             <span className="text-[9px] text-muted-foreground/25">{getTzAbbr(useTimezoneStore.getState().timezone)}</span>
+            {hasNewUsers && (
+              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-destructive flex items-center justify-center">
+                <X size={6} className="text-destructive-foreground" strokeWidth={3} />
+              </span>
+            )}
           </button>
           <button
             onClick={signOut}
