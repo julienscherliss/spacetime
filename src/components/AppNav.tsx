@@ -25,7 +25,7 @@ export function AppNav() {
   const { panelOpen: libPanelOpen, setPanelOpen: setLibPanelOpen } = useLibraryStore();
   const libCount = useLibraryStore((s) => s.items.length);
   const { signOut } = useAuth();
-  const { subscription, trialDaysLeft } = useSubscription();
+  const { subscription, trialDaysLeft, cancellingDaysLeft } = useSubscription();
   const waitingCount = tasks.filter((t) => t.inWaitingRoom && !t.completed && !t.archivedAt).length;
   const isMobile = useIsMobile();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -284,6 +284,16 @@ export function AppNav() {
               className="text-[8px] font-mono text-primary/70 tracking-wider px-1.5 hover:text-primary hover:bg-primary/5 rounded-md py-1 transition-colors"
             >
               {trialDaysLeft}D TRIAL
+            </button>
+          )}
+
+          {/* Cancelling indicator — shows days remaining */}
+          {subscription?.status === 'cancelling' && cancellingDaysLeft > 0 && (
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('toggle-subscribe'))}
+              className="text-[8px] font-mono text-destructive/70 tracking-wider px-1.5 hover:text-destructive hover:bg-destructive/5 rounded-md py-1 transition-colors"
+            >
+              {cancellingDaysLeft}D LEFT
             </button>
           )}
 

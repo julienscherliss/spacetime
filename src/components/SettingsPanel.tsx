@@ -36,7 +36,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const [search, setSearch] = useState('');
   const [helpOpen, setHelpOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
-  const { isAdmin, subscription, trialDaysLeft } = useSubscription();
+  const { isAdmin, subscription, trialDaysLeft, cancellingDaysLeft } = useSubscription();
   const [pwMode, setPwMode] = useState<'closed' | 'change' | 'reset'>('closed');
   const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
@@ -634,6 +634,22 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                     <div className="text-[10px] font-mono text-muted-foreground/50 mt-0.5">Active subscription</div>
                   </div>
                   <ManageSubscriptionButton />
+                </div>
+              );
+              if (sub.status === 'cancelling') return (
+                <div className="space-y-2">
+                  <div className="bg-destructive/5 border border-destructive/20 rounded-sm p-3">
+                    <div className="text-[12px] font-mono text-destructive font-medium">CANCELLING</div>
+                    <div className="text-[10px] font-mono text-muted-foreground/50 mt-0.5">
+                      {cancellingDaysLeft} day{cancellingDaysLeft !== 1 ? 's' : ''} remaining
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => window.dispatchEvent(new CustomEvent('toggle-subscribe'))}
+                    className="w-full flex items-center justify-center gap-2 bg-primary/10 border border-primary/20 rounded-sm p-3 min-h-[48px] text-[12px] font-mono tracking-wider text-primary hover:bg-primary/15 transition-colors"
+                  >
+                    RESUBSCRIBE
+                  </button>
                 </div>
               );
               if (sub.status === 'trialing') return (
