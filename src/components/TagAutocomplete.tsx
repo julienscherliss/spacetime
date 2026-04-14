@@ -145,14 +145,13 @@ export function TagAutocomplete({ inputValue, onSelectTag, onSubmitAfterSelect, 
         e.preventDefault();
         setSelectedIdx((i) => Math.max(i - 1, 0));
       } else if (e.key === ' ' || e.key === 'Tab' || (e.key === 'Enter' && suggestions.length > 0)) {
-        const tagMatch = inputValue.match(/#\S*$/);
+        const tagMatch = inputValue.match(/#\S*$/) || inputValue.match(/\/\/\S*$/);
         if (tagMatch && suggestions[selectedIdx]) {
           e.preventDefault();
-          const cleaned = inputValue.replace(/#\S*$/, '').trim();
+          const cleaned = inputValue.replace(/#\S*$/, '').replace(/\/\/\S*$/, '').trim();
           onSelectTag(suggestions[selectedIdx], cleaned);
           setSuggestions([]);
           if (e.key === 'Enter' && onSubmitAfterSelect) {
-            // Small delay so state updates before submit
             setTimeout(() => onSubmitAfterSelect(), 0);
           }
         }
