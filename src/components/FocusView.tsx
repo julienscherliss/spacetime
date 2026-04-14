@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
 import { useCurrentTime, timeToMinutes, formatTime12h } from '@/hooks/useCurrentTime';
 import { ChevronUp, ChevronDown, ChevronRight, Paperclip, ExternalLink, Check, Calendar as CalendarIcon, Tag } from 'lucide-react';
+import { AttachmentLightbox } from '@/components/AttachmentLightbox';
 import { TagAutocomplete } from '@/components/TagAutocomplete';
 import { SegmentedProgressRing } from '@/components/SegmentedProgressRing';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -827,16 +828,14 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
       {hasAttachments && (
         <div className="flex flex-wrap gap-1.5">
           {task.attachments!.map((att, i) => (
-            <a
+            <button
               key={i}
-              href={att.url}
-              target="_blank"
-              rel="noopener noreferrer"
+              onClick={() => setFocusLightboxIndex(i)}
               className="inline-flex items-center gap-1.5 px-2.5 py-1.5 border border-border/15 rounded-md text-[10px] font-mono text-foreground/35 hover:text-foreground/55 hover:border-border/30 transition-colors"
             >
               <Paperclip size={9} />
               <span className="truncate max-w-[120px]">{att.name}</span>
-            </a>
+            </button>
           ))}
         </div>
       )}
