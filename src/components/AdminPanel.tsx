@@ -530,20 +530,64 @@ export function AdminPanel({ open, onClose }: Props) {
 
               {/* ── COST / STORAGE ── */}
               <div>
-                <SectionHeader icon={HardDrive} label="Cost & Storage" status={m.cost.totalStorageGB > 1 ? 'warn' : 'ok'} />
+                <SectionHeader icon={HardDrive} label="Quotas & Usage" status={
+                  (m.cost.totalStorageBytes / m.cost.limits.storageBytes) > 0.9 ? 'error' :
+                  (m.cost.totalStorageBytes / m.cost.limits.storageBytes) > 0.7 ? 'warn' : 'ok'
+                } />
+
+                {/* Usage bars */}
+                <div className="border border-border/20 rounded-lg p-4 space-y-4 mb-3">
+                  <UsageBar
+                    label="FILE STORAGE"
+                    used={m.cost.totalStorageBytes}
+                    limit={m.cost.limits.storageBytes}
+                    formatFn={formatBytes}
+                  />
+                  <UsageBar
+                    label="EGRESS (BANDWIDTH)"
+                    used={0}
+                    limit={m.cost.limits.egressBytes}
+                    formatFn={formatBytes}
+                  />
+                  <UsageBar
+                    label="DATABASE"
+                    used={m.cost.estimatedDbBytes}
+                    limit={m.cost.limits.dbSizeBytes}
+                    formatFn={formatBytes}
+                  />
+                  <UsageBar
+                    label="AUTH USERS (MAU)"
+                    used={m.userHealth.totalUsers}
+                    limit={m.cost.limits.mau}
+                  />
+                  <UsageBar
+                    label="EDGE FN INVOCATIONS"
+                    used={0}
+                    limit={m.cost.limits.edgeFunctionInvocations}
+                    formatFn={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}K` : v.toString()}
+                  />
+                  <UsageBar
+                    label="REALTIME MESSAGES"
+                    used={0}
+                    limit={m.cost.limits.realtimeMessages}
+                    formatFn={(v) => v >= 1000000 ? `${(v/1000000).toFixed(1)}M` : v >= 1000 ? `${(v/1000).toFixed(0)}K` : v.toString()}
+                  />
+                </div>
+
+                <div className="text-[7px] font-mono text-muted-foreground/20 mb-3 px-1">
+                  Egress, edge fn invocations & realtime require platform analytics — shown as 0 until tracked.
+                </div>
+
+                {/* Metric cards */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                   <MetricCard
-                    label="STORAGE"
-                    value={m.cost.totalStorageGB < 0.01 ? `${Math.round(m.cost.totalStorageGB * 1024)} MB` : `${m.cost.totalStorageGB.toFixed(2)} GB`}
-                    subtitle={`${m.cost.totalFiles} files`}
+                    label="TOTAL FILES"
+                    value={m.cost.totalFiles}
+                    subtitle={`${m.cost.filesPerUser} per user`}
                   />
                   <MetricCard
                     label="AVG FILE SIZE"
                     value={m.cost.avgFileSize > 1024 ? `${(m.cost.avgFileSize / 1024).toFixed(1)} MB` : `${m.cost.avgFileSize} KB`}
-                  />
-                  <MetricCard
-                    label="FILES / USER"
-                    value={m.cost.filesPerUser}
                   />
                 </div>
 
