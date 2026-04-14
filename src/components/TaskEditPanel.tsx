@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Priority, RecurrencePattern, CustomUnit } from '@/store/taskStore';
 import { SubtaskList, Subtask } from '@/components/SubtaskList';
-import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar, Inbox, CalendarCheck, XCircle, Paperclip, ExternalLink, Check, AlertTriangle, Tag, Upload, FileText, Bell } from 'lucide-react';
+import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar, Inbox, CalendarCheck, XCircle, Paperclip, ExternalLink, Check, AlertTriangle, Tag, Upload, FileText, Bell, PauseCircle } from 'lucide-react';
 import { AttachmentLightbox } from '@/components/AttachmentLightbox';
 import { useTimezoneStore } from '@/store/timezoneStore';
 import { supabase } from '@/integrations/supabase/client';
@@ -1006,9 +1006,9 @@ export function TaskEditPanel() {
                       setEditingTask(null);
                     }}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-sm text-[9px] font-mono tracking-wider text-muted-foreground/50 hover:text-foreground hover:bg-muted/30 transition-colors"
-                    title="Move to Waiting Room">
-                    <Inbox size={12} strokeWidth={1.5} />
-                    WAITING
+                    title="Move to Limbo">
+                    <PauseCircle size={12} strokeWidth={1.5} />
+                    LIMBO
                   </button>
                   <button type="button"
                     onClick={(e) => {

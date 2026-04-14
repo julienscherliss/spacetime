@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Task } from '@/store/taskStore';
-import { X, Clock, Archive, Check } from 'lucide-react';
+import { X, Clock, Archive, Check, PauseCircle } from 'lucide-react';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useCarryStore } from '@/store/carryStore';
@@ -171,9 +171,9 @@ export function WaitingRoom({ open, onClose }: { open: boolean; onClose: () => v
             >
               <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
                 <div className="flex items-center gap-2">
-                  <Clock size={14} className="text-muted-foreground/50" />
+                  <PauseCircle size={14} className="text-muted-foreground/50" />
                   <span className="text-[12px] font-mono tracking-[0.12em] text-foreground font-medium">
-                    WAITING ROOM
+                    LIMBO
                   </span>
                   <span className="text-[11px] font-mono text-muted-foreground/40">{waitingTasks.length}</span>
                 </div>
@@ -185,11 +185,20 @@ export function WaitingRoom({ open, onClose }: { open: boolean; onClose: () => v
                 </button>
               </div>
 
+              <div className="px-4 py-3 border-b border-border/30 bg-muted/20">
+                <p className="text-[11px] font-mono text-muted-foreground/60 leading-relaxed">
+                  Things left undone tend to gather here.
+                </p>
+                <p className="text-[11px] font-mono text-muted-foreground/50 leading-relaxed mt-1">
+                  Take a moment to decide what still matters—and what doesn't.
+                </p>
+              </div>
+
               <div className="flex-1 overflow-y-auto px-2 py-2" style={{ WebkitOverflowScrolling: 'touch' }}>
                 {waitingTasks.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Clock size={24} className="mx-auto text-muted-foreground/15 mb-3" />
-                    <p className="text-[12px] font-mono text-muted-foreground/30 tracking-wider">NO OVERDUE TASKS</p>
+                  <div className="text-center py-12 px-4">
+                    <PauseCircle size={24} className="mx-auto text-muted-foreground/15 mb-3" />
+                    <p className="text-[12px] font-mono text-muted-foreground/30 tracking-wider">LIMBO IS EMPTY</p>
                     <p className="text-[11px] font-mono text-muted-foreground/20 mt-1">tasks that pass their time move here</p>
                   </div>
                 ) : (

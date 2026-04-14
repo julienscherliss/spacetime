@@ -1261,7 +1261,7 @@ export function TimelineColumn({
         >
           <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-sm bg-muted/30 border border-border/30 hover:border-primary/30 hover:bg-muted/50 transition-colors">
             <span className="text-[9px] font-mono text-muted-foreground/50 tracking-wider group-hover:text-primary/60 transition-colors">
-              {waitingRoomCount} task{waitingRoomCount > 1 ? 's' : ''} → WAITING ROOM
+              {waitingRoomCount} task{waitingRoomCount > 1 ? 's' : ''} → LIMBO
             </span>
           </div>
         </div>
