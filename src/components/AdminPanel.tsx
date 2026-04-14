@@ -47,10 +47,22 @@ interface HealthMetrics {
   };
   cost: {
     totalStorageGB: number;
+    totalStorageBytes: number;
     totalFiles: number;
     avgFileSize: number;
     filesPerUser: number;
     topStorageUsers: { id: string; bytes: number }[];
+    estimatedDbBytes: number;
+    limits: {
+      storageBytes: number;
+      egressBytes: number;
+      dbSizeBytes: number;
+      mau: number;
+      edgeFunctionInvocations: number;
+      edgeFunctionCount: number;
+      realtimeMessages: number;
+      realtimeConnections: number;
+    };
   };
   alerts: { severity: 'critical' | 'warning' | 'info'; message: string; source: string; time: string }[];
   users: UserRow[];
@@ -79,6 +91,38 @@ interface PromoCode {
   active: boolean;
   created_at: string;
   expires_at: string | null;
+}
+
+// ─── Usage Bar ───
+
+function UsageBar({ label, used, limit, formatFn }: {
+  label: string;
+  used: number;
+  limit: number;
+  formatFn?: (v: number) => string;
+}) {
+  const pct = limit > 0 ? Math.min((used / limit) * 100, 100) : 0;
+  const fmt = formatFn || ((v: number) => v.toString());
+  const severity = pct > 90 ? 'critical' : pct > 70 ? 'warn' : 'ok';
+  const barColor = severity === 'critical' ? 'bg-destructive' : severity === 'warn' ? 'bg-yellow-500' : 'bg-primary';
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <span className="text-[7px] font-mono text-muted-foreground/40 tracking-[0.15em] uppercase">{label}</span>
+        <span className="text-[8px] font-mono text-muted-foreground/50">
+          {fmt(used)} <span className="text-muted-foreground/25">/ {fmt(limit)}</span>
+        </span>
+      </div>
+      <div className="h-1.5 bg-muted/30 rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+          style={{ width: `${Math.max(pct, 0.5)}%`, opacity: pct < 1 ? 0.3 : 0.7 }}
+        />
+      </div>
+      <div className="text-[7px] font-mono text-muted-foreground/25 text-right">{pct.toFixed(1)}%</div>
+    </div>
+  );
 }
 
 // ─── Helpers ───
@@ -486,20 +530,64 @@ export function AdminPanel({ open, onClose }: Props) {
 
               {/* ── COST / STORAGE ── */}
               <div>
-                <SectionHeader icon={HardDrive} label="Cost & Storage" status={m.cost.totalStorageGB > 1 ? 'warn' : 'ok'} />
+                <SectionHeader icon={HardDrive} label="Quotas & Usage" status={
+                  (m.cost.totalStorageBytes / m.cost.limits.storageBytes) > 0.9 ? 'error' :
+                  (m.cost.totalStorageBytes / m.cost.limits.storageBytes) > 0.7 ? 'warn' : 'ok'
+                } />
+
+                {/* Usage bars */}
+                <div className="border border-border/20 rounded-lg p-4 space-y-4 mb-3">
+                  <UsageBar
+                    label="FILE STORAGE"
+                    used={m.cost.totalStorageBytes}
+                    limit={m.cost.limits.storageBytes}
+                    formatFn={formatBytes}
+                  />
+                  <UsageBar
+                    label="EGRESS (BANDWIDTH)"
+                    used={0}
+                    limit={m.cost.limits.egressBytes}
+                    formatFn={formatBytes}
+                  />
+                  <UsageBar
+                    label="DATABASE"
+                    used={m.cost.estimatedDbBytes}
+                    limit={m.cost.limits.dbSizeBytes}
+                    formatFn={formatBytes}
+                  />
+                  <UsageBar
+                    label="AUTH USERS (MAU)"
+                    used={m.userHealth.totalUsers}
+                    limit={m.cost.limits.mau}
+                  />
+                  <UsageBar
+                    label="EDGE FN INVOCATIONS"
+                    used={0}
+                    limit={m.cost.limits.edgeFunctionInvocations}
+                    formatFn={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}K` : v.toString()}
+                  />
+                  <UsageBar
+                    label="REALTIME MESSAGES"
+                    used={0}
+                    limit={m.cost.limits.realtimeMessages}
+                    formatFn={(v) => v >= 1000000 ? `${(v/1000000).toFixed(1)}M` : v >= 1000 ? `${(v/1000).toFixed(0)}K` : v.toString()}
+                  />
+                </div>
+
+                <div className="text-[7px] font-mono text-muted-foreground/20 mb-3 px-1">
+                  Egress, edge fn invocations & realtime require platform analytics — shown as 0 until tracked.
+                </div>
+
+                {/* Metric cards */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                   <MetricCard
-                    label="STORAGE"
-                    value={m.cost.totalStorageGB < 0.01 ? `${Math.round(m.cost.totalStorageGB * 1024)} MB` : `${m.cost.totalStorageGB.toFixed(2)} GB`}
-                    subtitle={`${m.cost.totalFiles} files`}
+                    label="TOTAL FILES"
+                    value={m.cost.totalFiles}
+                    subtitle={`${m.cost.filesPerUser} per user`}
                   />
                   <MetricCard
                     label="AVG FILE SIZE"
                     value={m.cost.avgFileSize > 1024 ? `${(m.cost.avgFileSize / 1024).toFixed(1)} MB` : `${m.cost.avgFileSize} KB`}
-                  />
-                  <MetricCard
-                    label="FILES / USER"
-                    value={m.cost.filesPerUser}
                   />
                 </div>
 
