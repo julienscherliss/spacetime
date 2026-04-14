@@ -167,18 +167,21 @@ export default function Landing() {
                 custom={i}
                 variants={fadeUp}
                 onClick={() => {}}
-                className="group border border-border/40 rounded-md p-4 sm:p-5 hover:border-foreground/20 transition-all text-left cursor-pointer aspect-square flex flex-col justify-center overflow-hidden"
+                className="group border border-border/40 rounded-md hover:border-foreground/20 transition-all text-left cursor-pointer relative"
+                style={{ paddingBottom: '100%' }}
               >
-                <f.icon
-                  size={16}
-                  className="text-primary/70 mb-3 group-hover:text-primary transition-colors"
-                />
-                <div className="text-[8px] sm:text-[9px] font-mono text-muted-foreground/50 tracking-[0.2em] mb-2">
-                  {f.label}
+                <div className="absolute inset-0 p-4 sm:p-5 flex flex-col justify-center overflow-hidden">
+                  <f.icon
+                    size={16}
+                    className="text-primary/70 mb-3 group-hover:text-primary transition-colors flex-shrink-0"
+                  />
+                  <div className="text-[8px] sm:text-[9px] font-mono text-muted-foreground/50 tracking-[0.2em] mb-2 flex-shrink-0">
+                    {f.label}
+                  </div>
+                  <p className="text-[10px] sm:text-[12px] font-mono text-muted-foreground/70 leading-relaxed line-clamp-4">
+                    {f.desc}
+                  </p>
                 </div>
-                <p className="text-[10px] sm:text-[12px] font-mono text-muted-foreground/70 leading-relaxed">
-                  {f.desc}
-                </p>
               </motion.button>
             ))}
           </div>
