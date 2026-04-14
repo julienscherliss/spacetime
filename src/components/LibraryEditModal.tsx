@@ -206,14 +206,14 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
                 {dueBadge ? dueBadge.text : 'Due'}
               </button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 z-[70]" align="start" onClick={(e) => e.stopPropagation()}>
+            <PopoverContent className="w-auto p-0 z-[70]" align="start" onClick={(e) => e.stopPropagation()} onPointerDownOutside={(e) => e.preventDefault()}>
               <CalendarPicker
                 mode="single"
                 selected={dueDate ? new Date(dueDate + 'T12:00:00') : undefined}
                 onSelect={(d) => {
                   if (d) setDueDate(d.toISOString().split('T')[0]);
                   else setDueDate('');
-                  setShowDuePicker(false);
+                  setTimeout(() => setShowDuePicker(false), 0);
                 }}
                 className="p-3 pointer-events-auto"
               />
