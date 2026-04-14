@@ -64,6 +64,7 @@ export function GravityCanvas() {
       canvas.width = rect.width * dpr;
       canvas.height = rect.height * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      isMobileRef.current = window.innerWidth <= 1024;
       buildGrid();
       // Initialize auto cursor to center
       autoMouse.current.x = rect.width / 2;
