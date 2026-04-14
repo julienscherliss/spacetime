@@ -16,6 +16,12 @@ export interface LibrarySubtask {
   completed: boolean;
 }
 
+export interface LibraryAttachment {
+  name: string;
+  url: string;
+  type: string;
+}
+
 export interface LibraryTask {
   id: string;
   title: string;
@@ -27,6 +33,7 @@ export interface LibraryTask {
   isImportant: boolean;
   dueDate: string | null;
   subtasks: LibrarySubtask[];
+  attachments?: LibraryAttachment[];
   // Legacy compat
   urgency?: TaskUrgency;
 }
@@ -68,7 +75,7 @@ interface LibraryState {
   setFilterCategory: (cat: FilterCategory) => void;
   setFilter: (patch: Partial<FilterState>) => void;
   addItem: (title: string, category?: LibraryCategory, dueDate?: string | null) => void;
-  updateItem: (id: string, updates: Partial<Pick<LibraryTask, 'title' | 'note' | 'category' | 'defaultDuration' | 'isUrgent' | 'isImportant' | 'dueDate' | 'subtasks'>>) => void;
+  updateItem: (id: string, updates: Partial<Pick<LibraryTask, 'title' | 'note' | 'category' | 'defaultDuration' | 'isUrgent' | 'isImportant' | 'dueDate' | 'subtasks' | 'attachments'>>) => void;
   deleteItem: (id: string) => void;
   removeItem: (id: string) => void;
   addFromSchedule: (source: LibraryScheduleSource, duration?: number) => void;

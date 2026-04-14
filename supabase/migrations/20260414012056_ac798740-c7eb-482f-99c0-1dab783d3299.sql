@@ -1,0 +1,1 @@
+ALTER TABLE public.library_items ADD COLUMN attachments jsonb NOT NULL DEFAULT '[]'::jsonb;

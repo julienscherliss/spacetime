@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Priority, RecurrencePattern, CustomUnit } from '@/store/taskStore';
 import { SubtaskList, Subtask } from '@/components/SubtaskList';
 import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar, Inbox, CalendarCheck, XCircle, Paperclip, ExternalLink, Check, AlertTriangle, Tag, Upload, FileText, Bell } from 'lucide-react';
+import { AttachmentLightbox } from '@/components/AttachmentLightbox';
 import { useTimezoneStore } from '@/store/timezoneStore';
 import { supabase } from '@/integrations/supabase/client';
 import { useLibraryStore } from '@/store/libraryStore';
@@ -14,6 +15,7 @@ import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import { DurationPicker } from '@/components/ScrollWheelPicker';
 import { format } from 'date-fns';
 import { DescriptionWithLinks } from '@/components/DescriptionWithLinks';
+import { toast } from 'sonner';
 
 const PRIORITY_LABELS = ['Flex', 'Semi', 'Fixed', 'Lock'] as const;
 const PRIORITY_COLORS = [
@@ -161,6 +163,7 @@ export function TaskEditPanel() {
     (task?.attachments || []).filter((a: any) => a.type !== 'link')
   );
   const [isUploading, setIsUploading] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [reminders, setReminders] = useState<number[]>(task?.reminders || []);
   const [showReminderModal, setShowReminderModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -355,12 +358,18 @@ export function TaskEditPanel() {
     }
   };
 
+  const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0 || !task) return;
     setIsUploading(true);
     try {
       for (const file of Array.from(files)) {
+        if (file.size > MAX_FILE_SIZE) {
+          toast.error(`${file.name} exceeds 25MB limit`);
+          continue;
+        }
         const filePath = `${task.id}/${Date.now()}-${file.name}`;
         const { error } = await supabase.storage.from('task-attachments').upload(filePath, file);
         if (error) throw error;
@@ -896,13 +905,13 @@ export function TaskEditPanel() {
                         if (!att.type.startsWith('image/')) return null;
                         return (
                           <div key={i} className="relative group">
-                            <a href={att.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                            <button onClick={(e) => { e.stopPropagation(); setLightboxIndex(i); }}>
                               <img
                                 src={att.url}
                                 alt={att.name}
                                 className="w-16 h-16 object-cover rounded-md border border-border/30 hover:border-primary/30 transition-colors cursor-zoom-in"
                               />
-                            </a>
+                            </button>
                             <button
                               onClick={() => removeAttachment(i)}
                               className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-card border border-border/50 flex items-center justify-center text-muted-foreground/40 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
@@ -920,11 +929,12 @@ export function TaskEditPanel() {
                     return (
                       <div key={i} className="flex items-center gap-2 py-1.5 group">
                         <FileText size={11} className="text-muted-foreground/40 shrink-0" />
-                        <a href={att.url} target="_blank" rel="noopener noreferrer"
-                          className="flex-1 text-[10px] font-mono text-foreground/60 hover:text-foreground truncate"
-                          onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setLightboxIndex(realIndex); }}
+                          className="flex-1 text-left text-[10px] font-mono text-foreground/60 hover:text-foreground truncate"
+                        >
                           {att.name}
-                        </a>
+                        </button>
                         <button onClick={() => removeAttachment(realIndex)}
                           className="p-0.5 text-muted-foreground/20 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
                           <X size={10} />
@@ -1067,6 +1077,14 @@ export function TaskEditPanel() {
             </div>
           </motion.div>
         </motion.div>
+      )}
+      {lightboxIndex !== null && (
+        <AttachmentLightbox
+          attachments={attachments}
+          currentIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onNavigate={setLightboxIndex}
+        />
       )}
     </AnimatePresence>
   );

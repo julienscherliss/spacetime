@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLibraryStore, LibraryTask, LibrarySubtask } from '@/store/libraryStore';
-import { X, Trash2, Clock, AlertTriangle, Tag, CalendarDays, Plus, Check } from 'lucide-react';
+import { X, Trash2, Clock, AlertTriangle, Tag, CalendarDays, Plus, Check, Paperclip, Upload, FileText } from 'lucide-react';
+import { AttachmentLightbox } from '@/components/AttachmentLightbox';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { TagAutocomplete } from '@/components/TagAutocomplete';
 import { TagPickerMenu } from '@/components/TagPickerMenu';
 import { DurationPicker } from '@/components/ScrollWheelPicker';
@@ -77,6 +80,9 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
   const [dueDate, setDueDate] = useState(item.dueDate || '');
   const [subtasks, setSubtasks] = useState<LibrarySubtask[]>(item.subtasks || []);
   const [newSubtaskText, setNewSubtaskText] = useState('');
+  const [attachments, setAttachments] = useState<{ name: string; url: string; type: string }[]>(item.attachments || []);
+  const [isUploading, setIsUploading] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved'>('idle');
   const [showCatPicker, setShowCatPicker] = useState(false);
@@ -87,6 +93,7 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
   const titleRef = useRef<HTMLInputElement>(null);
   const noteRef = useRef<HTMLTextAreaElement>(null);
   const newSubtaskRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { titleRef.current?.focus(); }, []);
@@ -108,10 +115,46 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
       isImportant,
       dueDate: dueDate || null,
       subtasks,
+      attachments,
     });
     setSaveStatus('saved');
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => onClose(), 400);
+  };
+
+  const MAX_FILE_SIZE = 25 * 1024 * 1024;
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setIsUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        if (file.size > MAX_FILE_SIZE) {
+          toast.error(`${file.name} exceeds 25MB limit`);
+          continue;
+        }
+        const filePath = `library/${item.id}/${Date.now()}-${file.name}`;
+        const { error } = await supabase.storage.from('task-attachments').upload(filePath, file);
+        if (error) throw error;
+        const { data: { publicUrl } } = supabase.storage.from('task-attachments').getPublicUrl(filePath);
+        setAttachments(prev => [...prev, { name: file.name, url: publicUrl, type: file.type }]);
+      }
+    } catch (err) {
+      console.error('Upload failed:', err);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const removeAttachment = async (index: number) => {
+    const att = attachments[index];
+    const pathMatch = att.url.match(/task-attachments\/(.+)$/);
+    if (pathMatch) {
+      await supabase.storage.from('task-attachments').remove([pathMatch[1]]);
+    }
+    setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleDelete = () => {
@@ -348,6 +391,55 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
             />
           </div>
 
+          {/* ─── Attachments ─── */}
+          {attachments.length > 0 && (
+            <div className="mb-3">
+              {attachments.some(a => a.type.startsWith('image/')) && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {attachments.map((att, i) => {
+                    if (!att.type.startsWith('image/')) return null;
+                    return (
+                      <div key={i} className="relative group">
+                        <button onClick={(e) => { e.stopPropagation(); setLightboxIndex(i); }}>
+                          <img src={att.url} alt={att.name} className="w-16 h-16 object-cover rounded-md border border-border/30 hover:border-primary/30 transition-colors cursor-zoom-in" />
+                        </button>
+                        <button onClick={() => removeAttachment(i)} className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-card border border-border/50 flex items-center justify-center text-muted-foreground/40 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                          <X size={8} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {attachments.filter(a => !a.type.startsWith('image/')).map((att, i) => {
+                const realIndex = attachments.indexOf(att);
+                return (
+                  <div key={i} className="flex items-center gap-2 py-1.5 group">
+                    <FileText size={11} className="text-muted-foreground/40 shrink-0" />
+                    <button onClick={(e) => { e.stopPropagation(); setLightboxIndex(realIndex); }} className="flex-1 text-left text-[10px] font-mono text-foreground/60 hover:text-foreground truncate">
+                      {att.name}
+                    </button>
+                    <button onClick={() => removeAttachment(realIndex)} className="p-0.5 text-muted-foreground/20 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                      <X size={10} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileUpload} />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            className="flex items-center gap-1.5 text-[9px] font-mono tracking-wider text-muted-foreground/30 hover:text-foreground transition-colors mb-3 disabled:opacity-50"
+          >
+            {isUploading ? (
+              <><Upload size={10} strokeWidth={1.5} className="animate-pulse" /> Uploading…</>
+            ) : (
+              <><Paperclip size={10} strokeWidth={1.5} /> Add attachment</>
+            )}
+          </button>
+
           {/* ─── Delete ─── */}
           <div className="flex items-center pt-3 border-t border-border/20">
             <div className="flex-1" />
@@ -361,6 +453,14 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
           </div>
         </div>
       </motion.div>
+      {lightboxIndex !== null && (
+        <AttachmentLightbox
+          attachments={attachments}
+          currentIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onNavigate={setLightboxIndex}
+        />
+      )}
     </motion.div>
   );
 }
