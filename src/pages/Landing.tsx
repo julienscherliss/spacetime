@@ -166,13 +166,11 @@ export default function Landing() {
                 viewport={{ once: true, margin: '-40px' }}
                 custom={i}
                 variants={fadeUp}
-                className="relative"
-                style={{ height: 0, paddingBottom: '100%' }}
+                className="relative overflow-hidden border border-border/40 rounded-md hover:border-foreground/20 transition-all cursor-pointer"
+                style={{ aspectRatio: '1 / 1', containIntrinsicSize: '1px', contain: 'size' }}
+                onClick={() => {}}
               >
-                <button
-                  onClick={() => {}}
-                  className="group absolute inset-0 border border-border/40 rounded-md hover:border-foreground/20 transition-all text-left cursor-pointer p-4 sm:p-5 flex flex-col justify-center overflow-hidden"
-                >
+                <div className="absolute inset-0 p-4 sm:p-5 flex flex-col justify-center">
                   <f.icon
                     size={16}
                     className="text-primary/70 mb-3 group-hover:text-primary transition-colors flex-shrink-0"
@@ -183,7 +181,7 @@ export default function Landing() {
                   <p className="text-[10px] sm:text-[12px] font-mono text-muted-foreground/70 leading-relaxed line-clamp-4">
                     {f.desc}
                   </p>
-                </button>
+                </div>
               </motion.div>
             ))}
           </div>
