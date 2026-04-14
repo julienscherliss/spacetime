@@ -157,8 +157,7 @@ export default function Landing() {
 
           {/* Feature carousel — temporarily removed, waiting for video assets */}
 
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4"
-               style={{ gridTemplateRows: 'auto' }}>
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 items-start">
             {features.map((f, i) => (
               <motion.div
                 key={f.label}
@@ -167,7 +166,7 @@ export default function Landing() {
                 viewport={{ once: true, margin: '-40px' }}
                 custom={i}
                 variants={fadeUp}
-                style={{ aspectRatio: '1 / 1', minHeight: 0 }}
+                style={{ aspectRatio: '1 / 1' }}
               >
                 <button
                   onClick={() => {}}
