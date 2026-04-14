@@ -358,6 +358,17 @@ export function HelpPanel({ open, onClose, initialSection }: HelpPanelProps) {
               </button>
             </div>
 
+            {/* Tutorial button */}
+            <div className="px-4 pt-3 pb-1">
+              <button
+                onClick={() => setTutorialOpen(true)}
+                className="w-full flex items-center justify-center gap-2 bg-primary/10 border border-primary/20 rounded-sm p-3 min-h-[44px] text-[12px] font-mono tracking-wider text-primary hover:bg-primary/15 transition-colors"
+              >
+                <Hand size={14} strokeWidth={1.5} />
+                <span>START INTERACTIVE TUTORIAL</span>
+              </button>
+            </div>
+
             {/* Search */}
             <div className="px-4 pt-3 pb-2">
               <div className="relative">
