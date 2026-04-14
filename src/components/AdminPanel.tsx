@@ -93,6 +93,38 @@ interface PromoCode {
   expires_at: string | null;
 }
 
+// ─── Usage Bar ───
+
+function UsageBar({ label, used, limit, formatFn }: {
+  label: string;
+  used: number;
+  limit: number;
+  formatFn?: (v: number) => string;
+}) {
+  const pct = limit > 0 ? Math.min((used / limit) * 100, 100) : 0;
+  const fmt = formatFn || ((v: number) => v.toString());
+  const severity = pct > 90 ? 'critical' : pct > 70 ? 'warn' : 'ok';
+  const barColor = severity === 'critical' ? 'bg-destructive' : severity === 'warn' ? 'bg-yellow-500' : 'bg-primary';
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <span className="text-[7px] font-mono text-muted-foreground/40 tracking-[0.15em] uppercase">{label}</span>
+        <span className="text-[8px] font-mono text-muted-foreground/50">
+          {fmt(used)} <span className="text-muted-foreground/25">/ {fmt(limit)}</span>
+        </span>
+      </div>
+      <div className="h-1.5 bg-muted/30 rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+          style={{ width: `${Math.max(pct, 0.5)}%`, opacity: pct < 1 ? 0.3 : 0.7 }}
+        />
+      </div>
+      <div className="text-[7px] font-mono text-muted-foreground/25 text-right">{pct.toFixed(1)}%</div>
+    </div>
+  );
+}
+
 // ─── Helpers ───
 
 function formatBytes(bytes: number): string {
