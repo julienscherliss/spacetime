@@ -157,7 +157,8 @@ export default function Landing() {
 
           {/* Feature carousel — temporarily removed, waiting for video assets */}
 
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4"
+               style={{ gridTemplateRows: 'auto' }}>
             {features.map((f, i) => (
               <motion.div
                 key={f.label}
@@ -166,12 +167,11 @@ export default function Landing() {
                 viewport={{ once: true, margin: '-40px' }}
                 custom={i}
                 variants={fadeUp}
-                className="relative w-full"
-                style={{ paddingBottom: '100%' }}
+                style={{ aspectRatio: '1 / 1', minHeight: 0 }}
               >
                 <button
                   onClick={() => {}}
-                  className="group absolute inset-0 border border-border/40 rounded-md hover:border-foreground/20 transition-all text-left cursor-pointer p-4 sm:p-5 flex flex-col justify-center overflow-hidden"
+                  className="group border border-border/40 rounded-md hover:border-foreground/20 transition-all text-left cursor-pointer w-full h-full p-4 sm:p-5 flex flex-col justify-center overflow-hidden"
                 >
                   <f.icon
                     size={16}
