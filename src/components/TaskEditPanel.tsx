@@ -365,16 +365,19 @@ export function TaskEditPanel() {
     if (!files || files.length === 0 || !task) return;
     setIsUploading(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
       for (const file of Array.from(files)) {
         if (file.size > MAX_FILE_SIZE) {
           toast.error(`${file.name} exceeds 25MB limit`);
           continue;
         }
-        const filePath = `${task.id}/${Date.now()}-${file.name}`;
+        const filePath = `${user.id}/${task.id}/${Date.now()}-${file.name}`;
         const { error } = await supabase.storage.from('task-attachments').upload(filePath, file);
         if (error) throw error;
-        const { data: { publicUrl } } = supabase.storage.from('task-attachments').getPublicUrl(filePath);
-        setAttachments(prev => [...prev, { name: file.name, url: publicUrl, type: file.type }]);
+        const { data: signedData } = await supabase.storage.from('task-attachments').createSignedUrl(filePath, 60 * 60 * 24 * 365);
+        const url = signedData?.signedUrl || filePath;
+        setAttachments(prev => [...prev, { name: file.name, url, type: file.type, path: filePath }]);
       }
     } catch (err) {
       console.error('Upload failed:', err);
@@ -386,10 +389,13 @@ export function TaskEditPanel() {
 
   const removeAttachment = async (index: number) => {
     const att = attachments[index];
-    // Extract path from URL
-    const pathMatch = att.url.match(/task-attachments\/(.+)$/);
-    if (pathMatch) {
-      await supabase.storage.from('task-attachments').remove([pathMatch[1]]);
+    // Try path field first, then extract from URL
+    const storagePath = (att as any).path || (() => {
+      const pathMatch = att.url.match(/task-attachments\/(.+?)(?:\?|$)/);
+      return pathMatch ? pathMatch[1] : null;
+    })();
+    if (storagePath) {
+      await supabase.storage.from('task-attachments').remove([storagePath]);
     }
     setAttachments(prev => prev.filter((_, i) => i !== index));
   };
