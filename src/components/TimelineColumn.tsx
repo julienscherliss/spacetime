@@ -3,6 +3,7 @@ import { useTaskStore, Task } from '@/store/taskStore';
 import { useCalendarStore, CalendarEvent, eventSpansDate } from '@/store/calendarStore';
 import { useLibraryStore } from '@/store/libraryStore';
 import { useTouchDragStore } from '@/store/touchDragStore';
+import { useTimezoneStore, getTodayInTz } from '@/store/timezoneStore';
 import { useScheduledDragStore } from '@/store/scheduledDragStore';
 import { useCarryStore, isInScrollCooldown } from '@/store/carryStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
@@ -196,8 +197,19 @@ export function TimelineColumn({
     }
   }, [newTaskInput]);
 
+  const showCompletedTasks = useTimezoneStore((s) => s.showCompletedTasks);
+  const timezone = useTimezoneStore((s) => s.timezone);
+  const todayStr = getTodayInTz(timezone);
+  const isPastDay = date < todayStr;
+
   const activeTasks = tasks.filter((t) => !t.completed && t.time);
+  const completedTasks = showCompletedTasks ? tasks.filter((t) => t.completed && t.time) : [];
   const nowTop = ((nowMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT;
+
+  // Count tasks that went to waiting room for past days
+  const waitingRoomCount = isPastDay
+    ? tasks.filter(t => t.inWaitingRoom).length
+    : 0;
 
   // Compute routine conflict IDs when routines are enabled
   const routineConflictIds = useMemo(() => {
