@@ -14,8 +14,30 @@ export function TagAutocomplete({ inputValue, onSelectTag, onSubmitAfterSelect, 
   const [suggestions, setSuggestions] = useState<CategoryDef[]>([]);
   const [selectedIdx, setSelectedIdx] = useState(0);
 
-  // Detect #tag, #tag/subtag, or #tag/sub/sub patterns
+  // Detect #tag, #tag/subtag, #tag/sub/sub, or //subtag patterns
   useEffect(() => {
+    // Check for // shortcut first — searches all subtags across all parents
+    const doubleSlashMatch = inputValue.match(/\/\/(\S*)$/);
+    if (doubleSlashMatch) {
+      const subQuery = doubleSlashMatch[1].toLowerCase();
+      if (!subQuery) {
+        // Show all subtags (categories with /)
+        const allSubtags = categories.filter(c => c.value.includes('/'));
+        setSuggestions(allSubtags.slice(0, 6));
+        setSelectedIdx(0);
+        return;
+      }
+      // Filter all categories (including subtags) by the query matching last segment
+      const filtered = categories.filter(c => {
+        const lastSegmentValue = c.value.split('/').pop() || '';
+        const lastSegmentLabel = c.label.split(' / ').pop()?.toLowerCase() || '';
+        return lastSegmentValue.includes(subQuery) || lastSegmentLabel.includes(subQuery);
+      });
+      setSuggestions(filtered.slice(0, 6));
+      setSelectedIdx(0);
+      return;
+    }
+
     const hashMatch = inputValue.match(/#(\S*)$/);
     if (!hashMatch) {
       setSuggestions([]);
