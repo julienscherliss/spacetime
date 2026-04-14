@@ -114,6 +114,7 @@ export type Database = {
       }
       library_items: {
         Row: {
+          attachments: Json
           category: string | null
           created_at: string
           default_duration: number | null
@@ -127,6 +128,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          attachments?: Json
           category?: string | null
           created_at?: string
           default_duration?: number | null
@@ -140,6 +142,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          attachments?: Json
           category?: string | null
           created_at?: string
           default_duration?: number | null
