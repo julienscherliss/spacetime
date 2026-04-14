@@ -196,17 +196,6 @@ export function TaskEditPanel() {
       setShowCatPicker(false);
       setSaveStatus('idle');
       setAttachments((task.attachments || []).filter((a: any) => a.type !== 'link'));
-      setLinkAttachments(
-        (task.attachments || [])
-          .filter((a: any) => a.type === 'link')
-          .map((a: any) => ({
-            id: a.id || crypto.randomUUID(),
-            url: a.url,
-            displayName: a.name || a.url,
-            domain: a.domain || '',
-            createdAt: a.createdAt || new Date().toISOString(),
-          }))
-      );
       setIsUploading(false);
       setReminders(task.reminders || []);
       setShowReminderModal(false);
@@ -265,27 +254,7 @@ export function TaskEditPanel() {
       dueDate: dueDate || undefined,
       category: taskCategory || undefined,
       reminders: reminders.length > 0 ? reminders : undefined,
-      attachments: [
-        ...attachments,
-        ...linkAttachments.map(l => ({
-          id: l.id,
-          name: l.displayName,
-          url: l.url,
-          type: 'link' as const,
-          domain: l.domain,
-          createdAt: l.createdAt,
-        })),
-      ].length > 0 ? [
-        ...attachments,
-        ...linkAttachments.map(l => ({
-          id: l.id,
-          name: l.displayName,
-          url: l.url,
-          type: 'link' as const,
-          domain: l.domain,
-          createdAt: l.createdAt,
-        })),
-      ] : undefined,
+      attachments: attachments.length > 0 ? attachments : undefined,
     };
   };
 
