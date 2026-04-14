@@ -447,6 +447,8 @@ export function HelpPanel({ open, onClose, initialSection }: HelpPanelProps) {
         </motion.div>
       )}
     </AnimatePresence>
+    <InteractiveTutorial open={tutorialOpen} onClose={() => setTutorialOpen(false)} />
+    </>
   );
 }
 
