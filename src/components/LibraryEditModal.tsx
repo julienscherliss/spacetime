@@ -226,11 +226,12 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
                 ].map((opt) => (
                   <button
                     key={opt.label}
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       const d = new Date();
                       d.setDate(d.getDate() + opt.days);
                       setDueDate(d.toISOString().split('T')[0]);
-                      setShowDuePicker(false);
+                      setTimeout(() => setShowDuePicker(false), 0);
                     }}
                     className="px-2.5 py-1 rounded-sm text-[10px] font-mono tracking-wider text-muted-foreground/60 bg-muted/30 hover:bg-muted/60 hover:text-foreground/70 transition-colors"
                   >
