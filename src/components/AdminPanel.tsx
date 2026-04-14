@@ -47,10 +47,22 @@ interface HealthMetrics {
   };
   cost: {
     totalStorageGB: number;
+    totalStorageBytes: number;
     totalFiles: number;
     avgFileSize: number;
     filesPerUser: number;
     topStorageUsers: { id: string; bytes: number }[];
+    estimatedDbBytes: number;
+    limits: {
+      storageBytes: number;
+      egressBytes: number;
+      dbSizeBytes: number;
+      mau: number;
+      edgeFunctionInvocations: number;
+      edgeFunctionCount: number;
+      realtimeMessages: number;
+      realtimeConnections: number;
+    };
   };
   alerts: { severity: 'critical' | 'warning' | 'info'; message: string; source: string; time: string }[];
   users: UserRow[];
