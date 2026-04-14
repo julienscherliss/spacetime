@@ -731,20 +731,6 @@ export function TaskEditPanel() {
                   value={title}
                   onChange={(e) => {
                     const val = e.target.value;
-                    // Detect // shortcut → convert to #currentTag/ for subtag autocomplete
-                    const slashMatch = val.match(/\/\/(\S*)$/);
-                    if (slashMatch !== null) {
-                      const before = val.substring(0, val.lastIndexOf('//'));
-                      const subQuery = slashMatch[1];
-                      if (taskCategory) {
-                        // Has a tag already — expand to #tag/subquery for subtag autocomplete
-                        setTitle(before + `#${taskCategory}/${subQuery}`);
-                      } else {
-                        // No tag set — just use # for top-level tag autocomplete
-                        setTitle(before + `#${subQuery}`);
-                      }
-                      return;
-                    }
                     setTitle(val);
                     const newLinks = detectNewLinks(val, linkAttachments);
                     if (newLinks.length > 0) {

@@ -14,8 +14,30 @@ export function TagAutocomplete({ inputValue, onSelectTag, onSubmitAfterSelect, 
   const [suggestions, setSuggestions] = useState<CategoryDef[]>([]);
   const [selectedIdx, setSelectedIdx] = useState(0);
 
-  // Detect #tag, #tag/subtag, or #tag/sub/sub patterns
+  // Detect #tag, #tag/subtag, #tag/sub/sub, or //subtag patterns
   useEffect(() => {
+    // Check for // shortcut first — searches all subtags across all parents
+    const doubleSlashMatch = inputValue.match(/\/\/(\S*)$/);
+    if (doubleSlashMatch) {
+      const subQuery = doubleSlashMatch[1].toLowerCase();
+      if (!subQuery) {
+        // Show all subtags (categories with /)
+        const allSubtags = categories.filter(c => c.value.includes('/'));
+        setSuggestions(allSubtags.slice(0, 6));
+        setSelectedIdx(0);
+        return;
+      }
+      // Filter all categories (including subtags) by the query matching last segment
+      const filtered = categories.filter(c => {
+        const lastSegmentValue = c.value.split('/').pop() || '';
+        const lastSegmentLabel = c.label.split(' / ').pop()?.toLowerCase() || '';
+        return lastSegmentValue.includes(subQuery) || lastSegmentLabel.includes(subQuery);
+      });
+      setSuggestions(filtered.slice(0, 6));
+      setSelectedIdx(0);
+      return;
+    }
+
     const hashMatch = inputValue.match(/#(\S*)$/);
     if (!hashMatch) {
       setSuggestions([]);
@@ -123,14 +145,13 @@ export function TagAutocomplete({ inputValue, onSelectTag, onSubmitAfterSelect, 
         e.preventDefault();
         setSelectedIdx((i) => Math.max(i - 1, 0));
       } else if (e.key === ' ' || e.key === 'Tab' || (e.key === 'Enter' && suggestions.length > 0)) {
-        const tagMatch = inputValue.match(/#\S*$/);
+        const tagMatch = inputValue.match(/#\S*$/) || inputValue.match(/\/\/\S*$/);
         if (tagMatch && suggestions[selectedIdx]) {
           e.preventDefault();
-          const cleaned = inputValue.replace(/#\S*$/, '').trim();
+          const cleaned = inputValue.replace(/#\S*$/, '').replace(/\/\/\S*$/, '').trim();
           onSelectTag(suggestions[selectedIdx], cleaned);
           setSuggestions([]);
           if (e.key === 'Enter' && onSubmitAfterSelect) {
-            // Small delay so state updates before submit
             setTimeout(() => onSubmitAfterSelect(), 0);
           }
         }
@@ -151,7 +172,7 @@ export function TagAutocomplete({ inputValue, onSelectTag, onSubmitAfterSelect, 
           key={cat.value}
           onPointerDown={(e) => {
             e.preventDefault(); // prevent blur
-            const cleaned = inputValue.replace(/#\S*$/, '').trim();
+            const cleaned = inputValue.replace(/#\S*$/, '').replace(/\/\/\S*$/, '').trim();
             onSelectTag(cat, cleaned);
           }}
           className={`w-full text-left px-3 py-2 text-[12px] font-mono tracking-wider transition-colors ${
