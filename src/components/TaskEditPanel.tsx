@@ -732,11 +732,6 @@ export function TaskEditPanel() {
                   onChange={(e) => {
                     const val = e.target.value;
                     setTitle(val);
-                    const newLinks = detectNewLinks(val, linkAttachments);
-                    if (newLinks.length > 0) {
-                      setLinkAttachments(prev => [...prev, ...newLinks]);
-                      setTitle(removeUrlsFromText(val, newLinks.map(l => l.url)));
-                    }
                   }}
                   placeholder="Task name…"
                   className="w-full bg-transparent font-display font-bold text-foreground text-lg leading-tight focus:outline-none placeholder:text-muted-foreground/20 mb-1"
@@ -752,49 +747,13 @@ export function TaskEditPanel() {
               </div>
 
               {/* ─── Subtitle / Description (always fully visible) ─── */}
-              <textarea
+              <DescriptionWithLinks
                 value={description}
-                onChange={(e) => {
-                  const val = e.target.value;
+                onChange={(val) => {
                   setDescription(val);
-                  const ta = e.target;
-                  ta.style.height = 'auto';
-                  ta.style.height = ta.scrollHeight + 'px';
-                  // Auto-detect links
-                  const newLinks = detectNewLinks(val, linkAttachments);
-                  if (newLinks.length > 0) {
-                    setLinkAttachments(prev => [...prev, ...newLinks]);
-                    setDescription(removeUrlsFromText(val, newLinks.map(l => l.url)));
-                  }
-                }}
-                onPaste={(e) => {
-                  const pasted = e.clipboardData.getData('text');
-                  // Defer to let onChange fire first, then detect
-                  setTimeout(() => {
-                    const newLinks = detectNewLinks(pasted, linkAttachments);
-                    if (newLinks.length > 0) {
-                      setLinkAttachments(prev => [...prev, ...newLinks]);
-                      setDescription(prev => removeUrlsFromText(prev, newLinks.map(l => l.url)));
-                    }
-                  }, 0);
-                }}
-                ref={(el) => {
-                  if (el) {
-                    el.style.height = 'auto';
-                    el.style.height = el.scrollHeight + 'px';
-                  }
                 }}
                 placeholder="Add details, context, links…"
-                rows={2}
-                className="w-full bg-transparent text-[13px] font-mono text-foreground/60 placeholder:text-muted-foreground/20 focus:outline-none resize-none leading-relaxed mb-2"
               />
-
-              {/* ─── Link Attachments ─── */}
-              {linkAttachments.length > 0 && (
-                <div className="mb-4">
-                  <LinkAttachmentList links={linkAttachments} onChange={setLinkAttachments} />
-                </div>
-              )}
 
               {/* ─── Recurrence expanded ─── */}
               <AnimatePresence>
