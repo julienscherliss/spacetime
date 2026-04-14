@@ -1243,7 +1243,7 @@ export function TimelineColumn({
             top={top}
             height={height}
             showTimeLabels={showTimeLabels}
-            HOUR_HEIGHT={HOUR_HEIGHT}
+            
           />
         );
       })}
