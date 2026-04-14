@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTrackpadSwipe } from '@/hooks/useTrackpadSwipe';
 import { motion } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
+import { useTimezoneStore } from '@/store/timezoneStore';
 import { useCalendarStore } from '@/store/calendarStore';
 import { useTouchDragStore } from '@/store/touchDragStore';
 import { useScheduledDragStore } from '@/store/scheduledDragStore';
@@ -249,7 +250,9 @@ export function DayView() {
 
   const goToToday = () => setSelectedDate(today);
 
-  const dayTasks = tasks.filter((t) => t.date === selectedDate && !t.inWaitingRoom && !t.archivedAt &&
+  const showCompletedSetting = useTimezoneStore((s) => s.showCompletedTasks);
+  const dayTasks = tasks.filter((t) => t.date === selectedDate && !t.inWaitingRoom &&
+    (!t.archivedAt || (showCompletedSetting && t.completed && t.archiveReason === 'completed')) &&
     !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring'));
   const completedCount = dayTasks.filter((t) => t.completed).length;
   const isToday = selectedDate === today;
