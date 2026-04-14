@@ -888,21 +888,50 @@ export function TaskEditPanel() {
 
               {/* ─── Attachments ─── */}
               {attachments.length > 0 && (
-                <div className="space-y-1 mb-3">
-                  {attachments.map((att, i) => (
-                    <div key={i} className="flex items-center gap-2 py-1.5 group">
-                      <FileText size={11} className="text-muted-foreground/40 shrink-0" />
-                      <a href={att.url} target="_blank" rel="noopener noreferrer"
-                        className="flex-1 text-[10px] font-mono text-foreground/60 hover:text-foreground truncate"
-                        onClick={(e) => e.stopPropagation()}>
-                        {att.name}
-                      </a>
-                      <button onClick={() => removeAttachment(i)}
-                        className="p-0.5 text-muted-foreground/20 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
-                        <X size={10} />
-                      </button>
+                <div className="mb-3">
+                  {/* Image thumbnails */}
+                  {attachments.some(a => a.type.startsWith('image/')) && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {attachments.map((att, i) => {
+                        if (!att.type.startsWith('image/')) return null;
+                        return (
+                          <div key={i} className="relative group">
+                            <a href={att.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                              <img
+                                src={att.url}
+                                alt={att.name}
+                                className="w-16 h-16 object-cover rounded-md border border-border/30 hover:border-primary/30 transition-colors cursor-zoom-in"
+                              />
+                            </a>
+                            <button
+                              onClick={() => removeAttachment(i)}
+                              className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-card border border-border/50 flex items-center justify-center text-muted-foreground/40 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X size={8} />
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
-                  ))}
+                  )}
+                  {/* Non-image files */}
+                  {attachments.filter(a => !a.type.startsWith('image/')).map((att, i) => {
+                    const realIndex = attachments.indexOf(att);
+                    return (
+                      <div key={i} className="flex items-center gap-2 py-1.5 group">
+                        <FileText size={11} className="text-muted-foreground/40 shrink-0" />
+                        <a href={att.url} target="_blank" rel="noopener noreferrer"
+                          className="flex-1 text-[10px] font-mono text-foreground/60 hover:text-foreground truncate"
+                          onClick={(e) => e.stopPropagation()}>
+                          {att.name}
+                        </a>
+                        <button onClick={() => removeAttachment(realIndex)}
+                          className="p-0.5 text-muted-foreground/20 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                          <X size={10} />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
               <input
