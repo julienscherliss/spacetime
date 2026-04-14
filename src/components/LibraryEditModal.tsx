@@ -80,6 +80,9 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
   const [dueDate, setDueDate] = useState(item.dueDate || '');
   const [subtasks, setSubtasks] = useState<LibrarySubtask[]>(item.subtasks || []);
   const [newSubtaskText, setNewSubtaskText] = useState('');
+  const [attachments, setAttachments] = useState<{ name: string; url: string; type: string }[]>(item.attachments || []);
+  const [isUploading, setIsUploading] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved'>('idle');
   const [showCatPicker, setShowCatPicker] = useState(false);
@@ -90,6 +93,7 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
   const titleRef = useRef<HTMLInputElement>(null);
   const noteRef = useRef<HTMLTextAreaElement>(null);
   const newSubtaskRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { titleRef.current?.focus(); }, []);
