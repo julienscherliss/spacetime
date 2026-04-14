@@ -391,6 +391,55 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
             />
           </div>
 
+          {/* ─── Attachments ─── */}
+          {attachments.length > 0 && (
+            <div className="mb-3">
+              {attachments.some(a => a.type.startsWith('image/')) && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {attachments.map((att, i) => {
+                    if (!att.type.startsWith('image/')) return null;
+                    return (
+                      <div key={i} className="relative group">
+                        <button onClick={(e) => { e.stopPropagation(); setLightboxIndex(i); }}>
+                          <img src={att.url} alt={att.name} className="w-16 h-16 object-cover rounded-md border border-border/30 hover:border-primary/30 transition-colors cursor-zoom-in" />
+                        </button>
+                        <button onClick={() => removeAttachment(i)} className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-card border border-border/50 flex items-center justify-center text-muted-foreground/40 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                          <X size={8} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {attachments.filter(a => !a.type.startsWith('image/')).map((att, i) => {
+                const realIndex = attachments.indexOf(att);
+                return (
+                  <div key={i} className="flex items-center gap-2 py-1.5 group">
+                    <FileText size={11} className="text-muted-foreground/40 shrink-0" />
+                    <button onClick={(e) => { e.stopPropagation(); setLightboxIndex(realIndex); }} className="flex-1 text-left text-[10px] font-mono text-foreground/60 hover:text-foreground truncate">
+                      {att.name}
+                    </button>
+                    <button onClick={() => removeAttachment(realIndex)} className="p-0.5 text-muted-foreground/20 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                      <X size={10} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileUpload} />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            className="flex items-center gap-1.5 text-[9px] font-mono tracking-wider text-muted-foreground/30 hover:text-foreground transition-colors mb-3 disabled:opacity-50"
+          >
+            {isUploading ? (
+              <><Upload size={10} strokeWidth={1.5} className="animate-pulse" /> Uploading…</>
+            ) : (
+              <><Paperclip size={10} strokeWidth={1.5} /> Add attachment</>
+            )}
+          </button>
+
           {/* ─── Delete ─── */}
           <div className="flex items-center pt-3 border-t border-border/20">
             <div className="flex-1" />
@@ -404,6 +453,14 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
           </div>
         </div>
       </motion.div>
+      {lightboxIndex !== null && (
+        <AttachmentLightbox
+          attachments={attachments}
+          currentIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onNavigate={setLightboxIndex}
+        />
+      )}
     </motion.div>
   );
 }
