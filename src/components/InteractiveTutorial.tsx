@@ -91,6 +91,8 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
   const [priorityTapped, setPriorityTapped] = useState<Set<string>>(new Set());
   // add task state
   const [addTaskTapped, setAddTaskTapped] = useState(false);
+  // Touch feedback
+  const [isTouching, setIsTouching] = useState(false);
 
   const step = STEPS[currentStep];
   const isLastStep = currentStep === STEPS.length - 1;
@@ -107,6 +109,7 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
     setInventoryPlaced(false);
     setPriorityTapped(new Set());
     setAddTaskTapped(false);
+    setIsTouching(false);
     if (holdTimerRef.current) {
       clearInterval(holdTimerRef.current);
       holdTimerRef.current = null;
@@ -172,14 +175,17 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
   // --- Drag to move ---
   const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
     if (step.id !== 'drag-move') return;
+    e.preventDefault();
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     setDragStartPos({ x: clientX, y: clientY });
     setDragOffset({ x: 0, y: 0 });
+    setIsTouching(true);
   };
 
   const handleDragMoveEvent = (e: React.MouseEvent | React.TouchEvent) => {
     if (!dragStartPos || step.id !== 'drag-move') return;
+    e.preventDefault();
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     setDragOffset({
@@ -190,6 +196,7 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
 
   const handleDragEnd = () => {
     if (!dragStartPos || step.id !== 'drag-move') return;
+    setIsTouching(false);
     // Check if over target
     if (dragTargetRef.current && dragTaskRef.current) {
       const targetRect = dragTargetRef.current.getBoundingClientRect();
@@ -208,8 +215,10 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
   };
 
   // --- Hold to pick up (inventory) ---
-  const handleHoldStart = () => {
+  const handleHoldStart = (e: React.MouseEvent | React.TouchEvent) => {
     if (step.id !== 'hold-pickup' || inInventory) return;
+    if ('touches' in e) e.preventDefault();
+    setIsTouching(true);
     holdStartRef.current = Date.now();
     setHoldProgress(0);
     holdTimerRef.current = setInterval(() => {
@@ -221,11 +230,13 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
         holdTimerRef.current = null;
         setInInventory(true);
         setHoldProgress(0);
+        setIsTouching(false);
       }
     }, 16);
   };
 
   const handleHoldEnd = () => {
+    setIsTouching(false);
     if (holdTimerRef.current) {
       clearInterval(holdTimerRef.current);
       holdTimerRef.current = null;
@@ -260,6 +271,17 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
     setStepCompleted(true);
   };
 
+  // Prevent touch scrolling during drag/hold interactions
+  useEffect(() => {
+    const preventScroll = (e: TouchEvent) => {
+      if (isTouching && (step.id === 'drag-move' || step.id === 'hold-pickup')) {
+        e.preventDefault();
+      }
+    };
+    document.addEventListener('touchmove', preventScroll, { passive: false });
+    return () => document.removeEventListener('touchmove', preventScroll);
+  }, [isTouching, step.id]);
+
   if (!open) return null;
 
   const PRIORITY_LEVELS = [
@@ -270,11 +292,11 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
   ];
 
   const TaskBlock = ({ title, duration, priority, priorityColor }: { title: string; duration: string; priority: string; priorityColor: string }) => (
-    <div className="flex items-center gap-2">
-      <div className={`w-1 h-8 rounded-full ${priorityColor}`} />
-      <div>
-        <div className="text-[12px] font-mono text-foreground font-medium">{title}</div>
-        <div className="text-[10px] font-mono text-muted-foreground/50">{duration} · {priority}</div>
+    <div className="flex items-center gap-2 min-w-0">
+      <div className={`w-1 h-8 rounded-full ${priorityColor} shrink-0`} />
+      <div className="min-w-0 flex-1">
+        <div className="text-[12px] font-mono text-foreground font-medium truncate">{title}</div>
+        <div className="text-[10px] font-mono text-muted-foreground/50 truncate">{duration} · {priority}</div>
       </div>
     </div>
   );
@@ -286,20 +308,24 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[80] bg-background/95 backdrop-blur-sm flex flex-col"
+          className="fixed inset-0 z-[80] bg-background/95 backdrop-blur-sm flex flex-col touch-none"
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 shrink-0">
             <span className="text-[10px] font-mono tracking-wider text-muted-foreground/60">
               STEP {currentStep + 1} / {STEPS.length}
             </span>
-            <button onClick={() => { onClose(); setCurrentStep(0); resetStepState(); }} className="text-muted-foreground hover:text-foreground transition-colors">
-              <X size={16} strokeWidth={1.5} />
+            <button 
+              onClick={() => { onClose(); setCurrentStep(0); resetStepState(); }} 
+              className="text-muted-foreground hover:text-foreground transition-colors p-2 -mr-2 touch-manipulation"
+              aria-label="Close tutorial"
+            >
+              <X size={20} strokeWidth={1.5} />
             </button>
           </div>
 
           {/* Progress bar */}
-          <div className="h-1 bg-border/30">
+          <div className="h-1 bg-border/30 shrink-0">
             <motion.div
               className="h-full bg-primary"
               animate={{ width: `${((currentStep + (stepCompleted ? 1 : 0)) / STEPS.length) * 100}%` }}
@@ -308,7 +334,7 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
           </div>
 
           {/* Content */}
-          <div className="flex-1 flex flex-col items-center justify-center px-6 overflow-hidden">
+          <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 overflow-hidden min-h-0">
             <AnimatePresence mode="wait">
               {showSuccess ? (
                 <motion.div
@@ -316,7 +342,7 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0 }}
-                  className="text-center"
+                  className="text-center px-4"
                 >
                   <CheckCircle2 size={48} className="text-primary mx-auto mb-4" />
                   <h2 className="text-lg font-display font-bold text-foreground mb-2">Tutorial Complete!</h2>
@@ -332,23 +358,23 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
                   className="w-full max-w-sm flex flex-col items-center"
                 >
                   {/* Step icon & title */}
-                  <div className="w-12 h-12 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mb-4">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mb-4 shrink-0">
                     {step.icon}
                   </div>
-                  <h3 className="text-sm font-display font-bold text-foreground tracking-tight mb-1">{step.title}</h3>
-                  <p className="text-[11px] font-mono text-muted-foreground/70 text-center mb-6 leading-relaxed max-w-[280px]">
+                  <h3 className="text-sm font-display font-bold text-foreground tracking-tight mb-1 text-center">{step.title}</h3>
+                  <p className="text-[11px] font-mono text-muted-foreground/70 text-center mb-4 sm:mb-6 leading-relaxed max-w-[280px]">
                     {step.instruction}
                   </p>
 
-                  {/* Interactive area */}
-                  <div className="w-full bg-muted/20 border border-border/40 rounded-sm p-4 min-h-[180px] flex flex-col items-center justify-center relative">
+                  {/* Interactive area - mobile optimized */}
+                  <div className="w-full bg-muted/20 border border-border/40 rounded-sm p-3 sm:p-4 flex flex-col items-center justify-center relative min-h-[160px] sm:min-h-[180px]">
 
                     {/* TAP TO EDIT */}
                     {step.id === 'tap-edit' && (
                       <div className="w-full space-y-3">
                         <div
                           onClick={handleTapTask}
-                          className="w-full bg-card border border-border/60 rounded-sm p-3 cursor-pointer hover:border-primary/30 transition-all active:scale-[0.98]"
+                          className="w-full bg-card border border-border/60 rounded-sm p-4 cursor-pointer hover:border-primary/30 transition-all active:scale-[0.98] touch-manipulation"
                         >
                           <TaskBlock title="Morning workout" duration="30 min" priority="FLEX" priorityColor="bg-emerald-500/40" />
                         </div>
@@ -376,20 +402,20 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
                     {(step.id === 'double-tap' || step.id === 'uncomplete') && (
                       <div
                         onClick={handleDoubleTap}
-                        className={`w-full bg-card border rounded-sm p-3 cursor-pointer transition-all active:scale-[0.98] select-none ${
+                        className={`w-full bg-card border rounded-sm p-4 cursor-pointer transition-all active:scale-[0.98] select-none touch-manipulation ${
                           taskCompleted ? 'border-primary/30 bg-primary/5' : 'border-border/60 hover:border-primary/30'
                         }`}
                       >
                         <div className="flex items-center gap-2">
-                          <div className={`w-1 h-8 rounded-full transition-colors ${taskCompleted ? 'bg-primary/60' : 'bg-emerald-500/40'}`} />
-                          <div className="flex-1">
-                            <div className={`text-[12px] font-mono font-medium transition-colors ${taskCompleted ? 'text-primary line-through' : 'text-foreground'}`}>
+                          <div className={`w-1 h-8 rounded-full transition-colors shrink-0 ${taskCompleted ? 'bg-primary/60' : 'bg-emerald-500/40'}`} />
+                          <div className="flex-1 min-w-0">
+                            <div className={`text-[12px] font-mono font-medium transition-colors truncate ${taskCompleted ? 'text-primary line-through' : 'text-foreground'}`}>
                               Review presentation
                             </div>
-                            <div className="text-[10px] font-mono text-muted-foreground/50">45 min · SEMI</div>
+                            <div className="text-[10px] font-mono text-muted-foreground/50 truncate">45 min · SEMI</div>
                           </div>
                           {taskCompleted && (
-                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-primary">
+                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-primary shrink-0">
                               <CheckCircle2 size={16} />
                             </motion.div>
                           )}
@@ -415,19 +441,19 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
                             position: 'relative' as const,
                             opacity: dragDropped ? 0.3 : 1,
                           }}
-                          className={`w-full bg-card border rounded-sm p-3 cursor-grab select-none transition-shadow ${
+                          className={`w-full bg-card border rounded-sm p-4 cursor-grab select-none transition-shadow touch-manipulation ${
                             dragStartPos ? 'border-primary/40 shadow-lg' : 'border-border/60'
                           }`}
                         >
                           <div className="flex items-center gap-2">
                             <TaskBlock title="Team standup" duration="15 min" priority="SEMI" priorityColor="bg-amber-500/40" />
-                            <GripVertical size={14} className="ml-auto text-muted-foreground/30" />
+                            <GripVertical size={16} className="ml-auto text-muted-foreground/30 shrink-0" />
                           </div>
                         </div>
 
                         <div
                           ref={dragTargetRef}
-                          className={`w-full border-2 border-dashed rounded-sm p-4 flex items-center justify-center transition-colors ${
+                          className={`w-full border-2 border-dashed rounded-sm p-4 flex items-center justify-center transition-colors min-h-[60px] ${
                             dragDropped
                               ? 'border-primary/40 bg-primary/5'
                               : dragStartPos
@@ -453,16 +479,16 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
                             onMouseLeave={handleHoldEnd}
                             onTouchStart={handleHoldStart}
                             onTouchEnd={handleHoldEnd}
-                            className={`w-full bg-card border rounded-sm p-3 select-none transition-all ${
+                            className={`w-full bg-card border rounded-sm p-4 select-none transition-all touch-manipulation ${
                               inInventory
                                 ? 'border-primary/30 bg-primary/5 opacity-40'
                                 : holdProgress > 0
                                   ? 'border-primary/30'
                                   : 'border-border/60'
-                            }`}
+                            } ${isTouching ? 'scale-[0.98]' : ''}`}
                           >
-                            <div className="flex items-center gap-2">
-                              <div className="relative">
+                            <div className="flex items-center gap-3">
+                              <div className="relative shrink-0">
                                 <div className="w-1 h-8 rounded-full bg-orange-500/40" />
                                 {holdProgress > 0 && !inInventory && (
                                   <svg className="absolute -inset-2 w-[calc(100%+16px)] h-[calc(100%+16px)]" viewBox="0 0 20 48">
@@ -477,9 +503,9 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
                                   </svg>
                                 )}
                               </div>
-                              <div>
-                                <div className="text-[12px] font-mono text-foreground font-medium">Write report</div>
-                                <div className="text-[10px] font-mono text-muted-foreground/50">60 min · FIXED</div>
+                              <div className="min-w-0 flex-1">
+                                <div className="text-[12px] font-mono text-foreground font-medium truncate">Write report</div>
+                                <div className="text-[10px] font-mono text-muted-foreground/50 truncate">60 min · FIXED</div>
                               </div>
                             </div>
                           </div>
@@ -492,11 +518,11 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
                               initial={{ opacity: 0, y: -10 }}
                               animate={{ opacity: 1, y: 0 }}
                               exit={{ opacity: 0 }}
-                              className="w-full bg-card border border-primary/30 rounded-sm p-2.5 flex items-center gap-2"
+                              className="w-full bg-card border border-primary/30 rounded-sm p-3 flex items-center gap-2"
                             >
-                              <Package size={14} className="text-primary shrink-0" />
+                              <Package size={16} className="text-primary shrink-0" />
                               <span className="text-[11px] font-mono text-primary font-medium truncate flex-1">Write report</span>
-                              <span className="text-[9px] font-mono text-primary/50 tracking-wider">IN INVENTORY</span>
+                              <span className="text-[9px] font-mono text-primary/50 tracking-wider shrink-0">IN INVENTORY</span>
                             </motion.div>
                           )}
                         </AnimatePresence>
@@ -504,11 +530,11 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
                         {/* Drop target — tap to place */}
                         <div
                           onClick={handleInventoryPlace}
-                          className={`w-full border-2 border-dashed rounded-sm p-4 flex items-center justify-center transition-colors ${
+                          className={`w-full border-2 border-dashed rounded-sm p-4 flex items-center justify-center transition-colors min-h-[60px] touch-manipulation ${
                             inventoryPlaced
                               ? 'border-primary/40 bg-primary/5'
                               : inInventory
-                                ? 'border-primary/30 bg-primary/5 cursor-pointer hover:bg-primary/10'
+                                ? 'border-primary/30 bg-primary/5 cursor-pointer active:bg-primary/15'
                                 : 'border-border/30 bg-muted/10'
                           }`}
                         >
@@ -539,13 +565,13 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
                           <button
                             key={p.key}
                             onClick={() => handlePriorityTap(p.key)}
-                            className={`w-full text-left border rounded-sm p-2.5 transition-all ${p.color} ${
+                            className={`w-full text-left border rounded-sm p-3 transition-all touch-manipulation active:scale-[0.98] ${p.color} ${
                               priorityTapped.has(p.key) ? 'opacity-100' : 'opacity-60 hover:opacity-80'
                             }`}
                           >
                             <div className="flex items-center gap-2">
                               <span className="text-[11px] font-mono font-bold tracking-wider">{p.label}</span>
-                              {priorityTapped.has(p.key) && <CheckCircle2 size={12} />}
+                              {priorityTapped.has(p.key) && <CheckCircle2 size={12} className="shrink-0" />}
                             </div>
                             <AnimatePresence>
                               {priorityTapped.has(p.key) && (
@@ -569,9 +595,10 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
                         {!addTaskTapped ? (
                           <button
                             onClick={handleAddTask}
-                            className="w-12 h-12 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary hover:bg-primary/20 transition-all active:scale-95"
+                            className="w-14 h-14 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary hover:bg-primary/20 transition-all active:scale-95 touch-manipulation"
+                            aria-label="Add task"
                           >
-                            <Plus size={24} strokeWidth={1.5} />
+                            <Plus size={28} strokeWidth={1.5} />
                           </button>
                         ) : (
                           <motion.div
@@ -583,7 +610,7 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
                             <TaskBlock title="My new task" duration="30 min" priority="FLEX" priorityColor="bg-emerald-500/40" />
                           </motion.div>
                         )}
-                        <p className="text-[9px] font-mono text-muted-foreground/40 text-center">
+                        <p className="text-[9px] font-mono text-muted-foreground/40 text-center px-2">
                           In the real app, you can also drag on an empty timeline slot
                         </p>
                       </div>
@@ -592,7 +619,7 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
 
                   {/* Hint */}
                   <div className="mt-3 px-3 py-2 bg-primary/5 border border-primary/10 rounded-sm w-full">
-                    <p className="text-[10px] font-mono text-primary/60 leading-relaxed text-center">{step.hint}</p>
+                    <p className="text-[10px] sm:text-[11px] font-mono text-primary/60 leading-relaxed text-center">{step.hint}</p>
                   </div>
                 </motion.div>
               )}
@@ -600,11 +627,11 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-4 border-t border-border/30">
+          <div className="px-4 sm:px-6 py-4 border-t border-border/30 shrink-0">
             <button
               onClick={handleNext}
               disabled={!stepCompleted}
-              className={`w-full py-3 rounded-sm text-[12px] font-mono tracking-wider transition-all ${
+              className={`w-full py-3.5 sm:py-3 rounded-sm text-[12px] font-mono tracking-wider transition-all touch-manipulation ${
                 stepCompleted
                   ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                   : 'bg-muted/30 text-muted-foreground/30 cursor-not-allowed border border-border/30'
