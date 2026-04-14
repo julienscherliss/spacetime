@@ -10,7 +10,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import {
   Focus, List, CalendarDays, Grid3X3, Repeat,
-  Archive, Clock, LogOut, Settings, MoreHorizontal, X, ArchiveRestore, BarChart3, Scan, Maximize
+  Archive, Clock, LogOut, Settings, MoreHorizontal, X, ArchiveRestore, BarChart3, Scan, Maximize, PauseCircle
 } from 'lucide-react';
 
 const views: { mode: ViewMode; icon: typeof Focus; label: string }[] = [
@@ -279,8 +279,8 @@ export function AppNav() {
             onClick={() => window.dispatchEvent(new CustomEvent('toggle-waiting-room'))}
             className={`${navItemBase} ${navItemInactive} relative`}
           >
-            <Clock size={13} strokeWidth={1.5} />
-            <span>WAITING</span>
+            <PauseCircle size={13} strokeWidth={1.5} />
+            <span>LIMBO</span>
             {waitingCount > 0 && (
               <span className="absolute -top-0.5 -right-0.5 min-w-[15px] h-[15px] rounded-full bg-primary text-primary-foreground text-[8px] font-mono flex items-center justify-center">
                 {waitingCount}
