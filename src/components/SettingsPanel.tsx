@@ -82,6 +82,17 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* Help & Tips — top of settings */}
+          <div>
+            <button
+              onClick={() => setHelpOpen(true)}
+              className="w-full flex items-center justify-center gap-2 bg-muted/30 border border-border/50 rounded-sm p-3 min-h-[48px] text-[12px] font-mono tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            >
+              <HelpCircle size={14} strokeWidth={1.5} />
+              <span>HELP & TIPS</span>
+            </button>
+          </div>
+
           {/* Auto-detect toggle */}
           <div>
             <div className="flex items-center gap-1.5 mb-2">
@@ -716,16 +727,6 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             </div>
           )}
 
-          {/* Help */}
-          <div className="border-t border-border/30 pt-4">
-            <button
-              onClick={() => setHelpOpen(true)}
-              className="w-full flex items-center justify-center gap-2 bg-muted/30 border border-border/50 rounded-sm p-3 min-h-[48px] text-[12px] font-mono tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-            >
-              <HelpCircle size={14} strokeWidth={1.5} />
-              <span>HELP & TIPS</span>
-            </button>
-          </div>
         </div>
       </div>
     </div>
