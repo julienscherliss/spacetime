@@ -160,17 +160,6 @@ export function TaskEditPanel() {
   const [attachments, setAttachments] = useState<{ name: string; url: string; type: string }[]>(
     (task?.attachments || []).filter((a: any) => a.type !== 'link')
   );
-  const [linkAttachments, setLinkAttachments] = useState<LinkAttachment[]>(() => {
-    return (task?.attachments || [])
-      .filter((a: any) => a.type === 'link')
-      .map((a: any) => ({
-        id: a.id || crypto.randomUUID(),
-        url: a.url,
-        displayName: a.name || a.url,
-        domain: a.domain || '',
-        createdAt: a.createdAt || new Date().toISOString(),
-      }));
-  });
   const [isUploading, setIsUploading] = useState(false);
   const [reminders, setReminders] = useState<number[]>(task?.reminders || []);
   const [showReminderModal, setShowReminderModal] = useState(false);
