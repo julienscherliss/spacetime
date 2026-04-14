@@ -13,8 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import { DurationPicker } from '@/components/ScrollWheelPicker';
 import { format } from 'date-fns';
-import { LinkAttachmentList } from '@/components/LinkAttachmentList';
-import { detectNewLinks, removeUrlsFromText, type LinkAttachment } from '@/utils/linkDetection';
+import { DescriptionWithLinks } from '@/components/DescriptionWithLinks';
 
 const PRIORITY_LABELS = ['Flex', 'Semi', 'Fixed', 'Lock'] as const;
 const PRIORITY_COLORS = [
