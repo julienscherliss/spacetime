@@ -103,8 +103,8 @@ export function AppNav() {
                   onClick={() => { setLibPanelOpen(!libPanelOpen); setMoreOpen(false); }}
                 />
                 <OverflowItem
-                  icon={<Clock size={18} strokeWidth={1.5} />}
-                  label="Waiting Room"
+                  icon={<PauseCircle size={18} strokeWidth={1.5} />}
+                  label="Limbo"
                   badge={waitingCount > 0 ? String(waitingCount) : undefined}
                   onClick={() => { window.dispatchEvent(new CustomEvent('toggle-waiting-room')); setMoreOpen(false); }}
                 />
