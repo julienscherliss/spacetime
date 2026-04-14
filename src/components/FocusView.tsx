@@ -869,6 +869,14 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
         <Check size={14} strokeWidth={2} />
         <span className="text-[11px] font-mono tracking-[0.15em] uppercase">Complete Task</span>
       </button>
+      {focusLightboxIndex !== null && hasAttachments && (
+        <AttachmentLightbox
+          attachments={task.attachments!}
+          currentIndex={focusLightboxIndex}
+          onClose={() => setFocusLightboxIndex(null)}
+          onNavigate={setFocusLightboxIndex}
+        />
+      )}
     </div>
   );
 }
