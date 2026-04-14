@@ -112,9 +112,17 @@ Deno.serve(async (req) => {
     }
 
     // ─── RELIABILITY ───
-    // Count failed task saves (tasks with no title or errors - proxy)
     const totalTaskOps = (allTasks || []).length;
     const completedTasks = (allTasks || []).filter(t => t.completed).length;
+
+    // ─── DATABASE SIZE ───
+    let dbSizeBytes = 0;
+    try {
+      const { data: dbSize } = await supabase.rpc('pg_database_size' as any, {} as any).maybeSingle();
+      // Fallback: estimate from row counts
+    } catch {}
+    // Use task count as rough proxy: ~1KB per task row
+    const estimatedDbBytes = totalTaskOps * 1024 + (allSubs?.length || 0) * 512;
 
     // ─── STORAGE / COST ───
     const { data: storageObjects } = await supabase
@@ -235,10 +243,23 @@ Deno.serve(async (req) => {
       },
       cost: {
         totalStorageGB: Math.round(totalStorageGB * 1000) / 1000,
+        totalStorageBytes,
         totalFiles,
         avgFileSize: Math.round(avgFileSize / 1024), // KB
         filesPerUser,
         topStorageUsers,
+        estimatedDbBytes,
+        // Free tier (ci_pico) limits
+        limits: {
+          storageBytes: 1 * 1024 * 1024 * 1024,       // 1 GB
+          egressBytes: 2 * 1024 * 1024 * 1024,         // 2 GB
+          dbSizeBytes: 500 * 1024 * 1024,              // 500 MB
+          mau: 50000,
+          edgeFunctionInvocations: 500000,
+          edgeFunctionCount: 25,
+          realtimeMessages: 2000000,
+          realtimeConnections: 200,
+        },
       },
       alerts,
       users: (allSubs || []).map(s => ({
