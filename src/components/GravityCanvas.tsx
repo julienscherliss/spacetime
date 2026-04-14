@@ -38,8 +38,8 @@ export function GravityCanvas() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d', { alpha: true })!;
 
-    // Detect mobile/tablet via pointer support
-    isMobileRef.current = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    // Detect mobile/tablet via viewport width
+    isMobileRef.current = window.innerWidth <= 1024;
 
     function buildGrid() {
       const { w, h } = dims.current;
@@ -64,6 +64,7 @@ export function GravityCanvas() {
       canvas.width = rect.width * dpr;
       canvas.height = rect.height * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      isMobileRef.current = window.innerWidth <= 1024;
       buildGrid();
       // Initialize auto cursor to center
       autoMouse.current.x = rect.width / 2;
