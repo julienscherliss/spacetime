@@ -1,6 +1,5 @@
 import { motion } from 'framer-motion';
 import { Calendar, Layers, Repeat, Target, BarChart3, Zap } from 'lucide-react';
-import { AspectRatio } from '@/components/ui/aspect-ratio';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -46,7 +45,10 @@ const features = [
 
 export function LandingFeatureGrid() {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">
+    <div
+      className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3"
+      style={{ gridAutoRows: '1fr' }}
+    >
       {features.map((feature, index) => (
         <motion.div
           key={feature.label}
@@ -57,7 +59,8 @@ export function LandingFeatureGrid() {
           variants={fadeUp}
           className="min-h-0 min-w-0"
         >
-          <AspectRatio ratio={1} className="overflow-hidden rounded-md border border-border/40 transition-colors hover:border-foreground/20">
+          <div className="relative w-full overflow-hidden rounded-md border border-border/40 transition-colors hover:border-foreground/20">
+            <div aria-hidden="true" className="block w-full pt-[100%]" />
             <div className="absolute inset-0 flex h-full flex-col justify-between gap-3 p-3 sm:gap-4 sm:p-5">
               <div className="min-w-0">
                 <feature.icon
@@ -73,7 +76,7 @@ export function LandingFeatureGrid() {
                 {feature.desc}
               </p>
             </div>
-          </AspectRatio>
+          </div>
         </motion.div>
       ))}
     </div>
