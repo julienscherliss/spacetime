@@ -331,7 +331,7 @@ export function HelpPanel({ open, onClose, initialSection }: HelpPanelProps) {
   if (!open) return null;
 
   return (
-    <AnimatePresence>
+    <>
       {open && (
         <motion.div
           initial={{ opacity: 0 }}
