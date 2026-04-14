@@ -463,6 +463,13 @@ export const useTaskStore = create<TaskState>()(
           set({ showCompletionStats: true, dailyStats: get().getDailyStats() });
         }
       },
+      uncompleteTask: (id) => {
+        set((s) => ({
+          tasks: s.tasks.map((t) =>
+            t.id === id ? { ...t, completed: false, archivedAt: null, archiveReason: null } : t
+          ),
+        }));
+      },
 
       deleteTask: (id) => {
         const now = new Date().toISOString();
