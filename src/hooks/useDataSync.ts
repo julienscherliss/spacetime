@@ -85,6 +85,7 @@ function rowToLibraryItem(row: any): LibraryTask {
     isImportant: row.is_important ?? false,
     dueDate: row.due_date ?? null,
     subtasks: row.subtasks ?? [],
+    attachments: row.attachments ?? [],
   };
 }
 
@@ -100,6 +101,7 @@ function libraryItemToRow(item: LibraryTask, userId: string) {
     is_important: item.isImportant ?? false,
     due_date: item.dueDate ?? null,
     subtasks: item.subtasks ?? [],
+    attachments: item.attachments ?? [],
   };
 }
 
