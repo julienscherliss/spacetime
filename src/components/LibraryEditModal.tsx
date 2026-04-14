@@ -239,7 +239,7 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
                   </button>
                 ))}
                 {dueDate && (
-                  <button onClick={() => { setDueDate(''); setShowDuePicker(false); }}
+                  <button onClick={(e) => { e.stopPropagation(); setDueDate(''); setTimeout(() => setShowDuePicker(false), 0); }}
                     className="ml-auto text-[10px] font-mono text-muted-foreground/40 hover:text-destructive/60">
                     Clear
                   </button>
