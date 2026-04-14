@@ -93,6 +93,7 @@ interface TaskState {
   updateTask: (id: string, updates: Partial<Task>) => void;
   updateFutureInstances: (taskId: string, fromDate: string, updates: Partial<Task>) => void;
   completeTask: (id: string) => void;
+  uncompleteTask: (id: string) => void;
   deleteTask: (id: string) => void;
   archiveTask: (id: string, reason: 'completed' | 'deleted') => void;
   restoreTask: (id: string) => void;
@@ -461,6 +462,13 @@ export const useTaskStore = create<TaskState>()(
         if (allDone) {
           set({ showCompletionStats: true, dailyStats: get().getDailyStats() });
         }
+      },
+      uncompleteTask: (id) => {
+        set((s) => ({
+          tasks: s.tasks.map((t) =>
+            t.id === id ? { ...t, completed: false, archivedAt: null, archiveReason: null } : t
+          ),
+        }));
       },
 
       deleteTask: (id) => {
