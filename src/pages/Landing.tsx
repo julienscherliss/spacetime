@@ -157,41 +157,33 @@ export default function Landing() {
 
           {/* Feature carousel — temporarily removed, waiting for video assets */}
 
-          <div className="flex flex-wrap gap-3 sm:gap-4">
-            {features.map((f, i) => {
-              // Explicit square sizing: (container - gap) / 2 on mobile, /3 on lg
-              const sizeCalcSm = 'calc((100% - 12px) / 2)';
-              const sizeCalcLg = 'calc((100% - 32px) / 3)';
-              return (
-                <motion.div
-                  key={f.label}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: true, margin: '-40px' }}
-                  custom={i}
-                  variants={fadeUp}
-                  className="relative overflow-hidden border border-border/40 rounded-md hover:border-foreground/20 transition-all cursor-pointer"
-                  onClick={() => {}}
-                  style={{
-                    width: sizeCalcSm,
-                    height: sizeCalcSm,
-                  }}
-                >
-                  <div className="absolute inset-0 p-4 sm:p-5 flex flex-col justify-center">
-                    <f.icon
-                      size={16}
-                      className="text-primary/70 mb-3 transition-colors flex-shrink-0"
-                    />
-                    <div className="text-[8px] sm:text-[9px] font-mono text-muted-foreground/50 tracking-[0.2em] mb-2 flex-shrink-0">
-                      {f.label}
-                    </div>
-                    <p className="text-[10px] sm:text-[12px] font-mono text-muted-foreground/70 leading-relaxed line-clamp-4">
-                      {f.desc}
-                    </p>
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            {features.map((f, i) => (
+              <motion.div
+                key={f.label}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: '-40px' }}
+                custom={i}
+                variants={fadeUp}
+                className="relative border border-border/40 rounded-md hover:border-foreground/20 transition-all cursor-pointer overflow-hidden"
+                style={{ aspectRatio: '1 / 1' }}
+                onClick={() => {}}
+              >
+                <div className="absolute inset-0 p-4 sm:p-5 flex flex-col justify-center">
+                  <f.icon
+                    size={16}
+                    className="text-primary/70 mb-3 transition-colors flex-shrink-0"
+                  />
+                  <div className="text-[8px] sm:text-[9px] font-mono text-muted-foreground/50 tracking-[0.2em] mb-2 flex-shrink-0">
+                    {f.label}
                   </div>
-                </motion.div>
-              );
-            })}
+                  <p className="text-[10px] sm:text-[12px] font-mono text-muted-foreground/70 leading-relaxed line-clamp-4">
+                    {f.desc}
+                  </p>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
