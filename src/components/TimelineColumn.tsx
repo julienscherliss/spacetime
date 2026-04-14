@@ -206,9 +206,9 @@ export function TimelineColumn({
   const completedTasks = showCompletedTasks ? tasks.filter((t) => t.completed && t.time) : [];
   const nowTop = ((nowMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT;
 
-  // Count tasks that went to waiting room for past days
+  // Count tasks in waiting room for past days (these are filtered out of `tasks` prop)
   const waitingRoomCount = isPastDay
-    ? tasks.filter(t => t.inWaitingRoom).length
+    ? allStoreTasks.filter(t => t.inWaitingRoom && t.date === date && !t.archivedAt).length
     : 0;
 
   // Compute routine conflict IDs when routines are enabled
