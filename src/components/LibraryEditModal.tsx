@@ -115,10 +115,46 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
       isImportant,
       dueDate: dueDate || null,
       subtasks,
+      attachments,
     });
     setSaveStatus('saved');
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => onClose(), 400);
+  };
+
+  const MAX_FILE_SIZE = 25 * 1024 * 1024;
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setIsUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        if (file.size > MAX_FILE_SIZE) {
+          toast.error(`${file.name} exceeds 25MB limit`);
+          continue;
+        }
+        const filePath = `library/${item.id}/${Date.now()}-${file.name}`;
+        const { error } = await supabase.storage.from('task-attachments').upload(filePath, file);
+        if (error) throw error;
+        const { data: { publicUrl } } = supabase.storage.from('task-attachments').getPublicUrl(filePath);
+        setAttachments(prev => [...prev, { name: file.name, url: publicUrl, type: file.type }]);
+      }
+    } catch (err) {
+      console.error('Upload failed:', err);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const removeAttachment = async (index: number) => {
+    const att = attachments[index];
+    const pathMatch = att.url.match(/task-attachments\/(.+)$/);
+    if (pathMatch) {
+      await supabase.storage.from('task-attachments').remove([pathMatch[1]]);
+    }
+    setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleDelete = () => {
