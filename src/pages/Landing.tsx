@@ -167,7 +167,7 @@ export default function Landing() {
                 custom={i}
                 variants={fadeUp}
                 onClick={() => {}}
-                className="group border border-border/40 rounded-md p-4 sm:p-5 hover:border-foreground/20 transition-all text-left cursor-pointer aspect-square flex flex-col justify-center"
+                className="group border border-border/40 rounded-md p-4 sm:p-5 hover:border-foreground/20 transition-all text-left cursor-pointer aspect-square flex flex-col justify-center overflow-hidden"
               >
                 <f.icon
                   size={16}
