@@ -84,9 +84,15 @@ export function DayListView() {
   const handleTaskTap = (taskId: string) => {
     const now = Date.now();
     if (lastTapRef.current && lastTapRef.current.id === taskId && now - lastTapRef.current.time < 400) {
-      // Double tap → complete
       lastTapRef.current = null;
-      completeTask(taskId);
+      const task = dayTasks.find(t => t.id === taskId);
+      if (task?.completed) {
+        // Double tap on completed → uncomplete
+        useTaskStore.getState().uncompleteTask(taskId);
+      } else {
+        // Double tap on active → complete
+        completeTask(taskId);
+      }
       if (navigator.vibrate) navigator.vibrate(20);
       return;
     }

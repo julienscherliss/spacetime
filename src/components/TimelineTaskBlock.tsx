@@ -409,13 +409,19 @@ export function TimelineTaskBlock({
   const [completionFlash, setCompletionFlash] = useState(false);
 
   const handleDoubleComplete = useCallback(() => {
-    setCompletionFlash(true);
-    if (navigator.vibrate) navigator.vibrate(20);
-    setTimeout(() => {
-      completeTask(task.id);
-      setCompletionFlash(false);
-    }, 400);
-  }, [completeTask, task.id]);
+    if (task.completed) {
+      // Uncomplete
+      useTaskStore.getState().uncompleteTask(task.id);
+      if (navigator.vibrate) navigator.vibrate(20);
+    } else {
+      setCompletionFlash(true);
+      if (navigator.vibrate) navigator.vibrate(20);
+      setTimeout(() => {
+        completeTask(task.id);
+        setCompletionFlash(false);
+      }, 400);
+    }
+  }, [completeTask, task.id, task.completed]);
 
   return (
     <div
