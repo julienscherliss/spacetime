@@ -2,8 +2,8 @@ import { useRef, useEffect } from 'react';
 
 /**
  * Spacetime Fabric — a persistent grid of nodes representing the fabric of spacetime.
- * Mass (center black hole + cursor) warps the grid. Nothing spawns or disappears.
- * Inspired by the rubber-sheet analogy of general relativity.
+ * Mass (cursor) warps the grid. On mobile, an autonomous "ghost cursor" wanders
+ * the canvas simulating the hover effect. Touch overrides to finger position.
  */
 
 const GRID_COLS = 50;
@@ -28,11 +28,18 @@ export function GravityCanvas() {
   const animFrame = useRef(0);
   const dims = useRef({ w: 0, h: 0 });
   const time = useRef(0);
+  // Autonomous cursor for mobile
+  const autoMouse = useRef({ x: 0, y: 0, targetX: 0, targetY: 0 });
+  const isTouching = useRef(false);
+  const isMobileRef = useRef(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d', { alpha: true })!;
+
+    // Detect mobile/tablet via pointer support
+    isMobileRef.current = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
     function buildGrid() {
       const { w, h } = dims.current;
@@ -58,28 +65,60 @@ export function GravityCanvas() {
       canvas.height = rect.height * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       buildGrid();
+      // Initialize auto cursor to center
+      autoMouse.current.x = rect.width / 2;
+      autoMouse.current.y = rect.height / 2;
+      pickNewTarget();
     };
+
+    function pickNewTarget() {
+      const { w, h } = dims.current;
+      const margin = 0.15;
+      autoMouse.current.targetX = w * margin + Math.random() * w * (1 - 2 * margin);
+      autoMouse.current.targetY = h * margin + Math.random() * h * (1 - 2 * margin);
+    }
 
     resize();
     window.addEventListener('resize', resize);
 
-    const handlePointer = (e: MouseEvent | TouchEvent) => {
+    // Desktop mouse events
+    const handleMouseMove = (e: MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
-      const clientX = 'touches' in e ? e.touches[0]?.clientX : e.clientX;
-      const clientY = 'touches' in e ? e.touches[0]?.clientY : e.clientY;
-      if (clientX != null && clientY != null) {
-        mouse.current = { x: clientX - rect.left, y: clientY - rect.top, active: true };
+      mouse.current = { x: e.clientX - rect.left, y: e.clientY - rect.top, active: true };
+    };
+    const handleMouseLeave = () => { mouse.current.active = false; };
+
+    // Touch events — override autonomous cursor
+    const handleTouchStart = (e: TouchEvent) => {
+      isTouching.current = true;
+      const rect = canvas.getBoundingClientRect();
+      const t = e.touches[0];
+      if (t) {
+        mouse.current = { x: t.clientX - rect.left, y: t.clientY - rect.top, active: true };
       }
     };
-    const handlePointerLeave = () => { mouse.current.active = false; };
+    const handleTouchMove = (e: TouchEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const t = e.touches[0];
+      if (t) {
+        mouse.current = { x: t.clientX - rect.left, y: t.clientY - rect.top, active: true };
+      }
+    };
+    const handleTouchEnd = () => {
+      isTouching.current = false;
+      mouse.current.active = false;
+      // Snap auto cursor to where finger was so the transition is smooth
+      autoMouse.current.x = mouse.current.x;
+      autoMouse.current.y = mouse.current.y;
+      pickNewTarget();
+    };
 
-    canvas.addEventListener('mousemove', handlePointer);
-    canvas.addEventListener('touchmove', handlePointer, { passive: true });
-    canvas.addEventListener('touchstart', handlePointer, { passive: true });
-    canvas.addEventListener('mouseleave', handlePointerLeave);
-    canvas.addEventListener('touchend', handlePointerLeave);
+    canvas.addEventListener('mousemove', handleMouseMove);
+    canvas.addEventListener('mouseleave', handleMouseLeave);
+    canvas.addEventListener('touchstart', handleTouchStart, { passive: true });
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: true });
+    canvas.addEventListener('touchend', handleTouchEnd);
 
-    // Warp function: displace a point toward a mass source
     function warp(
       restX: number, restY: number,
       massX: number, massY: number, mass: number
@@ -95,6 +134,9 @@ export function GravityCanvas() {
       ];
     }
 
+    // Timer to pick new autonomous target
+    let targetTimer = 0;
+
     const animate = () => {
       const { w, h } = dims.current;
       if (w === 0 || h === 0) { animFrame.current = requestAnimationFrame(animate); return; }
@@ -105,21 +147,44 @@ export function GravityCanvas() {
 
       ctx.clearRect(0, 0, w, h);
 
-      // Update node positions with gravitational warping
+      // ─── Autonomous cursor movement on mobile (when not touching) ───
+      let effectiveMouseActive = mouse.current.active;
+      let effectiveMouseX = mouse.current.x;
+      let effectiveMouseY = mouse.current.y;
+
+      if (isMobileRef.current && !isTouching.current) {
+        const am = autoMouse.current;
+        // Smooth ease toward target
+        const speed = 0.008;
+        am.x += (am.targetX - am.x) * speed;
+        am.y += (am.targetY - am.y) * speed;
+
+        // Pick new target when close enough
+        const distToTarget = Math.sqrt((am.targetX - am.x) ** 2 + (am.targetY - am.y) ** 2);
+        targetTimer++;
+        if (distToTarget < 30 || targetTimer > 600) {
+          pickNewTarget();
+          targetTimer = 0;
+        }
+
+        effectiveMouseActive = true;
+        effectiveMouseX = am.x;
+        effectiveMouseY = am.y;
+      }
+
+      // Update node positions
       const lerp = 0.18;
       for (let row = 0; row < GRID_ROWS; row++) {
         for (let col = 0; col < GRID_COLS; col++) {
           const n = grid[row][col];
           let wx = 0, wy = 0;
 
-          // Central black hole warp
           const [bx, by] = warp(n.restX, n.restY, cx, cy, CENTER_MASS);
           wx += bx;
           wy += by;
 
-          // Cursor warp
-          if (mouse.current.active) {
-            const [mx, my] = warp(n.restX, n.restY, mouse.current.x, mouse.current.y, CURSOR_MASS);
+          if (effectiveMouseActive) {
+            const [mx, my] = warp(n.restX, n.restY, effectiveMouseX, effectiveMouseY, CURSOR_MASS);
             wx += mx;
             wy += my;
           }
@@ -133,8 +198,7 @@ export function GravityCanvas() {
         }
       }
 
-      // === Draw grid lines ===
-      // Horizontal lines
+      // Draw horizontal lines
       for (let row = 0; row < GRID_ROWS; row++) {
         ctx.beginPath();
         for (let col = 0; col < GRID_COLS; col++) {
@@ -150,7 +214,7 @@ export function GravityCanvas() {
         ctx.stroke();
       }
 
-      // Vertical lines
+      // Draw vertical lines
       for (let col = 0; col < GRID_COLS; col++) {
         ctx.beginPath();
         for (let row = 0; row < GRID_ROWS; row++) {
@@ -166,7 +230,7 @@ export function GravityCanvas() {
         ctx.stroke();
       }
 
-      // === Draw nodes ===
+      // Draw nodes
       for (let row = 0; row < GRID_ROWS; row++) {
         for (let col = 0; col < GRID_COLS; col++) {
           const n = grid[row][col];
@@ -199,9 +263,20 @@ export function GravityCanvas() {
         }
       }
 
-
-      // === Cursor gravity well indicator ===
-      if (mouse.current.active) {
+      // Gravity well indicator (only when touch is active, not for autonomous)
+      if (isTouching.current && mouse.current.active) {
+        const mx = mouse.current.x;
+        const my = mouse.current.y;
+        const cGrad = ctx.createRadialGradient(mx, my, 0, mx, my, 90);
+        cGrad.addColorStop(0, 'rgba(80, 140, 220, 0.1)');
+        cGrad.addColorStop(0.4, 'rgba(80, 140, 220, 0.04)');
+        cGrad.addColorStop(1, 'rgba(70, 130, 200, 0)');
+        ctx.beginPath();
+        ctx.arc(mx, my, 90, 0, Math.PI * 2);
+        ctx.fillStyle = cGrad;
+        ctx.fill();
+      } else if (!isMobileRef.current && mouse.current.active) {
+        // Desktop cursor well
         const mx = mouse.current.x;
         const my = mouse.current.y;
         const cGrad = ctx.createRadialGradient(mx, my, 0, mx, my, 90);
@@ -222,11 +297,11 @@ export function GravityCanvas() {
     return () => {
       cancelAnimationFrame(animFrame.current);
       window.removeEventListener('resize', resize);
-      canvas.removeEventListener('mousemove', handlePointer);
-      canvas.removeEventListener('touchmove', handlePointer);
-      canvas.removeEventListener('touchstart', handlePointer);
-      canvas.removeEventListener('mouseleave', handlePointerLeave);
-      canvas.removeEventListener('touchend', handlePointerLeave);
+      canvas.removeEventListener('mousemove', handleMouseMove);
+      canvas.removeEventListener('mouseleave', handleMouseLeave);
+      canvas.removeEventListener('touchstart', handleTouchStart);
+      canvas.removeEventListener('touchmove', handleTouchMove);
+      canvas.removeEventListener('touchend', handleTouchEnd);
     };
   }, []);
 
