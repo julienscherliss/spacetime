@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useTaskStore } from '@/store/taskStore';
+import { useTimezoneStore } from '@/store/timezoneStore';
 import { TimelineColumn, HOURS } from '@/components/TimelineColumn';
 import { formatHour12h } from '@/hooks/useCurrentTime';
 import { TaskCluster } from '@/utils/taskClustering';
@@ -106,7 +107,9 @@ export function WeekGrid({
 
         {/* Day columns */}
         {weekDays.map((day) => {
-          const dayTasks = tasks.filter((t) => t.date === day.date && !t.inWaitingRoom && !t.archivedAt &&
+          const showCompleted = useTimezoneStore.getState().showCompletedTasks;
+          const dayTasks = tasks.filter((t) => t.date === day.date && !t.inWaitingRoom &&
+            (!t.archivedAt || (showCompleted && t.completed && t.archiveReason === 'completed')) &&
             !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring'));
           return (
             <div
