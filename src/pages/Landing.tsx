@@ -157,23 +157,23 @@ export default function Landing() {
 
           {/* Feature carousel — temporarily removed, waiting for video assets */}
 
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {features.map((f, i) => (
-              <motion.button
+              <motion.div
                 key={f.label}
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true, margin: '-40px' }}
                 custom={i}
                 variants={fadeUp}
+                className="relative border border-border/40 rounded-md hover:border-foreground/20 transition-all cursor-pointer overflow-hidden"
+                style={{ aspectRatio: '1 / 1' }}
                 onClick={() => {}}
-                className="group border border-border/40 rounded-md hover:border-foreground/20 transition-all text-left cursor-pointer relative"
-                style={{ paddingBottom: '100%' }}
               >
-                <div className="absolute inset-0 p-4 sm:p-5 flex flex-col justify-center overflow-hidden">
+                <div className="absolute inset-0 p-4 sm:p-5 flex flex-col justify-center">
                   <f.icon
                     size={16}
-                    className="text-primary/70 mb-3 group-hover:text-primary transition-colors flex-shrink-0"
+                    className="text-primary/70 mb-3 transition-colors flex-shrink-0"
                   />
                   <div className="text-[8px] sm:text-[9px] font-mono text-muted-foreground/50 tracking-[0.2em] mb-2 flex-shrink-0">
                     {f.label}
@@ -182,7 +182,7 @@ export default function Landing() {
                     {f.desc}
                   </p>
                 </div>
-              </motion.button>
+              </motion.div>
             ))}
           </div>
         </div>
