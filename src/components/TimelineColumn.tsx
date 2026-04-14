@@ -1158,6 +1158,67 @@ export function TimelineColumn({
         });
       })()}
 
+      {/* Completed task blocks — ghosted with strikethrough */}
+      {completedTasks.map((task) => {
+        if (!task.time) return null;
+        const taskMinutes = timeToMinutes(task.time);
+        const top = ((taskMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT;
+        const height = Math.max(((task.duration || 30) / 60) * HOUR_HEIGHT, 18);
+        return (
+          <div
+            key={`completed-${task.id}`}
+            data-task-block
+            className="absolute right-1 z-10 pointer-events-auto cursor-pointer"
+            style={{
+              top,
+              height,
+              left: showTimeLabels ? '3.25rem' : '2px',
+              opacity: 0.3,
+            }}
+            onClick={() => setEditingTask(task.id)}
+          >
+            <div
+              className="h-full rounded-[3px] border border-border/30 bg-muted/20 px-2 py-1 overflow-hidden"
+              style={{
+                borderLeftWidth: '2px',
+                borderLeftColor: `hsl(var(--priority-${task.priority}) / 0.3)`,
+              }}
+            >
+              <div className="flex items-center gap-1.5">
+                <Check size={10} className="text-muted-foreground/50 shrink-0" />
+                <span className="text-[10px] font-mono text-muted-foreground line-through truncate">
+                  {task.title}
+                </span>
+              </div>
+              {height > 28 && task.time && (
+                <div className="text-[9px] font-mono text-muted-foreground/30 mt-0.5 line-through">
+                  {formatTime12h(task.time)} · {formatDuration(task.duration || 30)}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Waiting room note for past days */}
+      {isPastDay && waitingRoomCount > 0 && (
+        <div
+          className="absolute z-20 cursor-pointer group"
+          style={{
+            bottom: 4,
+            left: showTimeLabels ? '3.25rem' : '2px',
+            right: 4,
+          }}
+          onClick={() => window.dispatchEvent(new Event('toggle-waiting-room'))}
+        >
+          <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-sm bg-muted/30 border border-border/30 hover:border-primary/30 hover:bg-muted/50 transition-colors">
+            <span className="text-[9px] font-mono text-muted-foreground/50 tracking-wider group-hover:text-primary/60 transition-colors">
+              {waitingRoomCount} task{waitingRoomCount > 1 ? 's' : ''} → WAITING ROOM
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Google Calendar events */}
       <CalendarEventBlocks date={date} hourHeight={HOUR_HEIGHT} showTimeLabels={showTimeLabels} />
 
