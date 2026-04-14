@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronRight, CheckCircle2, Hand, MousePointerClick, GripVertical, Plus, ArrowUpDown, Archive, RotateCcw } from 'lucide-react';
+import { X, CheckCircle2, Hand, MousePointerClick, GripVertical, Plus, ArrowUpDown, RotateCcw, Move, Package } from 'lucide-react';
 
 interface TutorialStep {
   id: string;
@@ -8,7 +8,6 @@ interface TutorialStep {
   instruction: string;
   hint: string;
   icon: React.ReactNode;
-  type: 'tap' | 'double-tap' | 'hold' | 'drag' | 'info';
 }
 
 const STEPS: TutorialStep[] = [
@@ -18,7 +17,6 @@ const STEPS: TutorialStep[] = [
     instruction: 'Tap the task below to open its edit panel.',
     hint: 'Single tap or click on any task to view and edit its details.',
     icon: <MousePointerClick size={20} strokeWidth={1.5} />,
-    type: 'tap',
   },
   {
     id: 'double-tap',
@@ -26,7 +24,6 @@ const STEPS: TutorialStep[] = [
     instruction: 'Double-tap the task to mark it as complete.',
     hint: 'A quick double-tap toggles a task between complete and incomplete.',
     icon: <CheckCircle2 size={20} strokeWidth={1.5} />,
-    type: 'double-tap',
   },
   {
     id: 'uncomplete',
@@ -34,15 +31,20 @@ const STEPS: TutorialStep[] = [
     instruction: 'Double-tap the completed task to restore it.',
     hint: 'Double-tapping a completed task brings it back to incomplete.',
     icon: <RotateCcw size={20} strokeWidth={1.5} />,
-    type: 'double-tap',
   },
   {
-    id: 'hold-drag',
+    id: 'drag-move',
+    title: 'Drag to move',
+    instruction: 'Click and drag the task to the target zone below.',
+    hint: 'On desktop, click-drag moves a task to a new time slot. Works across day columns in Week view.',
+    icon: <Move size={20} strokeWidth={1.5} />,
+  },
+  {
+    id: 'hold-pickup',
     title: 'Hold to pick up',
-    instruction: 'Press and hold the task until the ring fills, then drag it to the target zone.',
-    hint: 'On mobile, a long press (~1 second) picks up a task so you can reposition it.',
-    icon: <Hand size={20} strokeWidth={1.5} />,
-    type: 'hold',
+    instruction: 'Press and hold the task until the ring fills. It enters your inventory. Then tap the target to place it.',
+    hint: 'On mobile, hold ~1 second to pick up a task into inventory, then tap where you want to drop it.',
+    icon: <Package size={20} strokeWidth={1.5} />,
   },
   {
     id: 'priority',
@@ -50,7 +52,6 @@ const STEPS: TutorialStep[] = [
     instruction: 'Tap each priority level below to learn what it means.',
     hint: 'FLEX → SEMI → FIXED → LOCK. Moving a task between days escalates priority.',
     icon: <ArrowUpDown size={20} strokeWidth={1.5} />,
-    type: 'info',
   },
   {
     id: 'add-task',
@@ -58,7 +59,6 @@ const STEPS: TutorialStep[] = [
     instruction: 'Tap the + button below to create a task.',
     hint: 'Use the + button at the bottom of your screen, or drag on an empty timeline slot.',
     icon: <Plus size={20} strokeWidth={1.5} />,
-    type: 'tap',
   },
 ];
 
@@ -75,16 +75,22 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
   // Step-specific state
   const [editPanelOpen, setEditPanelOpen] = useState(false);
   const [taskCompleted, setTaskCompleted] = useState(false);
+  // drag-move state
+  const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [dragDropped, setDragDropped] = useState(false);
+  const dragTaskRef = useRef<HTMLDivElement>(null);
+  const dragTargetRef = useRef<HTMLDivElement>(null);
+  // hold-pickup state
   const [holdProgress, setHoldProgress] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 });
-  const [droppedInTarget, setDroppedInTarget] = useState(false);
-  const [priorityTapped, setPriorityTapped] = useState<Set<string>>(new Set());
-  const [addTaskTapped, setAddTaskTapped] = useState(false);
+  const [inInventory, setInInventory] = useState(false);
+  const [inventoryPlaced, setInventoryPlaced] = useState(false);
   const holdTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const holdStartRef = useRef<number>(0);
-  const taskRef = useRef<HTMLDivElement>(null);
-  const targetRef = useRef<HTMLDivElement>(null);
+  // priority state
+  const [priorityTapped, setPriorityTapped] = useState<Set<string>>(new Set());
+  // add task state
+  const [addTaskTapped, setAddTaskTapped] = useState(false);
 
   const step = STEPS[currentStep];
   const isLastStep = currentStep === STEPS.length - 1;
@@ -93,11 +99,18 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
     setStepCompleted(false);
     setEditPanelOpen(false);
     setTaskCompleted(false);
+    setDragStartPos(null);
+    setDragOffset({ x: 0, y: 0 });
+    setDragDropped(false);
     setHoldProgress(0);
-    setIsDragging(false);
-    setDroppedInTarget(false);
+    setInInventory(false);
+    setInventoryPlaced(false);
     setPriorityTapped(new Set());
     setAddTaskTapped(false);
+    if (holdTimerRef.current) {
+      clearInterval(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
   }, []);
 
   const handleNext = useCallback(() => {
@@ -115,7 +128,6 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
     resetStepState();
   }, [isLastStep, onClose, resetStepState]);
 
-  // Reset on open
   useEffect(() => {
     if (open) {
       setCurrentStep(0);
@@ -151,19 +163,55 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
     lastTapRef.current = now;
   };
 
-  // Reset taskCompleted for uncomplete step
   useEffect(() => {
     if (step?.id === 'uncomplete') {
       setTaskCompleted(true);
     }
   }, [step?.id]);
 
-  // --- Hold to drag ---
-  const handleHoldStart = (e: React.TouchEvent | React.MouseEvent) => {
-    if (step.id !== 'hold-drag') return;
+  // --- Drag to move ---
+  const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+    if (step.id !== 'drag-move') return;
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    setDragStartPos({ x: clientX, y: clientY });
+    setDragOffset({ x: 0, y: 0 });
+  };
+
+  const handleDragMoveEvent = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!dragStartPos || step.id !== 'drag-move') return;
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    setDragOffset({
+      x: clientX - dragStartPos.x,
+      y: clientY - dragStartPos.y,
+    });
+  };
+
+  const handleDragEnd = () => {
+    if (!dragStartPos || step.id !== 'drag-move') return;
+    // Check if over target
+    if (dragTargetRef.current && dragTaskRef.current) {
+      const targetRect = dragTargetRef.current.getBoundingClientRect();
+      const taskRect = dragTaskRef.current.getBoundingClientRect();
+      const cx = taskRect.left + taskRect.width / 2;
+      const cy = taskRect.top + taskRect.height / 2;
+      if (cx >= targetRect.left && cx <= targetRect.right && cy >= targetRect.top && cy <= targetRect.bottom) {
+        setDragDropped(true);
+        setStepCompleted(true);
+      }
+    }
+    setDragStartPos(null);
+    if (!dragDropped) {
+      setDragOffset({ x: 0, y: 0 });
+    }
+  };
+
+  // --- Hold to pick up (inventory) ---
+  const handleHoldStart = () => {
+    if (step.id !== 'hold-pickup' || inInventory) return;
     holdStartRef.current = Date.now();
     setHoldProgress(0);
-
     holdTimerRef.current = setInterval(() => {
       const elapsed = Date.now() - holdStartRef.current;
       const pct = Math.min(elapsed / 800, 1);
@@ -171,7 +219,8 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
       if (pct >= 1) {
         clearInterval(holdTimerRef.current!);
         holdTimerRef.current = null;
-        setIsDragging(true);
+        setInInventory(true);
+        setHoldProgress(0);
       }
     }, 16);
   };
@@ -181,45 +230,15 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
       clearInterval(holdTimerRef.current);
       holdTimerRef.current = null;
     }
-    if (isDragging) {
-      // Check if dropped in target
-      if (targetRef.current && taskRef.current) {
-        const targetRect = targetRef.current.getBoundingClientRect();
-        const taskRect = taskRef.current.getBoundingClientRect();
-        const taskCenter = {
-          x: taskRect.left + dragPosition.x + taskRect.width / 2,
-          y: taskRect.top + dragPosition.y + taskRect.height / 2,
-        };
-        if (
-          taskCenter.x >= targetRect.left &&
-          taskCenter.x <= targetRect.right &&
-          taskCenter.y >= targetRect.top &&
-          taskCenter.y <= targetRect.bottom
-        ) {
-          setDroppedInTarget(true);
-          setStepCompleted(true);
-        }
-      }
-      setIsDragging(false);
-      setHoldProgress(0);
-      if (!droppedInTarget) {
-        setDragPosition({ x: 0, y: 0 });
-      }
-    } else {
+    if (!inInventory) {
       setHoldProgress(0);
     }
   };
 
-  const handleDragMove = (e: React.TouchEvent | React.MouseEvent) => {
-    if (!isDragging) return;
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    if (taskRef.current) {
-      const rect = taskRef.current.getBoundingClientRect();
-      setDragPosition({
-        x: clientX - rect.left - rect.width / 2,
-        y: clientY - rect.top - rect.height / 2,
-      });
+  const handleInventoryPlace = () => {
+    if (step.id === 'hold-pickup' && inInventory && !inventoryPlaced) {
+      setInventoryPlaced(true);
+      setStepCompleted(true);
     }
   };
 
@@ -250,6 +269,16 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
     { key: 'lock', label: 'LOCK', desc: 'Cannot be moved at all', color: 'bg-red-500/15 border-red-500/30 text-red-600' },
   ];
 
+  const TaskBlock = ({ title, duration, priority, priorityColor }: { title: string; duration: string; priority: string; priorityColor: string }) => (
+    <div className="flex items-center gap-2">
+      <div className={`w-1 h-8 rounded-full ${priorityColor}`} />
+      <div>
+        <div className="text-[12px] font-mono text-foreground font-medium">{title}</div>
+        <div className="text-[10px] font-mono text-muted-foreground/50">{duration} · {priority}</div>
+      </div>
+    </div>
+  );
+
   return (
     <AnimatePresence>
       {open && (
@@ -261,11 +290,9 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
         >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono tracking-wider text-muted-foreground/60">
-                STEP {currentStep + 1} / {STEPS.length}
-              </span>
-            </div>
+            <span className="text-[10px] font-mono tracking-wider text-muted-foreground/60">
+              STEP {currentStep + 1} / {STEPS.length}
+            </span>
             <button onClick={() => { onClose(); setCurrentStep(0); resetStepState(); }} className="text-muted-foreground hover:text-foreground transition-colors">
               <X size={16} strokeWidth={1.5} />
             </button>
@@ -323,13 +350,7 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
                           onClick={handleTapTask}
                           className="w-full bg-card border border-border/60 rounded-sm p-3 cursor-pointer hover:border-primary/30 transition-all active:scale-[0.98]"
                         >
-                          <div className="flex items-center gap-2">
-                            <div className="w-1 h-8 rounded-full bg-emerald-500/40" />
-                            <div>
-                              <div className="text-[12px] font-mono text-foreground font-medium">Morning workout</div>
-                              <div className="text-[10px] font-mono text-muted-foreground/50">30 min · FLEX</div>
-                            </div>
-                          </div>
+                          <TaskBlock title="Morning workout" duration="30 min" priority="FLEX" priorityColor="bg-emerald-500/40" />
                         </div>
                         <AnimatePresence>
                           {editPanelOpen && (
@@ -356,9 +377,7 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
                       <div
                         onClick={handleDoubleTap}
                         className={`w-full bg-card border rounded-sm p-3 cursor-pointer transition-all active:scale-[0.98] select-none ${
-                          taskCompleted
-                            ? 'border-primary/30 bg-primary/5'
-                            : 'border-border/60 hover:border-primary/30'
+                          taskCompleted ? 'border-primary/30 bg-primary/5' : 'border-border/60 hover:border-primary/30'
                         }`}
                       >
                         <div className="flex items-center gap-2">
@@ -370,11 +389,7 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
                             <div className="text-[10px] font-mono text-muted-foreground/50">45 min · SEMI</div>
                           </div>
                           {taskCompleted && (
-                            <motion.div
-                              initial={{ scale: 0 }}
-                              animate={{ scale: 1 }}
-                              className="text-primary"
-                            >
+                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-primary">
                               <CheckCircle2 size={16} />
                             </motion.div>
                           )}
@@ -382,69 +397,138 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
                       </div>
                     )}
 
-                    {/* HOLD TO DRAG */}
-                    {step.id === 'hold-drag' && (
+                    {/* DRAG TO MOVE */}
+                    {step.id === 'drag-move' && (
                       <div className="w-full space-y-3">
-                        <div className="relative">
-                          <div
-                            ref={taskRef}
-                            onMouseDown={handleHoldStart}
-                            onMouseUp={handleHoldEnd}
-                            onMouseMove={handleDragMove}
-                            onMouseLeave={handleHoldEnd}
-                            onTouchStart={handleHoldStart}
-                            onTouchEnd={handleHoldEnd}
-                            onTouchMove={handleDragMove}
-                            style={isDragging ? {
-                              transform: `translate(${dragPosition.x}px, ${dragPosition.y}px)`,
-                              zIndex: 10,
-                              position: 'relative' as const,
-                            } : droppedInTarget ? { opacity: 0.3 } : {}}
-                            className={`w-full bg-card border rounded-sm p-3 cursor-grab transition-shadow select-none ${
-                              isDragging ? 'border-primary/40 shadow-lg scale-105' : 'border-border/60'
-                            } ${holdProgress > 0 && !isDragging ? 'border-primary/30' : ''}`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <div className="relative">
-                                <div className="w-1 h-8 rounded-full bg-amber-500/40" />
-                                {holdProgress > 0 && !isDragging && (
-                                  <svg className="absolute -inset-1.5 w-[calc(100%+12px)] h-[calc(100%+12px)]" viewBox="0 0 20 44">
-                                    <circle
-                                      cx="10" cy="22" r="8"
-                                      fill="none"
-                                      stroke="hsl(var(--primary))"
-                                      strokeWidth="2"
-                                      strokeDasharray={`${holdProgress * 50} 50`}
-                                      strokeLinecap="round"
-                                      className="transition-all"
-                                    />
-                                  </svg>
-                                )}
-                              </div>
-                              <div>
-                                <div className="text-[12px] font-mono text-foreground font-medium">Team standup</div>
-                                <div className="text-[10px] font-mono text-muted-foreground/50">15 min · SEMI</div>
-                              </div>
-                              <GripVertical size={14} className="ml-auto text-muted-foreground/30" />
-                            </div>
+                        <div
+                          ref={dragTaskRef}
+                          onMouseDown={handleDragStart}
+                          onMouseMove={handleDragMoveEvent}
+                          onMouseUp={handleDragEnd}
+                          onMouseLeave={handleDragEnd}
+                          onTouchStart={handleDragStart}
+                          onTouchMove={handleDragMoveEvent}
+                          onTouchEnd={handleDragEnd}
+                          style={{
+                            transform: dragStartPos ? `translate(${dragOffset.x}px, ${dragOffset.y}px)` : dragDropped ? 'none' : undefined,
+                            zIndex: dragStartPos ? 10 : undefined,
+                            position: 'relative' as const,
+                            opacity: dragDropped ? 0.3 : 1,
+                          }}
+                          className={`w-full bg-card border rounded-sm p-3 cursor-grab select-none transition-shadow ${
+                            dragStartPos ? 'border-primary/40 shadow-lg' : 'border-border/60'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <TaskBlock title="Team standup" duration="15 min" priority="SEMI" priorityColor="bg-amber-500/40" />
+                            <GripVertical size={14} className="ml-auto text-muted-foreground/30" />
                           </div>
                         </div>
 
-                        {/* Drop target */}
                         <div
-                          ref={targetRef}
+                          ref={dragTargetRef}
                           className={`w-full border-2 border-dashed rounded-sm p-4 flex items-center justify-center transition-colors ${
-                            droppedInTarget
+                            dragDropped
                               ? 'border-primary/40 bg-primary/5'
-                              : isDragging
+                              : dragStartPos
                                 ? 'border-primary/30 bg-primary/5'
                                 : 'border-border/30 bg-muted/10'
                           }`}
                         >
                           <span className="text-[10px] font-mono text-muted-foreground/40 tracking-wider">
-                            {droppedInTarget ? '✓ DROPPED' : 'DROP HERE'}
+                            {dragDropped ? '✓ MOVED' : 'DROP HERE'}
                           </span>
                         </div>
+                      </div>
+                    )}
+
+                    {/* HOLD TO PICK UP (INVENTORY) */}
+                    {step.id === 'hold-pickup' && (
+                      <div className="w-full space-y-3">
+                        {/* The task to hold */}
+                        {!inventoryPlaced && (
+                          <div
+                            onMouseDown={handleHoldStart}
+                            onMouseUp={handleHoldEnd}
+                            onMouseLeave={handleHoldEnd}
+                            onTouchStart={handleHoldStart}
+                            onTouchEnd={handleHoldEnd}
+                            className={`w-full bg-card border rounded-sm p-3 select-none transition-all ${
+                              inInventory
+                                ? 'border-primary/30 bg-primary/5 opacity-40'
+                                : holdProgress > 0
+                                  ? 'border-primary/30'
+                                  : 'border-border/60'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <div className="relative">
+                                <div className="w-1 h-8 rounded-full bg-orange-500/40" />
+                                {holdProgress > 0 && !inInventory && (
+                                  <svg className="absolute -inset-2 w-[calc(100%+16px)] h-[calc(100%+16px)]" viewBox="0 0 20 48">
+                                    <circle
+                                      cx="10" cy="24" r="8"
+                                      fill="none"
+                                      stroke="hsl(var(--primary))"
+                                      strokeWidth="2"
+                                      strokeDasharray={`${holdProgress * 50} 50`}
+                                      strokeLinecap="round"
+                                    />
+                                  </svg>
+                                )}
+                              </div>
+                              <div>
+                                <div className="text-[12px] font-mono text-foreground font-medium">Write report</div>
+                                <div className="text-[10px] font-mono text-muted-foreground/50">60 min · FIXED</div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Inventory indicator */}
+                        <AnimatePresence>
+                          {inInventory && !inventoryPlaced && (
+                            <motion.div
+                              initial={{ opacity: 0, y: -10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0 }}
+                              className="w-full bg-card border border-primary/30 rounded-sm p-2.5 flex items-center gap-2"
+                            >
+                              <Package size={14} className="text-primary shrink-0" />
+                              <span className="text-[11px] font-mono text-primary font-medium truncate flex-1">Write report</span>
+                              <span className="text-[9px] font-mono text-primary/50 tracking-wider">IN INVENTORY</span>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+
+                        {/* Drop target — tap to place */}
+                        <div
+                          onClick={handleInventoryPlace}
+                          className={`w-full border-2 border-dashed rounded-sm p-4 flex items-center justify-center transition-colors ${
+                            inventoryPlaced
+                              ? 'border-primary/40 bg-primary/5'
+                              : inInventory
+                                ? 'border-primary/30 bg-primary/5 cursor-pointer hover:bg-primary/10'
+                                : 'border-border/30 bg-muted/10'
+                          }`}
+                        >
+                          <span className="text-[10px] font-mono text-muted-foreground/40 tracking-wider">
+                            {inventoryPlaced ? '✓ PLACED' : inInventory ? 'TAP TO PLACE HERE' : 'TARGET ZONE'}
+                          </span>
+                        </div>
+
+                        {/* Placed task preview */}
+                        <AnimatePresence>
+                          {inventoryPlaced && (
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.95 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              className="w-full bg-card border border-primary/20 rounded-sm p-3"
+                            >
+                              <TaskBlock title="Write report" duration="60 min" priority="FIXED" priorityColor="bg-orange-500/40" />
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     )}
 
@@ -496,10 +580,7 @@ export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps)
                             className="w-full bg-card border border-primary/30 rounded-sm p-3"
                           >
                             <div className="text-[10px] font-mono text-primary tracking-wider mb-2">NEW TASK CREATED</div>
-                            <div className="flex items-center gap-2">
-                              <div className="w-1 h-6 rounded-full bg-emerald-500/40" />
-                              <div className="text-[12px] font-mono text-foreground font-medium">My new task</div>
-                            </div>
+                            <TaskBlock title="My new task" duration="30 min" priority="FLEX" priorityColor="bg-emerald-500/40" />
                           </motion.div>
                         )}
                         <p className="text-[9px] font-mono text-muted-foreground/40 text-center">
