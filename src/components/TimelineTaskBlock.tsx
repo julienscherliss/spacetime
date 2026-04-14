@@ -453,8 +453,8 @@ export function TimelineTaskBlock({
               : hasRoutineConflict
                 ? 'bg-card shadow-sm'
                 : showUnlinkedOutline
-                  ? `${task.isRoutine ? 'bg-background/60 backdrop-blur-sm' : 'bg-card'} border-dashed hover:shadow-sm`
-                  : `${task.isRoutine ? 'bg-background/60 backdrop-blur-sm' : 'bg-card'} hover:shadow-sm`
+                  ? 'bg-card border-dashed hover:shadow-sm'
+                  : 'bg-card hover:shadow-sm'
         } ${isOverdue && !hasRoutineConflict ? '' : ''}`}
         style={{
           backgroundColor: isLocked ? 'hsl(var(--locked-fill))' : undefined,
