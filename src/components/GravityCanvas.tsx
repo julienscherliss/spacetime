@@ -6,8 +6,8 @@ import { useRef, useEffect } from 'react';
  * the canvas simulating the hover effect. Touch overrides to finger position.
  */
 
-const GRID_COLS = 50;
-const GRID_ROWS = 35;
+const MIN_CELL_SIZE = 16;
+const MAX_CELL_SIZE = 22;
 const CENTER_MASS = 0;
 const CURSOR_MASS = 36000;
 const WARP_SOFTENING = 80;
@@ -43,14 +43,19 @@ export function GravityCanvas() {
 
     function buildGrid() {
       const { w, h } = dims.current;
-      const spacingX = w / (GRID_COLS - 1);
-      const spacingY = h / (GRID_ROWS - 1);
+      const spacing = Math.max(MIN_CELL_SIZE, Math.min(MAX_CELL_SIZE, Math.min(w, h) / 20));
+      const cols = Math.ceil(w / spacing) + 3;
+      const rows = Math.ceil(h / spacing) + 3;
+      const gridWidth = (cols - 1) * spacing;
+      const gridHeight = (rows - 1) * spacing;
+      const offsetX = (w - gridWidth) / 2;
+      const offsetY = (h - gridHeight) / 2;
       const grid: Node[][] = [];
-      for (let row = 0; row < GRID_ROWS; row++) {
+      for (let row = 0; row < rows; row++) {
         grid[row] = [];
-        for (let col = 0; col < GRID_COLS; col++) {
-          const rx = col * spacingX;
-          const ry = row * spacingY;
+        for (let col = 0; col < cols; col++) {
+          const rx = offsetX + col * spacing;
+          const ry = offsetY + row * spacing;
           grid[row][col] = { restX: rx, restY: ry, x: rx, y: ry, prevX: rx, prevY: ry };
         }
       }
@@ -145,6 +150,13 @@ export function GravityCanvas() {
       const cy = h / 2;
       time.current += 0.006;
       const grid = nodes.current;
+      const rows = grid.length;
+      const cols = grid[0]?.length ?? 0;
+
+      if (rows === 0 || cols === 0) {
+        animFrame.current = requestAnimationFrame(animate);
+        return;
+      }
 
       ctx.clearRect(0, 0, w, h);
 
@@ -175,8 +187,8 @@ export function GravityCanvas() {
 
       // Update node positions
       const lerp = 0.18;
-      for (let row = 0; row < GRID_ROWS; row++) {
-        for (let col = 0; col < GRID_COLS; col++) {
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
           const n = grid[row][col];
           let wx = 0, wy = 0;
 
@@ -200,14 +212,14 @@ export function GravityCanvas() {
       }
 
       // Draw horizontal lines
-      for (let row = 0; row < GRID_ROWS; row++) {
+      for (let row = 0; row < rows; row++) {
         ctx.beginPath();
-        for (let col = 0; col < GRID_COLS; col++) {
+        for (let col = 0; col < cols; col++) {
           const n = grid[row][col];
           if (col === 0) ctx.moveTo(n.x, n.y);
           else ctx.lineTo(n.x, n.y);
         }
-        const midNode = grid[row][Math.floor(GRID_COLS / 2)];
+        const midNode = grid[row][Math.floor(cols / 2)];
         const rowDist = Math.sqrt((midNode.restX - cx) ** 2 + (midNode.restY - cy) ** 2);
         const intensity = Math.max(0.06, Math.min(0.45, 0.5 - rowDist / (Math.max(w, h) * 0.8)));
         ctx.strokeStyle = `rgba(80, 120, 180, ${intensity})`;
@@ -216,14 +228,14 @@ export function GravityCanvas() {
       }
 
       // Draw vertical lines
-      for (let col = 0; col < GRID_COLS; col++) {
+      for (let col = 0; col < cols; col++) {
         ctx.beginPath();
-        for (let row = 0; row < GRID_ROWS; row++) {
+        for (let row = 0; row < rows; row++) {
           const n = grid[row][col];
           if (row === 0) ctx.moveTo(n.x, n.y);
           else ctx.lineTo(n.x, n.y);
         }
-        const midNode = grid[Math.floor(GRID_ROWS / 2)][col];
+        const midNode = grid[Math.floor(rows / 2)][col];
         const colDist = Math.sqrt((midNode.restX - cx) ** 2 + (midNode.restY - cy) ** 2);
         const intensity = Math.max(0.06, Math.min(0.45, 0.5 - colDist / (Math.max(w, h) * 0.8)));
         ctx.strokeStyle = `rgba(80, 120, 180, ${intensity})`;
@@ -232,8 +244,8 @@ export function GravityCanvas() {
       }
 
       // Draw nodes
-      for (let row = 0; row < GRID_ROWS; row++) {
-        for (let col = 0; col < GRID_COLS; col++) {
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
           const n = grid[row][col];
           const strain = Math.sqrt((n.x - n.restX) ** 2 + (n.y - n.restY) ** 2);
 
