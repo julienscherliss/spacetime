@@ -12,17 +12,16 @@ Deno.serve(async (req) => {
   const sig = req.headers.get("stripe-signature");
   const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
 
-  let event: Stripe.Event;
+  if (!webhookSecret || !sig) {
+    return new Response("Missing webhook secret or signature", { status: 400 });
+  }
 
-  if (webhookSecret && sig) {
-    try {
-      event = await stripe.webhooks.constructEventAsync(body, sig, webhookSecret);
-    } catch (err) {
-      console.error("Webhook signature verification failed:", err);
-      return new Response("Invalid signature", { status: 400 });
-    }
-  } else {
-    event = JSON.parse(body);
+  let event: Stripe.Event;
+  try {
+    event = await stripe.webhooks.constructEventAsync(body, sig, webhookSecret);
+  } catch (err) {
+    console.error("Webhook signature verification failed:", err);
+    return new Response("Invalid signature", { status: 400 });
   }
 
   const supabase = createClient(
