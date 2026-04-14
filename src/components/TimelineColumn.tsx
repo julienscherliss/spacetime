@@ -1165,38 +1165,14 @@ export function TimelineColumn({
         const top = ((taskMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT;
         const height = Math.max(((task.duration || 30) / 60) * HOUR_HEIGHT, 18);
         return (
-          <div
+          <CompletedTaskBlock
             key={`completed-${task.id}`}
-            data-task-block
-            className="absolute right-1 z-10 pointer-events-auto cursor-pointer"
-            style={{
-              top,
-              height,
-              left: showTimeLabels ? '3.25rem' : '2px',
-              opacity: 0.6,
-            }}
-            onClick={() => setEditingTask(task.id)}
-          >
-            <div
-              className="h-full rounded-[3px] border border-border/30 bg-muted/20 px-2 py-1 overflow-hidden"
-              style={{
-                borderLeftWidth: '2px',
-                borderLeftColor: `hsl(var(--priority-${task.priority}) / 0.3)`,
-              }}
-            >
-              <div className="flex items-center gap-1.5">
-                <Check size={10} className="text-muted-foreground/50 shrink-0" />
-                <span className="text-[10px] font-mono text-muted-foreground line-through truncate">
-                  {task.title}
-                </span>
-              </div>
-              {height > 28 && task.time && (
-                <div className="text-[9px] font-mono text-muted-foreground/30 mt-0.5 line-through">
-                  {formatTime12h(task.time)} · {formatDuration(task.duration || 30)}
-                </div>
-              )}
-            </div>
-          </div>
+            task={task}
+            top={top}
+            height={height}
+            showTimeLabels={showTimeLabels}
+            HOUR_HEIGHT={HOUR_HEIGHT}
+          />
         );
       })}
 
