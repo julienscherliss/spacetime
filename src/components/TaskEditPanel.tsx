@@ -13,8 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import { DurationPicker } from '@/components/ScrollWheelPicker';
 import { format } from 'date-fns';
-import { LinkAttachmentList } from '@/components/LinkAttachmentList';
-import { detectNewLinks, removeUrlsFromText, type LinkAttachment } from '@/utils/linkDetection';
+import { DescriptionWithLinks } from '@/components/DescriptionWithLinks';
 
 const PRIORITY_LABELS = ['Flex', 'Semi', 'Fixed', 'Lock'] as const;
 const PRIORITY_COLORS = [
@@ -161,17 +160,6 @@ export function TaskEditPanel() {
   const [attachments, setAttachments] = useState<{ name: string; url: string; type: string }[]>(
     (task?.attachments || []).filter((a: any) => a.type !== 'link')
   );
-  const [linkAttachments, setLinkAttachments] = useState<LinkAttachment[]>(() => {
-    return (task?.attachments || [])
-      .filter((a: any) => a.type === 'link')
-      .map((a: any) => ({
-        id: a.id || crypto.randomUUID(),
-        url: a.url,
-        displayName: a.name || a.url,
-        domain: a.domain || '',
-        createdAt: a.createdAt || new Date().toISOString(),
-      }));
-  });
   const [isUploading, setIsUploading] = useState(false);
   const [reminders, setReminders] = useState<number[]>(task?.reminders || []);
   const [showReminderModal, setShowReminderModal] = useState(false);
@@ -208,17 +196,6 @@ export function TaskEditPanel() {
       setShowCatPicker(false);
       setSaveStatus('idle');
       setAttachments((task.attachments || []).filter((a: any) => a.type !== 'link'));
-      setLinkAttachments(
-        (task.attachments || [])
-          .filter((a: any) => a.type === 'link')
-          .map((a: any) => ({
-            id: a.id || crypto.randomUUID(),
-            url: a.url,
-            displayName: a.name || a.url,
-            domain: a.domain || '',
-            createdAt: a.createdAt || new Date().toISOString(),
-          }))
-      );
       setIsUploading(false);
       setReminders(task.reminders || []);
       setShowReminderModal(false);
@@ -277,27 +254,7 @@ export function TaskEditPanel() {
       dueDate: dueDate || undefined,
       category: taskCategory || undefined,
       reminders: reminders.length > 0 ? reminders : undefined,
-      attachments: [
-        ...attachments,
-        ...linkAttachments.map(l => ({
-          id: l.id,
-          name: l.displayName,
-          url: l.url,
-          type: 'link' as const,
-          domain: l.domain,
-          createdAt: l.createdAt,
-        })),
-      ].length > 0 ? [
-        ...attachments,
-        ...linkAttachments.map(l => ({
-          id: l.id,
-          name: l.displayName,
-          url: l.url,
-          type: 'link' as const,
-          domain: l.domain,
-          createdAt: l.createdAt,
-        })),
-      ] : undefined,
+      attachments: attachments.length > 0 ? attachments : undefined,
     };
   };
 
@@ -732,11 +689,6 @@ export function TaskEditPanel() {
                   onChange={(e) => {
                     const val = e.target.value;
                     setTitle(val);
-                    const newLinks = detectNewLinks(val, linkAttachments);
-                    if (newLinks.length > 0) {
-                      setLinkAttachments(prev => [...prev, ...newLinks]);
-                      setTitle(removeUrlsFromText(val, newLinks.map(l => l.url)));
-                    }
                   }}
                   placeholder="Task name…"
                   className="w-full bg-transparent font-display font-bold text-foreground text-lg leading-tight focus:outline-none placeholder:text-muted-foreground/20 mb-1"
@@ -752,49 +704,13 @@ export function TaskEditPanel() {
               </div>
 
               {/* ─── Subtitle / Description (always fully visible) ─── */}
-              <textarea
+              <DescriptionWithLinks
                 value={description}
-                onChange={(e) => {
-                  const val = e.target.value;
+                onChange={(val) => {
                   setDescription(val);
-                  const ta = e.target;
-                  ta.style.height = 'auto';
-                  ta.style.height = ta.scrollHeight + 'px';
-                  // Auto-detect links
-                  const newLinks = detectNewLinks(val, linkAttachments);
-                  if (newLinks.length > 0) {
-                    setLinkAttachments(prev => [...prev, ...newLinks]);
-                    setDescription(removeUrlsFromText(val, newLinks.map(l => l.url)));
-                  }
-                }}
-                onPaste={(e) => {
-                  const pasted = e.clipboardData.getData('text');
-                  // Defer to let onChange fire first, then detect
-                  setTimeout(() => {
-                    const newLinks = detectNewLinks(pasted, linkAttachments);
-                    if (newLinks.length > 0) {
-                      setLinkAttachments(prev => [...prev, ...newLinks]);
-                      setDescription(prev => removeUrlsFromText(prev, newLinks.map(l => l.url)));
-                    }
-                  }, 0);
-                }}
-                ref={(el) => {
-                  if (el) {
-                    el.style.height = 'auto';
-                    el.style.height = el.scrollHeight + 'px';
-                  }
                 }}
                 placeholder="Add details, context, links…"
-                rows={2}
-                className="w-full bg-transparent text-[13px] font-mono text-foreground/60 placeholder:text-muted-foreground/20 focus:outline-none resize-none leading-relaxed mb-2"
               />
-
-              {/* ─── Link Attachments ─── */}
-              {linkAttachments.length > 0 && (
-                <div className="mb-4">
-                  <LinkAttachmentList links={linkAttachments} onChange={setLinkAttachments} />
-                </div>
-              )}
 
               {/* ─── Recurrence expanded ─── */}
               <AnimatePresence>
@@ -972,21 +888,50 @@ export function TaskEditPanel() {
 
               {/* ─── Attachments ─── */}
               {attachments.length > 0 && (
-                <div className="space-y-1 mb-3">
-                  {attachments.map((att, i) => (
-                    <div key={i} className="flex items-center gap-2 py-1.5 group">
-                      <FileText size={11} className="text-muted-foreground/40 shrink-0" />
-                      <a href={att.url} target="_blank" rel="noopener noreferrer"
-                        className="flex-1 text-[10px] font-mono text-foreground/60 hover:text-foreground truncate"
-                        onClick={(e) => e.stopPropagation()}>
-                        {att.name}
-                      </a>
-                      <button onClick={() => removeAttachment(i)}
-                        className="p-0.5 text-muted-foreground/20 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
-                        <X size={10} />
-                      </button>
+                <div className="mb-3">
+                  {/* Image thumbnails */}
+                  {attachments.some(a => a.type.startsWith('image/')) && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {attachments.map((att, i) => {
+                        if (!att.type.startsWith('image/')) return null;
+                        return (
+                          <div key={i} className="relative group">
+                            <a href={att.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                              <img
+                                src={att.url}
+                                alt={att.name}
+                                className="w-16 h-16 object-cover rounded-md border border-border/30 hover:border-primary/30 transition-colors cursor-zoom-in"
+                              />
+                            </a>
+                            <button
+                              onClick={() => removeAttachment(i)}
+                              className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-card border border-border/50 flex items-center justify-center text-muted-foreground/40 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X size={8} />
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
-                  ))}
+                  )}
+                  {/* Non-image files */}
+                  {attachments.filter(a => !a.type.startsWith('image/')).map((att, i) => {
+                    const realIndex = attachments.indexOf(att);
+                    return (
+                      <div key={i} className="flex items-center gap-2 py-1.5 group">
+                        <FileText size={11} className="text-muted-foreground/40 shrink-0" />
+                        <a href={att.url} target="_blank" rel="noopener noreferrer"
+                          className="flex-1 text-[10px] font-mono text-foreground/60 hover:text-foreground truncate"
+                          onClick={(e) => e.stopPropagation()}>
+                          {att.name}
+                        </a>
+                        <button onClick={() => removeAttachment(realIndex)}
+                          className="p-0.5 text-muted-foreground/20 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                          <X size={10} />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
               <input
