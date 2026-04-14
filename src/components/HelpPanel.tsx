@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { InteractiveTutorial } from './InteractiveTutorial';
 import {
   X, Search, Mouse, GripVertical, Focus, List,
   CalendarDays, Grid3X3, Archive, Clock, BarChart3, Repeat,
@@ -290,6 +291,7 @@ export function HelpPanel({ open, onClose, initialSection }: HelpPanelProps) {
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [tutorialOpen, setTutorialOpen] = useState(false);
 
   // Auto-expand a section when opened with initialSection
   useEffect(() => {
