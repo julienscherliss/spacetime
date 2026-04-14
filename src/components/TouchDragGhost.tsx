@@ -42,20 +42,24 @@ export function TouchDragGhost() {
 
   if (!dragging || !ghostPos || !preview) return null;
 
+  // Constrain width to viewport to prevent long tasks from running off screen
+  const maxWidth = Math.min(preview.width, window.innerWidth - 32); // 16px padding each side
+
   return (
     <div
       className="fixed z-[100] pointer-events-none"
       style={{
         left: ghostPos.x - preview.offsetX,
         top: ghostPos.y - preview.offsetY,
-        width: preview.width,
+        width: maxWidth,
         height: preview.height,
+        maxWidth: 'calc(100vw - 32px)',
       }}
     >
       <div className="h-full rounded-[2px] border border-primary/30 bg-card/95 shadow-lg overflow-hidden backdrop-blur-[2px]">
         <div className="h-full flex items-start justify-between gap-2 px-2 py-1">
-          <div className="min-w-0 flex-1">
-            <span className="text-[11px] font-mono text-foreground truncate block">
+          <div className="min-w-0 flex-1 overflow-hidden">
+            <span className="text-[11px] font-mono text-foreground truncate block max-w-full">
               {dragging.title}
             </span>
             <span className="text-[9px] font-mono text-muted-foreground/50">
