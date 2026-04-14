@@ -1173,7 +1173,7 @@ export function TimelineColumn({
               top,
               height,
               left: showTimeLabels ? '3.25rem' : '2px',
-              opacity: 0.3,
+              opacity: 0.6,
             }}
             onClick={() => setEditingTask(task.id)}
           >
