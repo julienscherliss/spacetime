@@ -206,14 +206,14 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
                 {dueBadge ? dueBadge.text : 'Due'}
               </button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 z-[70]" align="start" onClick={(e) => e.stopPropagation()}>
+            <PopoverContent className="w-auto p-0 z-[70]" align="start" onClick={(e) => e.stopPropagation()} onPointerDownOutside={(e) => e.preventDefault()}>
               <CalendarPicker
                 mode="single"
                 selected={dueDate ? new Date(dueDate + 'T12:00:00') : undefined}
                 onSelect={(d) => {
                   if (d) setDueDate(d.toISOString().split('T')[0]);
                   else setDueDate('');
-                  setShowDuePicker(false);
+                  setTimeout(() => setShowDuePicker(false), 0);
                 }}
                 className="p-3 pointer-events-auto"
               />
@@ -226,11 +226,12 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
                 ].map((opt) => (
                   <button
                     key={opt.label}
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       const d = new Date();
                       d.setDate(d.getDate() + opt.days);
                       setDueDate(d.toISOString().split('T')[0]);
-                      setShowDuePicker(false);
+                      setTimeout(() => setShowDuePicker(false), 0);
                     }}
                     className="px-2.5 py-1 rounded-sm text-[10px] font-mono tracking-wider text-muted-foreground/60 bg-muted/30 hover:bg-muted/60 hover:text-foreground/70 transition-colors"
                   >
@@ -238,7 +239,7 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
                   </button>
                 ))}
                 {dueDate && (
-                  <button onClick={() => { setDueDate(''); setShowDuePicker(false); }}
+                  <button onClick={(e) => { e.stopPropagation(); setDueDate(''); setTimeout(() => setShowDuePicker(false), 0); }}
                     className="ml-auto text-[10px] font-mono text-muted-foreground/40 hover:text-destructive/60">
                     Clear
                   </button>
