@@ -172,7 +172,7 @@ export function TagAutocomplete({ inputValue, onSelectTag, onSubmitAfterSelect, 
           key={cat.value}
           onPointerDown={(e) => {
             e.preventDefault(); // prevent blur
-            const cleaned = inputValue.replace(/#\S*$/, '').trim();
+            const cleaned = inputValue.replace(/#\S*$/, '').replace(/\/\/\S*$/, '').trim();
             onSelectTag(cat, cleaned);
           }}
           className={`w-full text-left px-3 py-2 text-[12px] font-mono tracking-wider transition-colors ${
