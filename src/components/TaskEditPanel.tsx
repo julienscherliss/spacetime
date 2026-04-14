@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Priority, RecurrencePattern, CustomUnit } from '@/store/taskStore';
 import { SubtaskList, Subtask } from '@/components/SubtaskList';
 import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar, Inbox, CalendarCheck, XCircle, Paperclip, ExternalLink, Check, AlertTriangle, Tag, Upload, FileText, Bell } from 'lucide-react';
+import { AttachmentLightbox } from '@/components/AttachmentLightbox';
 import { useTimezoneStore } from '@/store/timezoneStore';
 import { supabase } from '@/integrations/supabase/client';
 import { useLibraryStore } from '@/store/libraryStore';
@@ -161,6 +162,7 @@ export function TaskEditPanel() {
     (task?.attachments || []).filter((a: any) => a.type !== 'link')
   );
   const [isUploading, setIsUploading] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [reminders, setReminders] = useState<number[]>(task?.reminders || []);
   const [showReminderModal, setShowReminderModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -355,12 +357,18 @@ export function TaskEditPanel() {
     }
   };
 
+  const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0 || !task) return;
     setIsUploading(true);
     try {
       for (const file of Array.from(files)) {
+        if (file.size > MAX_FILE_SIZE) {
+          toast.error(`${file.name} exceeds 25MB limit`);
+          continue;
+        }
         const filePath = `${task.id}/${Date.now()}-${file.name}`;
         const { error } = await supabase.storage.from('task-attachments').upload(filePath, file);
         if (error) throw error;
