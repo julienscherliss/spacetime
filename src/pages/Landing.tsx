@@ -1,10 +1,11 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 // FeatureCarousel temporarily removed — will re-add with video content
 // import { FeatureCarousel } from '@/components/FeatureCarousel';
-import { Layers, ArrowRight, Zap, Target, Calendar, Repeat, BarChart3 } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { GravityCanvas } from '@/components/GravityCanvas';
+import { LandingFeatureGrid } from '@/components/landing/LandingFeatureGrid';
 import faviconUrl from '/favicon.png';
 
 const fadeUp = {
@@ -16,45 +17,10 @@ const fadeUp = {
   }),
 };
 
-const features = [
-  {
-    icon: Calendar,
-    label: 'TIMELINE VIEW',
-    desc: 'Your entire day mapped across a clean, scrollable timeline. Drag to reschedule. Resize to adjust.',
-  },
-  {
-    icon: Layers,
-    label: 'PRIORITY ESCALATION',
-    desc: 'Tasks gain urgency as you move them. FLEX → SEMI → FIXED → LOCK. The system enforces your intent.',
-  },
-  {
-    icon: Repeat,
-    label: 'LINKED RECURRENCE',
-    desc: 'Routines that stay connected. Edit one, update the series. Detach when you need to deviate.',
-  },
-  {
-    icon: Target,
-    label: 'FOCUS MODE',
-    desc: 'Zero distractions. One task, one timer, full attention. Complete it or carry it forward.',
-  },
-  {
-    icon: BarChart3,
-    label: 'ANALYTICS',
-    desc: 'Completion rates, tag allocation, activity heatmaps. Understand where your time actually goes.',
-  },
-  {
-    icon: Zap,
-    label: 'LIBRARY',
-    desc: 'Tasks without a day. A staging area for things that matter but don\'t have a slot yet.',
-  },
-];
-
 export default function Landing() {
   const navigate = useNavigate();
 
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
-  const [carouselIndex, setCarouselIndex] = useState<number | null>(null);
-  const carouselRef = useRef<HTMLDivElement>(null);
 
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary/20">
@@ -157,34 +123,7 @@ export default function Landing() {
 
           {/* Feature carousel — temporarily removed, waiting for video assets */}
 
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-            {features.map((f, i) => (
-              <motion.div
-                key={f.label}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, margin: '-40px' }}
-                custom={i}
-                variants={fadeUp}
-                className="relative border border-border/40 rounded-md hover:border-foreground/20 transition-all cursor-pointer overflow-hidden"
-                style={{ aspectRatio: '1 / 1' }}
-                onClick={() => {}}
-              >
-                <div className="absolute inset-0 p-4 sm:p-5 flex flex-col justify-center">
-                  <f.icon
-                    size={16}
-                    className="text-primary/70 mb-3 transition-colors flex-shrink-0"
-                  />
-                  <div className="text-[8px] sm:text-[9px] font-mono text-muted-foreground/50 tracking-[0.2em] mb-2 flex-shrink-0">
-                    {f.label}
-                  </div>
-                  <p className="text-[10px] sm:text-[12px] font-mono text-muted-foreground/70 leading-relaxed line-clamp-4">
-                    {f.desc}
-                  </p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+          <LandingFeatureGrid />
         </div>
       </section>
 
