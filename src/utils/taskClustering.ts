@@ -23,6 +23,7 @@ export interface TaskCluster {
 }
 
 const TASK_TEXT_FIT_PX = 23; // title line + vertical padding in TimelineTaskBlock
+const TASK_TEXT_FIT_PX_COMFORT = 28; // comfort mode needs more height for larger text
 
 /**
  * Given a list of timed tasks and the current hourHeight,
@@ -35,8 +36,10 @@ const TASK_TEXT_FIT_PX = 23; // title line + vertical padding in TimelineTaskBlo
 export function clusterTasks(
   tasks: ClusterableTask[],
   hourHeight: number,
-  excludeIds?: Set<string>
+  excludeIds?: Set<string>,
+  comfortMode: boolean = false,
 ): TaskCluster[] {
+  const fitPx = comfortMode ? TASK_TEXT_FIT_PX_COMFORT : TASK_TEXT_FIT_PX;
   const timed = tasks
     .filter(t => t.time && !(excludeIds?.has(t.id)))
     .map(t => {
@@ -51,7 +54,7 @@ export function clusterTasks(
         endMin,
         startPx: (startMin / 60) * hourHeight,
         naturalHeightPx,
-        titleFits: naturalHeightPx >= TASK_TEXT_FIT_PX,
+        titleFits: naturalHeightPx >= fitPx,
       };
     })
     .sort((a, b) => a.startMin - b.startMin);
@@ -63,7 +66,7 @@ export function clusterTasks(
         startMin: timeToMinutes(t.time!),
         endMin: timeToMinutes(t.time!) + (t.duration || 30),
         naturalHeightPx: ((t.duration || 30) / 60) * hourHeight,
-        titleFits: (((t.duration || 30) / 60) * hourHeight) >= TASK_TEXT_FIT_PX,
+        titleFits: (((t.duration || 30) / 60) * hourHeight) >= fitPx,
       }))
     : [];
 
