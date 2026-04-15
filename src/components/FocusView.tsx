@@ -402,14 +402,14 @@ function FocusDayListPanel({ allTodayTasks, completedCount, nowMinutes, activeTa
         className="absolute inset-0 flex flex-col pt-8 pb-16 px-3 sm:px-4 overflow-y-auto"
       >
         {/* Header */}
-        <div className="max-w-sm mx-auto w-full mb-2">
+        <div className="max-w-sm sm:max-w-xl mx-auto w-full mb-2">
           <p className="text-[10px] font-mono text-muted-foreground/50 tracking-widest">
             {completedCount}/{allTodayTasks.length} COMPLETED
           </p>
         </div>
 
         {/* Task list */}
-        <div className="max-w-sm mx-auto w-full flex flex-col">
+        <div className="max-w-sm sm:max-w-xl mx-auto w-full flex flex-col">
           {allTodayTasks.length === 0 ? (
             <div className="text-center py-20">
               <p className="text-muted-foreground/30 font-mono text-sm tracking-wider">NO TASKS</p>
@@ -598,7 +598,7 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
   })();
 
   return (
-    <div className="w-full max-w-sm mx-auto flex flex-col gap-5">
+    <div className="w-full max-w-sm sm:max-w-xl mx-auto flex flex-col gap-5">
       {/* ── Header: countdown (left, tappable → day view) + due date (right, tappable → date picker) ── */}
       <div className="flex items-center justify-between">
         <button
