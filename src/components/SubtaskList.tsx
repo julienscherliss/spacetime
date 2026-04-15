@@ -24,7 +24,7 @@ const generateId = () => Math.random().toString(36).substring(2, 8);
 export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
   ({ subtasks, onChange, compact = false }, ref) => {
     const [input, setInput] = useState('');
-    const inputRef = useRef<HTMLInputElement>(null);
+    const inputRef = useRef<HTMLTextAreaElement>(null);
 
     useImperativeHandle(ref, () => ({
       focus: () => inputRef.current?.focus(),
