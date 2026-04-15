@@ -1154,7 +1154,8 @@ export function TimelineColumn({
             return 0;
           });
 
-        const clusters = clusterTasks(sortedTasks, HOUR_HEIGHT, routineConflictIds);
+        const comfortMode = useTimezoneStore.getState().comfortMode;
+        const clusters = clusterTasks(sortedTasks, HOUR_HEIGHT, routineConflictIds, comfortMode);
 
         return clusters.map((cluster, ci) => {
           if (cluster.type === 'condensed' && cluster.tasks.length > 1) {

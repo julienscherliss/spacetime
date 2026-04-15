@@ -398,10 +398,15 @@ export function TimelineTaskBlock({
     }
   }, [dragTaskId, task.id]);
 
+  const comfortMode = useTimezoneStore((s) => s.comfortMode);
+  const titleThreshold = comfortMode ? 28 : 23;
+  const metaThreshold = comfortMode ? 42 : 36;
+  const footerThreshold = comfortMode ? 34 : 28;
+
   const showHoldRing = pickupProgress > 0 && !dragActivated.current && !isLocked;
-  const canShowTitle = !isCompact && height >= 23;
-  const canShowActiveMeta = !isCompact && height > 36;
-  const canShowFooter = !isCompact && height > 28;
+  const canShowTitle = !isCompact && height >= titleThreshold;
+  const canShowActiveMeta = !isCompact && height > metaThreshold;
+  const canShowFooter = !isCompact && height > footerThreshold;
   const canShowResizeHandles = !isCompact && height >= 18;
 
   // Double-click/tap to complete

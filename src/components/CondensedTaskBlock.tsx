@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { Layers } from 'lucide-react';
 import { TaskCluster } from '@/utils/taskClustering';
 import { START_HOUR } from '@/components/TimelineColumn';
+import { useTimezoneStore } from '@/store/timezoneStore';
 
 interface CondensedTaskBlockProps {
   cluster: TaskCluster;
@@ -16,15 +17,16 @@ export function CondensedTaskBlock({
   showTimeLabels,
   onTap,
 }: CondensedTaskBlockProps) {
+  const comfortMode = useTimezoneStore((s) => s.comfortMode);
   const top = ((cluster.startMin - START_HOUR * 60) / 60) * hourHeight;
   const totalMinutes = cluster.endMin - cluster.startMin;
   const height = cluster.displayHeightPx ?? ((totalMinutes / 60) * hourHeight);
   const count = cluster.tasks.length;
 
   const allCompleted = cluster.tasks.every(t => t.completed);
-  const isCompact = height < 18;
-  const canShowTitles = height > 46;
-  const maxTitles = height > 72 ? 2 : 1;
+  const isCompact = height < (comfortMode ? 22 : 18);
+  const canShowTitles = height > (comfortMode ? 54 : 46);
+  const maxTitles = height > (comfortMode ? 84 : 72) ? 2 : 1;
   const visibleTitles = canShowTitles ? cluster.tasks.slice(0, maxTitles) : [];
   const remaining = count - visibleTitles.length;
 
