@@ -54,13 +54,13 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
       return (
         <div className="space-y-1.5">
           {subtasks.map((s) => (
-            <label key={s.id} className="flex items-center gap-2 cursor-pointer group">
-              <Checkbox
+            <label key={s.id} className="flex items-start gap-2 cursor-pointer group">
+                <Checkbox
                 checked={s.completed}
                 onCheckedChange={() => handleToggle(s.id)}
-                className="h-3.5 w-3.5"
+                className="h-3.5 w-3.5 mt-0.5 shrink-0"
               />
-              <span className={`text-[11px] font-mono ${s.completed ? 'line-through text-muted-foreground/40' : 'text-foreground/70'}`}>
+              <span className={`text-[11px] font-mono break-words ${s.completed ? 'line-through text-muted-foreground/40' : 'text-foreground/70'}`}>
                 {s.title}
               </span>
             </label>
