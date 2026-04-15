@@ -1,11 +1,11 @@
 /**
- * In-app notification sound service.
- * Plays audio alerts at the same times web/native notifications fire,
- * using the Web Audio API (no external sound files needed).
+ * In-app notification sound scheduling.
+ * Uses the cassette-futurism sound engine for audio output.
  */
 
 import type { Task, Priority } from '@/store/taskStore';
 import type { NotificationLevel } from '@/utils/notificationService';
+import { playNotificationSound } from '@/utils/soundEngine';
 
 interface ScheduledSound {
   taskId: string;
@@ -16,61 +16,6 @@ interface ScheduledSound {
 
 const scheduled = new Map<string, ScheduledSound>();
 let lastFingerprint = '';
-let audioCtx: AudioContext | null = null;
-
-function getAudioCtx(): AudioContext | null {
-  if (!audioCtx) {
-    try {
-      audioCtx = new AudioContext();
-    } catch {
-      return null;
-    }
-  }
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume().catch(() => {});
-  }
-  return audioCtx;
-}
-
-/** Play a short synthetic chime — 'warning' is softer, 'alarm' is more urgent */
-function playSound(type: 'warning' | 'alarm') {
-  const ctx = getAudioCtx();
-  if (!ctx) return;
-
-  const now = ctx.currentTime;
-
-  if (type === 'warning') {
-    // Gentle two-note chime
-    const notes = [660, 880];
-    notes.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0, now + i * 0.15);
-      gain.gain.linearRampToValueAtTime(0.15, now + i * 0.15 + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.15 + 0.4);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(now + i * 0.15);
-      osc.stop(now + i * 0.15 + 0.4);
-    });
-  } else {
-    // Urgent three-note alarm
-    const notes = [880, 1100, 880];
-    notes.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0, now + i * 0.12);
-      gain.gain.linearRampToValueAtTime(0.2, now + i * 0.12 + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.3);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(now + i * 0.12);
-      osc.stop(now + i * 0.12 + 0.3);
-    });
-  }
-}
 
 function shouldNotify(task: Task, level: NotificationLevel): boolean {
   if (level === 'off') return false;
@@ -150,7 +95,6 @@ export function syncNotificationSounds(tasks: Task[], level: NotificationLevel) 
     }
   }
 
-  // Cancel stale
   for (const [key, entry] of scheduled) {
     if (!desired.has(key) || desired.get(key)!.fireAt !== entry.fireAt) {
       clearTimeout(entry.timerId);
@@ -158,13 +102,12 @@ export function syncNotificationSounds(tasks: Task[], level: NotificationLevel) 
     }
   }
 
-  // Schedule new
   for (const [key, item] of desired) {
     if (scheduled.has(key) && scheduled.get(key)!.fireAt === item.fireAt) continue;
 
     const delay = item.fireAt - now;
     const timerId = setTimeout(() => {
-      playSound(item.type);
+      playNotificationSound(item.type);
       scheduled.delete(key);
     }, delay);
 
