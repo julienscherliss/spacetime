@@ -24,6 +24,24 @@ export function AppNav() {
   const { viewMode, setViewMode, daySubMode, setDaySubMode, routinesEnabled, toggleRoutines, tasks } = useTaskStore();
   const { panelOpen: libPanelOpen, setPanelOpen: setLibPanelOpen } = useLibraryStore();
   const libCount = useLibraryStore((s) => s.items.length);
+  const libUrgentCount = useLibraryStore((s) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    // Calculate date 3 weekdays from now
+    let remaining = 3;
+    const limit = new Date(today);
+    while (remaining > 0) {
+      limit.setDate(limit.getDate() + 1);
+      const dow = limit.getDay();
+      if (dow !== 0 && dow !== 6) remaining--;
+    }
+    return s.items.filter((i) => {
+      if (!i.dueDate) return false;
+      const due = new Date(i.dueDate + 'T12:00:00');
+      due.setHours(0, 0, 0, 0);
+      return due <= limit;
+    }).length;
+  });
   const { signOut } = useAuth();
   const { subscription, trialDaysLeft, cancellingDaysLeft, isAdmin } = useSubscription();
   const [newUserCount, setNewUserCount] = useState(0);
@@ -98,7 +116,8 @@ export function AppNav() {
                 <OverflowItem
                   icon={<Archive size={18} strokeWidth={1.5} />}
                   label="Library"
-                  badge={libCount > 0 ? String(libCount) : undefined}
+                  badge={libUrgentCount > 0 ? String(libUrgentCount) : (libCount > 0 ? String(libCount) : undefined)}
+                  destructive={libUrgentCount > 0}
                   active={libPanelOpen}
                   onClick={() => { setLibPanelOpen(!libPanelOpen); setMoreOpen(false); }}
                 />
@@ -267,12 +286,17 @@ export function AppNav() {
               libPanelOpen
                 ? 'bg-primary/8 text-primary border border-primary/12'
                 : navItemInactive
-            }`}
+            } relative`}
           >
             <Archive size={13} strokeWidth={1.5} />
             <span className={libPanelOpen ? 'font-medium' : ''}>LIBRARY</span>
             {libCount > 0 && (
               <span className="text-[9px] font-mono text-muted-foreground/35 ml-0.5">{libCount}</span>
+            )}
+            {libUrgentCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[15px] h-[15px] rounded-full bg-destructive text-destructive-foreground text-[8px] font-mono flex items-center justify-center">
+                {libUrgentCount}
+              </span>
             )}
           </button>
           <button
