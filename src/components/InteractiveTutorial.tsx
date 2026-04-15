@@ -269,13 +269,58 @@ export function InteractiveTutorial({ open, onClose, mandatory = false }: Intera
     });
   };
 
-  // --- Add task (schedule slot) ---
+  // --- Add task (drag to create) ---
   const [scheduledSlot, setScheduledSlot] = useState<number | null>(null);
-  const handleSlotTap = (slotIndex: number) => {
+  const [dragSlotCount, setDragSlotCount] = useState(0);
+  const [slotDragStart, setSlotDragStart] = useState<number | null>(null);
+  const [slotDragCurrent, setSlotDragCurrent] = useState<number | null>(null);
+  const slotRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  const getSlotFromPoint = (clientY: number): number | null => {
+    for (let i = 0; i < slotRefs.current.length; i++) {
+      const el = slotRefs.current[i];
+      if (!el) continue;
+      const rect = el.getBoundingClientRect();
+      if (clientY >= rect.top && clientY <= rect.bottom) return i;
+    }
+    return null;
+  };
+
+  const handleSlotDragStart = (slotIndex: number, e: React.MouseEvent | React.TouchEvent) => {
     if (step.id !== 'add-task' || scheduledSlot !== null) return;
-    setScheduledSlot(slotIndex);
-    setAddTaskTapped(true);
-    setStepCompleted(true);
+    // skip occupied slot
+    if (slotIndex === 0) return;
+    e.preventDefault();
+    setSlotDragStart(slotIndex);
+    setSlotDragCurrent(slotIndex);
+    setDragSlotCount(1);
+    setIsTouching(true);
+  };
+
+  const handleSlotDragMove = (e: React.MouseEvent | React.TouchEvent) => {
+    if (slotDragStart === null || step.id !== 'add-task') return;
+    e.preventDefault();
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    const hoveredSlot = getSlotFromPoint(clientY);
+    if (hoveredSlot !== null && hoveredSlot >= slotDragStart && hoveredSlot !== 0) {
+      setSlotDragCurrent(hoveredSlot);
+      setDragSlotCount(hoveredSlot - slotDragStart + 1);
+    }
+  };
+
+  const handleSlotDragEnd = () => {
+    if (slotDragStart === null || step.id !== 'add-task') return;
+    setIsTouching(false);
+    if (dragSlotCount >= 2) {
+      setScheduledSlot(slotDragStart);
+      setAddTaskTapped(true);
+      setStepCompleted(true);
+    } else {
+      // Not enough drag — reset
+      setSlotDragStart(null);
+      setSlotDragCurrent(null);
+      setDragSlotCount(0);
+    }
   };
 
   // Prevent touch scrolling during drag/hold interactions
