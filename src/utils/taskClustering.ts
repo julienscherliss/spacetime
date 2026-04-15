@@ -141,7 +141,7 @@ export function clusterTasks(
   for (let i = 1; i < timed.length; i++) {
     const curr = timed[i];
 
-    const currentGroupUnreadable = currentGroup.every(item => !item.titleFits);
+    const currentGroupUnreadable = currentGroup.every(item => !item.heightFits);
     const currentGroupNaturalBottomPx = Math.max(...currentGroup.map(item => item.naturalBottomPx));
     const currentGroupReadableBottomPx = Math.max(...currentGroup.map(item => item.readableBottomPx));
     const naturalGapPx = curr.startPx - currentGroupNaturalBottomPx;
@@ -149,7 +149,7 @@ export function clusterTasks(
 
     const shouldCluster =
       currentGroupUnreadable &&
-      !curr.titleFits &&
+      !curr.heightFits &&
       naturalGapPx <= CLUSTER_ADJACENCY_EPSILON_PX &&
       readableGapPx <= 0;
 
