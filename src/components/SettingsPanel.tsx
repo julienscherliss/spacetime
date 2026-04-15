@@ -30,7 +30,7 @@ interface SettingsPanelProps {
 }
 
 export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
-  const { timezone, setTimezone, routinesFixedTime, setRoutinesFixedTime, autoDetect, setAutoDetect, darkMode, setDarkMode, mobilityMode, setMobilityMode, notificationLevel, setNotificationLevel, persistentOverdue, setPersistentOverdue, showCompletedTasks, setShowCompletedTasks } = useTimezoneStore();
+  const { timezone, setTimezone, routinesFixedTime, setRoutinesFixedTime, autoDetect, setAutoDetect, darkMode, setDarkMode, mobilityMode, setMobilityMode, notificationLevel, setNotificationLevel, persistentOverdue, setPersistentOverdue, showCompletedTasks, setShowCompletedTasks, uiScale, setUiScale } = useTimezoneStore();
   const { connected, email, calendars, loading, checkStatus, startAuth, refreshCalendarData, toggleCalendar, disconnect } = useCalendarStore();
   const nativeRuntime = isNativePlatform();
   const [search, setSearch] = useState('');
