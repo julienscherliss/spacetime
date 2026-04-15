@@ -51,77 +51,72 @@ function drift(): number {
 }
 
 // ─── Sound: Tape Click (Task Complete) ───────────────────────────────────────
-// Two-phase: mechanical "chk" (0-80ms) + warm resolve bloom (80-400ms)
+// Satisfying click-glow: crisp mechanical snap into a warm radiating bloom
 
 function playTapeClick(c: AudioContext) {
   const t = c.currentTime;
-  const master = masterGain(c, 0.2);
+  const master = masterGain(c, 0.22);
 
-  // ── Phase 1: The Click (0–80ms) ──
-  // Muted tape-button "chk" — low-mid heavy, not sharp
+  // ── The Click: crisp but warm snap ──
   const clickFilter = c.createBiquadFilter();
-  clickFilter.type = 'lowpass';
-  clickFilter.frequency.value = 1200;
-  clickFilter.Q.value = 1.5;
+  clickFilter.type = 'bandpass';
+  clickFilter.frequency.value = 1800;
+  clickFilter.Q.value = 1.2;
   clickFilter.connect(master);
 
-  // Noise burst — short, soft, muted
-  const bufLen = c.sampleRate * 0.025;
+  // Noise snap — slightly brighter than before for more "click"
+  const bufLen = c.sampleRate * 0.018;
   const buf = c.createBuffer(1, bufLen, c.sampleRate);
   const d = buf.getChannelData(0);
-  for (let i = 0; i < bufLen; i++) d[i] = (Math.random() * 2 - 1) * 0.4;
+  for (let i = 0; i < bufLen; i++) d[i] = (Math.random() * 2 - 1) * 0.5;
   const noise = c.createBufferSource();
   noise.buffer = buf;
   const nG = c.createGain();
-  nG.gain.setValueAtTime(0.7, t);
-  nG.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+  nG.gain.setValueAtTime(0.8, t);
+  nG.gain.exponentialRampToValueAtTime(0.001, t + 0.035);
   noise.connect(nG).connect(clickFilter);
   noise.start(t);
-  noise.stop(t + 0.06);
+  noise.stop(t + 0.04);
 
-  // Low thump body — gives the "chk" its physical weight
-  const thump = c.createOscillator();
-  thump.type = 'sine';
-  thump.frequency.setValueAtTime(180 + drift(), t);
-  thump.frequency.exponentialRampToValueAtTime(60, t + 0.07);
-  const tG = c.createGain();
-  tG.gain.setValueAtTime(0.5, t);
-  tG.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
-  thump.connect(tG).connect(master);
-  thump.start(t);
-  thump.stop(t + 0.09);
+  // Pitched click body — gives snap its "thock"
+  const click = c.createOscillator();
+  click.type = 'sine';
+  click.frequency.setValueAtTime(400 + drift(), t);
+  click.frequency.exponentialRampToValueAtTime(120, t + 0.05);
+  const cG = c.createGain();
+  cG.gain.setValueAtTime(0.6, t);
+  cG.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+  click.connect(cG).connect(master);
+  click.start(t);
+  click.stop(t + 0.07);
 
-  // ── Phase 2: The Resolve (80–400ms) ──
-  // Warm, gently blooming tone — emotional completion
-  const resolveFilter = warmFilter(c, 2400);
-  resolveFilter.connect(master);
+  // ── The Glow: warm radiating bloom ──
+  const glowFilter = warmFilter(c, 2800);
+  glowFilter.connect(master);
 
-  // Primary: soft sine rising slightly (C4 → D4)
-  const res1 = c.createOscillator();
-  res1.type = 'sine';
-  res1.frequency.setValueAtTime(262 + drift(), t + 0.08);
-  res1.frequency.linearRampToValueAtTime(294 + drift(), t + 0.35);
-  const rG1 = c.createGain();
-  rG1.gain.setValueAtTime(0, t + 0.06);
-  rG1.gain.linearRampToValueAtTime(0.18, t + 0.14);
-  rG1.gain.setValueAtTime(0.18, t + 0.22);
-  rG1.gain.exponentialRampToValueAtTime(0.001, t + 0.42);
-  res1.connect(rG1).connect(resolveFilter);
-  res1.start(t + 0.06);
-  res1.stop(t + 0.45);
+  // Main glow: major third chord blooming outward
+  const glowNotes = [
+    { freq: 330 + drift(), type: 'sine' as OscillatorType, vol: 0.28 },
+    { freq: 415 + drift(), type: 'sine' as OscillatorType, vol: 0.15 },
+    { freq: 660 + drift() * 2, type: 'triangle' as OscillatorType, vol: 0.08 },
+  ];
 
-  // Harmonic shimmer: triangle, detuned fifth above
-  const res2 = c.createOscillator();
-  res2.type = 'triangle';
-  res2.frequency.setValueAtTime(394 + drift() * 2, t + 0.09);
-  res2.frequency.linearRampToValueAtTime(441 + drift() * 2, t + 0.35);
-  const rG2 = c.createGain();
-  rG2.gain.setValueAtTime(0, t + 0.08);
-  rG2.gain.linearRampToValueAtTime(0.06, t + 0.16);
-  rG2.gain.exponentialRampToValueAtTime(0.001, t + 0.38);
-  res2.connect(rG2).connect(resolveFilter);
-  res2.start(t + 0.08);
-  res2.stop(t + 0.4);
+  glowNotes.forEach(({ freq, type, vol }, i) => {
+    const osc = c.createOscillator();
+    osc.type = type;
+    osc.frequency.value = freq;
+
+    const g = c.createGain();
+    const onset = t + 0.03 + i * 0.012;
+    g.gain.setValueAtTime(0, onset);
+    g.gain.linearRampToValueAtTime(vol, onset + 0.06);  // fast bloom
+    g.gain.setValueAtTime(vol * 0.9, onset + 0.15);
+    g.gain.exponentialRampToValueAtTime(0.001, onset + 0.55); // long warm tail
+
+    osc.connect(g).connect(glowFilter);
+    osc.start(onset);
+    osc.stop(onset + 0.6);
+  });
 }
 
 // ─── Sound: Blip ─────────────────────────────────────────────────────────────
