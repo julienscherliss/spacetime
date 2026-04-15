@@ -112,6 +112,9 @@ export function InteractiveTutorial({ open, onClose, mandatory = false }: Intera
     setPriorityTapped(new Set());
     setAddTaskTapped(false);
     setScheduledSlot(null);
+    setDragSlotCount(0);
+    setSlotDragStart(null);
+    setSlotDragCurrent(null);
     setIsTouching(false);
     if (holdTimerRef.current) {
       clearInterval(holdTimerRef.current);
