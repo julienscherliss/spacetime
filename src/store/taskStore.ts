@@ -490,6 +490,7 @@ export const useTaskStore = create<TaskState>()(
         const todayTasks = state.tasks.filter((t) => t.date === today && !t.archivedAt);
         const allDone = todayTasks.length > 0 && todayTasks.every((t) => t.completed);
         if (allDone) {
+          playUISound('swell');
           set({ showCompletionStats: true, dailyStats: get().getDailyStats() });
         }
       },
