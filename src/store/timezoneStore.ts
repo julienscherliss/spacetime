@@ -39,6 +39,7 @@ export const useTimezoneStore = create<TimezoneState>()(
       persistentOverdue: false,
       showCompletedTasks: true,
       comfortMode: false,
+      soundEnabled: true,
       setTimezone: (tz: string) => set({ timezone: tz }),
       setRoutinesFixedTime: (v: boolean) => set({ routinesFixedTime: v }),
       setAutoDetect: (v: boolean) => set({ autoDetect: v }),
