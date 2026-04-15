@@ -646,39 +646,63 @@ export function InteractiveTutorial({ open, onClose, mandatory = false }: Intera
                       </div>
                     )}
 
-                    {/* SCHEDULE A TASK */}
+                    {/* SCHEDULE A TASK (drag to create) */}
                     {step.id === 'add-task' && (
-                      <div className="w-full">
-                        {/* Mini schedule */}
+                      <div
+                        className="w-full select-none"
+                        onMouseMove={handleSlotDragMove}
+                        onMouseUp={handleSlotDragEnd}
+                        onMouseLeave={handleSlotDragEnd}
+                        onTouchMove={handleSlotDragMove}
+                        onTouchEnd={handleSlotDragEnd}
+                        onTouchCancel={handleSlotDragEnd}
+                      >
+                        {scheduledSlot === null && (
+                          <div className="text-[9px] font-mono text-muted-foreground/40 text-center mb-2 tracking-wider">
+                            DRAG DOWN TO SET DURATION
+                          </div>
+                        )}
                         <div className="space-y-0">
                           {['9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM'].map((time, i) => {
-                            const isOccupied = i === 0; // First slot has existing task
-                            const isScheduled = scheduledSlot === i;
+                            const isOccupied = i === 0;
+                            const isInDragRange = slotDragStart !== null && scheduledSlot === null && i >= slotDragStart && i <= (slotDragCurrent ?? slotDragStart);
+                            const isScheduledRange = scheduledSlot !== null && i >= scheduledSlot && i < scheduledSlot + dragSlotCount;
+                            const isFirstInRange = isScheduledRange && i === scheduledSlot;
                             return (
                               <div key={i} className="flex items-stretch border-b border-border/20 last:border-b-0">
                                 <div className="w-14 shrink-0 py-2 pr-2 text-right">
                                   <span className="text-[9px] font-mono text-muted-foreground/40">{time}</span>
                                 </div>
-                                <div className="flex-1 min-h-[44px] border-l border-border/30 pl-2">
+                                <div
+                                  ref={(el) => { slotRefs.current[i] = el; }}
+                                  className="flex-1 min-h-[44px] border-l border-border/30 pl-2"
+                                >
                                   {isOccupied ? (
                                     <div className="bg-card border border-border/60 rounded-sm p-2 my-0.5">
                                       <TaskBlock title="Team standup" duration="30 min" priority="FIXED" priorityColor="bg-orange-500/40" />
                                     </div>
-                                  ) : isScheduled ? (
-                                    <motion.div
-                                      initial={{ opacity: 0, scale: 0.95 }}
-                                      animate={{ opacity: 1, scale: 1 }}
-                                      className="bg-primary/10 border border-primary/30 rounded-sm p-2 my-0.5"
-                                    >
-                                      <TaskBlock title="New task" duration="30 min" priority="FLEX" priorityColor="bg-emerald-500/40" />
-                                    </motion.div>
+                                  ) : isScheduledRange ? (
+                                    isFirstInRange ? (
+                                      <motion.div
+                                        initial={{ opacity: 0, scale: 0.95 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        className="bg-primary/10 border border-primary/30 rounded-sm p-2 my-0.5"
+                                      >
+                                        <TaskBlock title="New task" duration={`${dragSlotCount * 30} min`} priority="FLEX" priorityColor="bg-emerald-500/40" />
+                                      </motion.div>
+                                    ) : (
+                                      <div className="bg-primary/5 border-l-2 border-primary/20 min-h-[44px]" />
+                                    )
+                                  ) : isInDragRange ? (
+                                    <div className={`w-full min-h-[44px] rounded-sm border border-dashed border-primary/40 bg-primary/10 transition-colors`} />
                                   ) : (
-                                    <button
-                                      onClick={() => handleSlotTap(i)}
-                                      className="w-full h-full min-h-[44px] flex items-center justify-center rounded-sm border border-dashed border-transparent hover:border-primary/20 hover:bg-primary/5 transition-colors active:bg-primary/10 touch-manipulation"
+                                    <div
+                                      onMouseDown={(e) => handleSlotDragStart(i, e)}
+                                      onTouchStart={(e) => handleSlotDragStart(i, e)}
+                                      className="w-full h-full min-h-[44px] flex items-center justify-center rounded-sm border border-dashed border-transparent hover:border-primary/20 hover:bg-primary/5 transition-colors cursor-ns-resize touch-manipulation"
                                     >
-                                      <Plus size={14} className="text-muted-foreground/20" />
-                                    </button>
+                                      <GripVertical size={14} className="text-muted-foreground/20" />
+                                    </div>
                                   )}
                                 </div>
                               </div>
