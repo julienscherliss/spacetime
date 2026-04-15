@@ -24,6 +24,24 @@ export function AppNav() {
   const { viewMode, setViewMode, daySubMode, setDaySubMode, routinesEnabled, toggleRoutines, tasks } = useTaskStore();
   const { panelOpen: libPanelOpen, setPanelOpen: setLibPanelOpen } = useLibraryStore();
   const libCount = useLibraryStore((s) => s.items.length);
+  const libUrgentCount = useLibraryStore((s) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    // Calculate date 3 weekdays from now
+    let remaining = 3;
+    const limit = new Date(today);
+    while (remaining > 0) {
+      limit.setDate(limit.getDate() + 1);
+      const dow = limit.getDay();
+      if (dow !== 0 && dow !== 6) remaining--;
+    }
+    return s.items.filter((i) => {
+      if (!i.dueDate) return false;
+      const due = new Date(i.dueDate + 'T12:00:00');
+      due.setHours(0, 0, 0, 0);
+      return due <= limit;
+    }).length;
+  });
   const { signOut } = useAuth();
   const { subscription, trialDaysLeft, cancellingDaysLeft, isAdmin } = useSubscription();
   const [newUserCount, setNewUserCount] = useState(0);
