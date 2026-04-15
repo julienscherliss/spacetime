@@ -55,6 +55,7 @@ export const useTimezoneStore = create<TimezoneState>()(
         document.documentElement.classList.toggle('comfort', v);
         set({ comfortMode: v });
       },
+      setSoundEnabled: (v: boolean) => set({ soundEnabled: v }),
     }),
     { name: 'do-timezone' }
   )
