@@ -5,6 +5,7 @@ import { useCurrentTime, timeToMinutes, formatTime12h } from '@/hooks/useCurrent
 import { ChevronUp, ChevronDown, ChevronRight, Paperclip, ExternalLink, Check, Calendar as CalendarIcon, Tag } from 'lucide-react';
 import { AttachmentLightbox } from '@/components/AttachmentLightbox';
 import { TagAutocomplete } from '@/components/TagAutocomplete';
+import { TagPickerMenu } from '@/components/TagPickerMenu';
 import { SegmentedProgressRing } from '@/components/SegmentedProgressRing';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
