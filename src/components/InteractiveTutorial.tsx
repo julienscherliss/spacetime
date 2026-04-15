@@ -56,8 +56,8 @@ const STEPS: TutorialStep[] = [
   {
     id: 'add-task',
     title: 'Schedule a task',
-    instruction: 'Tap an empty time slot on the schedule below to place a task.',
-    hint: 'In the app, tap any open slot on your timeline to create and schedule a task there.',
+    instruction: 'Drag down from an empty time slot to create a task and set its duration.',
+    hint: 'In the app, click/touch-drag down on the timeline to create a task. The longer you drag, the longer the task.',
     icon: <Plus size={20} strokeWidth={1.5} />,
   },
 ];
