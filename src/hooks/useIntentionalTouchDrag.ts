@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { TouchDragPayload, useTouchDragStore } from '@/store/touchDragStore';
+import { playUISound } from '@/utils/soundEngine';
 
 type Point = { x: number; y: number };
 
@@ -83,6 +84,7 @@ export function useIntentionalTouchDrag<T extends HTMLElement>({
         offsetY: startPoint.y - rect.top,
       });
       onDragStart?.({ point: startPoint, element });
+      playUISound('blip');
       if (lastPoint) {
         useTouchDragStore.getState().moveGhost(lastPoint);
         onDragMove?.(lastPoint);
