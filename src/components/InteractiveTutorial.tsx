@@ -291,8 +291,8 @@ export function InteractiveTutorial({ open, onClose, mandatory = false }: Intera
 
   const handleSlotDragStart = (slotIndex: number, e: React.MouseEvent | React.TouchEvent) => {
     if (step.id !== 'add-task' || scheduledSlot !== null) return;
-    // skip occupied slot
-    if (slotIndex === 0) return;
+    // skip occupied slots (0 and 1 = Team standup 9:00-9:30)
+    if (slotIndex < 2) return;
     e.preventDefault();
     setSlotDragStart(slotIndex);
     setSlotDragCurrent(slotIndex);
