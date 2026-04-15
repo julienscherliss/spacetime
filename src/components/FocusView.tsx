@@ -1098,8 +1098,12 @@ function MainFocusPanel({
               </motion.div>
             </AnimatePresence>
           </div>
+          {parseInt(localStorage.getItem('focus-hold-completions') || '0', 10) < 10 && (
+            <p className="mt-4 text-[9px] font-mono text-muted-foreground/25 tracking-[0.12em] uppercase animate-pulse">
+              press and hold to complete
+            </p>
+          )}
         </div>
-      </div>
 
       {/* ═══ ZONE 3: BOTTOM — next task hint only ═══ */}
       <div className="relative z-10 px-5 pb-5">
