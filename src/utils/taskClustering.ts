@@ -22,8 +22,42 @@ export interface TaskCluster {
   titleFits?: boolean;
 }
 
+export interface ClusterTaskOptions {
+  comfortMode?: boolean;
+  columnWidthPx?: number;
+}
+
 export const TASK_TEXT_FIT_PX = 23; // title line + vertical padding in TimelineTaskBlock
 export const TASK_TEXT_FIT_PX_COMFORT = 32; // comfort mode needs a larger readable footprint for comfortable typography
+
+const NARROW_COLUMN_PX = 190;
+const NARROW_COLUMN_PX_COMFORT = 280;
+const NARROW_COLUMN_EXTRA_FIT_PX = 6;
+const NARROW_COLUMN_EXTRA_FIT_PX_COMFORT = 10;
+const TITLE_CHAR_WIDTH_PX = 6.2;
+const TITLE_CHAR_WIDTH_PX_COMFORT = 8.1;
+const TITLE_HORIZONTAL_CHROME_PX = 18;
+const TITLE_HORIZONTAL_CHROME_PX_COMFORT = 24;
+
+function getReadableFitPx(comfortMode: boolean, columnWidthPx?: number) {
+  const baseFitPx = comfortMode ? TASK_TEXT_FIT_PX_COMFORT : TASK_TEXT_FIT_PX;
+  if (!columnWidthPx) return baseFitPx;
+
+  const narrowThreshold = comfortMode ? NARROW_COLUMN_PX_COMFORT : NARROW_COLUMN_PX;
+  if (columnWidthPx >= narrowThreshold) return baseFitPx;
+
+  return baseFitPx + (comfortMode ? NARROW_COLUMN_EXTRA_FIT_PX_COMFORT : NARROW_COLUMN_EXTRA_FIT_PX);
+}
+
+function titleFitsWidth(title: string, comfortMode: boolean, columnWidthPx?: number) {
+  if (!columnWidthPx) return true;
+
+  const chromePx = comfortMode ? TITLE_HORIZONTAL_CHROME_PX_COMFORT : TITLE_HORIZONTAL_CHROME_PX;
+  const availableWidthPx = Math.max(columnWidthPx - chromePx, 0);
+  const charWidthPx = comfortMode ? TITLE_CHAR_WIDTH_PX_COMFORT : TITLE_CHAR_WIDTH_PX;
+
+  return (title.length * charWidthPx) <= availableWidthPx;
+}
 
 /**
  * Given a list of timed tasks and the current hourHeight,
@@ -37,9 +71,10 @@ export function clusterTasks(
   tasks: ClusterableTask[],
   hourHeight: number,
   excludeIds?: Set<string>,
-  comfortMode: boolean = false,
+  options: ClusterTaskOptions = {},
 ): TaskCluster[] {
-  const fitPx = comfortMode ? TASK_TEXT_FIT_PX_COMFORT : TASK_TEXT_FIT_PX;
+  const { comfortMode = false, columnWidthPx } = options;
+  const fitPx = getReadableFitPx(comfortMode, columnWidthPx);
   const timed = tasks
     .filter(t => t.time && !(excludeIds?.has(t.id)))
     .map(t => {
@@ -48,6 +83,9 @@ export function clusterTasks(
       const endMin = startMin + duration;
       const naturalHeightPx = (duration / 60) * hourHeight;
       const startPx = (startMin / 60) * hourHeight;
+      const heightFits = naturalHeightPx >= fitPx;
+      const widthFits = titleFitsWidth(t.title, comfortMode, columnWidthPx);
+      const titleFits = heightFits && widthFits;
       const readableHeightPx = Math.max(naturalHeightPx, fitPx);
 
       return {
@@ -58,20 +96,23 @@ export function clusterTasks(
         naturalHeightPx,
         readableHeightPx,
         readableBottomPx: startPx + readableHeightPx,
-        titleFits: naturalHeightPx >= fitPx,
+        titleFits,
       };
     })
     .sort((a, b) => a.startMin - b.startMin);
 
   // Also produce single-task clusters for excluded (conflict) tasks
   const excludedTasks = excludeIds
-    ? tasks.filter(t => t.time && excludeIds.has(t.id)).map(t => ({
-        task: t,
-        startMin: timeToMinutes(t.time!),
-        endMin: timeToMinutes(t.time!) + (t.duration || 30),
-        naturalHeightPx: ((t.duration || 30) / 60) * hourHeight,
-        titleFits: (((t.duration || 30) / 60) * hourHeight) >= fitPx,
-      }))
+    ? tasks.filter(t => t.time && excludeIds.has(t.id)).map(t => {
+        const naturalHeightPx = ((t.duration || 30) / 60) * hourHeight;
+        return {
+          task: t,
+          startMin: timeToMinutes(t.time!),
+          endMin: timeToMinutes(t.time!) + (t.duration || 30),
+          naturalHeightPx,
+          titleFits: naturalHeightPx >= fitPx && titleFitsWidth(t.title, comfortMode, columnWidthPx),
+        };
+      })
     : [];
 
   if (timed.length === 0 && excludedTasks.length === 0) return [];

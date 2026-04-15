@@ -226,6 +226,7 @@ export function TimelineColumn({
   const { setEditingTask, reorderTask, moveTask, resizeTask, completeTask, canMoveTask, addTask, routinesEnabled } = useTaskStore();
   const allStoreTasks = useTaskStore((s) => s.tasks);
   const colRef = useRef<HTMLDivElement>(null);
+  const [columnWidthPx, setColumnWidthPx] = useState<number | undefined>(undefined);
   const [dragOverTime, setDragOverTime] = useState<string | null>(null);
   const [dragOverDuration, setDragOverDuration] = useState<number>(30);
   const [dragValid, setDragValid] = useState(true);
@@ -304,6 +305,24 @@ export function TimelineColumn({
     const y = clientY - rect.top;
     return START_HOUR * 60 + (y / HOUR_HEIGHT) * 60;
   }, [HOUR_HEIGHT]);
+
+  useEffect(() => {
+    const el = colRef.current;
+    if (!el) return;
+
+    const measure = () => {
+      const rect = el.getBoundingClientRect();
+      const leftInset = showTimeLabels ? 52 : 2;
+      setColumnWidthPx(Math.max(rect.width - leftInset - 4, 0));
+    };
+
+    measure();
+
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+
+    return () => observer.disconnect();
+  }, [showTimeLabels]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -1155,7 +1174,10 @@ export function TimelineColumn({
           });
 
         const comfortMode = useTimezoneStore.getState().comfortMode;
-        const clusters = clusterTasks(sortedTasks, HOUR_HEIGHT, routineConflictIds, comfortMode);
+        const clusters = clusterTasks(sortedTasks, HOUR_HEIGHT, routineConflictIds, {
+          comfortMode,
+          columnWidthPx,
+        });
 
         return clusters.map((cluster, ci) => {
           if (cluster.type === 'condensed' && cluster.tasks.length > 1) {
