@@ -619,7 +619,6 @@ export const useTaskStore = create<TaskState>()(
           : task.priority;
         const targetIds = getLinkedScheduleTargetIds(get().tasks, task);
 
-        const wasInWaitingRoom = task.inWaitingRoom;
         set((s) => ({
           tasks: s.tasks.map((t) => {
             if (t.id === id) {
@@ -643,7 +642,6 @@ export const useTaskStore = create<TaskState>()(
             return t;
           }),
         }));
-        if (wasInWaitingRoom) playUISound('blip');
         Array.from(targetIds).forEach((taskId) => {
           void cancelNotificationsForTask(taskId);
         cancelWebNotificationsForTask(taskId);

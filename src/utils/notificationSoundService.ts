@@ -1,15 +1,22 @@
 /**
  * In-app notification sound scheduling.
  * Uses the cassette-futurism sound engine for audio output.
+ *
+ * Schedule:
+ *   - 5 min before end:         warning sound
+ *   - Last 10 seconds (each s): orbital pulse
+ *   - At task end:              alarm sound
+ *   - 1-5 min overdue (each):   persistent reminder (if persistentOverdue on)
  */
 
-import type { Task, Priority } from '@/store/taskStore';
+import type { Task } from '@/store/taskStore';
 import type { NotificationLevel } from '@/utils/notificationService';
-import { playNotificationSound } from '@/utils/soundEngine';
+import { playUISound } from '@/utils/soundEngine';
+import { useTimezoneStore } from '@/store/timezoneStore';
 
 interface ScheduledSound {
   taskId: string;
-  type: 'warning' | 'alarm';
+  type: string;
   timerId: ReturnType<typeof setTimeout>;
   fireAt: number;
 }
@@ -37,18 +44,18 @@ function getTaskEndMs(task: Task): number | null {
   return dt.getTime() + durationMin * 60_000;
 }
 
-function makeKey(taskId: string, type: 'warning' | 'alarm'): string {
+function makeKey(taskId: string, type: string): string {
   return `sound:${taskId}:${type}`;
 }
 
-function buildFingerprint(tasks: Task[], level: NotificationLevel): string {
+function buildFingerprint(tasks: Task[], level: NotificationLevel, persistent: boolean): string {
   if (level === 'off') return 'off';
   const today = getTodayStr();
   const parts = tasks
     .filter(t => shouldNotify(t, level) && t.time && !t.completed && t.date === today)
     .map(t => `${t.id}:${t.date}:${t.time}:${t.duration}:${t.priority}:${t.completed}`)
     .sort();
-  return `${level}:${parts.join('|')}`;
+  return `${level}:${persistent}:${parts.join('|')}`;
 }
 
 export function cancelAllSounds() {
@@ -59,8 +66,13 @@ export function cancelAllSounds() {
   lastFingerprint = '';
 }
 
+function scheduleSound(key: string, taskId: string, type: string, fireAt: number, desired: Map<string, { taskId: string; type: string; fireAt: number }>) {
+  desired.set(key, { taskId, type, fireAt });
+}
+
 export function syncNotificationSounds(tasks: Task[], level: NotificationLevel) {
-  const fp = buildFingerprint(tasks, level);
+  const persistent = useTimezoneStore.getState().persistentOverdue;
+  const fp = buildFingerprint(tasks, level, persistent);
   if (fp === lastFingerprint) return;
   lastFingerprint = fp;
 
@@ -72,7 +84,7 @@ export function syncNotificationSounds(tasks: Task[], level: NotificationLevel) 
   const now = Date.now();
   const today = getTodayStr();
 
-  const desired = new Map<string, { taskId: string; type: 'warning' | 'alarm'; fireAt: number }>();
+  const desired = new Map<string, { taskId: string; type: string; fireAt: number }>();
 
   const eligible = tasks.filter(t => {
     if (t.date !== today) return false;
@@ -85,16 +97,37 @@ export function syncNotificationSounds(tasks: Task[], level: NotificationLevel) 
     const endMs = getTaskEndMs(task);
     if (!endMs) continue;
 
+    // 5-min warning
     const warningMs = endMs - 5 * 60_000;
-
     if (warningMs > now) {
-      desired.set(makeKey(task.id, 'warning'), { taskId: task.id, type: 'warning', fireAt: warningMs });
+      scheduleSound(makeKey(task.id, 'warning'), task.id, 'warning', warningMs, desired);
     }
+
+    // Orbital pulse: last 10 seconds (one pulse per second)
+    for (let s = 10; s >= 1; s--) {
+      const pulseMs = endMs - s * 1000;
+      if (pulseMs > now) {
+        scheduleSound(makeKey(task.id, `pulse-${s}`), task.id, 'orbitalPulse', pulseMs, desired);
+      }
+    }
+
+    // Alarm at end
     if (endMs > now) {
-      desired.set(makeKey(task.id, 'alarm'), { taskId: task.id, type: 'alarm', fireAt: endMs });
+      scheduleSound(makeKey(task.id, 'alarm'), task.id, 'alarm', endMs, desired);
+    }
+
+    // Persistent reminders: each minute for 5 minutes after end
+    if (persistent) {
+      for (let m = 1; m <= 5; m++) {
+        const reminderMs = endMs + m * 60_000;
+        if (reminderMs > now) {
+          scheduleSound(makeKey(task.id, `persist-${m}`), task.id, 'persistentReminder', reminderMs, desired);
+        }
+      }
     }
   }
 
+  // Cancel stale
   for (const [key, entry] of scheduled) {
     if (!desired.has(key) || desired.get(key)!.fireAt !== entry.fireAt) {
       clearTimeout(entry.timerId);
@@ -102,12 +135,14 @@ export function syncNotificationSounds(tasks: Task[], level: NotificationLevel) 
     }
   }
 
+  // Schedule new
   for (const [key, item] of desired) {
     if (scheduled.has(key) && scheduled.get(key)!.fireAt === item.fireAt) continue;
 
     const delay = item.fireAt - now;
+    const soundType = item.type as any;
     const timerId = setTimeout(() => {
-      playNotificationSound(item.type);
+      playUISound(soundType);
       scheduled.delete(key);
     }, delay);
 
