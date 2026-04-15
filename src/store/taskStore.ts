@@ -351,7 +351,11 @@ export const useTaskStore = create<TaskState>()(
       listReturnZoom: null,
       showListReturn: false,
 
-      setViewMode: (mode) => set({ viewMode: mode }),
+      setViewMode: (mode) => {
+        const prev = get().viewMode;
+        if (mode === 'focus' && prev !== 'focus') playUISound('swell');
+        set({ viewMode: mode });
+      },
       setDaySubMode: (mode) => set({ daySubMode: mode }),
       setNavigateToDate: (date) => set({ navigateToDate: date }),
       setCurrentDate: (date) => set({ currentDate: date }),
