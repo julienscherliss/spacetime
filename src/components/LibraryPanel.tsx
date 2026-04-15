@@ -51,16 +51,28 @@ function getDueBadge(dueDate?: string | null): { text: string; urgent: boolean }
   return { text: `${diffDays}d`, urgent: false };
 }
 
+function getLibraryPickupCount(): number {
+  return parseInt(localStorage.getItem('library-pickup-count') || '0', 10);
+}
+
+function incrementLibraryPickupCount() {
+  const count = getLibraryPickupCount() + 1;
+  localStorage.setItem('library-pickup-count', String(count));
+}
+
 function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: boolean; onEdit: () => void }) {
   const { deleteItem } = useLibraryStore();
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFired = useRef(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const showHoldHint = !isMobile && isHovered && getLibraryPickupCount() < 3;
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('[data-touch-ignore]')) return;
     longPressFired.current = false;
     longPressTimer.current = setTimeout(() => {
       longPressFired.current = true;
+      incrementLibraryPickupCount();
       useCarryStore.getState().pickup({
         taskId: item.id,
         title: item.title,
@@ -116,6 +128,8 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerMove={handlePointerMove}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       className={`group flex items-center gap-3 rounded-md border bg-card/50 hover:bg-card transition-all cursor-pointer select-none ${getDueBorderClass()} ${
         isMobile ? 'py-4 px-3.5 min-h-[56px]' : 'py-3 px-3 min-h-[48px]'
       }`}
@@ -123,8 +137,21 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
       <GripVertical size={14} className="text-muted-foreground/30 shrink-0" />
 
       <div className="flex-1 min-w-0">
-        <div className={`font-mono text-foreground font-medium truncate leading-tight ${isMobile ? 'text-[15px]' : 'text-[13px]'}`}>
-          {item.title}
+        <div className={`font-mono text-foreground font-medium truncate leading-tight flex items-center gap-2 ${isMobile ? 'text-[15px]' : 'text-[13px]'}`}>
+          <span className="truncate">{item.title}</span>
+          <AnimatePresence>
+            {showHoldHint && (
+              <motion.span
+                initial={{ opacity: 0, x: -4 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -4 }}
+                transition={{ duration: 0.15 }}
+                className="text-[9px] font-mono text-muted-foreground/40 tracking-wider whitespace-nowrap shrink-0"
+              >
+                hold to pickup
+              </motion.span>
+            )}
+          </AnimatePresence>
         </div>
         <div className="flex items-center gap-2 mt-0.5">
           {catLabel && (
