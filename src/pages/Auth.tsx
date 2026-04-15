@@ -182,7 +182,7 @@ export default function Auth() {
     }
   };
 
-  const transition = { duration: 0.35, ease: [0.22, 1, 0.36, 1] };
+  const transition = { duration: 0.35, ease: [0.22, 1, 0.36, 1] as const };
 
   // ─── OTP code entry screen (mobile) ───
   if (native && step === 'otp') {
