@@ -1,9 +1,11 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { START_HOUR } from '@/components/TimelineColumn';
+import { useTimezoneStore } from '@/store/timezoneStore';
 
 export const SCALE_MIN = 28;
 export const SCALE_DEFAULT = 56;
 export const SCALE_MAX = 120;
+export const SCALE_MAX_COMFORT = 168;
 
 const SCROLL_SENSITIVITY = 0.4;
 const STORAGE_KEY_PREFIX = 'do-timescale-';
@@ -12,10 +14,14 @@ function clamp(v: number, min: number, max: number) {
   return Math.min(max, Math.max(min, v));
 }
 
+export function getEffectiveMax(): number {
+  return useTimezoneStore.getState().comfortMode ? SCALE_MAX_COMFORT : SCALE_MAX;
+}
+
 function loadScale(view: string): number {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_PREFIX + view);
-    if (raw) return clamp(Number(raw), SCALE_MIN, SCALE_MAX);
+    if (raw) return clamp(Number(raw), SCALE_MIN, getEffectiveMax());
   } catch {}
   return SCALE_DEFAULT;
 }
@@ -55,7 +61,7 @@ export function animatePinchZoom(opts: {
   onComplete?: () => void;
 }): () => void {
   const { fromScale, toScale: rawTo, focalMin, focalViewportY, timelineDocTop, duration, setScale, onComplete } = opts;
-  const toScale = clamp(rawTo, SCALE_MIN, SCALE_MAX);
+  const toScale = clamp(rawTo, SCALE_MIN, getEffectiveMax());
   const startTime = performance.now();
   let cancelled = false;
 
@@ -96,6 +102,8 @@ export function animatePinchZoom(opts: {
 }
 
 export function useTimeScale(view: 'day' | 'week') {
+  const comfortMode = useTimezoneStore((s) => s.comfortMode);
+  const effectiveMax = comfortMode ? SCALE_MAX_COMFORT : SCALE_MAX;
   const [hourHeight, setHourHeight] = useState(() => loadScale(view));
   const isDraggingRef = useRef(false);
 
@@ -108,16 +116,16 @@ export function useTimeScale(view: 'day' | 'week') {
   }, [view]);
 
   const setScale = useCallback((v: number) => {
-    setHourHeight(clamp(v, 10, SCALE_MAX));
-  }, []);
+    setHourHeight(clamp(v, 10, effectiveMax));
+  }, [effectiveMax]);
 
   const zoomIn = useCallback(() => {
-    setHourHeight(h => clamp(h + 4, SCALE_MIN, SCALE_MAX));
-  }, []);
+    setHourHeight(h => clamp(h + 4, SCALE_MIN, effectiveMax));
+  }, [effectiveMax]);
 
   const zoomOut = useCallback(() => {
-    setHourHeight(h => clamp(h - 4, SCALE_MIN, SCALE_MAX));
-  }, []);
+    setHourHeight(h => clamp(h - 4, SCALE_MIN, effectiveMax));
+  }, [effectiveMax]);
 
   const resetZoom = useCallback(() => {
     setHourHeight(SCALE_DEFAULT);
@@ -135,7 +143,7 @@ export function useTimeScale(view: 'day' | 'week') {
       e.preventDefault();
       const sensitivity = e.ctrlKey ? SCROLL_SENSITIVITY * 2.5 : SCROLL_SENSITIVITY;
       const delta = -e.deltaY * sensitivity;
-      setHourHeight(h => clamp(h + delta, SCALE_MIN, SCALE_MAX));
+      setHourHeight(h => clamp(h + delta, SCALE_MIN, effectiveMax));
     };
     container.addEventListener('wheel', handler, { passive: false });
     return () => container.removeEventListener('wheel', handler);
@@ -175,7 +183,7 @@ export function useTimeScale(view: 'day' | 'week') {
       e.preventDefault();
       const dist = getDistance(e.touches);
       const ratio = dist / initialDistance;
-      const newScale = clamp(initialScale * ratio, SCALE_MIN, SCALE_MAX);
+      const newScale = clamp(initialScale * ratio, SCALE_MIN, effectiveMax);
 
       const timePos = (initialScrollTop + gestureMidY) / initialScale;
 
@@ -192,7 +200,7 @@ export function useTimeScale(view: 'day' | 'week') {
     };
   }, [view]);
 
-  const zoomPercent = Math.round(((hourHeight - SCALE_MIN) / (SCALE_MAX - SCALE_MIN)) * 100);
+  const zoomPercent = Math.round(((hourHeight - SCALE_MIN) / (effectiveMax - SCALE_MIN)) * 100);
 
   return {
     hourHeight,
@@ -205,7 +213,7 @@ export function useTimeScale(view: 'day' | 'week') {
     bindPinchZoom,
     zoomPercent,
     isMin: hourHeight <= SCALE_MIN,
-    isMax: hourHeight >= SCALE_MAX,
+    isMax: hourHeight >= effectiveMax,
     isDefault: hourHeight === SCALE_DEFAULT,
   };
 }
