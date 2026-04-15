@@ -326,8 +326,8 @@ async function loadFromDB(userId: string): Promise<boolean> {
       lastSyncedLibSnapshot = snapshotLib(items);
     }
 
-    if (!catRes.error && catRes.data && catRes.data.length > 0) {
-      const categories = catRes.data.map(rowToCategory);
+    if (!catRes.error) {
+      const categories = (catRes.data || []).map(rowToCategory);
       useLibraryStore.setState({ categories });
       lastSyncedCatSnapshot = snapshotCats(categories);
     }
