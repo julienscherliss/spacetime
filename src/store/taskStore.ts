@@ -5,6 +5,7 @@ import type { Subtask } from '@/components/SubtaskList';
 import { useTimezoneStore } from '@/store/timezoneStore';
 import { cancelNotificationsForTask } from '@/utils/notificationService';
 import { cancelWebNotificationsForTask } from '@/utils/webNotificationService';
+import { playUISound } from '@/utils/soundEngine';
 import { getOccupiedSlots, findValidPosition } from '@/utils/collisionDetection';
 import { timeToMinutes, minutesToTime } from '@/hooks/useCurrentTime';
 
@@ -470,6 +471,7 @@ export const useTaskStore = create<TaskState>()(
 
       completeTask: (id) => {
         const now = new Date().toISOString();
+        playUISound('tapeClick');
         set((s) => ({
           tasks: s.tasks.map((t) =>
             t.id === id ? { ...t, completed: true, inWaitingRoom: false, archivedAt: now, archiveReason: 'completed' as const } : t
