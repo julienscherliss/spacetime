@@ -3,6 +3,7 @@ import { isNativePlatform } from '@/utils/nativePlatform';
 import { useTaskStore } from '@/store/taskStore';
 import { useTimezoneStore } from '@/store/timezoneStore';
 import { syncWebNotifications, cancelAllWebNotifications } from '@/utils/webNotificationService';
+import { syncNotificationSounds, cancelAllSounds } from '@/utils/notificationSoundService';
 import type { Task } from '@/store/taskStore';
 import type { NotificationLevel } from '@/utils/notificationService';
 
@@ -33,6 +34,7 @@ export function useWebNotifications() {
     clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       syncWebNotifications(tasks, level);
+      syncNotificationSounds(tasks, level);
     }, 500);
 
     return () => clearTimeout(timerRef.current);
@@ -45,15 +47,16 @@ export function useWebNotifications() {
 
     const interval = setInterval(() => {
       lastFpRef.current = ''; // force re-check
-      syncWebNotifications(
-        useTaskStore.getState().tasks,
-        useTimezoneStore.getState().notificationLevel,
-      );
+      const t = useTaskStore.getState().tasks;
+      const l = useTimezoneStore.getState().notificationLevel;
+      syncWebNotifications(t, l);
+      syncNotificationSounds(t, l);
     }, 60_000);
 
     return () => {
       clearInterval(interval);
       cancelAllWebNotifications();
+      cancelAllSounds();
     };
   }, []);
 }
