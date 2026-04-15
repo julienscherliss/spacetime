@@ -5,6 +5,7 @@
 html {
   --ui-zoom: 1;
   zoom: var(--ui-zoom);
+  overflow-x: hidden;
 }
 
 @layer base {
