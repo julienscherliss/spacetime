@@ -27,6 +27,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNativeNotifications } from '@/hooks/useNativeNotifications';
 import { useWebNotifications } from '@/hooks/useWebNotifications';
+import { InteractiveTutorial } from '@/components/InteractiveTutorial';
 
 const Index = () => {
   const { viewMode, daySubMode, routinesEnabled, moveOverdueToWaitingRoom } = useTaskStore();
@@ -40,6 +41,11 @@ const Index = () => {
   const [subscribeOpen, setSubscribeOpen] = useState(false);
   const { trialDaysLeft, cancellingDaysLeft, subscription, refresh: refreshSub } = useSubscription();
   const [helpSection, setHelpSection] = useState<string | undefined>();
+  const [tutorialNeeded, setTutorialNeeded] = useState(() => !localStorage.getItem('tutorial-completed'));
+
+  const handleTutorialClose = useCallback(() => {
+    setTutorialNeeded(false);
+  }, []);
 
   // Handle Google Calendar OAuth callback
   useEffect(() => {
