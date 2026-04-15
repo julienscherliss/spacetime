@@ -55,9 +55,9 @@ const STEPS: TutorialStep[] = [
   },
   {
     id: 'add-task',
-    title: 'Add a new task',
-    instruction: 'Tap the + button below to create a task.',
-    hint: 'Use the + button at the bottom of your screen, or drag on an empty timeline slot.',
+    title: 'Schedule a task',
+    instruction: 'Tap an empty time slot on the schedule below to place a task.',
+    hint: 'In the app, tap any open slot on your timeline to create and schedule a task there.',
     icon: <Plus size={20} strokeWidth={1.5} />,
   },
 ];
@@ -268,9 +268,14 @@ export function InteractiveTutorial({ open, onClose, mandatory = false }: Intera
     });
   };
 
-  // --- Add task ---
-  const handleAddTask = () => {
+  // --- Add task (schedule slot) ---
+  const [scheduledSlot, setScheduledSlot] = useState<number | null>(null);
+  const handleSlotTap = (slotIndex: number) => {
+    if (step.id !== 'add-task' || scheduledSlot !== null) return;
+    setScheduledSlot(slotIndex);
     setAddTaskTapped(true);
+    setStepCompleted(true);
+  };
     setStepCompleted(true);
   };
 
