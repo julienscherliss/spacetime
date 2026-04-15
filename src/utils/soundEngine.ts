@@ -51,61 +51,77 @@ function drift(): number {
 }
 
 // ─── Sound: Tape Click (Task Complete) ───────────────────────────────────────
-// Satisfying analog confirmation — warm descending two-tone with body.
-// Like a vintage machine acknowledging a completed action.
+// Two-phase: mechanical "chk" (0-80ms) + warm resolve bloom (80-400ms)
 
 function playTapeClick(c: AudioContext) {
   const t = c.currentTime;
-  const master = masterGain(c, 0.18);
-  const filter = warmFilter(c, 3500);
-  filter.connect(master);
+  const master = masterGain(c, 0.2);
 
-  // Primary tone: descending from G5 to D5 — satisfying "done" feel
-  const osc1 = c.createOscillator();
-  osc1.type = 'triangle';
-  osc1.frequency.setValueAtTime(784 + drift(), t);
-  osc1.frequency.exponentialRampToValueAtTime(587 + drift(), t + 0.12);
+  // ── Phase 1: The Click (0–80ms) ──
+  // Muted tape-button "chk" — low-mid heavy, not sharp
+  const clickFilter = c.createBiquadFilter();
+  clickFilter.type = 'lowpass';
+  clickFilter.frequency.value = 1200;
+  clickFilter.Q.value = 1.5;
+  clickFilter.connect(master);
 
-  const g1 = c.createGain();
-  g1.gain.setValueAtTime(0, t);
-  g1.gain.linearRampToValueAtTime(0.6, t + 0.008);
-  g1.gain.setValueAtTime(0.5, t + 0.06);
-  g1.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
-
-  osc1.connect(g1).connect(filter);
-  osc1.start(t);
-  osc1.stop(t + 0.28);
-
-  // Second tone: octave-lower body for warmth
-  const osc2 = c.createOscillator();
-  osc2.type = 'sine';
-  osc2.frequency.setValueAtTime(392 + drift(), t);
-  osc2.frequency.exponentialRampToValueAtTime(294 + drift(), t + 0.15);
-
-  const g2 = c.createGain();
-  g2.gain.setValueAtTime(0, t);
-  g2.gain.linearRampToValueAtTime(0.35, t + 0.01);
-  g2.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
-
-  osc2.connect(g2).connect(filter);
-  osc2.start(t);
-  osc2.stop(t + 0.25);
-
-  // Subtle click transient for tactile feel
-  const bufferSize = c.sampleRate * 0.015;
-  const buffer = c.createBuffer(1, bufferSize, c.sampleRate);
-  const data = buffer.getChannelData(0);
-  for (let i = 0; i < bufferSize; i++) {
-    data[i] = (Math.random() * 2 - 1) * 0.3;
-  }
+  // Noise burst — short, soft, muted
+  const bufLen = c.sampleRate * 0.025;
+  const buf = c.createBuffer(1, bufLen, c.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < bufLen; i++) d[i] = (Math.random() * 2 - 1) * 0.4;
   const noise = c.createBufferSource();
-  noise.buffer = buffer;
-  const nGain = c.createGain();
-  nGain.gain.setValueAtTime(0.4, t);
-  nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.02);
-  noise.connect(nGain).connect(master);
+  noise.buffer = buf;
+  const nG = c.createGain();
+  nG.gain.setValueAtTime(0.7, t);
+  nG.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+  noise.connect(nG).connect(clickFilter);
   noise.start(t);
-  noise.stop(t + 0.02);
+  noise.stop(t + 0.06);
+
+  // Low thump body — gives the "chk" its physical weight
+  const thump = c.createOscillator();
+  thump.type = 'sine';
+  thump.frequency.setValueAtTime(180 + drift(), t);
+  thump.frequency.exponentialRampToValueAtTime(60, t + 0.07);
+  const tG = c.createGain();
+  tG.gain.setValueAtTime(0.5, t);
+  tG.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+  thump.connect(tG).connect(master);
+  thump.start(t);
+  thump.stop(t + 0.09);
+
+  // ── Phase 2: The Resolve (80–400ms) ──
+  // Warm, gently blooming tone — emotional completion
+  const resolveFilter = warmFilter(c, 2400);
+  resolveFilter.connect(master);
+
+  // Primary: soft sine rising slightly (C4 → D4)
+  const res1 = c.createOscillator();
+  res1.type = 'sine';
+  res1.frequency.setValueAtTime(262 + drift(), t + 0.08);
+  res1.frequency.linearRampToValueAtTime(294 + drift(), t + 0.35);
+  const rG1 = c.createGain();
+  rG1.gain.setValueAtTime(0, t + 0.06);
+  rG1.gain.linearRampToValueAtTime(0.18, t + 0.14);
+  rG1.gain.setValueAtTime(0.18, t + 0.22);
+  rG1.gain.exponentialRampToValueAtTime(0.001, t + 0.42);
+  res1.connect(rG1).connect(resolveFilter);
+  res1.start(t + 0.06);
+  res1.stop(t + 0.45);
+
+  // Harmonic shimmer: triangle, detuned fifth above
+  const res2 = c.createOscillator();
+  res2.type = 'triangle';
+  res2.frequency.setValueAtTime(394 + drift() * 2, t + 0.09);
+  res2.frequency.linearRampToValueAtTime(441 + drift() * 2, t + 0.35);
+  const rG2 = c.createGain();
+  rG2.gain.setValueAtTime(0, t + 0.08);
+  rG2.gain.linearRampToValueAtTime(0.06, t + 0.16);
+  rG2.gain.exponentialRampToValueAtTime(0.001, t + 0.38);
+  res2.connect(rG2).connect(resolveFilter);
+  res2.start(t + 0.08);
+  res2.stop(t + 0.4);
 }
 
 // ─── Sound: Blip ─────────────────────────────────────────────────────────────
