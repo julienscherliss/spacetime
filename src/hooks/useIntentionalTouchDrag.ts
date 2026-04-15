@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react';
 import { TouchDragPayload, useTouchDragStore } from '@/store/touchDragStore';
-import { playUISound } from '@/utils/soundEngine';
 
 type Point = { x: number; y: number };
 
