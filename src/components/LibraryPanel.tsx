@@ -737,14 +737,22 @@ export function LibraryPanel() {
                     {/* Task list */}
                     <div className="flex-1 overflow-y-auto px-3 py-2" style={{ WebkitOverflowScrolling: 'touch' }}>
                       {items.length === 0 ? (
-                        <div className="text-center py-16">
-                          <CalendarClock size={28} className="mx-auto text-muted-foreground/20 mb-4" />
-                          <p className="text-[12px] font-mono text-muted-foreground/40 tracking-wider">
-                            {totalCount === 0 ? 'CAPTURE IDEAS HERE' : 'NO MATCHING ITEMS'}
-                          </p>
-                          <p className="text-[11px] font-mono text-muted-foreground/30 mt-1.5">
-                            hold to pick up · click to edit
-                          </p>
+                        <div className="text-center py-16 px-6">
+                          <CalendarClock size={28} className="mx-auto text-muted-foreground/15 mb-4" />
+                          {totalCount === 0 ? (
+                            <>
+                              <p className="text-[13px] font-mono text-muted-foreground/30 leading-relaxed">
+                                A place for tasks that don't need a time yet.
+                              </p>
+                              <p className="text-[12px] font-mono text-muted-foreground/25 mt-2 leading-relaxed">
+                                Keep them here until you're ready to bring them into your schedule.
+                              </p>
+                            </>
+                          ) : (
+                            <p className="text-[12px] font-mono text-muted-foreground/40 tracking-wider">
+                              NO MATCHING ITEMS
+                            </p>
+                          )}
                         </div>
                       ) : (
                         <div className="space-y-1.5">
@@ -1066,14 +1074,22 @@ export function LibraryPanel() {
                 {/* Items list */}
                 <div className="flex-1 overflow-y-auto px-3 py-2" style={{ WebkitOverflowScrolling: 'touch' }}>
                   {items.length === 0 ? (
-                    <div className="text-center py-16">
-                      <CalendarClock size={28} className="mx-auto text-muted-foreground/20 mb-4" />
-                      <p className="text-[12px] font-mono text-muted-foreground/40 tracking-wider">
-                        {totalCount === 0 ? 'CAPTURE IDEAS HERE' : 'NO MATCHING ITEMS'}
-                      </p>
-                      <p className="text-[11px] font-mono text-muted-foreground/30 mt-1.5">
-                        hold to pick up · tap to edit
-                      </p>
+                    <div className="text-center py-16 px-6">
+                      <CalendarClock size={28} className="mx-auto text-muted-foreground/15 mb-4" />
+                      {totalCount === 0 ? (
+                        <>
+                          <p className="text-[13px] font-mono text-muted-foreground/30 leading-relaxed">
+                            A place for tasks that don't need a time yet.
+                          </p>
+                          <p className="text-[12px] font-mono text-muted-foreground/25 mt-2 leading-relaxed">
+                            Keep them here until you're ready to bring them into your schedule.
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-[12px] font-mono text-muted-foreground/40 tracking-wider">
+                          NO MATCHING ITEMS
+                        </p>
+                      )}
                     </div>
                   ) : (
                     <div className="space-y-1.5">
