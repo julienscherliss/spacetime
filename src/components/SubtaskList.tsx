@@ -1,6 +1,7 @@
-import { useState, useRef, forwardRef, useImperativeHandle, useEffect, useCallback } from 'react';
+import { useState, useRef, forwardRef, useImperativeHandle, useEffect } from 'react';
 import { Plus, GripVertical, X } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
+import { autosizeTextarea } from '@/lib/autosizeTextarea';
 
 export interface Subtask {
   id: string;
@@ -27,16 +28,10 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const subtaskRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
 
-    const syncTextareaHeight = useCallback((el: HTMLTextAreaElement | null) => {
-      if (!el) return;
-      el.style.height = '0px';
-      el.style.height = `${el.scrollHeight}px`;
-    }, []);
-
     useEffect(() => {
-      Object.values(subtaskRefs.current).forEach(syncTextareaHeight);
-      syncTextareaHeight(inputRef.current);
-    }, [subtasks, input, syncTextareaHeight]);
+      Object.values(subtaskRefs.current).forEach(autosizeTextarea);
+      autosizeTextarea(inputRef.current);
+    }, [subtasks, input]);
 
     useImperativeHandle(ref, () => ({
       focus: () => inputRef.current?.focus(),
@@ -66,14 +61,14 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
       return (
         <div className="space-y-1.5">
           {subtasks.map((s) => (
-            <label key={s.id} className="flex items-start gap-2 cursor-pointer group min-w-0">
+            <label key={s.id} className="flex items-start gap-2 cursor-pointer group min-w-0 w-full">
               <Checkbox
                 checked={s.completed}
                 onCheckedChange={() => handleToggle(s.id)}
                 className="h-3.5 w-3.5 mt-0.5 shrink-0"
               />
               <span
-                className={`flex-1 min-w-0 text-[11px] font-mono whitespace-pre-wrap break-words [overflow-wrap:anywhere] ${
+                className={`flex-1 min-w-0 w-full text-[11px] font-mono whitespace-pre-wrap [overflow-wrap:anywhere] ${
                   s.completed ? 'line-through text-muted-foreground/40' : 'text-foreground/70'
                 }`}
               >
@@ -88,7 +83,7 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
     return (
       <div className="space-y-1.5">
         {subtasks.map((s) => (
-          <div key={s.id} className="flex items-start gap-2 group min-h-[36px] min-w-0">
+          <div key={s.id} className="flex items-start gap-2 group min-h-[36px] min-w-0 w-full">
             <GripVertical size={10} className="text-muted-foreground/15 shrink-0 mt-2.5" />
             <Checkbox
               checked={s.completed}
@@ -98,17 +93,17 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
             <textarea
               ref={(el) => {
                 subtaskRefs.current[s.id] = el;
-                syncTextareaHeight(el);
+                autosizeTextarea(el);
               }}
               value={s.title}
               wrap="soft"
               rows={1}
               onChange={(e) => {
                 handleTitleChange(s.id, e.target.value);
-                syncTextareaHeight(e.currentTarget);
+                autosizeTextarea(e.currentTarget);
               }}
-              onInput={(e) => syncTextareaHeight(e.currentTarget)}
-              className={`flex-1 min-w-0 w-full bg-transparent text-[12px] font-mono leading-[1.4] whitespace-pre-wrap break-words [overflow-wrap:anywhere] focus:outline-none resize-none overflow-hidden py-2 ${
+              onInput={(e) => autosizeTextarea(e.currentTarget)}
+              className={`block flex-1 min-w-0 w-full bg-transparent text-[12px] font-mono leading-[1.4] whitespace-pre-wrap [overflow-wrap:anywhere] focus:outline-none resize-none overflow-hidden py-2 ${
                 s.completed ? 'line-through text-muted-foreground/30' : 'text-foreground/70'
               }`}
             />
@@ -120,7 +115,7 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
             </button>
           </div>
         ))}
-        <div className="flex items-start gap-2 min-h-[36px] min-w-0">
+        <div className="flex items-start gap-2 min-h-[36px] min-w-0 w-full">
           <Plus size={10} className="text-muted-foreground/20 ml-[10px] shrink-0 mt-2.5" />
           <textarea
             ref={inputRef}
@@ -129,9 +124,9 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
             rows={1}
             onChange={(e) => {
               setInput(e.target.value);
-              syncTextareaHeight(e.currentTarget);
+              autosizeTextarea(e.currentTarget);
             }}
-            onInput={(e) => syncTextareaHeight(e.currentTarget)}
+            onInput={(e) => autosizeTextarea(e.currentTarget)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -139,7 +134,7 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
               }
             }}
             placeholder="Add subtask..."
-            className="flex-1 min-w-0 w-full bg-transparent text-[12px] font-mono leading-[1.4] whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-foreground/50 placeholder:text-muted-foreground/20 focus:outline-none resize-none overflow-hidden py-2"
+            className="block flex-1 min-w-0 w-full bg-transparent text-[12px] font-mono leading-[1.4] whitespace-pre-wrap [overflow-wrap:anywhere] text-foreground/50 placeholder:text-muted-foreground/20 focus:outline-none resize-none overflow-hidden py-2"
           />
         </div>
       </div>

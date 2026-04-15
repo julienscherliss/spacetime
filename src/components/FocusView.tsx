@@ -10,6 +10,7 @@ import { SegmentedProgressRing } from '@/components/SegmentedProgressRing';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
+import { autosizeTextarea } from '@/lib/autosizeTextarea';
 import { useTrackpadSwipe } from '@/hooks/useTrackpadSwipe';
 
 type FocusPanel = 'completed' | 'main' | 'detail';
@@ -537,6 +538,8 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
   const { now: detailNow, minutes: nowMinutes } = useCurrentTime(1000);
   const [focusLightboxIndex, setFocusLightboxIndex] = useState<number | null>(null);
   const [tagPickerOpen, setTagPickerOpen] = useState(false);
+  const editingSubtaskRef = useRef<HTMLTextAreaElement | null>(null);
+  const newSubtaskRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     if (!editingNote || !noteEditorRef.current) return;
@@ -552,6 +555,14 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
       selection?.addRange(range);
     });
   }, [editingNote]);
+
+  useEffect(() => {
+    autosizeTextarea(editingSubtaskRef.current);
+  }, [editingSubtaskId, subtaskDraft]);
+
+  useEffect(() => {
+    autosizeTextarea(newSubtaskRef.current);
+  }, [addingSubtask, newSubtaskDraft]);
 
   // Empty state
   if (!task) {
@@ -687,8 +698,7 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
         </div>
         <div className="space-y-1">
           {(task.subtasks || []).map((s) => (
-            <div key={s.id} className="flex items-center gap-3 w-full py-2.5 px-3 rounded-md hover:bg-muted/30 transition-colors group">
-              {/* Checkbox */}
+            <div key={s.id} className="flex items-start gap-3 w-full min-w-0 py-2.5 px-3 rounded-md hover:bg-muted/30 transition-colors group">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -697,7 +707,7 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
                   );
                   onUpdateTask(task.id, { subtasks: updated });
                 }}
-                className={`w-4 h-4 rounded-sm border-2 flex items-center justify-center shrink-0 transition-all ${
+                className={`w-4 h-4 rounded-sm border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${
                   s.completed
                     ? 'bg-foreground/15 border-foreground/25'
                     : 'border-muted-foreground/25 group-hover:border-muted-foreground/45'
@@ -710,15 +720,23 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
                 )}
               </button>
 
-              {/* Title — tap to edit inline */}
               {editingSubtaskId === s.id ? (
-                <input
+                <textarea
+                  ref={(el) => {
+                    editingSubtaskRef.current = el;
+                    autosizeTextarea(el);
+                  }}
                   autoFocus
                   value={subtaskDraft}
-                  onChange={(e) => setSubtaskDraft(e.target.value)}
+                  rows={1}
+                  wrap="soft"
+                  onChange={(e) => {
+                    setSubtaskDraft(e.target.value);
+                    autosizeTextarea(e.currentTarget);
+                  }}
+                  onInput={(e) => autosizeTextarea(e.currentTarget)}
                   onBlur={() => {
                     if (!subtaskDraft.trim()) {
-                      // Empty = delete subtask
                       const updated = task.subtasks!.filter(st => st.id !== s.id);
                       onUpdateTask(task.id, { subtasks: updated });
                     } else if (subtaskDraft.trim() !== s.title) {
@@ -730,10 +748,13 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
                     setEditingSubtaskId(null);
                   }}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      (e.target as HTMLTextAreaElement).blur();
+                    }
                     if (e.key === 'Escape') setEditingSubtaskId(null);
                   }}
-                  className="flex-1 text-[13px] font-mono leading-snug text-foreground/85 bg-transparent outline-none caret-foreground/50"
+                  className="block flex-1 min-w-0 w-full text-[13px] font-mono leading-snug whitespace-pre-wrap [overflow-wrap:anywhere] text-foreground/85 bg-transparent outline-none caret-foreground/50 resize-none overflow-hidden"
                 />
               ) : (
                 <button
@@ -741,7 +762,7 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
                     setEditingSubtaskId(s.id);
                     setSubtaskDraft(s.title);
                   }}
-                  className={`flex-1 text-left text-[13px] font-mono leading-snug ${
+                  className={`flex-1 min-w-0 w-full text-left text-[13px] font-mono leading-snug whitespace-pre-wrap [overflow-wrap:anywhere] ${
                     s.completed ? 'line-through text-muted-foreground/35' : 'text-foreground/85'
                   }`}
                 >
@@ -751,14 +772,23 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
             </div>
           ))}
 
-          {/* New subtask input */}
           {addingSubtask ? (
-            <div className="flex items-center gap-3 w-full py-2.5 px-3 rounded-md">
-              <div className="w-4 h-4 rounded-sm border-2 border-muted-foreground/15 shrink-0" />
-              <input
+            <div className="flex items-start gap-3 w-full min-w-0 py-2.5 px-3 rounded-md">
+              <div className="w-4 h-4 rounded-sm border-2 border-muted-foreground/15 shrink-0 mt-0.5" />
+              <textarea
+                ref={(el) => {
+                  newSubtaskRef.current = el;
+                  autosizeTextarea(el);
+                }}
                 autoFocus
                 value={newSubtaskDraft}
-                onChange={(e) => setNewSubtaskDraft(e.target.value)}
+                rows={1}
+                wrap="soft"
+                onChange={(e) => {
+                  setNewSubtaskDraft(e.target.value);
+                  autosizeTextarea(e.currentTarget);
+                }}
+                onInput={(e) => autosizeTextarea(e.currentTarget)}
                 placeholder="New subtask…"
                 onBlur={() => {
                   if (newSubtaskDraft.trim()) {
@@ -769,17 +799,18 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
                   setAddingSubtask(false);
                 }}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && newSubtaskDraft.trim()) {
+                  if (e.key === 'Enter' && !e.shiftKey && newSubtaskDraft.trim()) {
+                    e.preventDefault();
                     const newSub = { id: crypto.randomUUID(), title: newSubtaskDraft.trim(), completed: false };
                     onUpdateTask(task.id, { subtasks: [...(task.subtasks || []), newSub] });
                     setNewSubtaskDraft('');
-                    // Stay in adding mode for chain-add
-                  } else if (e.key === 'Enter' || e.key === 'Escape') {
+                  } else if ((e.key === 'Enter' && !e.shiftKey) || e.key === 'Escape') {
+                    e.preventDefault();
                     setNewSubtaskDraft('');
                     setAddingSubtask(false);
                   }
                 }}
-                className="flex-1 text-[13px] font-mono leading-snug text-foreground/85 bg-transparent border-b border-foreground/10 focus:border-foreground/30 outline-none placeholder:text-muted-foreground/20"
+                className="block flex-1 min-w-0 w-full text-[13px] font-mono leading-snug whitespace-pre-wrap [overflow-wrap:anywhere] text-foreground/85 bg-transparent border-b border-foreground/10 focus:border-foreground/30 outline-none placeholder:text-muted-foreground/20 resize-none overflow-hidden"
               />
             </div>
           ) : (
