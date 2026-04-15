@@ -134,6 +134,11 @@ const Index = () => {
 
   return (
     <div className={`min-h-screen bg-background pb-16 sm:pb-0`}>
+      {/* Mandatory tutorial for first-time users */}
+      {tutorialNeeded && (
+        <InteractiveTutorial open={true} onClose={handleTutorialClose} mandatory />
+      )}
+
       <AppNav />
 
 
