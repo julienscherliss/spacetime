@@ -204,6 +204,23 @@ function Chip({ active, label, onClick, onLongPress }: { active: boolean; label:
   );
 }
 
+/* ── Vertical tag chip (desktop sidebar) ── */
+function VerticalTagChip({ active, label, onClick, onLongPress }: { active: boolean; label: string; onClick: () => void; onLongPress?: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      onContextMenu={onLongPress ? (e) => { e.preventDefault(); onLongPress(); } : undefined}
+      className={`w-full text-left px-2.5 py-2 rounded-md text-[11px] font-mono tracking-wider transition-colors ${
+        active
+          ? 'bg-foreground/[0.06] text-foreground font-medium border border-foreground/10'
+          : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30 border border-transparent'
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
 /* ── Jiggle chip for edit mode (drag to reorder) ── */
 function JiggleChip({ label, catValue, onDelete, isDragging }: {
   label: string; catValue: string; onDelete: () => void;
