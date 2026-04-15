@@ -114,7 +114,7 @@ export function clusterTasks(
           startMin: timeToMinutes(t.time!),
           endMin: timeToMinutes(t.time!) + (t.duration || 30),
           naturalHeightPx,
-          titleFits: naturalHeightPx >= fitPx && titleFitsWidth(t.title, comfortMode, columnWidthPx),
+          titleFits: naturalHeightPx >= fitPx,
         };
       })
     : [];
