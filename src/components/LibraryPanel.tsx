@@ -6,7 +6,7 @@ import {
 } from '@/store/libraryStore';
 import {
   X, Plus, Check, Clock, AlertTriangle, Trash2,
-  ArrowDownAZ, CalendarClock, Tag, ChevronDown, GripVertical, CalendarDays,
+  ArrowDownAZ, CalendarClock, Tag, ChevronDown, ChevronRight, GripVertical, CalendarDays,
 } from 'lucide-react';
 import { TagAutocomplete, isSubtagOf, hasSubtags, getParentValue } from '@/components/TagAutocomplete';
 import { DateAutocomplete } from '@/components/DateAutocomplete';
@@ -205,18 +205,26 @@ function Chip({ active, label, onClick, onLongPress }: { active: boolean; label:
 }
 
 /* ── Vertical tag chip (desktop sidebar) ── */
-function VerticalTagChip({ active, label, onClick, onLongPress }: { active: boolean; label: string; onClick: () => void; onLongPress?: () => void }) {
+function VerticalTagChip({ active, label, onClick, onLongPress, hasChildren, onDrilldown }: { active: boolean; label: string; onClick: () => void; onLongPress?: () => void; hasChildren?: boolean; onDrilldown?: () => void }) {
   return (
     <button
       onClick={onClick}
       onContextMenu={onLongPress ? (e) => { e.preventDefault(); onLongPress(); } : undefined}
-      className={`w-full text-left px-2.5 py-2 rounded-md text-[11px] font-mono tracking-wider transition-colors ${
+      className={`w-full text-left px-2.5 py-2 rounded-md text-[11px] font-mono tracking-wider transition-colors flex items-center justify-between gap-1 ${
         active
           ? 'bg-foreground/[0.06] text-foreground font-medium border border-foreground/10'
           : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30 border border-transparent'
       }`}
     >
-      {label}
+      <span className="truncate">{label}</span>
+      {hasChildren && (
+        <span
+          onClick={(e) => { e.stopPropagation(); onDrilldown?.(); }}
+          className="p-0.5 text-muted-foreground/40 hover:text-foreground transition-colors shrink-0"
+        >
+          <ChevronRight size={12} strokeWidth={1.5} />
+        </span>
+      )}
     </button>
   );
 }
@@ -562,21 +570,22 @@ export function LibraryPanel() {
                               />
                               {categories
                                 .filter(c => !c.value.includes('/'))
-                                .map((cat) => (
-                                  <VerticalTagChip
-                                    key={cat.value}
-                                    active={filters.category === cat.value}
-                                    label={cat.label}
-                                    onClick={() => {
-                                      if (filters.category === cat.value) {
-                                        setDrilldownParent(cat.value);
-                                      } else {
-                                        setFilter({ category: cat.value });
-                                      }
-                                    }}
-                                    onLongPress={() => setTagModalOpen(true)}
-                                  />
-                                ))}
+                                .map((cat) => {
+                                  const catHasChildren = categories.some(c => isSubtagOf(c.value, cat.value));
+                                  return (
+                                    <VerticalTagChip
+                                      key={cat.value}
+                                      active={filters.category === cat.value}
+                                      label={cat.label}
+                                      hasChildren={catHasChildren}
+                                      onDrilldown={() => setDrilldownParent(cat.value)}
+                                      onClick={() => {
+                                        setFilter({ category: filters.category === cat.value ? 'all' : cat.value });
+                                      }}
+                                      onLongPress={() => setTagModalOpen(true)}
+                                    />
+                                  );
+                                })}
                               {showNewCat ? (
                                 <input
                                   value={newCatName}
@@ -727,7 +736,7 @@ export function LibraryPanel() {
 
                   {/* ── RIGHT: Detail pane ── */}
                   {editingItem && (
-                    <div className="w-[340px] shrink-0 border-l border-border/30 bg-card/30">
+                    <div className="w-1/2 shrink-0 border-l border-border/30 bg-card/30">
                       <LibraryDetailPane
                         item={editingItem}
                         onClose={() => setEditingItem(null)}
