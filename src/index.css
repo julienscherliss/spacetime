@@ -361,32 +361,16 @@
   font-size: var(--ui-text-lg) !important;
 }
 
-/* Scale icon containers slightly in comfort mode */
-.comfort svg {
-  transform: scale(1.1);
-  transform-origin: center;
+/* Tailwind text-sm (14px) and text-xs (12px) */
+.comfort .text-sm {
+  font-size: var(--ui-text-xl) !important;
 }
-
-/* Increase min tap targets */
-.comfort button,
-.comfort [role="button"],
-.comfort a {
-  min-height: var(--ui-tap-min);
+.comfort .text-xs {
+  font-size: var(--ui-text-md) !important;
 }
-
-/* Don't enforce min-height on inline/icon buttons */
-.comfort .inline-flex,
-.comfort [class*="items-center"][class*="gap-"] > button,
-.comfort nav button {
-  min-height: auto;
+.comfort .text-lg {
+  font-size: var(--ui-text-3xl) !important;
 }
-
-/* Settings panel toggles */
-.comfort [class*="min-h-\[48px\]"] {
-  min-height: var(--ui-tap-min) !important;
-}
-
-/* Modals and panels — slightly more padding in comfort mode */
-.comfort .fixed.inset-0 .bg-card {
-  padding: var(--ui-space-lg);
+.comfort .text-xl {
+  font-size: var(--ui-text-heading) !important;
 }
