@@ -507,8 +507,7 @@ export function TimelineTaskBlock({
                       className={`font-mono leading-tight truncate ${
                         task.completed ? 'line-through text-muted-foreground/40' : isLocked ? 'font-medium' : isOverdue ? 'text-destructive/70 font-medium' : isActive ? 'text-foreground font-medium' : 'text-foreground/75'
                       }`}
-                      style={{ fontSize: 'var(--ui-task-title)', lineHeight: 'var(--ui-leading-tight)' }}
-                      style={isLocked && !task.completed ? { color: 'hsl(var(--locked-text))' } : undefined}
+                      style={{ fontSize: 'var(--ui-task-title)', lineHeight: 'var(--ui-leading-tight)', ...(isLocked && !task.completed ? { color: 'hsl(var(--locked-text))' } : {}) }}
                     >
                       {task.title}
                     </div>
