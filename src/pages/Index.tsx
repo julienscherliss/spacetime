@@ -34,6 +34,7 @@ const Index = () => {
   const { viewMode, daySubMode, routinesEnabled, moveOverdueToWaitingRoom } = useTaskStore();
   useNativeNotifications();
   useWebNotifications();
+  useInAppSoundAlerts();
   const [waitingOpen, setWaitingOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
