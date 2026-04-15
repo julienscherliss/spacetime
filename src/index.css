@@ -336,7 +336,57 @@
 }
 
 /* ── Comfort mode global overrides ── */
-/* These catch text sizes that aren't updated to use tokens directly */
+/* Scale common hardcoded font sizes that weren't individually migrated to tokens */
 .comfort .font-mono {
   line-height: var(--ui-leading);
+}
+
+/* Settings panel, modals, and panels — scale section labels, toggle labels, descriptions */
+.comfort [class*="text-\[12px\]"] {
+  font-size: var(--ui-text-md) !important;
+}
+.comfort [class*="text-\[11px\]"] {
+  font-size: var(--ui-text-base) !important;
+}
+.comfort [class*="text-\[10px\]"] {
+  font-size: var(--ui-task-meta) !important;
+}
+.comfort [class*="text-\[9px\]"] {
+  font-size: var(--ui-text-xs) !important;
+}
+.comfort [class*="text-\[8px\]"] {
+  font-size: var(--ui-text-2xs) !important;
+}
+.comfort [class*="text-\[13px\]"] {
+  font-size: var(--ui-text-lg) !important;
+}
+
+/* Scale icon containers slightly in comfort mode */
+.comfort svg {
+  transform: scale(1.1);
+  transform-origin: center;
+}
+
+/* Increase min tap targets */
+.comfort button,
+.comfort [role="button"],
+.comfort a {
+  min-height: var(--ui-tap-min);
+}
+
+/* Don't enforce min-height on inline/icon buttons */
+.comfort .inline-flex,
+.comfort [class*="items-center"][class*="gap-"] > button,
+.comfort nav button {
+  min-height: auto;
+}
+
+/* Settings panel toggles */
+.comfort [class*="min-h-\[48px\]"] {
+  min-height: var(--ui-tap-min) !important;
+}
+
+/* Modals and panels — slightly more padding in comfort mode */
+.comfort .fixed.inset-0 .bg-card {
+  padding: var(--ui-space-lg);
 }
