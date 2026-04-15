@@ -84,7 +84,6 @@ export function useIntentionalTouchDrag<T extends HTMLElement>({
         offsetY: startPoint.y - rect.top,
       });
       onDragStart?.({ point: startPoint, element });
-      playUISound('blip');
       if (lastPoint) {
         useTouchDragStore.getState().moveGhost(lastPoint);
         onDragMove?.(lastPoint);

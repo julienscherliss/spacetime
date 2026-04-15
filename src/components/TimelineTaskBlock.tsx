@@ -266,7 +266,6 @@ export function TimelineTaskBlock({
           dragActivated.current = true;
         }
         useScheduledDragStore.getState().activate();
-        playUISound('blip');
         didDragRef.current = true;
       }
 
