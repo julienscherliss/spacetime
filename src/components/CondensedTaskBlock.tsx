@@ -64,12 +64,12 @@ export function CondensedTaskBlock({
             <Layers size={8} className={allCompleted ? 'text-muted-foreground/60' : 'text-muted-foreground'} />
           </div>
         ) : (
-          <div className="flex flex-col justify-center h-full px-2 py-1 gap-0">
+          <div className="flex flex-col justify-center h-full py-1 gap-0" style={{ paddingLeft: 'var(--ui-space-md)', paddingRight: 'var(--ui-space-md)' }}>
             <div className="flex items-center gap-1 min-w-0">
               <Layers size={9} className={allCompleted ? 'text-muted-foreground/50' : 'text-muted-foreground/70'} />
-              <span className={`text-[10px] font-mono tracking-wider truncate leading-none ${
+              <span className={`font-mono tracking-wider truncate leading-none ${
                 allCompleted ? 'text-muted-foreground/70' : 'text-foreground/75'
-              }`}>
+              }`} style={{ fontSize: 'var(--ui-task-meta)' }}>
                 {count} tasks
               </span>
             </div>
@@ -79,15 +79,16 @@ export function CondensedTaskBlock({
                 {visibleTitles.map((task) => (
                   <div
                     key={task.id}
-                    className={`text-[10px] font-mono truncate leading-tight ${
+                    className={`font-mono truncate ${
                       task.completed ? 'line-through text-muted-foreground/40' : 'text-foreground/75'
                     }`}
+                    style={{ fontSize: 'var(--ui-task-meta)', lineHeight: 'var(--ui-leading-tight)' }}
                   >
                     {task.title}
                   </div>
                 ))}
                 {remaining > 0 && (
-                  <span className="text-[9px] font-mono text-muted-foreground/50 tracking-wider leading-tight">
+                  <span className="font-mono text-muted-foreground/50 tracking-wider" style={{ fontSize: 'var(--ui-text-xs)', lineHeight: 'var(--ui-leading-tight)' }}>
                     +{remaining} more
                   </span>
                 )}
