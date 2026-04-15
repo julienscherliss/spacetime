@@ -175,6 +175,7 @@ function buildCluster(group: Array<{
   readableHeightPx: number;
   readableBottomPx: number;
   titleFits: boolean;
+  heightFits: boolean;
 }>): TaskCluster {
   // Single task always renders as single
   // For single tasks, only height matters — CSS truncation handles long titles
