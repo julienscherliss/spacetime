@@ -369,6 +369,15 @@ export const useTaskStore = create<TaskState>()(
         };
         set((s) => ({ tasks: [...s.tasks, task] }));
       },
+      addTask: (taskData) => {
+        const task: Task = {
+          ...taskData,
+          id: generateId(),
+          originalPriority: taskData.priority,
+          completed: false,
+          createdAt: new Date().toISOString(),
+          moveCount: 0,
+        };
 
       updateTask: (id, updates) => {
         if ('time' in updates || 'date' in updates || 'completed' in updates) {
