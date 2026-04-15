@@ -285,12 +285,17 @@ export function AppNav() {
               libPanelOpen
                 ? 'bg-primary/8 text-primary border border-primary/12'
                 : navItemInactive
-            }`}
+            } relative`}
           >
             <Archive size={13} strokeWidth={1.5} />
             <span className={libPanelOpen ? 'font-medium' : ''}>LIBRARY</span>
             {libCount > 0 && (
               <span className="text-[9px] font-mono text-muted-foreground/35 ml-0.5">{libCount}</span>
+            )}
+            {libUrgentCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[15px] h-[15px] rounded-full bg-destructive text-destructive-foreground text-[8px] font-mono flex items-center justify-center">
+                {libUrgentCount}
+              </span>
             )}
           </button>
           <button
