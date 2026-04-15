@@ -75,7 +75,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
       <div className="relative bg-card border border-border rounded-t-lg sm:rounded-lg shadow-lg w-full sm:max-w-sm max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
-          <h2 className="text-sm font-display font-bold text-foreground tracking-tight">SETTINGS</h2>
+          <h2 className="font-display font-bold text-foreground tracking-tight" style={{ fontSize: 'var(--ui-text-xl)' }}>SETTINGS</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
             <X size={16} strokeWidth={1.5} />
           </button>
