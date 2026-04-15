@@ -100,6 +100,7 @@ export function clusterTasks(
         readableHeightPx,
         readableBottomPx: startPx + readableHeightPx,
         titleFits,
+        heightFits,
       };
     })
     .sort((a, b) => a.startMin - b.startMin);
