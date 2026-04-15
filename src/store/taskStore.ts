@@ -643,6 +643,7 @@ export const useTaskStore = create<TaskState>()(
             return t;
           }),
         }));
+        if (wasInWaitingRoom) playUISound('blip');
         Array.from(targetIds).forEach((taskId) => {
           void cancelNotificationsForTask(taskId);
         cancelWebNotificationsForTask(taskId);
