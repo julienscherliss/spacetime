@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-
+import { playUISound } from '@/utils/soundEngine';
 export interface CarryPayload {
   taskId: string;
   title: string;
@@ -31,6 +31,7 @@ export const useCarryStore = create<CarryState>((set, get) => ({
   pickup: (payload) => {
     // If already carrying, return current task first (handled by caller)
     set({ carried: payload });
+    playUISound('blip');
 
     // Auto-expire after 60s
     setTimeout(() => {
