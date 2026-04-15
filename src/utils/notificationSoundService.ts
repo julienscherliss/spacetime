@@ -51,11 +51,13 @@ function makeKey(taskId: string, type: string): string {
 function buildFingerprint(tasks: Task[], level: NotificationLevel, persistent: boolean): string {
   if (level === 'off') return 'off';
   const today = getTodayStr();
+  // Include current minute so we re-evaluate which sounds to schedule as time passes
+  const nowMin = Math.floor(Date.now() / 60_000);
   const parts = tasks
     .filter(t => shouldNotify(t, level) && t.time && !t.completed && t.date === today)
     .map(t => `${t.id}:${t.date}:${t.time}:${t.duration}:${t.priority}:${t.completed}`)
     .sort();
-  return `${level}:${persistent}:${parts.join('|')}`;
+  return `${level}:${persistent}:${nowMin}:${parts.join('|')}`;
 }
 
 export function cancelAllSounds() {
