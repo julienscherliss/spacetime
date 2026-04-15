@@ -157,7 +157,7 @@ function snapshotCats(cats: CategoryDef[]): string {
 
 function clearAllUserState() {
   useTaskStore.setState({ tasks: [], editingTaskId: null, focusTaskId: null });
-  useLibraryStore.setState({ items: [] });
+  useLibraryStore.setState({ items: [], categories: [] });
   try {
     localStorage.removeItem('do-task-store');
     localStorage.removeItem('do-library-store');
