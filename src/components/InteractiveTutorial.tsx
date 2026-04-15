@@ -111,6 +111,7 @@ export function InteractiveTutorial({ open, onClose, mandatory = false }: Intera
     setInventoryPlaced(false);
     setPriorityTapped(new Set());
     setAddTaskTapped(false);
+    setScheduledSlot(null);
     setIsTouching(false);
     if (holdTimerRef.current) {
       clearInterval(holdTimerRef.current);
@@ -599,30 +600,45 @@ export function InteractiveTutorial({ open, onClose, mandatory = false }: Intera
                       </div>
                     )}
 
-                    {/* ADD TASK */}
+                    {/* SCHEDULE A TASK */}
                     {step.id === 'add-task' && (
-                      <div className="flex flex-col items-center gap-4">
-                        {!addTaskTapped ? (
-                          <button
-                            onClick={handleAddTask}
-                            className="w-14 h-14 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary hover:bg-primary/20 transition-all active:scale-95 touch-manipulation"
-                            aria-label="Add task"
-                          >
-                            <Plus size={28} strokeWidth={1.5} />
-                          </button>
-                        ) : (
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="w-full bg-card border border-primary/30 rounded-sm p-3"
-                          >
-                            <div className="text-[10px] font-mono text-primary tracking-wider mb-2">NEW TASK CREATED</div>
-                            <TaskBlock title="My new task" duration="30 min" priority="FLEX" priorityColor="bg-emerald-500/40" />
-                          </motion.div>
-                        )}
-                        <p className="text-[9px] font-mono text-muted-foreground/40 text-center px-2">
-                          In the real app, you can also drag on an empty timeline slot
-                        </p>
+                      <div className="w-full">
+                        {/* Mini schedule */}
+                        <div className="space-y-0">
+                          {['9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM'].map((time, i) => {
+                            const isOccupied = i === 0; // First slot has existing task
+                            const isScheduled = scheduledSlot === i;
+                            return (
+                              <div key={i} className="flex items-stretch border-b border-border/20 last:border-b-0">
+                                <div className="w-14 shrink-0 py-2 pr-2 text-right">
+                                  <span className="text-[9px] font-mono text-muted-foreground/40">{time}</span>
+                                </div>
+                                <div className="flex-1 min-h-[44px] border-l border-border/30 pl-2">
+                                  {isOccupied ? (
+                                    <div className="bg-card border border-border/60 rounded-sm p-2 my-0.5">
+                                      <TaskBlock title="Team standup" duration="30 min" priority="FIXED" priorityColor="bg-orange-500/40" />
+                                    </div>
+                                  ) : isScheduled ? (
+                                    <motion.div
+                                      initial={{ opacity: 0, scale: 0.95 }}
+                                      animate={{ opacity: 1, scale: 1 }}
+                                      className="bg-primary/10 border border-primary/30 rounded-sm p-2 my-0.5"
+                                    >
+                                      <TaskBlock title="New task" duration="30 min" priority="FLEX" priorityColor="bg-emerald-500/40" />
+                                    </motion.div>
+                                  ) : (
+                                    <button
+                                      onClick={() => handleSlotTap(i)}
+                                      className="w-full h-full min-h-[44px] flex items-center justify-center rounded-sm border border-dashed border-transparent hover:border-primary/20 hover:bg-primary/5 transition-colors active:bg-primary/10 touch-manipulation"
+                                    >
+                                      <Plus size={14} className="text-muted-foreground/20" />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     )}
                   </div>
