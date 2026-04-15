@@ -10,7 +10,6 @@ import { useCarryStore } from '@/store/carryStore';
 import { START_HOUR } from '@/components/TimelineColumn';
 import { getOccupiedSlots, findValidPosition } from '@/utils/collisionDetection';
 import { TASK_TEXT_FIT_PX, TASK_TEXT_FIT_PX_COMFORT } from '@/utils/taskClustering';
-import { playUISound } from '@/utils/soundEngine';
 
 interface TimelineTaskBlockProps {
   task: Task;
@@ -266,7 +265,6 @@ export function TimelineTaskBlock({
           dragActivated.current = true;
         }
         useScheduledDragStore.getState().activate();
-        playUISound('blip');
         didDragRef.current = true;
       }
 
