@@ -3,6 +3,7 @@ import { isNativePlatform } from '@/utils/nativePlatform';
 import { useTaskStore } from '@/store/taskStore';
 import { useTimezoneStore } from '@/store/timezoneStore';
 import { syncWebNotifications, cancelAllWebNotifications } from '@/utils/webNotificationService';
+import { syncNotificationSounds, cancelAllSounds } from '@/utils/notificationSoundService';
 import type { Task } from '@/store/taskStore';
 import type { NotificationLevel } from '@/utils/notificationService';
 
