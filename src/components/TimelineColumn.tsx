@@ -101,14 +101,14 @@ function CalendarEventBlocks({ date, hourHeight, showTimeLabels }: { date: strin
             >
               <div className="flex items-start h-full px-2 py-0.5 overflow-hidden relative">
                 <div className="flex-1 min-w-0">
-                  <div className={`text-[11px] font-mono leading-tight truncate ${
+                  <div className={`font-mono leading-tight truncate ${
                     isCompleted ? 'line-through text-muted-foreground/30' : 'text-muted-foreground/70'
-                  }`}>
+                  }`} style={{ fontSize: 'var(--ui-text-base)' }}>
                     {event.title}
                   </div>
                   {height > 24 && (
                     <div className="flex items-center gap-1 mt-0.5">
-                      <span className="text-[9px] font-mono text-muted-foreground/35">
+                      <span className="font-mono text-muted-foreground/35" style={{ fontSize: 'var(--ui-text-xs)' }}>
                         {formatTime12h(event.time!)}
                       </span>
                       <CalIcon size={8} className="text-muted-foreground/25" />
@@ -187,12 +187,12 @@ function CompletedTaskBlock({ task, top, height, showTimeLabels }: {
       >
         <div className="flex items-center gap-1.5">
           <Check size={10} className="text-muted-foreground/50 shrink-0" />
-          <span className="text-[10px] font-mono text-muted-foreground line-through truncate">
+          <span className="font-mono text-muted-foreground line-through truncate" style={{ fontSize: 'var(--ui-task-meta)' }}>
             {task.title}
           </span>
         </div>
         {height > 28 && task.time && (
-          <div className="text-[9px] font-mono text-muted-foreground/30 mt-0.5 line-through">
+          <div className="font-mono text-muted-foreground/30 mt-0.5 line-through" style={{ fontSize: 'var(--ui-text-xs)' }}>
             {formatTime12h(task.time)} · {formatDuration(task.duration || 30)}
           </div>
         )}
@@ -1008,7 +1008,7 @@ export function TimelineColumn({
           style={{ top: i * HOUR_HEIGHT }}
         >
           {showTimeLabels && (
-            <div className="w-[3.25rem] shrink-0 text-[11px] font-mono text-muted-foreground/70 font-medium -mt-2 text-right pr-2 select-none">
+            <div className="w-[3.25rem] shrink-0 font-mono text-muted-foreground/70 font-medium -mt-2 text-right pr-2 select-none" style={{ fontSize: 'var(--ui-text-base)' }}>
               {formatHour12h(hour)}
             </div>
           )}

@@ -2,10 +2,85 @@
 @tailwind components;
 @tailwind utilities;
 
-html {
-  --ui-zoom: 1;
-  zoom: var(--ui-zoom);
-  overflow-x: hidden;
+/* ── UI Scale Token System ── */
+:root {
+  /* Typography tokens */
+  --ui-text-2xs: 8px;
+  --ui-text-xs: 9px;
+  --ui-text-sm: 10px;
+  --ui-text-base: 11px;
+  --ui-text-md: 12px;
+  --ui-text-lg: 13px;
+  --ui-text-xl: 14px;
+  --ui-text-2xl: 16px;
+  --ui-text-3xl: 18px;
+  --ui-text-heading: 24px;
+  --ui-leading: 1.4;
+  --ui-leading-tight: 1.2;
+
+  /* Spacing tokens */
+  --ui-space-xs: 2px;
+  --ui-space-sm: 4px;
+  --ui-space-md: 8px;
+  --ui-space-lg: 12px;
+  --ui-space-xl: 16px;
+  --ui-space-2xl: 24px;
+
+  /* Component tokens */
+  --ui-icon-xs: 10px;
+  --ui-icon-sm: 12px;
+  --ui-icon-md: 13px;
+  --ui-icon-lg: 16px;
+  --ui-icon-xl: 18px;
+  --ui-tap-min: 44px;
+  --ui-nav-h: 48px;
+  --ui-task-title: 12px;
+  --ui-task-meta: 10px;
+  --ui-task-badge: 8px;
+  --ui-btn-py: 8px;
+  --ui-btn-px: 12px;
+  --ui-input-h: 44px;
+  --ui-resize-handle: 16px;
+  --ui-resize-w: 28px;
+}
+
+/* ── Comfort Mode: intentionally scaled tokens ── */
+.comfort {
+  --ui-text-2xs: 10px;
+  --ui-text-xs: 11px;
+  --ui-text-sm: 12px;
+  --ui-text-base: 13px;
+  --ui-text-md: 14.5px;
+  --ui-text-lg: 15.5px;
+  --ui-text-xl: 17px;
+  --ui-text-2xl: 19px;
+  --ui-text-3xl: 22px;
+  --ui-text-heading: 29px;
+  --ui-leading: 1.5;
+  --ui-leading-tight: 1.3;
+
+  --ui-space-xs: 3px;
+  --ui-space-sm: 5px;
+  --ui-space-md: 10px;
+  --ui-space-lg: 14px;
+  --ui-space-xl: 20px;
+  --ui-space-2xl: 28px;
+
+  --ui-icon-xs: 12px;
+  --ui-icon-sm: 14px;
+  --ui-icon-md: 15px;
+  --ui-icon-lg: 18px;
+  --ui-icon-xl: 21px;
+  --ui-tap-min: 48px;
+  --ui-nav-h: 54px;
+  --ui-task-title: 14.5px;
+  --ui-task-meta: 12px;
+  --ui-task-badge: 10px;
+  --ui-btn-py: 10px;
+  --ui-btn-px: 16px;
+  --ui-input-h: 50px;
+  --ui-resize-handle: 20px;
+  --ui-resize-w: 34px;
 }
 
 @layer base {
@@ -258,4 +333,44 @@ html {
   10% { opacity: 1; }
   13.33% { opacity: 0.3; }
   100% { opacity: 0.3; }
+}
+
+/* ── Comfort mode global overrides ── */
+/* Scale common hardcoded font sizes that weren't individually migrated to tokens */
+.comfort .font-mono {
+  line-height: var(--ui-leading);
+}
+
+/* Settings panel, modals, and panels — scale section labels, toggle labels, descriptions */
+.comfort [class*="text-\[12px\]"] {
+  font-size: var(--ui-text-md) !important;
+}
+.comfort [class*="text-\[11px\]"] {
+  font-size: var(--ui-text-base) !important;
+}
+.comfort [class*="text-\[10px\]"] {
+  font-size: var(--ui-task-meta) !important;
+}
+.comfort [class*="text-\[9px\]"] {
+  font-size: var(--ui-text-xs) !important;
+}
+.comfort [class*="text-\[8px\]"] {
+  font-size: var(--ui-text-2xs) !important;
+}
+.comfort [class*="text-\[13px\]"] {
+  font-size: var(--ui-text-lg) !important;
+}
+
+/* Tailwind text-sm (14px) and text-xs (12px) */
+.comfort .text-sm {
+  font-size: var(--ui-text-xl) !important;
+}
+.comfort .text-xs {
+  font-size: var(--ui-text-md) !important;
+}
+.comfort .text-lg {
+  font-size: var(--ui-text-3xl) !important;
+}
+.comfort .text-xl {
+  font-size: var(--ui-text-heading) !important;
 }

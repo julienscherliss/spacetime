@@ -485,8 +485,8 @@ export function TimelineTaskBlock({
             data-touch-ignore
             onMouseDown={(e) => handleResizeStart(e, task, 'top')}
             onTouchStart={(e) => handleResizeStart(e, task, 'top')}
-            className="absolute top-0 right-0 w-[28px] h-[16px] cursor-ns-resize z-20 opacity-0 group-hover:opacity-100 touch:opacity-100 flex items-start justify-end pr-1 pt-[2px]"
-            style={{ touchAction: 'none' }}
+            className="absolute top-0 right-0 cursor-ns-resize z-20 opacity-0 group-hover:opacity-100 touch:opacity-100 flex items-start justify-end pr-1 pt-[2px]"
+            style={{ width: 'var(--ui-resize-w)', height: 'var(--ui-resize-handle)', touchAction: 'none' }}
           >
             <svg width="8" height="8" viewBox="0 0 8 8" className="text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors">
               <line x1="1" y1="7" x2="7" y2="1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -495,7 +495,7 @@ export function TimelineTaskBlock({
           </div>
         )}
 
-        <div className={`h-full overflow-hidden ${isCompact ? 'flex items-center px-1' : 'flex flex-col justify-between px-2 py-1'}`}>
+        <div className={`h-full overflow-hidden ${isCompact ? 'flex items-center px-1' : 'flex flex-col justify-between py-1'}`} style={{ paddingLeft: isCompact ? undefined : 'var(--ui-space-md)', paddingRight: isCompact ? undefined : 'var(--ui-space-md)' }}>
           {isCompact ? (
             <div className="h-[2px] w-full rounded-full bg-foreground/20" title={task.title} />
           ) : (
@@ -504,17 +504,17 @@ export function TimelineTaskBlock({
                 <div className="flex-1 min-w-0">
                   {canShowTitle && (
                     <div
-                      className={`text-[12px] font-mono leading-tight truncate ${
+                      className={`font-mono leading-tight truncate ${
                         task.completed ? 'line-through text-muted-foreground/40' : isLocked ? 'font-medium' : isOverdue ? 'text-destructive/70 font-medium' : isActive ? 'text-foreground font-medium' : 'text-foreground/75'
                       }`}
-                      style={isLocked && !task.completed ? { color: 'hsl(var(--locked-text))' } : undefined}
+                      style={{ fontSize: 'var(--ui-task-title)', lineHeight: 'var(--ui-leading-tight)', ...(isLocked && !task.completed ? { color: 'hsl(var(--locked-text))' } : {}) }}
                     >
                       {task.title}
                     </div>
                   )}
                   {canShowActiveMeta && isActive && (
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-[10px] font-mono text-primary/70">
+                      <span className="font-mono text-primary/70" style={{ fontSize: 'var(--ui-task-meta)' }}>
                         {formatDuration(Math.max(0, taskMinutes + (task.duration || 30) - nowMinutes))} left
                       </span>
                     </div>
@@ -524,7 +524,7 @@ export function TimelineTaskBlock({
               {canShowFooter && (
                 <div className="flex items-center gap-1 mt-auto">
                   {hasRoutineConflict && (
-                    <span className="text-[8px] font-mono tracking-wider uppercase text-[hsl(var(--routine-conflict-foreground))]" title="Conflicts with routine">
+                    <span className="font-mono tracking-wider uppercase text-[hsl(var(--routine-conflict-foreground))]" style={{ fontSize: 'var(--ui-task-badge)' }} title="Conflicts with routine">
                       ⚠ CONFLICT
                     </span>
                   )}
@@ -556,8 +556,8 @@ export function TimelineTaskBlock({
             data-touch-ignore
             onMouseDown={(e) => handleResizeStart(e, task, 'bottom')}
             onTouchStart={(e) => handleResizeStart(e, task, 'bottom')}
-            className="absolute bottom-0 right-0 w-[28px] h-[16px] cursor-ns-resize z-20 opacity-0 group-hover:opacity-100 touch:opacity-100 flex items-end justify-end pr-1 pb-[2px]"
-            style={{ touchAction: 'none' }}
+            className="absolute bottom-0 right-0 cursor-ns-resize z-20 opacity-0 group-hover:opacity-100 touch:opacity-100 flex items-end justify-end pr-1 pb-[2px]"
+            style={{ width: 'var(--ui-resize-w)', height: 'var(--ui-resize-handle)', touchAction: 'none' }}
           >
             <svg width="8" height="8" viewBox="0 0 8 8" className="text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-colors">
               <line x1="1" y1="1" x2="7" y2="7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />

@@ -154,16 +154,16 @@ function LandingRedirect() {
 
 const App = () => {
   const darkMode = useTimezoneStore((s) => s.darkMode);
-  const uiScale = useTimezoneStore((s) => s.uiScale);
+  const comfortMode = useTimezoneStore((s) => s.comfortMode);
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
     useColorSchemeStore.getState().setDarkMode(darkMode);
   }, [darkMode]);
 
-  // Apply UI scale as CSS zoom
+  // Apply comfort mode class
   useEffect(() => {
-    document.documentElement.style.setProperty('--ui-zoom', String(uiScale));
-  }, [uiScale]);
+    document.documentElement.classList.toggle('comfort', comfortMode);
+  }, [comfortMode]);
 
   useEffect(() => {
     if (!isNativePlatform()) return;

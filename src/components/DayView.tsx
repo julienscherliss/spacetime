@@ -267,14 +267,14 @@ export function DayView() {
     >
       {/* Bold title row — scrolls away naturally */}
       <div className="pt-1 pb-0.5">
-        <h2 className="text-lg sm:text-xl font-display font-bold text-foreground tracking-tight">
+        <h2 className="font-display font-bold text-foreground tracking-tight" style={{ fontSize: 'var(--ui-text-3xl)' }}>
           {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', {
             weekday: 'long',
             month: 'long',
             day: 'numeric',
           })}
         </h2>
-        <p className="text-[10px] font-mono text-muted-foreground/50 tracking-widest">
+        <p className="font-mono text-muted-foreground/50 tracking-widest" style={{ fontSize: 'var(--ui-task-meta)' }}>
           {completedCount}/{dayTasks.length} COMPLETED
         </p>
       </div>
@@ -290,7 +290,7 @@ export function DayView() {
           </button>
           <button
             onClick={goToToday}
-            className={`px-2.5 py-1 rounded-sm text-[10px] font-mono tracking-widest transition-colors ${
+            className={`px-2.5 py-1 rounded-sm font-mono tracking-widest transition-colors ${
               isToday
                 ? 'text-primary bg-primary/5'
                 : 'text-muted-foreground/50 hover:text-foreground hover:bg-muted/50'
