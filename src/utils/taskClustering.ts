@@ -22,8 +22,8 @@ export interface TaskCluster {
   titleFits?: boolean;
 }
 
-const TASK_TEXT_FIT_PX = 23; // title line + vertical padding in TimelineTaskBlock
-const TASK_TEXT_FIT_PX_COMFORT = 28; // comfort mode needs more height for larger text
+export const TASK_TEXT_FIT_PX = 23; // title line + vertical padding in TimelineTaskBlock
+export const TASK_TEXT_FIT_PX_COMFORT = 32; // comfort mode needs a larger readable footprint for comfortable typography
 
 /**
  * Given a list of timed tasks and the current hourHeight,
@@ -47,13 +47,17 @@ export function clusterTasks(
       const duration = t.duration || 30;
       const endMin = startMin + duration;
       const naturalHeightPx = (duration / 60) * hourHeight;
+      const startPx = (startMin / 60) * hourHeight;
+      const readableHeightPx = Math.max(naturalHeightPx, fitPx);
 
       return {
         task: t,
         startMin,
         endMin,
-        startPx: (startMin / 60) * hourHeight,
+        startPx,
         naturalHeightPx,
+        readableHeightPx,
+        readableBottomPx: startPx + readableHeightPx,
         titleFits: naturalHeightPx >= fitPx,
       };
     })
@@ -90,16 +94,16 @@ export function clusterTasks(
   let currentGroup: typeof timed = [timed[0]];
 
   for (let i = 1; i < timed.length; i++) {
-    const prev = currentGroup[currentGroup.length - 1];
     const curr = timed[i];
 
-    const prevBottomPx = prev.startPx + prev.naturalHeightPx;
-    const gapPx = curr.startPx - prevBottomPx;
+    const currentGroupUnreadable = currentGroup.every(item => !item.titleFits);
+    const currentGroupReadableBottomPx = Math.max(...currentGroup.map(item => item.readableBottomPx));
+    const readableGapPx = curr.startPx - currentGroupReadableBottomPx;
 
     const shouldCluster =
-      !prev.titleFits &&
+      currentGroupUnreadable &&
       !curr.titleFits &&
-      gapPx <= 0;
+      readableGapPx <= 0;
 
     if (shouldCluster) {
       currentGroup.push(curr);
@@ -119,6 +123,8 @@ function buildCluster(group: Array<{
   endMin: number;
   startPx: number;
   naturalHeightPx: number;
+  readableHeightPx: number;
+  readableBottomPx: number;
   titleFits: boolean;
 }>): TaskCluster {
   // Single task always renders as single
