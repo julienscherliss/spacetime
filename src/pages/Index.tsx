@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTaskStore } from '@/store/taskStore';
 import { useCalendarStore } from '@/store/calendarStore';
 import { AppNav } from '@/components/AppNav';
@@ -27,6 +27,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNativeNotifications } from '@/hooks/useNativeNotifications';
 import { useWebNotifications } from '@/hooks/useWebNotifications';
+import { InteractiveTutorial } from '@/components/InteractiveTutorial';
 
 const Index = () => {
   const { viewMode, daySubMode, routinesEnabled, moveOverdueToWaitingRoom } = useTaskStore();
@@ -40,6 +41,11 @@ const Index = () => {
   const [subscribeOpen, setSubscribeOpen] = useState(false);
   const { trialDaysLeft, cancellingDaysLeft, subscription, refresh: refreshSub } = useSubscription();
   const [helpSection, setHelpSection] = useState<string | undefined>();
+  const [tutorialNeeded, setTutorialNeeded] = useState(() => !localStorage.getItem('tutorial-completed'));
+
+  const handleTutorialClose = useCallback(() => {
+    setTutorialNeeded(false);
+  }, []);
 
   // Handle Google Calendar OAuth callback
   useEffect(() => {
@@ -128,6 +134,11 @@ const Index = () => {
 
   return (
     <div className={`min-h-screen bg-background pb-16 sm:pb-0`}>
+      {/* Mandatory tutorial for first-time users */}
+      {tutorialNeeded && (
+        <InteractiveTutorial open={true} onClose={handleTutorialClose} mandatory />
+      )}
+
       <AppNav />
 
 
