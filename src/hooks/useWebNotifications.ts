@@ -47,15 +47,16 @@ export function useWebNotifications() {
 
     const interval = setInterval(() => {
       lastFpRef.current = ''; // force re-check
-      syncWebNotifications(
-        useTaskStore.getState().tasks,
-        useTimezoneStore.getState().notificationLevel,
-      );
+      const t = useTaskStore.getState().tasks;
+      const l = useTimezoneStore.getState().notificationLevel;
+      syncWebNotifications(t, l);
+      syncNotificationSounds(t, l);
     }, 60_000);
 
     return () => {
       clearInterval(interval);
       cancelAllWebNotifications();
+      cancelAllSounds();
     };
   }, []);
 }
