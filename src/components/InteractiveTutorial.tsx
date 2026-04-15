@@ -329,7 +329,7 @@ export function InteractiveTutorial({ open, onClose, mandatory = false }: Intera
   // Prevent touch scrolling during drag/hold interactions
   useEffect(() => {
     const preventScroll = (e: TouchEvent) => {
-      if (isTouching && (step.id === 'drag-move' || step.id === 'hold-pickup')) {
+      if (isTouching && (step.id === 'drag-move' || step.id === 'hold-pickup' || step.id === 'add-task')) {
         e.preventDefault();
       }
     };
