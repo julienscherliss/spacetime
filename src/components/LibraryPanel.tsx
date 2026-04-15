@@ -247,7 +247,9 @@ function VerticalTagChip({ active, label, onClick, onLongPress, hasChildren, onD
       {hasChildren && (
         <span
           onClick={(e) => { e.stopPropagation(); onDrilldown?.(); }}
-          className="p-0.5 text-muted-foreground/40 hover:text-foreground transition-colors shrink-0"
+          className={`p-0.5 hover:text-foreground transition-colors shrink-0 ${
+            active ? 'text-foreground' : 'text-muted-foreground/40'
+          }`}
         >
           <ChevronRight size={12} strokeWidth={1.5} />
         </span>
