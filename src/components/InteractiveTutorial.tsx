@@ -65,6 +65,8 @@ const STEPS: TutorialStep[] = [
 interface InteractiveTutorialProps {
   open: boolean;
   onClose: () => void;
+  /** When true, the user cannot dismiss/skip — must complete all steps */
+  mandatory?: boolean;
 }
 
 export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps) {
