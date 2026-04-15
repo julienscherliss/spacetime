@@ -1101,12 +1101,12 @@ function MainFocusPanel({
               </motion.div>
             </AnimatePresence>
           </div>
+          {parseInt(localStorage.getItem('focus-hold-completions') || '0', 10) < 10 && (
+            <p className="absolute left-1/2 -translate-x-1/2 text-[9px] font-mono text-muted-foreground/35 tracking-[0.12em] uppercase animate-pulse whitespace-nowrap" style={{ top: 'calc(50% + 160px)' }}>
+              press and hold to complete
+            </p>
+          )}
         </div>
-        {parseInt(localStorage.getItem('focus-hold-completions') || '0', 10) < 10 && (
-          <p className="mt-3 text-[9px] font-mono text-muted-foreground/25 tracking-[0.12em] uppercase animate-pulse">
-            press and hold to complete
-          </p>
-        )}
       </div>
 
       {/* ═══ ZONE 3: BOTTOM — next task hint only ═══ */}
