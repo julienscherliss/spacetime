@@ -29,6 +29,7 @@ export interface ClusterTaskOptions {
 
 export const TASK_TEXT_FIT_PX = 23; // title line + vertical padding in TimelineTaskBlock
 export const TASK_TEXT_FIT_PX_COMFORT = 32; // comfort mode needs a larger readable footprint for comfortable typography
+const CLUSTER_ADJACENCY_EPSILON_PX = 1;
 
 const NARROW_COLUMN_PX = 190;
 const NARROW_COLUMN_PX_COMFORT = 280;
@@ -94,6 +95,7 @@ export function clusterTasks(
         endMin,
         startPx,
         naturalHeightPx,
+        naturalBottomPx: startPx + naturalHeightPx,
         readableHeightPx,
         readableBottomPx: startPx + readableHeightPx,
         titleFits,
@@ -138,12 +140,15 @@ export function clusterTasks(
     const curr = timed[i];
 
     const currentGroupUnreadable = currentGroup.every(item => !item.titleFits);
+    const currentGroupNaturalBottomPx = Math.max(...currentGroup.map(item => item.naturalBottomPx));
     const currentGroupReadableBottomPx = Math.max(...currentGroup.map(item => item.readableBottomPx));
+    const naturalGapPx = curr.startPx - currentGroupNaturalBottomPx;
     const readableGapPx = curr.startPx - currentGroupReadableBottomPx;
 
     const shouldCluster =
       currentGroupUnreadable &&
       !curr.titleFits &&
+      naturalGapPx <= CLUSTER_ADJACENCY_EPSILON_PX &&
       readableGapPx <= 0;
 
     if (shouldCluster) {
@@ -164,6 +169,7 @@ function buildCluster(group: Array<{
   endMin: number;
   startPx: number;
   naturalHeightPx: number;
+  naturalBottomPx: number;
   readableHeightPx: number;
   readableBottomPx: number;
   titleFits: boolean;
