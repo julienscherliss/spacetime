@@ -305,7 +305,7 @@ export function InteractiveTutorial({ open, onClose, mandatory = false }: Intera
     e.preventDefault();
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     const hoveredSlot = getSlotFromPoint(clientY);
-    if (hoveredSlot !== null && hoveredSlot >= slotDragStart && hoveredSlot !== 0) {
+    if (hoveredSlot !== null && hoveredSlot >= slotDragStart && hoveredSlot >= 2) {
       setSlotDragCurrent(hoveredSlot);
       setDragSlotCount(hoveredSlot - slotDragStart + 1);
     }
@@ -424,7 +424,7 @@ export function InteractiveTutorial({ open, onClose, mandatory = false }: Intera
                   </p>
 
                   {/* Interactive area - mobile optimized */}
-                  <div className="w-full bg-muted/20 border border-border/40 rounded-sm p-3 sm:p-4 flex flex-col items-center justify-center relative min-h-[160px] sm:min-h-[180px]">
+                  <div className="w-full bg-muted/20 border border-border/40 rounded-sm p-3 sm:p-4 flex flex-col items-center justify-center relative" style={{ minHeight: step.id === 'add-task' ? 360 : 160 }}>
 
                     {/* TAP TO EDIT */}
                     {step.id === 'tap-edit' && (
