@@ -100,6 +100,7 @@ export function clusterTasks(
         readableHeightPx,
         readableBottomPx: startPx + readableHeightPx,
         titleFits,
+        heightFits,
       };
     })
     .sort((a, b) => a.startMin - b.startMin);
@@ -113,7 +114,7 @@ export function clusterTasks(
           startMin: timeToMinutes(t.time!),
           endMin: timeToMinutes(t.time!) + (t.duration || 30),
           naturalHeightPx,
-          titleFits: naturalHeightPx >= fitPx && titleFitsWidth(t.title, comfortMode, columnWidthPx),
+          titleFits: naturalHeightPx >= fitPx,
         };
       })
     : [];
@@ -174,8 +175,10 @@ function buildCluster(group: Array<{
   readableHeightPx: number;
   readableBottomPx: number;
   titleFits: boolean;
+  heightFits: boolean;
 }>): TaskCluster {
   // Single task always renders as single
+  // For single tasks, only height matters — CSS truncation handles long titles
   if (group.length === 1) {
     return {
       type: 'single',
@@ -183,7 +186,7 @@ function buildCluster(group: Array<{
       startMin: group[0].startMin,
       endMin: group[0].endMin,
       displayHeightPx: group[0].naturalHeightPx,
-      titleFits: group[0].titleFits,
+      titleFits: group[0].heightFits,
     };
   }
 
