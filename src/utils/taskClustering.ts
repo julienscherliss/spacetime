@@ -223,7 +223,6 @@ export function getZoomForCluster(
   const targetHeight = viewportHeight * 0.75;
   const hourHeightFromViewport = (targetHeight / totalMinutes) * 60;
 
-  const { getEffectiveMax } = await import('@/hooks/useTimeScale');
   return Math.min(
     Math.max(hourHeightFromViewport, hourHeightFromMinTask),
     getEffectiveMax()
