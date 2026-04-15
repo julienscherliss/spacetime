@@ -154,10 +154,16 @@ function LandingRedirect() {
 
 const App = () => {
   const darkMode = useTimezoneStore((s) => s.darkMode);
+  const uiScale = useTimezoneStore((s) => s.uiScale);
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
     useColorSchemeStore.getState().setDarkMode(darkMode);
   }, [darkMode]);
+
+  // Apply UI scale as CSS zoom
+  useEffect(() => {
+    document.documentElement.style.setProperty('--ui-zoom', String(uiScale));
+  }, [uiScale]);
 
   useEffect(() => {
     if (!isNativePlatform()) return;

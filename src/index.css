@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --ui-zoom: 1;
+}
+
+#root {
+  zoom: var(--ui-zoom);
+}
+
 @layer base {
   :root {
     /* Light industrial palette */
