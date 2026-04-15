@@ -27,6 +27,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNativeNotifications } from '@/hooks/useNativeNotifications';
 import { useWebNotifications } from '@/hooks/useWebNotifications';
+import { useInAppSoundAlerts } from '@/hooks/useInAppSoundAlerts';
 import { InteractiveTutorial } from '@/components/InteractiveTutorial';
 
 const Index = () => {
