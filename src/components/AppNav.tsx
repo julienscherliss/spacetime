@@ -116,7 +116,8 @@ export function AppNav() {
                 <OverflowItem
                   icon={<Archive size={18} strokeWidth={1.5} />}
                   label="Library"
-                  badge={libCount > 0 ? String(libCount) : undefined}
+                  badge={libUrgentCount > 0 ? String(libUrgentCount) : (libCount > 0 ? String(libCount) : undefined)}
+                  badgeVariant={libUrgentCount > 0 ? 'destructive' : undefined}
                   active={libPanelOpen}
                   onClick={() => { setLibPanelOpen(!libPanelOpen); setMoreOpen(false); }}
                 />
