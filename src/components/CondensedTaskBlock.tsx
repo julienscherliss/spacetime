@@ -54,16 +54,22 @@ export function CondensedTaskBlock({
         e.stopPropagation();
       }}
     >
-      <div className="h-full rounded-[3px] border border-border/60 bg-muted/50 hover:bg-muted/70 hover:border-border/80 transition-colors duration-150 overflow-hidden">
+      <div className={`h-full rounded-[3px] border transition-colors duration-150 overflow-hidden ${
+        allCompleted
+          ? 'border-border/60 bg-muted/50 hover:bg-muted/70 hover:border-border/80'
+          : 'border-[hsl(var(--task-border))] bg-card hover:shadow-sm'
+      }`}>
         {isCompact ? (
           <div className="flex items-center justify-center h-full px-1">
-            <Layers size={8} className="text-muted-foreground/60 shrink-0" />
+            <Layers size={8} className={allCompleted ? 'text-muted-foreground/60' : 'text-muted-foreground'} />
           </div>
         ) : (
           <div className="flex flex-col justify-center h-full px-2 py-1 gap-0">
             <div className="flex items-center gap-1 min-w-0">
-              <Layers size={9} className="text-muted-foreground/50 shrink-0" />
-              <span className="text-[10px] font-mono text-muted-foreground/70 tracking-wider truncate leading-none">
+              <Layers size={9} className={allCompleted ? 'text-muted-foreground/50' : 'text-muted-foreground/70'} />
+              <span className={`text-[10px] font-mono tracking-wider truncate leading-none ${
+                allCompleted ? 'text-muted-foreground/70' : 'text-foreground/75'
+              }`}>
                 {count} tasks
               </span>
             </div>
@@ -73,13 +79,15 @@ export function CondensedTaskBlock({
                 {visibleTitles.map((task) => (
                   <div
                     key={task.id}
-                    className="text-[10px] font-mono text-foreground/55 truncate leading-tight"
+                    className={`text-[10px] font-mono truncate leading-tight ${
+                      task.completed ? 'line-through text-muted-foreground/40' : 'text-foreground/75'
+                    }`}
                   >
                     {task.title}
                   </div>
                 ))}
                 {remaining > 0 && (
-                  <span className="text-[9px] font-mono text-muted-foreground/35 tracking-wider leading-tight">
+                  <span className="text-[9px] font-mono text-muted-foreground/50 tracking-wider leading-tight">
                     +{remaining} more
                   </span>
                 )}
