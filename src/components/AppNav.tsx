@@ -117,7 +117,7 @@ export function AppNav() {
                   icon={<Archive size={18} strokeWidth={1.5} />}
                   label="Library"
                   badge={libUrgentCount > 0 ? String(libUrgentCount) : (libCount > 0 ? String(libCount) : undefined)}
-                  destructive={libUrgentCount > 0}
+                  destructive={false}
                   active={libPanelOpen}
                   onClick={() => { setLibPanelOpen(!libPanelOpen); setMoreOpen(false); }}
                 />
