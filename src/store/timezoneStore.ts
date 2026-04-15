@@ -14,6 +14,7 @@ interface TimezoneState {
   persistentOverdue: boolean;
   showCompletedTasks: boolean;
   comfortMode: boolean;
+  soundEnabled: boolean;
   setTimezone: (tz: string) => void;
   setRoutinesFixedTime: (v: boolean) => void;
   setAutoDetect: (v: boolean) => void;
@@ -23,6 +24,7 @@ interface TimezoneState {
   setPersistentOverdue: (v: boolean) => void;
   setShowCompletedTasks: (v: boolean) => void;
   setComfortMode: (v: boolean) => void;
+  setSoundEnabled: (v: boolean) => void;
 }
 
 export const useTimezoneStore = create<TimezoneState>()(
