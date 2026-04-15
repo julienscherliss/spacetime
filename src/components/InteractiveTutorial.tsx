@@ -69,7 +69,7 @@ interface InteractiveTutorialProps {
   mandatory?: boolean;
 }
 
-export function InteractiveTutorial({ open, onClose }: InteractiveTutorialProps) {
+export function InteractiveTutorial({ open, onClose, mandatory = false }: InteractiveTutorialProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [stepCompleted, setStepCompleted] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
