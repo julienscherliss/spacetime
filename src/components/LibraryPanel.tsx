@@ -423,6 +423,9 @@ export function LibraryPanel() {
     setDeletingTag(null);
   };
 
+  // Desktop 3-panel vs mobile full-screen
+  const isDesktop = !isMobile;
+
   return (
     <>
       <AnimatePresence>
@@ -434,348 +437,628 @@ export function LibraryPanel() {
             transition={{ duration: 0.2 }}
             className="fixed inset-0 z-50 bg-background flex flex-col"
           >
-            {/* ── Top bar ── */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
-              <span className="text-[12px] font-mono tracking-[0.14em] text-foreground font-semibold">
-                LIBRARY
-              </span>
-              <div className="flex items-center gap-3">
-                <span className="text-[11px] font-mono text-muted-foreground/50">{totalCount}</span>
-                <button
-                  onClick={() => setPanelOpen(false)}
-                  className="p-1.5 text-muted-foreground/60 hover:text-foreground transition-colors"
-                >
-                  <X size={18} strokeWidth={1.5} />
-                </button>
-              </div>
-            </div>
-
-            {/* ── Add input ── */}
-            <div className="px-4 py-3 border-b border-border/40">
-              <div className="relative flex items-center gap-2.5">
-                <button onClick={handleAdd} className="p-1 text-muted-foreground/40 hover:text-foreground transition-colors shrink-0"><Plus size={16} /></button>
-                <div className="relative flex-1">
-                  <input
-                    ref={inputRef}
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      // Let TagAutocomplete or DateAutocomplete handle Enter/Tab when suggestions visible
-                      if (e.key === 'Enter' && !input.match(/#\S+$/) && !input.match(/@\S*$/)) handleAdd();
-                    }}
-                    placeholder="Add to library…"
-                    className="w-full bg-transparent font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none min-h-[44px] text-[14px]"
-                  />
-                  <TagAutocomplete
-                    inputValue={input}
-                    inputRef={inputRef as React.RefObject<HTMLInputElement>}
-                    onSelectTag={(cat, cleaned) => {
-                      setInput(cleaned);
-                      setQuickCategory(cat.value);
-                    }}
-                    onSubmitAfterSelect={handleAdd}
-                  />
-                  <DateAutocomplete
-                    inputValue={input}
-                    inputRef={inputRef as React.RefObject<HTMLInputElement>}
-                    onSelectDate={(dateStr, cleaned) => {
-                      setInput(cleaned);
-                      setQuickDueDate(dateStr);
-                    }}
-                    onSubmitAfterSelect={handleAdd}
-                  />
+            {isDesktop ? (
+              /* ═══ DESKTOP: 3-panel layout ═══ */
+              <div className="flex flex-col h-full">
+                {/* Top bar */}
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+                  <span className="text-[12px] font-mono tracking-[0.14em] text-foreground font-semibold">
+                    LIBRARY
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[11px] font-mono text-muted-foreground/50">{totalCount}</span>
+                    <button
+                      onClick={() => setPanelOpen(false)}
+                      className="p-1.5 text-muted-foreground/60 hover:text-foreground transition-colors"
+                    >
+                      <X size={18} strokeWidth={1.5} />
+                    </button>
+                  </div>
                 </div>
-                {quickCategory && (
-                  <button
-                    onClick={() => setQuickCategory('')}
-                    className="flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-mono tracking-wider text-primary/70 bg-primary/10 border border-primary/20 shrink-0"
-                  >
-                    <Tag size={8} />
-                    {categories.find(c => c.value === quickCategory)?.label || quickCategory}
-                    <X size={8} />
-                  </button>
-                )}
-                {quickDueDate && (
-                  <button
-                    onClick={() => setQuickDueDate('')}
-                    className="flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-mono tracking-wider text-foreground/60 bg-muted/50 border border-border/40 shrink-0"
-                  >
-                    <CalendarDays size={8} />
-                    {(() => {
-                      const d = new Date(quickDueDate + 'T12:00:00');
-                      const today = new Date(); today.setHours(0,0,0,0);
-                      const diff = Math.round((d.getTime() - today.getTime()) / 86400000);
-                      if (diff === 0) return 'Today';
-                      if (diff === 1) return 'Tomorrow';
-                      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                    })()}
-                    <X size={8} />
-                  </button>
-                )}
-                <QuickDuePicker dueDate={quickDueDate} setDueDate={setQuickDueDate} />
-              </div>
-            </div>
 
-            {/* ── Filter / Sort bar ── */}
-            <div className="px-4 py-2.5 border-b border-border/30 space-y-2">
-              {/* Sort selector */}
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <button
-                    onClick={() => setShowSort(!showSort)}
-                    className="flex items-center gap-1 text-[10px] font-mono tracking-widest text-muted-foreground/60 hover:text-foreground transition-colors px-2 py-1.5 min-h-[32px]"
-                  >
-                    <ArrowDownAZ size={12} />
-                    {sortMode === 'recent' ? 'RECENT' : sortMode === 'alpha' ? 'A–Z' : sortMode === 'due' ? 'DUE DATE' : 'CATEGORY'}
-                    <ChevronDown size={10} className={showSort ? 'rotate-180 transition-transform' : 'transition-transform'} />
-                  </button>
-                  {showSort && (
-                    <div className="absolute left-0 top-full mt-1 z-50 bg-card border border-border rounded-sm shadow-md py-1 w-28">
-                      {(['recent', 'alpha', 'category', 'due'] as const).map((m) => (
+                <div className="flex flex-1 min-h-0">
+                  {/* ── LEFT: Tags / Sorting / Filters ── */}
+                  <div className="w-[220px] shrink-0 border-r border-border/30 flex flex-col overflow-y-auto">
+                    {/* Sort selector */}
+                    <div className="px-3 py-3 border-b border-border/20">
+                      <div className="relative">
                         <button
-                          key={m}
-                          onClick={() => { setSortMode(m); setShowSort(false); }}
-                          className={`w-full text-left px-3 py-2 text-[11px] font-mono tracking-wider min-h-[40px] ${
-                            sortMode === m ? 'text-foreground bg-muted/50 font-medium' : 'text-muted-foreground/60 hover:text-foreground'
-                          }`}
+                          onClick={() => setShowSort(!showSort)}
+                          className="flex items-center gap-1 text-[10px] font-mono tracking-widest text-muted-foreground/60 hover:text-foreground transition-colors px-2 py-1.5 w-full"
                         >
-                          {m === 'recent' ? 'Recent' : m === 'alpha' ? 'A–Z' : m === 'due' ? 'Due date' : 'Category'}
+                          <ArrowDownAZ size={12} />
+                          {sortMode === 'recent' ? 'RECENT' : sortMode === 'alpha' ? 'A–Z' : sortMode === 'due' ? 'DUE DATE' : 'CATEGORY'}
+                          <ChevronDown size={10} className={showSort ? 'rotate-180 transition-transform' : 'transition-transform'} />
                         </button>
+                        {showSort && (
+                          <div className="absolute left-0 top-full mt-1 z-50 bg-card border border-border rounded-sm shadow-md py-1 w-full">
+                            {(['recent', 'alpha', 'category', 'due'] as const).map((m) => (
+                              <button
+                                key={m}
+                                onClick={() => { setSortMode(m); setShowSort(false); }}
+                                className={`w-full text-left px-3 py-2 text-[11px] font-mono tracking-wider ${
+                                  sortMode === m ? 'text-foreground bg-muted/50 font-medium' : 'text-muted-foreground/60 hover:text-foreground'
+                                }`}
+                              >
+                                {m === 'recent' ? 'Recent' : m === 'alpha' ? 'A–Z' : m === 'due' ? 'Due date' : 'Category'}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Category tags — vertical list */}
+                    <div className="px-3 py-2 flex-1 space-y-1" data-tag-edit-zone>
+                      <span className="text-[9px] font-mono tracking-[0.15em] text-muted-foreground/40 px-2 mb-1 block">TAGS</span>
+
+                      {tagEditMode ? (
+                        <>
+                          {categories.map((cat) => (
+                            <JiggleChip
+                              key={cat.value}
+                              label={cat.label}
+                              catValue={cat.value}
+                              isDragging={draggingTag === cat.value}
+                              onDelete={() => handleDeleteTag(cat.value)}
+                            />
+                          ))}
+                        </>
+                      ) : (
+                        <>
+                          {drilldownParent ? (
+                            <>
+                              <button
+                                onClick={() => { setDrilldownParent(null); setFilter({ category: 'all' }); }}
+                                className="w-full text-left px-2 py-1.5 text-[10px] font-mono tracking-wider text-muted-foreground/50 hover:text-foreground rounded transition-colors"
+                              >
+                                ← Back
+                              </button>
+                              <VerticalTagChip
+                                active={filters.category === drilldownParent}
+                                label={categories.find(c => c.value === drilldownParent)?.label || drilldownParent}
+                                onClick={() => setFilter({ category: filters.category === drilldownParent ? 'all' : drilldownParent })}
+                              />
+                              {categories.filter(c => isSubtagOf(c.value, drilldownParent)).map((cat) => {
+                                const subLabel = cat.label.includes(' / ') ? cat.label.split(' / ').slice(1).join(' / ') : cat.label;
+                                return (
+                                  <VerticalTagChip
+                                    key={cat.value}
+                                    active={filters.category === cat.value}
+                                    label={subLabel}
+                                    onClick={() => setFilter({ category: filters.category === cat.value ? 'all' : cat.value })}
+                                  />
+                                );
+                              })}
+                            </>
+                          ) : (
+                            <>
+                              <VerticalTagChip
+                                active={filters.category === 'all'}
+                                label="All"
+                                onClick={() => setFilter({ category: 'all' })}
+                              />
+                              <VerticalTagChip
+                                active={filters.category === 'none'}
+                                label="Untagged"
+                                onClick={() => setFilter({ category: filters.category === 'none' ? 'all' : 'none' })}
+                              />
+                              {categories
+                                .filter(c => !c.value.includes('/'))
+                                .map((cat) => (
+                                  <VerticalTagChip
+                                    key={cat.value}
+                                    active={filters.category === cat.value}
+                                    label={cat.label}
+                                    onClick={() => {
+                                      if (filters.category === cat.value) {
+                                        setDrilldownParent(cat.value);
+                                      } else {
+                                        setFilter({ category: cat.value });
+                                      }
+                                    }}
+                                    onLongPress={() => setTagModalOpen(true)}
+                                  />
+                                ))}
+                              {showNewCat ? (
+                                <input
+                                  value={newCatName}
+                                  onChange={(e) => setNewCatName(e.target.value)}
+                                  onKeyDown={(e) => { if (e.key === 'Enter') handleAddCategory(); if (e.key === 'Escape') setShowNewCat(false); }}
+                                  onBlur={handleAddCategory}
+                                  placeholder="Name…"
+                                  className="w-full bg-transparent text-[10px] font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none border-b border-primary/40 px-2 py-1.5"
+                                  autoFocus
+                                />
+                              ) : (
+                                <button
+                                  onClick={() => setShowNewCat(true)}
+                                  className="w-full text-left flex items-center gap-1 px-2 py-1.5 text-[10px] font-mono tracking-wider text-primary/50 hover:text-primary transition-colors"
+                                >
+                                  <Tag size={10} />
+                                  Add tag
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </>
+                      )}
+
+                      {/* Urgency / Due filters */}
+                      <div className="pt-3 mt-2 border-t border-border/20 space-y-1">
+                        <span className="text-[9px] font-mono tracking-[0.15em] text-muted-foreground/40 px-2 mb-1 block">FILTERS</span>
+                        <VerticalTagChip
+                          active={filters.urgency === 'urgent'}
+                          label="⏱ Urgent"
+                          onClick={() => setFilter({ urgency: filters.urgency === 'urgent' ? 'all' : 'urgent' })}
+                        />
+                        <VerticalTagChip
+                          active={filters.urgency === 'important'}
+                          label="! Important"
+                          onClick={() => setFilter({ urgency: filters.urgency === 'important' ? 'all' : 'important' })}
+                        />
+                        <VerticalTagChip
+                          active={filters.hasDueDate === true}
+                          label="Has due date"
+                          onClick={() => setFilter({ hasDueDate: filters.hasDueDate === true ? null : true })}
+                        />
+                        {activeFilterCount > 0 && (
+                          <button
+                            onClick={() => setFilter({ category: 'all', urgency: 'all', hasDueDate: null })}
+                            className="w-full text-left px-2 py-1.5 text-[9px] font-mono tracking-wider text-primary/60 hover:text-primary"
+                          >
+                            Clear all
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── MIDDLE: Add input + Task list ── */}
+                  <div className="flex-1 flex flex-col min-w-0">
+                    {/* Add input */}
+                    <div className="px-4 py-3 border-b border-border/40">
+                      <div className="relative flex items-center gap-2.5">
+                        <button onClick={handleAdd} className="p-1 text-muted-foreground/40 hover:text-foreground transition-colors shrink-0"><Plus size={16} /></button>
+                        <div className="relative flex-1">
+                          <input
+                            ref={inputRef}
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !input.match(/#\S+$/) && !input.match(/@\S*$/)) handleAdd();
+                            }}
+                            placeholder="Add to library…"
+                            className="w-full bg-transparent font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none min-h-[44px] text-[14px]"
+                          />
+                          <TagAutocomplete
+                            inputValue={input}
+                            inputRef={inputRef as React.RefObject<HTMLInputElement>}
+                            onSelectTag={(cat, cleaned) => {
+                              setInput(cleaned);
+                              setQuickCategory(cat.value);
+                            }}
+                            onSubmitAfterSelect={handleAdd}
+                          />
+                          <DateAutocomplete
+                            inputValue={input}
+                            inputRef={inputRef as React.RefObject<HTMLInputElement>}
+                            onSelectDate={(dateStr, cleaned) => {
+                              setInput(cleaned);
+                              setQuickDueDate(dateStr);
+                            }}
+                            onSubmitAfterSelect={handleAdd}
+                          />
+                        </div>
+                        {quickCategory && (
+                          <button
+                            onClick={() => setQuickCategory('')}
+                            className="flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-mono tracking-wider text-primary/70 bg-primary/10 border border-primary/20 shrink-0"
+                          >
+                            <Tag size={8} />
+                            {categories.find(c => c.value === quickCategory)?.label || quickCategory}
+                            <X size={8} />
+                          </button>
+                        )}
+                        {quickDueDate && (
+                          <button
+                            onClick={() => setQuickDueDate('')}
+                            className="flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-mono tracking-wider text-foreground/60 bg-muted/50 border border-border/40 shrink-0"
+                          >
+                            <CalendarDays size={8} />
+                            {(() => {
+                              const d = new Date(quickDueDate + 'T12:00:00');
+                              const today = new Date(); today.setHours(0,0,0,0);
+                              const diff = Math.round((d.getTime() - today.getTime()) / 86400000);
+                              if (diff === 0) return 'Today';
+                              if (diff === 1) return 'Tomorrow';
+                              return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                            })()}
+                            <X size={8} />
+                          </button>
+                        )}
+                        <QuickDuePicker dueDate={quickDueDate} setDueDate={setQuickDueDate} />
+                      </div>
+                    </div>
+
+                    {/* Task list */}
+                    <div className="flex-1 overflow-y-auto px-3 py-2" style={{ WebkitOverflowScrolling: 'touch' }}>
+                      {items.length === 0 ? (
+                        <div className="text-center py-16">
+                          <CalendarClock size={28} className="mx-auto text-muted-foreground/20 mb-4" />
+                          <p className="text-[12px] font-mono text-muted-foreground/40 tracking-wider">
+                            {totalCount === 0 ? 'CAPTURE IDEAS HERE' : 'NO MATCHING ITEMS'}
+                          </p>
+                          <p className="text-[11px] font-mono text-muted-foreground/30 mt-1.5">
+                            hold to pick up · click to edit
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {items.map((item) => (
+                            <LibraryItem
+                              key={item.id}
+                              item={item}
+                              isMobile={false}
+                              onEdit={() => setEditingItem(item)}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* ── RIGHT: Detail pane ── */}
+                  {editingItem && (
+                    <div className="w-[340px] shrink-0 border-l border-border/30 bg-card/30">
+                      <LibraryDetailPane
+                        item={editingItem}
+                        onClose={() => setEditingItem(null)}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* ═══ MOBILE: original full-screen layout ═══ */
+              <>
+                {/* Top bar */}
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+                  <span className="text-[12px] font-mono tracking-[0.14em] text-foreground font-semibold">
+                    LIBRARY
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[11px] font-mono text-muted-foreground/50">{totalCount}</span>
+                    <button
+                      onClick={() => setPanelOpen(false)}
+                      className="p-1.5 text-muted-foreground/60 hover:text-foreground transition-colors"
+                    >
+                      <X size={18} strokeWidth={1.5} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Add input */}
+                <div className="px-4 py-3 border-b border-border/40">
+                  <div className="relative flex items-center gap-2.5">
+                    <button onClick={handleAdd} className="p-1 text-muted-foreground/40 hover:text-foreground transition-colors shrink-0"><Plus size={16} /></button>
+                    <div className="relative flex-1">
+                      <input
+                        ref={inputRef}
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !input.match(/#\S+$/) && !input.match(/@\S*$/)) handleAdd();
+                        }}
+                        placeholder="Add to library…"
+                        className="w-full bg-transparent font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none min-h-[44px] text-[14px]"
+                      />
+                      <TagAutocomplete
+                        inputValue={input}
+                        inputRef={inputRef as React.RefObject<HTMLInputElement>}
+                        onSelectTag={(cat, cleaned) => {
+                          setInput(cleaned);
+                          setQuickCategory(cat.value);
+                        }}
+                        onSubmitAfterSelect={handleAdd}
+                      />
+                      <DateAutocomplete
+                        inputValue={input}
+                        inputRef={inputRef as React.RefObject<HTMLInputElement>}
+                        onSelectDate={(dateStr, cleaned) => {
+                          setInput(cleaned);
+                          setQuickDueDate(dateStr);
+                        }}
+                        onSubmitAfterSelect={handleAdd}
+                      />
+                    </div>
+                    {quickCategory && (
+                      <button
+                        onClick={() => setQuickCategory('')}
+                        className="flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-mono tracking-wider text-primary/70 bg-primary/10 border border-primary/20 shrink-0"
+                      >
+                        <Tag size={8} />
+                        {categories.find(c => c.value === quickCategory)?.label || quickCategory}
+                        <X size={8} />
+                      </button>
+                    )}
+                    {quickDueDate && (
+                      <button
+                        onClick={() => setQuickDueDate('')}
+                        className="flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-mono tracking-wider text-foreground/60 bg-muted/50 border border-border/40 shrink-0"
+                      >
+                        <CalendarDays size={8} />
+                        {(() => {
+                          const d = new Date(quickDueDate + 'T12:00:00');
+                          const today = new Date(); today.setHours(0,0,0,0);
+                          const diff = Math.round((d.getTime() - today.getTime()) / 86400000);
+                          if (diff === 0) return 'Today';
+                          if (diff === 1) return 'Tomorrow';
+                          return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                        })()}
+                        <X size={8} />
+                      </button>
+                    )}
+                    <QuickDuePicker dueDate={quickDueDate} setDueDate={setQuickDueDate} />
+                  </div>
+                </div>
+
+                {/* Filter / Sort bar */}
+                <div className="px-4 py-2.5 border-b border-border/30 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowSort(!showSort)}
+                        className="flex items-center gap-1 text-[10px] font-mono tracking-widest text-muted-foreground/60 hover:text-foreground transition-colors px-2 py-1.5 min-h-[32px]"
+                      >
+                        <ArrowDownAZ size={12} />
+                        {sortMode === 'recent' ? 'RECENT' : sortMode === 'alpha' ? 'A–Z' : sortMode === 'due' ? 'DUE DATE' : 'CATEGORY'}
+                        <ChevronDown size={10} className={showSort ? 'rotate-180 transition-transform' : 'transition-transform'} />
+                      </button>
+                      {showSort && (
+                        <div className="absolute left-0 top-full mt-1 z-50 bg-card border border-border rounded-sm shadow-md py-1 w-28">
+                          {(['recent', 'alpha', 'category', 'due'] as const).map((m) => (
+                            <button
+                              key={m}
+                              onClick={() => { setSortMode(m); setShowSort(false); }}
+                              className={`w-full text-left px-3 py-2 text-[11px] font-mono tracking-wider min-h-[40px] ${
+                                sortMode === m ? 'text-foreground bg-muted/50 font-medium' : 'text-muted-foreground/60 hover:text-foreground'
+                              }`}
+                            >
+                              {m === 'recent' ? 'Recent' : m === 'alpha' ? 'A–Z' : m === 'due' ? 'Due date' : 'Category'}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {activeFilterCount > 0 && (
+                      <button
+                        onClick={() => setFilter({ category: 'all', urgency: 'all', hasDueDate: null })}
+                        className="text-[9px] font-mono tracking-wider text-primary/70 hover:text-primary ml-auto"
+                      >
+                        CLEAR FILTERS
+                      </button>
+                    )}
+                    {tagEditMode && (
+                      <button
+                        onClick={() => setTagEditMode(false)}
+                        className="text-[9px] font-mono tracking-wider text-foreground/60 hover:text-foreground ml-auto"
+                      >
+                        DONE
+                      </button>
+                    )}
+                  </div>
+
+                  <div data-tag-edit-zone className="space-y-2">
+                    <div
+                      className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-hide"
+                      onPointerDown={tagEditMode ? (e) => {
+                        const target = e.target as HTMLElement;
+                        if (target.closest('[data-delete-btn]')) return;
+                        const chip = target.closest('[data-cat-value]') as HTMLElement | null;
+                        if (chip?.dataset.catValue) {
+                          e.preventDefault();
+                          setDraggingTag(chip.dataset.catValue);
+                        }
+                      } : undefined}
+                    >
+                      {tagEditMode ? (
+                        <>
+                          {categories.map((cat) => (
+                            <JiggleChip
+                              key={cat.value}
+                              label={cat.label}
+                              catValue={cat.value}
+                              isDragging={draggingTag === cat.value}
+                              onDelete={() => handleDeleteTag(cat.value)}
+                            />
+                          ))}
+                        </>
+                      ) : (
+                        <>
+                          {drilldownParent ? (
+                            <>
+                              <Chip active={false} label="← Back" onClick={() => { setDrilldownParent(null); setFilter({ category: 'all' }); }} />
+                              <Chip
+                                active={filters.category === drilldownParent}
+                                label={categories.find(c => c.value === drilldownParent)?.label || drilldownParent}
+                                onClick={() => setFilter({ category: filters.category === drilldownParent ? 'all' : drilldownParent })}
+                              />
+                              {categories.filter(c => isSubtagOf(c.value, drilldownParent)).map((cat) => {
+                                const subLabel = cat.label.includes(' / ') ? cat.label.split(' / ').slice(1).join(' / ') : cat.label;
+                                return (
+                                  <Chip
+                                    key={cat.value}
+                                    active={filters.category === cat.value}
+                                    label={subLabel}
+                                    onClick={() => setFilter({ category: filters.category === cat.value ? 'all' : cat.value })}
+                                    onLongPress={() => setTagModalOpen(true)}
+                                  />
+                                );
+                              })}
+                              {showNewCat ? (
+                                <input
+                                  value={newCatName}
+                                  onChange={(e) => setNewCatName(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      if (newCatName.trim()) {
+                                        const parentCat = categories.find(c => c.value === drilldownParent);
+                                        const parentLabel = parentCat?.label || drilldownParent;
+                                        const subValue = `${drilldownParent}/${newCatName.trim().toLowerCase().replace(/\s+/g, '-')}`;
+                                        const subLabel = `${parentLabel} / ${newCatName.trim()}`;
+                                        addCategory(subLabel, subValue);
+                                      }
+                                      setNewCatName('');
+                                      setShowNewCat(false);
+                                    }
+                                    if (e.key === 'Escape') setShowNewCat(false);
+                                  }}
+                                  onBlur={() => {
+                                    if (newCatName.trim()) {
+                                      const parentCat = categories.find(c => c.value === drilldownParent);
+                                      const parentLabel = parentCat?.label || drilldownParent;
+                                      const subValue = `${drilldownParent}/${newCatName.trim().toLowerCase().replace(/\s+/g, '-')}`;
+                                      const subLabel = `${parentLabel} / ${newCatName.trim()}`;
+                                      addCategory(subLabel, subValue);
+                                    }
+                                    setNewCatName('');
+                                    setShowNewCat(false);
+                                  }}
+                                  placeholder="Subtag…"
+                                  className="shrink-0 w-20 bg-transparent text-[10px] font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none border-b border-primary/40 px-1 py-1"
+                                  autoFocus
+                                />
+                              ) : (
+                                <button
+                                  onClick={() => setShowNewCat(true)}
+                                  className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wider text-primary/50 hover:text-primary border border-dashed border-primary/25 hover:border-primary/50 transition-colors min-h-[32px]"
+                                >
+                                  <Plus size={10} />
+                                  Add
+                                </button>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <Chip active={filters.category === 'all'} label="All" onClick={() => setFilter({ category: 'all' })} />
+                              <Chip
+                                active={filters.category === 'none'}
+                                label="Untagged"
+                                onClick={() => setFilter({ category: filters.category === 'none' ? 'all' : 'none' })}
+                              />
+                              {categories
+                                .filter(c => !c.value.includes('/'))
+                                .map((cat) => (
+                                  <Chip
+                                    key={cat.value}
+                                    active={filters.category === cat.value}
+                                    label={cat.label}
+                                    onClick={() => {
+                                      if (filters.category === cat.value) {
+                                        setDrilldownParent(cat.value);
+                                      } else {
+                                        setFilter({ category: cat.value });
+                                      }
+                                    }}
+                                    onLongPress={() => setTagModalOpen(true)}
+                                  />
+                                ))}
+                              {showNewCat ? (
+                                <input
+                                  value={newCatName}
+                                  onChange={(e) => setNewCatName(e.target.value)}
+                                  onKeyDown={(e) => { if (e.key === 'Enter') handleAddCategory(); if (e.key === 'Escape') setShowNewCat(false); }}
+                                  onBlur={handleAddCategory}
+                                  placeholder="Name…"
+                                  className="shrink-0 w-20 bg-transparent text-[10px] font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none border-b border-primary/40 px-1 py-1"
+                                  autoFocus
+                                />
+                              ) : (
+                                <button
+                                  onClick={() => setShowNewCat(true)}
+                                  className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wider text-primary/50 hover:text-primary border border-dashed border-primary/25 hover:border-primary/50 transition-colors min-h-[32px]"
+                                >
+                                  <Tag size={10} />
+                                  Add
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-hide">
+                      <Chip
+                        active={filters.urgency === 'urgent'}
+                        label="⏱ Urgent"
+                        onClick={() => setFilter({ urgency: filters.urgency === 'urgent' ? 'all' : 'urgent' })}
+                      />
+                      <Chip
+                        active={filters.urgency === 'important'}
+                        label="! Important"
+                        onClick={() => setFilter({ urgency: filters.urgency === 'important' ? 'all' : 'important' })}
+                      />
+                      <div className="w-px h-4 bg-border/40 shrink-0" />
+                      <Chip
+                        active={filters.hasDueDate === true}
+                        label="Has due"
+                        onClick={() => setFilter({ hasDueDate: filters.hasDueDate === true ? null : true })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Items list */}
+                <div className="flex-1 overflow-y-auto px-3 py-2" style={{ WebkitOverflowScrolling: 'touch' }}>
+                  {items.length === 0 ? (
+                    <div className="text-center py-16">
+                      <CalendarClock size={28} className="mx-auto text-muted-foreground/20 mb-4" />
+                      <p className="text-[12px] font-mono text-muted-foreground/40 tracking-wider">
+                        {totalCount === 0 ? 'CAPTURE IDEAS HERE' : 'NO MATCHING ITEMS'}
+                      </p>
+                      <p className="text-[11px] font-mono text-muted-foreground/30 mt-1.5">
+                        hold to pick up · tap to edit
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {items.map((item) => (
+                        <LibraryItem key={item.id} item={item} isMobile={isMobile} onEdit={() => setEditingItem(item)} />
                       ))}
                     </div>
                   )}
                 </div>
-
-                {activeFilterCount > 0 && (
-                  <button
-                    onClick={() => setFilter({ category: 'all', urgency: 'all', hasDueDate: null })}
-                    className="text-[9px] font-mono tracking-wider text-primary/70 hover:text-primary ml-auto"
-                  >
-                    CLEAR FILTERS
-                  </button>
-                )}
-
-                {tagEditMode && (
-                  <button
-                    onClick={() => setTagEditMode(false)}
-                    className="text-[9px] font-mono tracking-wider text-foreground/60 hover:text-foreground ml-auto"
-                  >
-                    DONE
-                  </button>
-                )}
-              </div>
-
-              {/* Filter chips — two rows */}
-              <div data-tag-edit-zone className="space-y-2">
-                {/* Row 1: Category chips */}
-                <div
-                  className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-hide"
-                  onPointerDown={tagEditMode ? (e) => {
-                    const target = e.target as HTMLElement;
-                    if (target.closest('[data-delete-btn]')) return;
-                    const chip = target.closest('[data-cat-value]') as HTMLElement | null;
-                    if (chip?.dataset.catValue) {
-                      e.preventDefault();
-                      setDraggingTag(chip.dataset.catValue);
-                    }
-                  } : undefined}
-                >
-                  {tagEditMode ? (
-                    <>
-                      {categories.map((cat) => (
-                        <JiggleChip
-                          key={cat.value}
-                          label={cat.label}
-                          catValue={cat.value}
-                          isDragging={draggingTag === cat.value}
-                          onDelete={() => handleDeleteTag(cat.value)}
-                        />
-                      ))}
-                    </>
-                  ) : (
-                    <>
-                      {drilldownParent ? (
-                        <>
-                          {/* Back to parent level */}
-                          <Chip
-                            active={false}
-                            label="← Back"
-                            onClick={() => { setDrilldownParent(null); setFilter({ category: 'all' }); }}
-                          />
-                          {/* Parent tag */}
-                          <Chip
-                            active={filters.category === drilldownParent}
-                            label={categories.find(c => c.value === drilldownParent)?.label || drilldownParent}
-                            onClick={() => setFilter({ category: filters.category === drilldownParent ? 'all' : drilldownParent })}
-                          />
-                          {/* Subtags of this parent */}
-                          {categories.filter(c => isSubtagOf(c.value, drilldownParent)).map((cat) => {
-                            const subLabel = cat.label.includes(' / ') ? cat.label.split(' / ').slice(1).join(' / ') : cat.label;
-                            return (
-                              <Chip
-                                key={cat.value}
-                                active={filters.category === cat.value}
-                                label={subLabel}
-                                onClick={() => setFilter({ category: filters.category === cat.value ? 'all' : cat.value })}
-                                onLongPress={() => setTagModalOpen(true)}
-                              />
-                            );
-                          })}
-                          {/* Add subtag inline */}
-                          {showNewCat ? (
-                            <input
-                              value={newCatName}
-                              onChange={(e) => setNewCatName(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  if (newCatName.trim()) {
-                                    const parentCat = categories.find(c => c.value === drilldownParent);
-                                    const parentLabel = parentCat?.label || drilldownParent;
-                                    const subValue = `${drilldownParent}/${newCatName.trim().toLowerCase().replace(/\s+/g, '-')}`;
-                                    const subLabel = `${parentLabel} / ${newCatName.trim()}`;
-                                    addCategory(subLabel, subValue);
-                                  }
-                                  setNewCatName('');
-                                  setShowNewCat(false);
-                                }
-                                if (e.key === 'Escape') setShowNewCat(false);
-                              }}
-                              onBlur={() => {
-                                if (newCatName.trim()) {
-                                  const parentCat = categories.find(c => c.value === drilldownParent);
-                                  const parentLabel = parentCat?.label || drilldownParent;
-                                  const subValue = `${drilldownParent}/${newCatName.trim().toLowerCase().replace(/\s+/g, '-')}`;
-                                  const subLabel = `${parentLabel} / ${newCatName.trim()}`;
-                                  addCategory(subLabel, subValue);
-                                }
-                                setNewCatName('');
-                                setShowNewCat(false);
-                              }}
-                              placeholder="Subtag…"
-                              className="shrink-0 w-20 bg-transparent text-[10px] font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none border-b border-primary/40 px-1 py-1"
-                              autoFocus
-                            />
-                          ) : (
-                            <button
-                              onClick={() => setShowNewCat(true)}
-                              className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wider text-primary/50 hover:text-primary border border-dashed border-primary/25 hover:border-primary/50 transition-colors min-h-[32px]"
-                            >
-                              <Plus size={10} />
-                              Add
-                            </button>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          <Chip
-                            active={filters.category === 'all'}
-                            label="All"
-                            onClick={() => setFilter({ category: 'all' })}
-                          />
-                          <Chip
-                            active={filters.category === 'none'}
-                            label="Untagged"
-                            onClick={() => setFilter({ category: filters.category === 'none' ? 'all' : 'none' })}
-                          />
-                          {categories
-                            .filter(c => !c.value.includes('/'))  // Only top-level tags
-                            .map((cat) => {
-                              const hasSubs = hasSubtags(cat.value, categories);
-                              return (
-                                <Chip
-                                  key={cat.value}
-                                  active={filters.category === cat.value}
-                                  label={cat.label}
-                                  onClick={() => {
-                                    if (filters.category === cat.value) {
-                                      setDrilldownParent(cat.value);
-                                    } else {
-                                      setFilter({ category: cat.value });
-                                    }
-                                  }}
-                                  onLongPress={() => setTagModalOpen(true)}
-                                />
-                              );
-                            })}
-
-                          {/* Add category chip */}
-                          {showNewCat ? (
-                            <input
-                              value={newCatName}
-                              onChange={(e) => setNewCatName(e.target.value)}
-                              onKeyDown={(e) => { if (e.key === 'Enter') handleAddCategory(); if (e.key === 'Escape') setShowNewCat(false); }}
-                              onBlur={handleAddCategory}
-                              placeholder="Name…"
-                              className="shrink-0 w-20 bg-transparent text-[10px] font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none border-b border-primary/40 px-1 py-1"
-                              autoFocus
-                            />
-                          ) : (
-                            <button
-                              onClick={() => setShowNewCat(true)}
-                              className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wider text-primary/50 hover:text-primary border border-dashed border-primary/25 hover:border-primary/50 transition-colors min-h-[32px]"
-                            >
-                              <Tag size={10} />
-                              Add
-                            </button>
-                          )}
-                        </>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                {/* Row 2: Urgency + Due date filters */}
-                <div className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-hide">
-                  <Chip
-                    active={filters.urgency === 'urgent'}
-                    label="⏱ Urgent"
-                    onClick={() => setFilter({ urgency: filters.urgency === 'urgent' ? 'all' : 'urgent' })}
-                  />
-                  <Chip
-                    active={filters.urgency === 'important'}
-                    label="! Important"
-                    onClick={() => setFilter({ urgency: filters.urgency === 'important' ? 'all' : 'important' })}
-                  />
-                  <div className="w-px h-4 bg-border/40 shrink-0" />
-                  <Chip
-                    active={filters.hasDueDate === true}
-                    label="Has due"
-                    onClick={() => setFilter({ hasDueDate: filters.hasDueDate === true ? null : true })}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* ── Items list ── */}
-            <div className="flex-1 overflow-y-auto px-3 py-2" style={{ WebkitOverflowScrolling: 'touch' }}>
-              {items.length === 0 ? (
-                <div className="text-center py-16">
-                  <CalendarClock size={28} className="mx-auto text-muted-foreground/20 mb-4" />
-                  <p className="text-[12px] font-mono text-muted-foreground/40 tracking-wider">
-                    {totalCount === 0 ? 'CAPTURE IDEAS HERE' : 'NO MATCHING ITEMS'}
-                  </p>
-                  <p className="text-[11px] font-mono text-muted-foreground/30 mt-1.5">
-                    hold to pick up · tap to edit
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-1.5">
-                  {items.map((item) => (
-                    <LibraryItem key={item.id} item={item} isMobile={isMobile} onEdit={() => setEditingItem(item)} />
-                  ))}
-                </div>
-              )}
-            </div>
+              </>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
 
-      {editingItem && (
+      {/* Modal edit — mobile only */}
+      {isMobile && editingItem && (
         <LibraryEditModal
           item={editingItem}
           onClose={() => setEditingItem(null)}
         />
       )}
+
+      {/* Delete tag confirmation dialog */}
+      <Dialog open={!!deletingTag} onOpenChange={() => setDeletingTag(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-mono text-sm">Delete tag "{deletingTag?.label}"?</DialogTitle>
+            <DialogDescription className="text-xs font-mono text-muted-foreground/60">
+              {deletingTag?.count} item{deletingTag?.count !== 1 ? 's' : ''} will lose this tag.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setDeletingTag(null)} className="font-mono text-xs">Cancel</Button>
+            <Button variant="destructive" size="sm" onClick={confirmDeleteTag} className="font-mono text-xs">Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <TagManagerPanel open={tagModalOpen} onClose={() => setTagModalOpen(false)} />
     </>
