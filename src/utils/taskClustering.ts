@@ -2,6 +2,7 @@
  * Task clustering utilities for density-based rendering.
  * Detects when tasks are too dense to render individually and groups them.
  */
+import { getEffectiveMax } from '@/hooks/useTimeScale';
 
 import { timeToMinutes } from '@/hooks/useCurrentTime';
 
@@ -224,6 +225,6 @@ export function getZoomForCluster(
 
   return Math.min(
     Math.max(hourHeightFromViewport, hourHeightFromMinTask),
-    120 // SCALE_MAX
+    getEffectiveMax()
   );
 }
