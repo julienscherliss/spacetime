@@ -61,8 +61,7 @@ export function animatePinchZoom(opts: {
   onComplete?: () => void;
 }): () => void {
   const { fromScale, toScale: rawTo, focalMin, focalViewportY, timelineDocTop, duration, setScale, onComplete } = opts;
-  const toScale = clamp(rawTo, SCALE_MIN, SCALE_MAX);
-  // Note: animatePinchZoom uses the base SCALE_MAX; callers pass their own target
+  const toScale = clamp(rawTo, SCALE_MIN, getEffectiveMax());
   const startTime = performance.now();
   let cancelled = false;
 
