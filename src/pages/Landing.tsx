@@ -81,7 +81,7 @@ export default function Landing() {
             variants={fadeUp}
             className="text-sm font-mono max-w-lg mx-auto leading-relaxed mb-10 sm:text-[sidebar-accent-foreground] text-popover-foreground opacity-85"
           >
-            A system for testing, refining, and reshaping how you spend your time. Watch priorities escalate. Build routines that stick. Clearing space for what matters.
+            A system for testing, refining, and reshaping how you spend your time. Watch priorities escalate. Build routines that stick. Clear space for what matters.
           </motion.p>
 
           <motion.div
