@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { NotificationLevel } from '@/utils/notificationService';
 
 export type MobilityMode = 'disabled' | 'normal' | 'elite';
+export type UiScale = 1 | 1.2 | 1.4 | 1.75;
 
 interface TimezoneState {
   timezone: string;
@@ -13,6 +14,7 @@ interface TimezoneState {
   notificationLevel: NotificationLevel;
   persistentOverdue: boolean;
   showCompletedTasks: boolean;
+  uiScale: UiScale;
   setTimezone: (tz: string) => void;
   setRoutinesFixedTime: (v: boolean) => void;
   setAutoDetect: (v: boolean) => void;
@@ -21,6 +23,7 @@ interface TimezoneState {
   setNotificationLevel: (level: NotificationLevel) => void;
   setPersistentOverdue: (v: boolean) => void;
   setShowCompletedTasks: (v: boolean) => void;
+  setUiScale: (scale: UiScale) => void;
 }
 
 export const useTimezoneStore = create<TimezoneState>()(
@@ -34,6 +37,7 @@ export const useTimezoneStore = create<TimezoneState>()(
       notificationLevel: 'important',
       persistentOverdue: false,
       showCompletedTasks: true,
+      uiScale: 1,
       setTimezone: (tz: string) => set({ timezone: tz }),
       setRoutinesFixedTime: (v: boolean) => set({ routinesFixedTime: v }),
       setAutoDetect: (v: boolean) => set({ autoDetect: v }),
@@ -45,6 +49,10 @@ export const useTimezoneStore = create<TimezoneState>()(
       setNotificationLevel: (level: NotificationLevel) => set({ notificationLevel: level }),
       setPersistentOverdue: (v: boolean) => set({ persistentOverdue: v }),
       setShowCompletedTasks: (v: boolean) => set({ showCompletedTasks: v }),
+      setUiScale: (scale: UiScale) => {
+        document.documentElement.style.setProperty('--ui-zoom', String(scale));
+        set({ uiScale: scale });
+      },
     }),
     { name: 'do-timezone' }
   )
