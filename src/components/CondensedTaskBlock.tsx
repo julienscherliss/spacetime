@@ -21,6 +21,7 @@ export function CondensedTaskBlock({
   const height = cluster.displayHeightPx ?? ((totalMinutes / 60) * hourHeight);
   const count = cluster.tasks.length;
 
+  const allCompleted = cluster.tasks.every(t => t.completed);
   const isCompact = height < 18;
   const canShowTitles = height > 46;
   const maxTitles = height > 72 ? 2 : 1;
