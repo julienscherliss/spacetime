@@ -507,6 +507,36 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               </div>
             </button>
 
+            {/* UI Scale / Readability */}
+            <div className="mb-3">
+              <div className="flex items-center gap-1.5 mb-2">
+                <Type size={12} strokeWidth={1.5} className="text-muted-foreground" />
+                <span className="text-[11px] font-mono tracking-[0.12em] text-muted-foreground">TEXT SIZE</span>
+              </div>
+              <div className="flex gap-1.5">
+                {([1, 1.2, 1.4, 1.75] as UiScale[]).map((scale) => {
+                  const labels: Record<number, string> = { 1: '1×', 1.2: '1.2×', 1.4: '1.4×', 1.75: '1.75×' };
+                  const isActive = uiScale === scale;
+                  return (
+                    <button
+                      key={scale}
+                      onClick={() => setUiScale(scale)}
+                      className={`flex-1 py-2.5 rounded-sm text-[11px] font-mono tracking-wider border transition-colors min-h-[44px] ${
+                        isActive
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-muted/30 text-muted-foreground border-border/50 hover:bg-muted/50 hover:text-foreground'
+                      }`}
+                    >
+                      {labels[scale]}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="text-[10px] font-mono text-muted-foreground/50 mt-1.5">
+                Scales the entire interface for readability
+              </div>
+            </div>
+
             {/* Color Scheme Editor */}
             <ColorSchemePanel />
           </div>
