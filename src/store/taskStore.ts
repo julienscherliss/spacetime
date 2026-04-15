@@ -379,6 +379,7 @@ export const useTaskStore = create<TaskState>()(
           task.time = minutesToTime(resolved);
         }
         set((s) => ({ tasks: [...s.tasks, task] }));
+        playUISound('blip');
       },
 
 
