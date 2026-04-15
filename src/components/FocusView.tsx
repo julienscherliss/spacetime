@@ -5,6 +5,7 @@ import { useCurrentTime, timeToMinutes, formatTime12h } from '@/hooks/useCurrent
 import { ChevronUp, ChevronDown, ChevronRight, Paperclip, ExternalLink, Check, Calendar as CalendarIcon, Tag } from 'lucide-react';
 import { AttachmentLightbox } from '@/components/AttachmentLightbox';
 import { TagAutocomplete } from '@/components/TagAutocomplete';
+import { TagPickerMenu } from '@/components/TagPickerMenu';
 import { SegmentedProgressRing } from '@/components/SegmentedProgressRing';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -535,6 +536,7 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
   const [newSubtaskDraft, setNewSubtaskDraft] = useState('');
   const { now: detailNow, minutes: nowMinutes } = useCurrentTime(1000);
   const [focusLightboxIndex, setFocusLightboxIndex] = useState<number | null>(null);
+  const [tagPickerOpen, setTagPickerOpen] = useState(false);
 
   useEffect(() => {
     if (!editingNote || !noteEditorRef.current) return;
@@ -846,14 +848,26 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
 
       {/* ── Metadata: Category + Due Date ── */}
       <div className="flex flex-col gap-2 pt-1">
-        {task.category && (
-          <div className="flex items-center gap-2">
-            <Tag size={10} className="text-muted-foreground/25" />
-            <span className="text-[10px] font-mono text-muted-foreground/35 tracking-wider uppercase">
-              {task.category}
-            </span>
-          </div>
-        )}
+        <Popover open={tagPickerOpen} onOpenChange={setTagPickerOpen}>
+          <PopoverTrigger asChild>
+            <button className="flex items-center gap-2 group text-left">
+              <Tag size={10} className="text-muted-foreground/25" />
+              <span className="text-[10px] font-mono text-muted-foreground/35 tracking-wider uppercase group-hover:text-foreground/50 transition-colors">
+                {task.category || 'Add tag'}
+              </span>
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="p-0 w-56" sideOffset={4}>
+            <TagPickerMenu
+              value={task.category || ''}
+              onChange={(cat) => {
+                onUpdateTask(task.id, { category: cat || null });
+                setTagPickerOpen(false);
+              }}
+              onClose={() => setTagPickerOpen(false)}
+            />
+          </PopoverContent>
+        </Popover>
         {task.dueDate && (
           <div className="flex items-center gap-2">
             <CalendarIcon size={10} className="text-muted-foreground/25" />
