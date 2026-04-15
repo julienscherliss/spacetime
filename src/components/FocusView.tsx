@@ -163,6 +163,9 @@ export function FocusView() {
       setHoldProgress(p);
       if (p >= 1) {
         completeTask(targetTask.id);
+        // Track hold completions for hint
+        const count = parseInt(localStorage.getItem('focus-hold-completions') || '0', 10);
+        localStorage.setItem('focus-hold-completions', String(count + 1));
         setIsHolding(false);
         setHoldProgress(0);
         if (navigator.vibrate) navigator.vibrate(30);
@@ -1099,6 +1102,11 @@ function MainFocusPanel({
             </AnimatePresence>
           </div>
         </div>
+        {parseInt(localStorage.getItem('focus-hold-completions') || '0', 10) < 10 && (
+          <p className="mt-3 text-[9px] font-mono text-muted-foreground/25 tracking-[0.12em] uppercase animate-pulse">
+            press and hold to complete
+          </p>
+        )}
       </div>
 
       {/* ═══ ZONE 3: BOTTOM — next task hint only ═══ */}
