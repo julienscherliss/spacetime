@@ -9,6 +9,7 @@ import { useScheduledDragStore } from '@/store/scheduledDragStore';
 import { useCarryStore } from '@/store/carryStore';
 import { START_HOUR } from '@/components/TimelineColumn';
 import { getOccupiedSlots, findValidPosition } from '@/utils/collisionDetection';
+import { TASK_TEXT_FIT_PX, TASK_TEXT_FIT_PX_COMFORT } from '@/utils/taskClustering';
 
 interface TimelineTaskBlockProps {
   task: Task;
@@ -399,9 +400,9 @@ export function TimelineTaskBlock({
   }, [dragTaskId, task.id]);
 
   const comfortMode = useTimezoneStore((s) => s.comfortMode);
-  const titleThreshold = comfortMode ? 28 : 23;
-  const metaThreshold = comfortMode ? 42 : 36;
-  const footerThreshold = comfortMode ? 34 : 28;
+  const titleThreshold = comfortMode ? TASK_TEXT_FIT_PX_COMFORT : TASK_TEXT_FIT_PX;
+  const metaThreshold = titleThreshold + (comfortMode ? 14 : 13);
+  const footerThreshold = titleThreshold + (comfortMode ? 6 : 5);
 
   const showHoldRing = pickupProgress > 0 && !dragActivated.current && !isLocked;
   const canShowTitle = !isCompact && height >= titleThreshold;
