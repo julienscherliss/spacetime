@@ -176,14 +176,16 @@ function buildCluster(group: Array<{
   titleFits: boolean;
 }>): TaskCluster {
   // Single task always renders as single
+  // For single tasks, titleFits only checks height — CSS truncation handles long titles
   if (group.length === 1) {
+    const heightFits = group[0].naturalHeightPx >= (group[0].naturalHeightPx >= 0 ? 1 : 0);
     return {
       type: 'single',
       tasks: [group[0].task],
       startMin: group[0].startMin,
       endMin: group[0].endMin,
       displayHeightPx: group[0].naturalHeightPx,
-      titleFits: group[0].titleFits,
+      titleFits: group[0].naturalHeightPx >= TASK_TEXT_FIT_PX,
     };
   }
 
