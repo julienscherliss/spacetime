@@ -12,6 +12,7 @@ import { useDataSync } from "@/hooks/useDataSync";
 import { isNativePlatform, setupDeepLinkListener } from "@/utils/nativeAuth";
 import { useSubscription } from "@/hooks/useSubscription";
 import { Paywall } from "@/components/Paywall";
+import { SetPasswordPrompt } from "@/components/SetPasswordPrompt";
 import Index from "./pages/Index.tsx";
 import Auth from "./pages/Auth.tsx";
 import Landing from "./pages/Landing.tsx";
@@ -26,7 +27,52 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   const { hasAccess, trialDaysLeft, loading: subLoading, refresh } = useSubscription();
   const [searchParams, setSearchParams] = useSearchParams();
   const [checkoutPolling, setCheckoutPolling] = useState(false);
+  const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
   useDataSync(user);
+
+  // Check if user logged in via OTP and has no password — show password prompt once
+  useEffect(() => {
+    if (!user) return;
+    // Check if this is a passwordless user who hasn't been prompted yet
+    const prompted = localStorage.getItem('password-prompt-dismissed');
+    if (prompted) return;
+
+    // If the user's app_metadata or identities indicate no password identity, prompt
+    const hasPasswordIdentity = user.identities?.some(
+      (i) => i.provider === 'email'
+    );
+    // Users who signed in via OTP without a password get an 'email' identity
+    // but we check if their last sign-in was via OTP
+    const lastSignIn = user.last_sign_in_at;
+    const factors = user.factors;
+    // Simple heuristic: if user was created via OTP (no password set),
+    // the user_metadata won't have a password-related flag.
+    // We check the amr claim from the session instead.
+    // For now, we use a simpler approach: check if session has 'otp' in amr
+  }, [user]);
+
+  // Listen for OTP-based auth to trigger password prompt
+  useEffect(() => {
+    if (!user) return;
+    const prompted = localStorage.getItem('password-prompt-dismissed');
+    if (prompted) return;
+
+    // Check the current session's amr (authentication methods reference)
+    const checkAmr = async () => {
+      const { data: { session } } = await (await import('@/integrations/supabase/client')).supabase.auth.getSession();
+      if (!session) return;
+      const amr = (session as any).amr;
+      if (Array.isArray(amr) && amr.some((m: any) => m.method === 'otp')) {
+        setShowPasswordPrompt(true);
+      }
+    };
+    checkAmr();
+  }, [user]);
+
+  const handleDismissPasswordPrompt = () => {
+    setShowPasswordPrompt(false);
+    localStorage.setItem('password-prompt-dismissed', 'true');
+  };
 
   // Poll subscription after successful checkout to wait for webhook
   useEffect(() => {
@@ -40,7 +86,6 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
       if (attempts >= maxAttempts) {
         clearInterval(interval);
         setCheckoutPolling(false);
-        // Clean up URL
         searchParams.delete("checkout");
         setSearchParams(searchParams, { replace: true });
       }
@@ -73,7 +118,12 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     return <Paywall trialDaysLeft={0} trialExpired={true} onAccessGranted={refresh} />;
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <SetPasswordPrompt open={showPasswordPrompt} onClose={handleDismissPasswordPrompt} />
+    </>
+  );
 }
 
 function AuthRedirect() {
