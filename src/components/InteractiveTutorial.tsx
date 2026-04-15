@@ -277,8 +277,6 @@ export function InteractiveTutorial({ open, onClose, mandatory = false }: Intera
     setAddTaskTapped(true);
     setStepCompleted(true);
   };
-    setStepCompleted(true);
-  };
 
   // Prevent touch scrolling during drag/hold interactions
   useEffect(() => {
