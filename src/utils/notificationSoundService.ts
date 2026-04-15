@@ -22,6 +22,7 @@ interface ScheduledSound {
 }
 
 const scheduled = new Map<string, ScheduledSound>();
+const delivered = new Set<string>();
 let lastFingerprint = '';
 
 function shouldNotify(task: Task, level: NotificationLevel): boolean {
@@ -65,11 +66,21 @@ export function cancelAllSounds() {
     clearTimeout(entry.timerId);
   }
   scheduled.clear();
+  delivered.clear();
   lastFingerprint = '';
 }
 
 function scheduleSound(key: string, taskId: string, type: string, fireAt: number, desired: Map<string, { taskId: string; type: string; fireAt: number }>) {
   desired.set(key, { taskId, type, fireAt });
+}
+
+function deliverImmediately(key: string, type: string, fireAt: number, now: number, graceMs: number) {
+  if (delivered.has(key)) return;
+  if (fireAt > now) return;
+  if (now - fireAt > graceMs) return;
+
+  playUISound(type as any);
+  delivered.add(key);
 }
 
 export function syncNotificationSounds(tasks: Task[], level: NotificationLevel) {
@@ -103,6 +114,8 @@ export function syncNotificationSounds(tasks: Task[], level: NotificationLevel) 
     const warningMs = endMs - 5 * 60_000;
     if (warningMs > now) {
       scheduleSound(makeKey(task.id, 'warning'), task.id, 'warning', warningMs, desired);
+    } else if (endMs > now) {
+      deliverImmediately(makeKey(task.id, 'warning'), 'warning', warningMs, now, 5 * 60_000);
     }
 
     // Orbital pulse: last 10 seconds (one pulse per second)
@@ -116,6 +129,8 @@ export function syncNotificationSounds(tasks: Task[], level: NotificationLevel) 
     // Alarm at end
     if (endMs > now) {
       scheduleSound(makeKey(task.id, 'alarm'), task.id, 'alarm', endMs, desired);
+    } else {
+      deliverImmediately(makeKey(task.id, 'alarm'), 'alarm', endMs, now, 60_000);
     }
 
     // Persistent reminders: each minute for 5 minutes after end
@@ -124,6 +139,8 @@ export function syncNotificationSounds(tasks: Task[], level: NotificationLevel) 
         const reminderMs = endMs + m * 60_000;
         if (reminderMs > now) {
           scheduleSound(makeKey(task.id, `persist-${m}`), task.id, 'persistentReminder', reminderMs, desired);
+        } else {
+          deliverImmediately(makeKey(task.id, `persist-${m}`), 'persistentReminder', reminderMs, now, 60_000);
         }
       }
     }
@@ -145,6 +162,7 @@ export function syncNotificationSounds(tasks: Task[], level: NotificationLevel) 
     const soundType = item.type as any;
     const timerId = setTimeout(() => {
       playUISound(soundType);
+      delivered.add(key);
       scheduled.delete(key);
     }, delay);
 

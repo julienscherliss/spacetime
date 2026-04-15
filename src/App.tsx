@@ -13,6 +13,7 @@ import { isNativePlatform, setupDeepLinkListener } from "@/utils/nativeAuth";
 import { useSubscription } from "@/hooks/useSubscription";
 import { Paywall } from "@/components/Paywall";
 import { SetPasswordPrompt } from "@/components/SetPasswordPrompt";
+import { primeSoundEngine } from "@/utils/soundEngine";
 import Index from "./pages/Index.tsx";
 import Auth from "./pages/Auth.tsx";
 import Landing from "./pages/Landing.tsx";
@@ -169,6 +170,22 @@ const App = () => {
     if (!isNativePlatform()) return;
     const cleanup = setupDeepLinkListener();
     return cleanup;
+  }, []);
+
+  useEffect(() => {
+    const unlock = () => {
+      void primeSoundEngine();
+    };
+
+    window.addEventListener('pointerdown', unlock, { passive: true });
+    window.addEventListener('keydown', unlock, { passive: true });
+    window.addEventListener('touchstart', unlock, { passive: true });
+
+    return () => {
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+      window.removeEventListener('touchstart', unlock);
+    };
   }, []);
 
   return (

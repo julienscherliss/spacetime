@@ -18,6 +18,7 @@ import { useTimezoneStore } from '@/store/timezoneStore';
 
 let audioCtx: AudioContext | null = null;
 let lastPlayTime = 0;
+let primed = false;
 const MIN_INTERVAL_MS = 80; // debounce rapid-fire
 
 function ctx(): AudioContext | null {
@@ -26,6 +27,37 @@ function ctx(): AudioContext | null {
   }
   if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
   return audioCtx;
+}
+
+function emitSilentPulse(c: AudioContext) {
+  const buffer = c.createBuffer(1, 1, c.sampleRate);
+  const source = c.createBufferSource();
+  const gain = c.createGain();
+  gain.gain.value = 0.00001;
+  source.buffer = buffer;
+  source.connect(gain).connect(c.destination);
+  source.start();
+  source.stop(c.currentTime + 0.001);
+}
+
+export async function primeSoundEngine(): Promise<boolean> {
+  const c = ctx();
+  if (!c) return false;
+
+  try {
+    if (c.state !== 'running') {
+      await c.resume();
+    }
+
+    if (!primed && c.state === 'running') {
+      emitSilentPulse(c);
+      primed = true;
+    }
+
+    return c.state === 'running';
+  } catch {
+    return false;
+  }
 }
 
 /** Master gain — keeps everything quiet and respectful of system volume */
@@ -336,12 +368,25 @@ export function playUISound(type: SoundType) {
   // Debounce
   const now = Date.now();
   if (now - lastPlayTime < MIN_INTERVAL_MS) return;
-  lastPlayTime = now;
 
   const c = ctx();
   if (!c) return;
 
-  players[type](c);
+  const play = () => {
+    lastPlayTime = Date.now();
+    players[type](c);
+  };
+
+  if (c.state === 'running') {
+    play();
+    return;
+  }
+
+  c.resume()
+    .then(() => {
+      if (c.state === 'running') play();
+    })
+    .catch(() => {});
 }
 
 /**
