@@ -2,11 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+html {
   --ui-zoom: 1;
-}
-
-#root {
   zoom: var(--ui-zoom);
 }
 
