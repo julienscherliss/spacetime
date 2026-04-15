@@ -121,6 +121,7 @@ export function InteractiveTutorial({ open, onClose, mandatory = false }: Intera
   const handleNext = useCallback(() => {
     if (isLastStep) {
       setShowSuccess(true);
+      localStorage.setItem('tutorial-completed', 'true');
       setTimeout(() => {
         setShowSuccess(false);
         onClose();
@@ -317,13 +318,15 @@ export function InteractiveTutorial({ open, onClose, mandatory = false }: Intera
             <span className="text-[10px] font-mono tracking-wider text-muted-foreground/60">
               STEP {currentStep + 1} / {STEPS.length}
             </span>
-            <button 
-              onClick={() => { onClose(); setCurrentStep(0); resetStepState(); }} 
-              className="text-muted-foreground hover:text-foreground transition-colors p-2 -mr-2 touch-manipulation"
-              aria-label="Close tutorial"
-            >
-              <X size={20} strokeWidth={1.5} />
-            </button>
+            {!mandatory && (
+              <button 
+                onClick={() => { onClose(); setCurrentStep(0); resetStepState(); }} 
+                className="text-muted-foreground hover:text-foreground transition-colors p-2 -mr-2 touch-manipulation"
+                aria-label="Close tutorial"
+              >
+                <X size={20} strokeWidth={1.5} />
+              </button>
+            )}
           </div>
 
           {/* Progress bar */}
