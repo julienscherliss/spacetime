@@ -4,6 +4,7 @@ import { useScheduledDragStore } from '@/store/scheduledDragStore';
 import { useTaskStore } from '@/store/taskStore';
 import { useLibraryStore } from '@/store/libraryStore';
 import { HoldToConfirmRing } from '@/components/HoldToConfirmRing';
+import { playUISound } from '@/utils/soundEngine';
 import { Archive, Clock } from 'lucide-react';
 
 const HOLD_DURATION_MS = 400;
@@ -115,7 +116,8 @@ export function InventoryDropZones() {
       } as any);
     }
 
-    // Haptic feedback
+    // Sound + haptic feedback
+    playUISound('blip');
     if (navigator.vibrate) navigator.vibrate(30);
     
     useScheduledDragStore.getState().endDrag();
