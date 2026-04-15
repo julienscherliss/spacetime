@@ -224,9 +224,72 @@ function playAlarm(c: AudioContext) {
   });
 }
 
+// ─── Sound: Orbital Pulse ────────────────────────────────────────────────────
+// Subtle, rhythmic low pulse — like a distant orbital beacon.
+// Used during the last 10 seconds of a task as a gentle countdown.
+
+function playOrbitalPulse(c: AudioContext) {
+  const t = c.currentTime;
+  const master = masterGain(c, 0.06);
+  const filter = warmFilter(c, 1800);
+  filter.connect(master);
+
+  // Low sub-bass pulse
+  const osc = c.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.value = 110 + drift();
+
+  const g = c.createGain();
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(0.5, t + 0.04);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+
+  // Slight harmonic shimmer on top
+  const osc2 = c.createOscillator();
+  osc2.type = 'sine';
+  osc2.frequency.value = 330 + drift();
+  const g2 = c.createGain();
+  g2.gain.setValueAtTime(0, t);
+  g2.gain.linearRampToValueAtTime(0.15, t + 0.03);
+  g2.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+
+  osc.connect(g).connect(filter);
+  osc2.connect(g2).connect(filter);
+  osc.start(t);
+  osc.stop(t + 0.3);
+  osc2.start(t);
+  osc2.stop(t + 0.2);
+}
+
+// ─── Sound: Persistent Reminder ──────────────────────────────────────────────
+// Slightly more insistent than alarm — used for overdue minute reminders
+
+function playPersistentReminder(c: AudioContext) {
+  const t = c.currentTime;
+  const master = masterGain(c, 0.1);
+  const filter = warmFilter(c, 2800);
+  filter.connect(master);
+
+  // Two-pulse: same note repeated, feels like a gentle nudge
+  [0, 0.2].forEach((offset) => {
+    const osc = c.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.value = 523 + drift(); // C5
+
+    const g = c.createGain();
+    g.gain.setValueAtTime(0, t + offset);
+    g.gain.linearRampToValueAtTime(0.35, t + offset + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.001, t + offset + 0.2);
+
+    osc.connect(g).connect(filter);
+    osc.start(t + offset);
+    osc.stop(t + offset + 0.25);
+  });
+}
+
 // ─── Public API ──────────────────────────────────────────────────────────────
 
-export type SoundType = 'tapeClick' | 'blip' | 'swell' | 'warning' | 'alarm';
+export type SoundType = 'tapeClick' | 'blip' | 'swell' | 'warning' | 'alarm' | 'orbitalPulse' | 'persistentReminder';
 
 const players: Record<SoundType, (c: AudioContext) => void> = {
   tapeClick: playTapeClick,
@@ -234,6 +297,8 @@ const players: Record<SoundType, (c: AudioContext) => void> = {
   swell: playSwell,
   warning: playWarning,
   alarm: playAlarm,
+  orbitalPulse: playOrbitalPulse,
+  persistentReminder: playPersistentReminder,
 };
 
 /**
