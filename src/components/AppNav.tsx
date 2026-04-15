@@ -203,7 +203,7 @@ export function AppNav() {
   const navItemInactive = "text-muted-foreground/50 hover:text-foreground/70 hover:bg-muted/30";
 
   return (
-    <nav className="sticky top-0 z-40 bg-background border-b border-border/30 overflow-x-auto overflow-y-hidden">
+    <nav className="sticky top-0 z-40 bg-background border-b border-border/30 overflow-x-auto overflow-y-hidden scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
       <div className="flex items-center h-12 px-5 sm:px-6 gap-4 min-w-max">
         {/* Logo */}
         <h1 className="flex flex-col leading-[0.85] font-display font-bold text-[13px] uppercase shrink-0">
