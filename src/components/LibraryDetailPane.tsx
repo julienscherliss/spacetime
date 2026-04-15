@@ -11,6 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import { DescriptionWithLinks } from '@/components/DescriptionWithLinks';
+import { autosizeTextarea } from '@/lib/autosizeTextarea';
 
 function formatDuration(m: number): string {
   const h = Math.floor(m / 60);
@@ -39,23 +40,30 @@ function SubtaskRow({ subtask, onToggle, onDelete, onChange }: {
   onChange: (title: string) => void;
 }) {
   return (
-    <div className="flex items-center gap-2.5 group py-1">
+    <div className="flex items-start gap-2.5 group py-1 min-w-0 w-full">
       <Checkbox
         checked={subtask.completed}
         onCheckedChange={onToggle}
-        className="h-3.5 w-3.5 border-muted-foreground/30 data-[state=checked]:bg-primary/50 data-[state=checked]:border-primary/30"
+        className="h-3.5 w-3.5 mt-1 border-muted-foreground/30 data-[state=checked]:bg-primary/50 data-[state=checked]:border-primary/30 shrink-0"
       />
-      <input
+      <textarea
+        ref={(el) => autosizeTextarea(el)}
         value={subtask.title}
-        onChange={(e) => onChange(e.target.value)}
-        className={`flex-1 bg-transparent text-[13px] font-mono focus:outline-none placeholder:text-muted-foreground/25 ${
+        rows={1}
+        wrap="soft"
+        onChange={(e) => {
+          onChange(e.target.value);
+          autosizeTextarea(e.currentTarget);
+        }}
+        onInput={(e) => autosizeTextarea(e.currentTarget)}
+        className={`block flex-1 min-w-0 w-full bg-transparent text-[13px] font-mono leading-[1.4] whitespace-pre-wrap [overflow-wrap:anywhere] focus:outline-none resize-none overflow-hidden placeholder:text-muted-foreground/25 py-1 ${
           subtask.completed ? 'text-muted-foreground/35 line-through' : 'text-foreground/75'
         }`}
         placeholder="Subtask…"
       />
       <button
         onClick={onDelete}
-        className="p-0.5 text-muted-foreground/20 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+        className="p-0.5 mt-1 text-muted-foreground/20 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
       >
         <X size={11} />
       </button>
@@ -87,7 +95,7 @@ export function LibraryDetailPane({ item, onClose }: LibraryDetailPaneProps) {
   const [showDuePicker, setShowDuePicker] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
   const noteRef = useRef<HTMLTextAreaElement>(null);
-  const newSubtaskRef = useRef<HTMLInputElement>(null);
+  const newSubtaskRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const autoSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -355,7 +363,7 @@ export function LibraryDetailPane({ item, onClose }: LibraryDetailPaneProps) {
             ))}
           </div>
         )}
-        <div className="flex items-center gap-2 mb-5">
+        <div className="flex items-start gap-2 mb-5 min-w-0 w-full">
           <Plus size={12} className="text-muted-foreground/25 shrink-0" />
           <input
             ref={newSubtaskRef}
