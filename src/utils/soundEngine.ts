@@ -50,50 +50,62 @@ function drift(): number {
   return (Math.random() - 0.5) * 8; // ±4 cents
 }
 
-// ─── Sound: Tape Click ───────────────────────────────────────────────────────
-// Short, muted percussive click — like pressing a cassette deck button.
-// Uses filtered noise burst + low thump.
+// ─── Sound: Tape Click (Task Complete) ───────────────────────────────────────
+// Satisfying analog confirmation — warm descending two-tone with body.
+// Like a vintage machine acknowledging a completed action.
 
 function playTapeClick(c: AudioContext) {
   const t = c.currentTime;
-  const master = masterGain(c, 0.1);
+  const master = masterGain(c, 0.18);
+  const filter = warmFilter(c, 3500);
+  filter.connect(master);
 
-  // Noise burst (filtered)
-  const bufferSize = c.sampleRate * 0.03; // 30ms
+  // Primary tone: descending from G5 to D5 — satisfying "done" feel
+  const osc1 = c.createOscillator();
+  osc1.type = 'triangle';
+  osc1.frequency.setValueAtTime(784 + drift(), t);
+  osc1.frequency.exponentialRampToValueAtTime(587 + drift(), t + 0.12);
+
+  const g1 = c.createGain();
+  g1.gain.setValueAtTime(0, t);
+  g1.gain.linearRampToValueAtTime(0.6, t + 0.008);
+  g1.gain.setValueAtTime(0.5, t + 0.06);
+  g1.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+
+  osc1.connect(g1).connect(filter);
+  osc1.start(t);
+  osc1.stop(t + 0.28);
+
+  // Second tone: octave-lower body for warmth
+  const osc2 = c.createOscillator();
+  osc2.type = 'sine';
+  osc2.frequency.setValueAtTime(392 + drift(), t);
+  osc2.frequency.exponentialRampToValueAtTime(294 + drift(), t + 0.15);
+
+  const g2 = c.createGain();
+  g2.gain.setValueAtTime(0, t);
+  g2.gain.linearRampToValueAtTime(0.35, t + 0.01);
+  g2.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+
+  osc2.connect(g2).connect(filter);
+  osc2.start(t);
+  osc2.stop(t + 0.25);
+
+  // Subtle click transient for tactile feel
+  const bufferSize = c.sampleRate * 0.015;
   const buffer = c.createBuffer(1, bufferSize, c.sampleRate);
   const data = buffer.getChannelData(0);
   for (let i = 0; i < bufferSize; i++) {
-    data[i] = (Math.random() * 2 - 1) * 0.5;
+    data[i] = (Math.random() * 2 - 1) * 0.3;
   }
   const noise = c.createBufferSource();
   noise.buffer = buffer;
-
-  const noiseFilter = c.createBiquadFilter();
-  noiseFilter.type = 'bandpass';
-  noiseFilter.frequency.value = 800;
-  noiseFilter.Q.value = 2;
-
-  const noiseGain = c.createGain();
-  noiseGain.gain.setValueAtTime(0.6, t);
-  noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
-
-  noise.connect(noiseFilter).connect(noiseGain).connect(master);
+  const nGain = c.createGain();
+  nGain.gain.setValueAtTime(0.4, t);
+  nGain.gain.exponentialRampToValueAtTime(0.001, t + 0.02);
+  noise.connect(nGain).connect(master);
   noise.start(t);
-  noise.stop(t + 0.04);
-
-  // Low thump
-  const osc = c.createOscillator();
-  osc.type = 'sine';
-  osc.frequency.setValueAtTime(120, t);
-  osc.frequency.exponentialRampToValueAtTime(40, t + 0.06);
-
-  const thumpGain = c.createGain();
-  thumpGain.gain.setValueAtTime(0.4, t);
-  thumpGain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
-
-  osc.connect(thumpGain).connect(master);
-  osc.start(t);
-  osc.stop(t + 0.07);
+  noise.stop(t + 0.02);
 }
 
 // ─── Sound: Blip ─────────────────────────────────────────────────────────────
