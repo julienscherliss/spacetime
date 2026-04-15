@@ -14,6 +14,7 @@ interface TimezoneState {
   persistentOverdue: boolean;
   showCompletedTasks: boolean;
   comfortMode: boolean;
+  soundEnabled: boolean;
   setTimezone: (tz: string) => void;
   setRoutinesFixedTime: (v: boolean) => void;
   setAutoDetect: (v: boolean) => void;
@@ -23,6 +24,7 @@ interface TimezoneState {
   setPersistentOverdue: (v: boolean) => void;
   setShowCompletedTasks: (v: boolean) => void;
   setComfortMode: (v: boolean) => void;
+  setSoundEnabled: (v: boolean) => void;
 }
 
 export const useTimezoneStore = create<TimezoneState>()(
@@ -37,6 +39,7 @@ export const useTimezoneStore = create<TimezoneState>()(
       persistentOverdue: false,
       showCompletedTasks: true,
       comfortMode: false,
+      soundEnabled: true,
       setTimezone: (tz: string) => set({ timezone: tz }),
       setRoutinesFixedTime: (v: boolean) => set({ routinesFixedTime: v }),
       setAutoDetect: (v: boolean) => set({ autoDetect: v }),
@@ -52,6 +55,7 @@ export const useTimezoneStore = create<TimezoneState>()(
         document.documentElement.classList.toggle('comfort', v);
         set({ comfortMode: v });
       },
+      setSoundEnabled: (v: boolean) => set({ soundEnabled: v }),
     }),
     { name: 'do-timezone' }
   )

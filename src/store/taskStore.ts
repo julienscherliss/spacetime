@@ -5,6 +5,7 @@ import type { Subtask } from '@/components/SubtaskList';
 import { useTimezoneStore } from '@/store/timezoneStore';
 import { cancelNotificationsForTask } from '@/utils/notificationService';
 import { cancelWebNotificationsForTask } from '@/utils/webNotificationService';
+import { playUISound } from '@/utils/soundEngine';
 import { getOccupiedSlots, findValidPosition } from '@/utils/collisionDetection';
 import { timeToMinutes, minutesToTime } from '@/hooks/useCurrentTime';
 
@@ -350,7 +351,11 @@ export const useTaskStore = create<TaskState>()(
       listReturnZoom: null,
       showListReturn: false,
 
-      setViewMode: (mode) => set({ viewMode: mode }),
+      setViewMode: (mode) => {
+        const prev = get().viewMode;
+        if (mode === 'focus' && prev !== 'focus') playUISound('swell');
+        set({ viewMode: mode });
+      },
       setDaySubMode: (mode) => set({ daySubMode: mode }),
       setNavigateToDate: (date) => set({ navigateToDate: date }),
       setCurrentDate: (date) => set({ currentDate: date }),
@@ -374,6 +379,7 @@ export const useTaskStore = create<TaskState>()(
           task.time = minutesToTime(resolved);
         }
         set((s) => ({ tasks: [...s.tasks, task] }));
+        playUISound('blip');
       },
 
 
@@ -470,6 +476,7 @@ export const useTaskStore = create<TaskState>()(
 
       completeTask: (id) => {
         const now = new Date().toISOString();
+        playUISound('tapeClick');
         set((s) => ({
           tasks: s.tasks.map((t) =>
             t.id === id ? { ...t, completed: true, inWaitingRoom: false, archivedAt: now, archiveReason: 'completed' as const } : t
@@ -483,6 +490,7 @@ export const useTaskStore = create<TaskState>()(
         const todayTasks = state.tasks.filter((t) => t.date === today && !t.archivedAt);
         const allDone = todayTasks.length > 0 && todayTasks.every((t) => t.completed);
         if (allDone) {
+          playUISound('swell');
           set({ showCompletionStats: true, dailyStats: get().getDailyStats() });
         }
       },

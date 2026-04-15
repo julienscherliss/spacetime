@@ -3,7 +3,7 @@ import { useTimezoneStore, getTzAbbr, TIMEZONES } from '@/store/timezoneStore';
 import type { MobilityMode } from '@/store/timezoneStore';
 import { useCalendarStore } from '@/store/calendarStore';
 import { supabase } from '@/integrations/supabase/client';
-import { X, Search, Globe, Repeat, MapPin, Calendar as CalIcon, RefreshCw, Unplug, HelpCircle, Moon, Shield, Lock, Bell, Type } from 'lucide-react';
+import { X, Search, Globe, Repeat, MapPin, Calendar as CalIcon, RefreshCw, Unplug, HelpCircle, Moon, Shield, Lock, Bell, Type, Volume2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { HelpPanel } from './HelpPanel';
 import { ColorSchemePanel } from './ColorSchemePanel';
@@ -30,7 +30,7 @@ interface SettingsPanelProps {
 }
 
 export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
-  const { timezone, setTimezone, routinesFixedTime, setRoutinesFixedTime, autoDetect, setAutoDetect, darkMode, setDarkMode, mobilityMode, setMobilityMode, notificationLevel, setNotificationLevel, persistentOverdue, setPersistentOverdue, showCompletedTasks, setShowCompletedTasks, comfortMode, setComfortMode } = useTimezoneStore();
+  const { timezone, setTimezone, routinesFixedTime, setRoutinesFixedTime, autoDetect, setAutoDetect, darkMode, setDarkMode, mobilityMode, setMobilityMode, notificationLevel, setNotificationLevel, persistentOverdue, setPersistentOverdue, showCompletedTasks, setShowCompletedTasks, comfortMode, setComfortMode, soundEnabled, setSoundEnabled } = useTimezoneStore();
   const { connected, email, calendars, loading, checkStatus, startAuth, refreshCalendarData, toggleCalendar, disconnect } = useCalendarStore();
   const nativeRuntime = isNativePlatform();
   const [search, setSearch] = useState('');
@@ -466,6 +466,37 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 </div>
               </button>
             )}
+          </div>
+
+          {/* Sound */}
+          <div className="border-t border-border/30 pt-4">
+            <div className="flex items-center gap-1.5 mb-2">
+              <Volume2 size={12} strokeWidth={1.5} className="text-muted-foreground" />
+              <span className="text-[11px] font-mono tracking-[0.12em] text-muted-foreground">SOUND</span>
+            </div>
+            <button
+              onClick={() => {
+                const next = !soundEnabled;
+                setSoundEnabled(next);
+                if (next) {
+                  // Play a preview blip so user knows it's on
+                  import('@/utils/soundEngine').then(m => m.playUISound('blip'));
+                }
+              }}
+              className="w-full flex items-center justify-between bg-muted/30 border border-border/50 rounded-sm p-3 min-h-[48px]"
+            >
+              <div className="text-left">
+                <div className="text-[12px] font-mono text-foreground">UI sounds</div>
+                <div className="text-[10px] font-mono text-muted-foreground/50 mt-0.5">
+                  Subtle analog clicks, blips, and swells
+                </div>
+              </div>
+              <div className={`w-9 h-5 rounded-full transition-colors flex items-center px-0.5 ${
+                soundEnabled ? 'bg-primary justify-end' : 'bg-border justify-start'
+              }`}>
+                <div className="w-4 h-4 rounded-full bg-white shadow-sm" />
+              </div>
+            </button>
           </div>
 
             <div className="flex items-center gap-1.5 mb-2">
