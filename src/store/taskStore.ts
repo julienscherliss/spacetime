@@ -370,7 +370,7 @@ export const useTaskStore = create<TaskState>()(
         set((s) => ({ tasks: [...s.tasks, task] }));
       },
 
-      addTask: null as any,
+      updateTask: (id, updates) => {
         if ('time' in updates || 'date' in updates || 'completed' in updates) {
           void cancelNotificationsForTask(id);
         cancelWebNotificationsForTask(id);
