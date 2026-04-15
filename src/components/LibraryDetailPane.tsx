@@ -364,14 +364,23 @@ export function LibraryDetailPane({ item, onClose }: LibraryDetailPaneProps) {
           </div>
         )}
         <div className="flex items-start gap-2 mb-5 min-w-0 w-full">
-          <Plus size={12} className="text-muted-foreground/25 shrink-0" />
-          <input
-            ref={newSubtaskRef}
+          <Plus size={12} className="text-muted-foreground/25 shrink-0 mt-1.5" />
+          <textarea
+            ref={(el) => {
+              newSubtaskRef.current = el;
+              autosizeTextarea(el);
+            }}
             value={newSubtaskText}
-            onChange={(e) => setNewSubtaskText(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') addSubtask(); }}
+            rows={1}
+            wrap="soft"
+            onChange={(e) => {
+              setNewSubtaskText(e.target.value);
+              autosizeTextarea(e.currentTarget);
+            }}
+            onInput={(e) => autosizeTextarea(e.currentTarget)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addSubtask(); } }}
             placeholder="Add subtask…"
-            className="flex-1 bg-transparent text-[12px] font-mono text-foreground/60 placeholder:text-muted-foreground/20 focus:outline-none py-1"
+            className="block flex-1 min-w-0 w-full bg-transparent text-[12px] font-mono leading-[1.4] whitespace-pre-wrap [overflow-wrap:anywhere] text-foreground/60 placeholder:text-muted-foreground/20 focus:outline-none resize-none overflow-hidden py-1"
           />
         </div>
 

@@ -290,7 +290,7 @@ export function DayView() {
           </button>
           <button
             onClick={goToToday}
-            className={`px-2.5 py-1 rounded-sm font-mono tracking-widest transition-colors ${
+            className={`px-2.5 py-1 rounded-sm text-[10px] font-mono tracking-widest transition-colors ${
               isToday
                 ? 'text-primary bg-primary/5'
                 : 'text-muted-foreground/50 hover:text-foreground hover:bg-muted/50'
