@@ -634,6 +634,13 @@ export function LibraryPanel() {
                                   Add tag
                                 </button>
                               )}
+                              <button
+                                onClick={() => setTagModalOpen(true)}
+                                className="w-full text-left flex items-center gap-1 px-2 py-1.5 text-[10px] font-mono tracking-wider text-muted-foreground/40 hover:text-foreground transition-colors"
+                              >
+                                <GripVertical size={10} />
+                                Manage tags
+                              </button>
                             </>
                           )}
                         </>
