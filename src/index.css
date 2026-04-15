@@ -2,12 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+html {
   --ui-zoom: 1;
-}
-
-#root {
   zoom: var(--ui-zoom);
+  overflow-x: hidden;
 }
 
 @layer base {
@@ -194,6 +192,15 @@
 ::-webkit-scrollbar-thumb {
   background: hsl(var(--muted-foreground) / 0.2);
   border-radius: 2px;
+}
+
+/* Hide scrollbar utility */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* Draggable elements — prevent iOS text selection & callout */
