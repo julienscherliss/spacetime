@@ -379,7 +379,6 @@ export const useTaskStore = create<TaskState>()(
           task.time = minutesToTime(resolved);
         }
         set((s) => ({ tasks: [...s.tasks, task] }));
-        playUISound('blip');
       },
 
 
@@ -620,6 +619,7 @@ export const useTaskStore = create<TaskState>()(
           : task.priority;
         const targetIds = getLinkedScheduleTargetIds(get().tasks, task);
 
+        const wasInWaitingRoom = task.inWaitingRoom;
         set((s) => ({
           tasks: s.tasks.map((t) => {
             if (t.id === id) {
