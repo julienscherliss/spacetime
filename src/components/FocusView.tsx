@@ -163,6 +163,9 @@ export function FocusView() {
       setHoldProgress(p);
       if (p >= 1) {
         completeTask(targetTask.id);
+        // Track hold completions for hint
+        const count = parseInt(localStorage.getItem('focus-hold-completions') || '0', 10);
+        localStorage.setItem('focus-hold-completions', String(count + 1));
         setIsHolding(false);
         setHoldProgress(0);
         if (navigator.vibrate) navigator.vibrate(30);
