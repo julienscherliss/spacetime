@@ -89,7 +89,7 @@ export default function Landing() {
             animate="visible"
             custom={3}
             variants={fadeUp}
-            className="flex flex-col sm:flex-row items-center justify-center gap-3"
+            className="flex flex-col items-center justify-center gap-3"
           >
             <button
               onClick={() => navigate('/auth', { state: { plan: 'yearly' } })}
