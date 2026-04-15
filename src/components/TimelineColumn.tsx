@@ -187,12 +187,12 @@ function CompletedTaskBlock({ task, top, height, showTimeLabels }: {
       >
         <div className="flex items-center gap-1.5">
           <Check size={10} className="text-muted-foreground/50 shrink-0" />
-          <span className="text-[10px] font-mono text-muted-foreground line-through truncate">
+          <span className="font-mono text-muted-foreground line-through truncate" style={{ fontSize: 'var(--ui-task-meta)' }}>
             {task.title}
           </span>
         </div>
         {height > 28 && task.time && (
-          <div className="text-[9px] font-mono text-muted-foreground/30 mt-0.5 line-through">
+          <div className="font-mono text-muted-foreground/30 mt-0.5 line-through" style={{ fontSize: 'var(--ui-text-xs)' }}>
             {formatTime12h(task.time)} · {formatDuration(task.duration || 30)}
           </div>
         )}
