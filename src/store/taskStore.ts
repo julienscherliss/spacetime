@@ -367,11 +367,31 @@ export const useTaskStore = create<TaskState>()(
           createdAt: new Date().toISOString(),
           moveCount: 0,
         };
+        // Resolve overlap if task has a scheduled time
+        if (task.time) {
+          const slots = getOccupiedSlots(get().tasks, task.date, task.id, get().routinesEnabled);
+          const { startMin: resolved } = findValidPosition(timeToMinutes(task.time), task.duration || 30, slots);
+          task.time = minutesToTime(resolved);
+        }
         set((s) => ({ tasks: [...s.tasks, task] }));
       },
 
 
       updateTask: (id, updates) => {
+        // Resolve overlap when time, date, or duration changes
+        if ('time' in updates || 'date' in updates || 'duration' in updates) {
+          const task = get().tasks.find((t) => t.id === id);
+          if (task) {
+            const nd = (updates as any).date ?? task.date;
+            const nt = (updates as any).time ?? task.time;
+            const ndur = (updates as any).duration ?? task.duration ?? 30;
+            if (nt) {
+              const slots = getOccupiedSlots(get().tasks, nd, id, get().routinesEnabled);
+              const { startMin: resolved } = findValidPosition(timeToMinutes(nt), ndur, slots);
+              (updates as any).time = minutesToTime(resolved);
+            }
+          }
+        }
         if ('time' in updates || 'date' in updates || 'completed' in updates) {
           void cancelNotificationsForTask(id);
         cancelWebNotificationsForTask(id);
@@ -576,6 +596,15 @@ export const useTaskStore = create<TaskState>()(
           return { blocked: true };
         }
 
+        // Resolve overlap at destination
+        let finalTime = newTime ?? task.time;
+        if (finalTime) {
+          const slots = getOccupiedSlots(get().tasks, newDate, id, get().routinesEnabled);
+          const { startMin: resolved, blocked } = findValidPosition(timeToMinutes(finalTime), task.duration || 30, slots);
+          if (blocked) return { blocked: true };
+          finalTime = minutesToTime(resolved);
+        }
+
         const crossDay = task.date !== newDate;
         const mobilityMode = useTimezoneStore.getState().mobilityMode;
         const newPriority = (crossDay && mobilityMode !== 'disabled')
@@ -589,7 +618,7 @@ export const useTaskStore = create<TaskState>()(
               return {
                 ...t,
                 date: newDate,
-                time: newTime ?? t.time,
+                time: finalTime ?? t.time,
                 priority: newPriority,
                 moveCount: crossDay ? t.moveCount + 1 : t.moveCount,
                 inWaitingRoom: false,
@@ -599,7 +628,7 @@ export const useTaskStore = create<TaskState>()(
             if (targetIds.has(t.id)) {
               return {
                 ...t,
-                time: newTime ?? t.time,
+                time: finalTime ?? t.time,
               };
             }
 
@@ -637,6 +666,10 @@ export const useTaskStore = create<TaskState>()(
         const task = get().tasks.find((t) => t.id === id);
         if (!task) return;
         if (task.priority >= 3) return;
+        // Resolve overlap
+        const slots = getOccupiedSlots(get().tasks, task.date, id, get().routinesEnabled);
+        const resolvedMin = findValidPosition(timeToMinutes(newTime), task.duration || 30, slots).startMin;
+        newTime = minutesToTime(resolvedMin);
         const targetIds = getLinkedScheduleTargetIds(get().tasks, task);
 
         set((s) => ({
