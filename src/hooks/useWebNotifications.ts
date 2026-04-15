@@ -34,6 +34,7 @@ export function useWebNotifications() {
     clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       syncWebNotifications(tasks, level);
+      syncNotificationSounds(tasks, level);
     }, 500);
 
     return () => clearTimeout(timerRef.current);
