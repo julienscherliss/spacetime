@@ -291,8 +291,8 @@ export function InteractiveTutorial({ open, onClose, mandatory = false }: Intera
 
   const handleSlotDragStart = (slotIndex: number, e: React.MouseEvent | React.TouchEvent) => {
     if (step.id !== 'add-task' || scheduledSlot !== null) return;
-    // skip occupied slot
-    if (slotIndex === 0) return;
+    // skip occupied slots (0 and 1 = Team standup 9:00-9:30)
+    if (slotIndex < 2) return;
     e.preventDefault();
     setSlotDragStart(slotIndex);
     setSlotDragCurrent(slotIndex);
@@ -305,7 +305,7 @@ export function InteractiveTutorial({ open, onClose, mandatory = false }: Intera
     e.preventDefault();
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     const hoveredSlot = getSlotFromPoint(clientY);
-    if (hoveredSlot !== null && hoveredSlot >= slotDragStart && hoveredSlot !== 0) {
+    if (hoveredSlot !== null && hoveredSlot >= slotDragStart && hoveredSlot >= 2) {
       setSlotDragCurrent(hoveredSlot);
       setDragSlotCount(hoveredSlot - slotDragStart + 1);
     }
@@ -424,7 +424,7 @@ export function InteractiveTutorial({ open, onClose, mandatory = false }: Intera
                   </p>
 
                   {/* Interactive area - mobile optimized */}
-                  <div className="w-full bg-muted/20 border border-border/40 rounded-sm p-3 sm:p-4 flex flex-col items-center justify-center relative min-h-[160px] sm:min-h-[180px]">
+                  <div className="w-full bg-muted/20 border border-border/40 rounded-sm p-3 sm:p-4 flex flex-col items-center justify-center relative" style={{ minHeight: step.id === 'add-task' ? 360 : 160 }}>
 
                     {/* TAP TO EDIT */}
                     {step.id === 'tap-edit' && (
@@ -647,70 +647,175 @@ export function InteractiveTutorial({ open, onClose, mandatory = false }: Intera
                     )}
 
                     {/* SCHEDULE A TASK (drag to create) */}
-                    {step.id === 'add-task' && (
-                      <div
-                        className="w-full select-none"
-                        onMouseMove={handleSlotDragMove}
-                        onMouseUp={handleSlotDragEnd}
-                        onMouseLeave={handleSlotDragEnd}
-                        onTouchMove={handleSlotDragMove}
-                        onTouchEnd={handleSlotDragEnd}
-                        onTouchCancel={handleSlotDragEnd}
-                      >
-                        {scheduledSlot === null && (
-                          <div className="text-[9px] font-mono text-muted-foreground/40 text-center mb-2 tracking-wider">
-                            DRAG DOWN TO SET DURATION
-                          </div>
-                        )}
-                        <div className="space-y-0">
-                          {['9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM'].map((time, i) => {
-                            const isOccupied = i === 0;
-                            const isInDragRange = slotDragStart !== null && scheduledSlot === null && i >= slotDragStart && i <= (slotDragCurrent ?? slotDragStart);
-                            const isScheduledRange = scheduledSlot !== null && i >= scheduledSlot && i < scheduledSlot + dragSlotCount;
-                            const isFirstInRange = isScheduledRange && i === scheduledSlot;
-                            return (
-                              <div key={i} className="flex items-stretch border-b border-border/20 last:border-b-0">
-                                <div className="w-14 shrink-0 py-2 pr-2 text-right">
-                                  <span className="text-[9px] font-mono text-muted-foreground/40">{time}</span>
+                    {step.id === 'add-task' && (() => {
+                      const SLOT_H = 28; // px per 15-min slot
+                      const tutorialStartHour = 9;
+                      const tutorialEndHour = 12;
+                      const totalSlots = (tutorialEndHour - tutorialStartHour) * 4; // 12 slots
+                      const occupiedStart = 0; // slot 0 = 9:00
+                      const occupiedEnd = 2;   // 9:00–9:30 (2 slots = 30min)
+
+                      const formatSlotTime = (slot: number) => {
+                        const totalMin = tutorialStartHour * 60 + slot * 15;
+                        const h = Math.floor(totalMin / 60);
+                        const m = totalMin % 60;
+                        const ampm = h >= 12 ? 'PM' : 'AM';
+                        const h12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
+                        return `${h12}:${m.toString().padStart(2, '0')} ${ampm}`;
+                      };
+
+                      const isOccupied = (i: number) => i >= occupiedStart && i < occupiedEnd;
+
+                      return (
+                        <div
+                          className="w-full select-none overflow-hidden"
+                          style={{ height: totalSlots * SLOT_H + 2 }}
+                          onMouseMove={handleSlotDragMove}
+                          onMouseUp={handleSlotDragEnd}
+                          onMouseLeave={handleSlotDragEnd}
+                          onTouchMove={handleSlotDragMove}
+                          onTouchEnd={handleSlotDragEnd}
+                          onTouchCancel={handleSlotDragEnd}
+                        >
+                          <div className="relative w-full" style={{ height: totalSlots * SLOT_H }}>
+                            {/* Hour labels + grid lines */}
+                            {Array.from({ length: tutorialEndHour - tutorialStartHour + 1 }, (_, hi) => {
+                              const hour = tutorialStartHour + hi;
+                              const topPx = hi * 4 * SLOT_H;
+                              const h12 = hour > 12 ? hour - 12 : hour;
+                              const ampm = hour >= 12 ? 'pm' : 'am';
+                              return (
+                                <div key={hour} className="absolute left-0 right-0" style={{ top: topPx }}>
+                                  <div className="flex items-start">
+                                    <span className="text-[9px] font-mono text-muted-foreground/35 w-10 text-right pr-2 -mt-[5px] shrink-0">
+                                      {hi < tutorialEndHour - tutorialStartHour ? `${h12} ${ampm}` : ''}
+                                    </span>
+                                    <div className="flex-1 border-t border-border/30" />
+                                  </div>
                                 </div>
-                                <div
-                                  ref={(el) => { slotRefs.current[i] = el; }}
-                                  className="flex-1 min-h-[44px] border-l border-border/30 pl-2"
-                                >
-                                  {isOccupied ? (
-                                    <div className="bg-card border border-border/60 rounded-sm p-2 my-0.5">
-                                      <TaskBlock title="Team standup" duration="30 min" priority="FIXED" priorityColor="bg-orange-500/40" />
-                                    </div>
-                                  ) : isScheduledRange ? (
-                                    isFirstInRange ? (
-                                      <motion.div
-                                        initial={{ opacity: 0, scale: 0.95 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        className="bg-primary/10 border border-primary/30 rounded-sm p-2 my-0.5"
-                                      >
-                                        <TaskBlock title="New task" duration={`${dragSlotCount * 30} min`} priority="FLEX" priorityColor="bg-emerald-500/40" />
-                                      </motion.div>
-                                    ) : (
-                                      <div className="bg-primary/5 border-l-2 border-primary/20 min-h-[44px]" />
-                                    )
-                                  ) : isInDragRange ? (
-                                    <div className={`w-full min-h-[44px] rounded-sm border border-dashed border-primary/40 bg-primary/10 transition-colors`} />
-                                  ) : (
-                                    <div
-                                      onMouseDown={(e) => handleSlotDragStart(i, e)}
-                                      onTouchStart={(e) => handleSlotDragStart(i, e)}
-                                      className="w-full h-full min-h-[44px] flex items-center justify-center rounded-sm border border-dashed border-transparent hover:border-primary/20 hover:bg-primary/5 transition-colors cursor-ns-resize touch-manipulation"
-                                    >
-                                      <GripVertical size={14} className="text-muted-foreground/20" />
-                                    </div>
-                                  )}
+                              );
+                            })}
+
+                            {/* Half-hour dashed lines */}
+                            {Array.from({ length: tutorialEndHour - tutorialStartHour }, (_, hi) => {
+                              const topPx = hi * 4 * SLOT_H + 2 * SLOT_H;
+                              return (
+                                <div key={`half-${hi}`} className="absolute right-0" style={{ top: topPx, left: '2.5rem' }}>
+                                  <div className="border-t border-dashed border-border/15" />
+                                </div>
+                              );
+                            })}
+
+                            {/* Occupied task block — rendered as absolute overlay like real timeline */}
+                            <div
+                              className="absolute z-10"
+                              style={{
+                                top: occupiedStart * SLOT_H + 1,
+                                height: (occupiedEnd - occupiedStart) * SLOT_H - 2,
+                                left: '2.75rem',
+                                right: 4,
+                              }}
+                            >
+                              <div className="h-full rounded-[2px] border border-border/60 bg-card overflow-hidden flex items-start px-2 py-1">
+                                <div className="w-[3px] h-full rounded-full bg-orange-500/40 shrink-0 mr-2" />
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-[11px] font-mono text-foreground truncate">Team standup</div>
+                                  <div className="text-[9px] font-mono text-muted-foreground/40">9:00 AM · 30m</div>
                                 </div>
                               </div>
-                            );
-                          })}
+                            </div>
+
+                            {/* Drag preview / created task block */}
+                            {slotDragStart !== null && scheduledSlot === null && slotDragCurrent !== null && (
+                              <div
+                                className="absolute z-10"
+                                style={{
+                                  top: slotDragStart * SLOT_H + 1,
+                                  height: ((slotDragCurrent - slotDragStart + 1) * SLOT_H) - 2,
+                                  left: '2.75rem',
+                                  right: 4,
+                                }}
+                              >
+                                <div className="h-full rounded-[2px] border border-dashed border-primary/50 bg-primary/10 flex items-start px-2 py-1">
+                                  <div className="w-[3px] h-full rounded-full bg-primary/40 shrink-0 mr-2" />
+                                  <div className="min-w-0 flex-1">
+                                    <div className="text-[11px] font-mono text-primary/70 truncate">New task</div>
+                                    <div className="text-[9px] font-mono text-primary/40">
+                                      {formatSlotTime(slotDragStart)} · {(slotDragCurrent - slotDragStart + 1) * 15}m
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Finalized created task */}
+                            {scheduledSlot !== null && (
+                              <motion.div
+                                initial={{ opacity: 0, scale: 0.96 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="absolute z-10"
+                                style={{
+                                  top: scheduledSlot * SLOT_H + 1,
+                                  height: (dragSlotCount * SLOT_H) - 2,
+                                  left: '2.75rem',
+                                  right: 4,
+                                }}
+                              >
+                                <div className="h-full rounded-[2px] border border-primary/30 bg-card overflow-hidden flex items-start px-2 py-1">
+                                  <div className="w-[3px] h-full rounded-full bg-emerald-500/40 shrink-0 mr-2" />
+                                  <div className="min-w-0 flex-1">
+                                    <div className="text-[11px] font-mono text-foreground truncate">New task</div>
+                                    <div className="text-[9px] font-mono text-muted-foreground/40">
+                                      {formatSlotTime(scheduledSlot)} · {dragSlotCount * 15}m
+                                    </div>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )}
+
+                            {/* Invisible touch/click targets for each slot */}
+                            {Array.from({ length: totalSlots }, (_, i) => {
+                              if (isOccupied(i)) return null;
+                              if (scheduledSlot !== null) return null;
+                              if (slotDragStart !== null && i >= slotDragStart) return null;
+                              return (
+                                <div
+                                  key={`slot-${i}`}
+                                  ref={(el) => { slotRefs.current[i] = el; }}
+                                  className="absolute cursor-ns-resize touch-manipulation"
+                                  style={{
+                                    top: i * SLOT_H,
+                                    height: SLOT_H,
+                                    left: '2.5rem',
+                                    right: 0,
+                                  }}
+                                  onMouseDown={(e) => handleSlotDragStart(i, e)}
+                                  onTouchStart={(e) => handleSlotDragStart(i, e)}
+                                />
+                              );
+                            })}
+
+                            {/* Also register refs for slots during drag */}
+                            {slotDragStart !== null && Array.from({ length: totalSlots }, (_, i) => {
+                              if (isOccupied(i)) return null;
+                              return (
+                                <div
+                                  key={`ref-${i}`}
+                                  ref={(el) => { slotRefs.current[i] = el; }}
+                                  className="absolute pointer-events-none"
+                                  style={{
+                                    top: i * SLOT_H,
+                                    height: SLOT_H,
+                                    left: '2.5rem',
+                                    right: 0,
+                                  }}
+                                />
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
 
                   {/* Hint */}
