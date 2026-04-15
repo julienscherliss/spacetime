@@ -5,6 +5,8 @@ import type { Subtask } from '@/components/SubtaskList';
 import { useTimezoneStore } from '@/store/timezoneStore';
 import { cancelNotificationsForTask } from '@/utils/notificationService';
 import { cancelWebNotificationsForTask } from '@/utils/webNotificationService';
+import { getOccupiedSlots, findValidPosition } from '@/utils/collisionDetection';
+import { timeToMinutes, minutesToTime } from '@/hooks/useCurrentTime';
 
 export type Priority = 0 | 1 | 2 | 3;
 export type TaskType = 'one-time' | 'recurring';
