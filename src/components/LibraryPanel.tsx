@@ -52,7 +52,7 @@ function getDueBadge(dueDate?: string | null): { text: string; urgent: boolean }
   return { text: `${diffDays}d`, urgent: false };
 }
 
-function getPlaceCount(): number {
+export function getPlaceCount(): number {
   return parseInt(localStorage.getItem('spacetime-place-count') || '0', 10);
 }
 
