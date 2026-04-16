@@ -13,6 +13,7 @@ function WaitingRoomItem({ task, isMobile, onClosePanel }: { task: Task; isMobil
   const { completeTask, updateTask, deleteTask } = useTaskStore();
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFired = useRef(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     const target = e.target as HTMLElement;
@@ -86,13 +87,30 @@ function WaitingRoomItem({ task, isMobile, onClosePanel }: { task: Task; isMobil
       onPointerUp={handlePointerUp}
       onPointerMove={handlePointerMove}
       onContextMenu={(e) => e.preventDefault()}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       <div className="w-1 shrink-0" />
 
       <div className="flex-1 min-w-0">
-        <div className={`font-mono text-foreground/80 truncate leading-tight ${
+        <div className={`font-mono text-foreground/80 truncate leading-tight flex items-center gap-2 ${
           isMobile ? 'text-[14px]' : 'text-[13px]'
-        }`}>{task.title}</div>
+        }`}>
+          <span className="truncate">{task.title}</span>
+          <AnimatePresence>
+            {!isMobile && isHovered && (
+              <motion.span
+                initial={{ opacity: 0, x: -4 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -4 }}
+                transition={{ duration: 0.15 }}
+                className="text-[9px] font-mono text-muted-foreground/40 tracking-wider whitespace-nowrap shrink-0"
+              >
+                hold to place
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </div>
         <div className="flex items-center gap-2 mt-0.5">
           <span className={`font-mono text-muted-foreground/35 ${isMobile ? 'text-[10px]' : 'text-[10px]'}`}>{task.date}</span>
           {(task.waitingRoomCount || 0) > 1 && (
