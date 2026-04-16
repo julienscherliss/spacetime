@@ -641,14 +641,16 @@ export function TimelineColumn({
   }, [creating, getMinutesFromY, HOUR_HEIGHT]);
 
   const handleNewTaskSubmit = useCallback(() => {
-    const cleanTitle = newTaskTitle.replace(/#\S*$/, '').replace(/\/\/\S*$/, '').trim();
+    const cleanTitle = newTaskTitle.replace(/#\S*$/, '').replace(/\/\/\S*$/, '').replace(/@\S*$/, '').trim();
     if (!newTaskInput || !cleanTitle) {
       setNewTaskInput(null);
       setNewTaskCategory(undefined);
+      setNewTaskDueDate(undefined);
       return;
     }
 
     const category = newTaskCategory || undefined;
+    const dueDate = newTaskDueDate || undefined;
 
     // Collision check before creating
     const allTasks = useTaskStore.getState().tasks;
@@ -661,6 +663,7 @@ export function TimelineColumn({
         setTimeout(() => setDragMsg(''), 2000);
         setNewTaskInput(null);
         setNewTaskCategory(undefined);
+        setNewTaskDueDate(undefined);
         return;
       }
       addTask({
@@ -671,6 +674,7 @@ export function TimelineColumn({
         priority: 0,
         type: 'one-time',
         category,
+        dueDate,
       });
     } else {
       addTask({
@@ -681,12 +685,15 @@ export function TimelineColumn({
         priority: 0,
         type: 'one-time',
         category,
+        dueDate,
       });
     }
+    incrementEntryCount();
     setNewTaskInput(null);
     setNewTaskTitle('');
     setNewTaskCategory(undefined);
-  }, [newTaskInput, newTaskTitle, newTaskCategory, date, addTask]);
+    setNewTaskDueDate(undefined);
+  }, [newTaskInput, newTaskTitle, newTaskCategory, newTaskDueDate, date, addTask]);
 
   const creatingPreview = creating ? (() => {
     const startMin = Math.min(creating.startMin, creating.currentMin);
