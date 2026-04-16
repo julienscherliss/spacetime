@@ -6,6 +6,7 @@ import { PriorityBadge } from '@/components/PriorityBadge';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useCarryStore } from '@/store/carryStore';
 import { useLibraryStore } from '@/store/libraryStore';
+import { incrementPlaceCount } from '@/components/LibraryPanel';
 
 
 
