@@ -66,7 +66,7 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFired = useRef(false);
   const [isHovered, setIsHovered] = useState(false);
-  const showHoldHint = !isMobile && isHovered && getLibraryPickupCount() < 3;
+  const showHoldHint = !isMobile && isHovered;
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('[data-touch-ignore]')) return;
