@@ -414,7 +414,7 @@ export function AppNav() {
                   </div>
                 </motion.div>
               </div>
-            )
+            )}
           </div>
           <button
             onClick={signOut}
