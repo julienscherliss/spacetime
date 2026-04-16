@@ -1,6 +1,8 @@
 import { useRef, useState, useCallback, useEffect, Fragment, useMemo } from 'react';
 import { TagAutocomplete } from '@/components/TagAutocomplete';
+import { DateAutocomplete } from '@/components/DateAutocomplete';
 import { CategoryDef } from '@/store/libraryStore';
+import { useEntryHint, incrementEntryCount } from '@/hooks/useEntryHint';
 import { useTaskStore, Task } from '@/store/taskStore';
 import { useCalendarStore, CalendarEvent, eventSpansDate } from '@/store/calendarStore';
 import { useLibraryStore } from '@/store/libraryStore';
@@ -263,8 +265,10 @@ export function TimelineColumn({
   } | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskCategory, setNewTaskCategory] = useState<string | undefined>();
+  const [newTaskDueDate, setNewTaskDueDate] = useState<string | undefined>();
   const newTaskRef = useRef<HTMLInputElement>(null);
   const proxyInputRef = useRef<HTMLInputElement>(null);
+  const { hint: entryHint } = useEntryHint();
 
   // When the real input mounts, steal focus from the proxy input
   useEffect(() => {
@@ -637,14 +641,16 @@ export function TimelineColumn({
   }, [creating, getMinutesFromY, HOUR_HEIGHT]);
 
   const handleNewTaskSubmit = useCallback(() => {
-    const cleanTitle = newTaskTitle.replace(/#\S*$/, '').replace(/\/\/\S*$/, '').trim();
+    const cleanTitle = newTaskTitle.replace(/#\S*$/, '').replace(/\/\/\S*$/, '').replace(/@\S*$/, '').trim();
     if (!newTaskInput || !cleanTitle) {
       setNewTaskInput(null);
       setNewTaskCategory(undefined);
+      setNewTaskDueDate(undefined);
       return;
     }
 
     const category = newTaskCategory || undefined;
+    const dueDate = newTaskDueDate || undefined;
 
     // Collision check before creating
     const allTasks = useTaskStore.getState().tasks;
@@ -657,6 +663,7 @@ export function TimelineColumn({
         setTimeout(() => setDragMsg(''), 2000);
         setNewTaskInput(null);
         setNewTaskCategory(undefined);
+        setNewTaskDueDate(undefined);
         return;
       }
       addTask({
@@ -667,6 +674,7 @@ export function TimelineColumn({
         priority: 0,
         type: 'one-time',
         category,
+        dueDate,
       });
     } else {
       addTask({
@@ -677,12 +685,15 @@ export function TimelineColumn({
         priority: 0,
         type: 'one-time',
         category,
+        dueDate,
       });
     }
+    incrementEntryCount();
     setNewTaskInput(null);
     setNewTaskTitle('');
     setNewTaskCategory(undefined);
-  }, [newTaskInput, newTaskTitle, newTaskCategory, date, addTask]);
+    setNewTaskDueDate(undefined);
+  }, [newTaskInput, newTaskTitle, newTaskCategory, newTaskDueDate, date, addTask]);
 
   const creatingPreview = creating ? (() => {
     const startMin = Math.min(creating.startMin, creating.currentMin);
@@ -1358,15 +1369,18 @@ export function TimelineColumn({
                   if (e.key === 'Escape') { setNewTaskInput(null); setNewTaskCategory(undefined); }
                 }}
                 onBlur={(e) => {
-                  // Don't submit if clicking on autocomplete suggestion
                   if (e.relatedTarget?.closest?.('[data-tag-autocomplete]')) return;
+                  if (e.relatedTarget?.closest?.('[data-date-autocomplete]')) return;
                   handleNewTaskSubmit();
                 }}
-                placeholder="Task name... (# for tags)"
+                placeholder={entryHint ? `Task name... (${entryHint})` : 'Task name...'}
                 className="w-full bg-transparent text-[12px] font-mono text-foreground placeholder:text-muted-foreground/30 focus:outline-none leading-tight"
               />
               {newTaskCategory && (
                 <span className="text-[10px] font-mono text-primary/60">#{newTaskCategory}</span>
+              )}
+              {newTaskDueDate && (
+                <span className="text-[10px] font-mono text-primary/60">@{newTaskDueDate}</span>
               )}
               <span className="text-[10px] font-mono text-muted-foreground/40">
                 {formatTime12h(newTaskInput.time)} · {formatDuration(newTaskInput.duration)}
@@ -1377,6 +1391,15 @@ export function TimelineColumn({
                 onSelectTag={(cat: CategoryDef, cleaned: string) => {
                   setNewTaskTitle(cleaned);
                   setNewTaskCategory(cat.value);
+                }}
+                onSubmitAfterSelect={handleNewTaskSubmit}
+              />
+              <DateAutocomplete
+                inputValue={newTaskTitle}
+                inputRef={newTaskRef as React.RefObject<HTMLInputElement>}
+                onSelectDate={(dateStr: string, cleaned: string) => {
+                  setNewTaskTitle(cleaned);
+                  setNewTaskDueDate(dateStr);
                 }}
                 onSubmitAfterSelect={handleNewTaskSubmit}
               />

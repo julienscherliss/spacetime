@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { useEntryHint, incrementEntryCount } from '@/hooks/useEntryHint';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   useLibraryStore,
@@ -379,6 +380,7 @@ export function LibraryPanel() {
   const [editingTagLabel, setEditingTagLabel] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
+  const { hint: entryHint } = useEntryHint();
 
   const items = getFilteredItems();
   const allItems = useLibraryStore((s) => s.items);
@@ -442,11 +444,12 @@ export function LibraryPanel() {
   }, [draggingTag]);
 
   const handleAdd = () => {
-    const titleText = input.replace(/#\S*$/, '').replace(/@\S*$/, '').trim();
+    const titleText = input.replace(/#\S*$/, '').replace(/@\S*$/, '').replace(/\/\/\S*$/, '').trim();
     if (!titleText) return;
     const store = useLibraryStore.getState();
     const autoCategory = quickCategory || (filters.category !== 'all' && filters.category !== 'none' ? filters.category : '');
     store.addItem(titleText, autoCategory || undefined, quickDueDate || null);
+    incrementEntryCount();
     setInput('');
     setQuickDueDate('');
     setQuickCategory('');
@@ -690,7 +693,7 @@ export function LibraryPanel() {
                             onKeyDown={(e) => {
                               if (e.key === 'Enter' && !input.match(/#\S+$/) && !input.match(/@\S*$/)) handleAdd();
                             }}
-                            placeholder="Add to library…"
+                            placeholder={entryHint ? `Add to library… (${entryHint})` : 'Add to library…'}
                             className="w-full bg-transparent font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none min-h-[44px] text-[14px]"
                           />
                           <TagAutocomplete
@@ -820,7 +823,7 @@ export function LibraryPanel() {
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' && !input.match(/#\S+$/) && !input.match(/@\S*$/)) handleAdd();
                         }}
-                        placeholder="Add to library…"
+                        placeholder={entryHint ? `Add to library… (${entryHint})` : 'Add to library…'}
                         className="w-full bg-transparent font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none min-h-[44px] text-[14px]"
                       />
                       <TagAutocomplete
