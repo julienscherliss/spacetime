@@ -386,14 +386,15 @@ export function AppNav() {
                 </span>
               )}
             </button>
-            <AnimatePresence>
-              {showComfortHint && (
+            {showComfortHint && (
+              <div className="fixed inset-0 z-[200] pointer-events-none">
                 <motion.div
                   initial={{ opacity: 0, y: -6 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -4 }}
                   transition={{ duration: 0.3, delay: 1.5 }}
-                  className="absolute top-full mt-2 right-0 w-52 z-50"
+                  className="absolute w-52 pointer-events-auto"
+                  style={{ top: 'calc(var(--ui-nav-h, 40px) + 6px)', right: '48px' }}
                 >
                   <div className="bg-foreground text-background rounded-lg px-3 py-2.5 text-[10px] font-mono leading-relaxed shadow-lg relative">
                     <div className="absolute -top-1 right-4 w-2 h-2 bg-foreground rotate-45" />
@@ -412,8 +413,8 @@ export function AppNav() {
                     </button>
                   </div>
                 </motion.div>
-              )}
-            </AnimatePresence>
+              </div>
+            )}
           </div>
           <button
             onClick={signOut}
