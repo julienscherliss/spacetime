@@ -1,4 +1,6 @@
 import { useRef, useState, useCallback, useEffect, Fragment, useMemo } from 'react';
+import { TagAutocomplete } from '@/components/TagAutocomplete';
+import { CategoryDef } from '@/store/libraryStore';
 import { useTaskStore, Task } from '@/store/taskStore';
 import { useCalendarStore, CalendarEvent, eventSpansDate } from '@/store/calendarStore';
 import { useLibraryStore } from '@/store/libraryStore';
@@ -260,6 +262,7 @@ export function TimelineColumn({
     height: number;
   } | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskCategory, setNewTaskCategory] = useState<string | undefined>();
   const newTaskRef = useRef<HTMLInputElement>(null);
   const proxyInputRef = useRef<HTMLInputElement>(null);
 
@@ -582,6 +585,7 @@ export function TimelineColumn({
         const height = (duration / 60) * HOUR_HEIGHT;
         setCreating(null);
         setNewTaskTitle('');
+        setNewTaskCategory(undefined);
         setNewTaskInput({ time, duration, top, height });
         // Focus proxy input synchronously within touchend to open iOS keyboard
         proxyInputRef.current?.focus();
@@ -620,6 +624,7 @@ export function TimelineColumn({
       const height = (duration / 60) * HOUR_HEIGHT;
       setCreating(null);
       setNewTaskTitle('');
+      setNewTaskCategory(undefined);
       setNewTaskInput({ time, duration, top, height });
       proxyInputRef.current?.focus();
     };
@@ -632,10 +637,14 @@ export function TimelineColumn({
   }, [creating, getMinutesFromY, HOUR_HEIGHT]);
 
   const handleNewTaskSubmit = useCallback(() => {
-    if (!newTaskInput || !newTaskTitle.trim()) {
+    const cleanTitle = newTaskTitle.replace(/#\S*$/, '').replace(/\/\/\S*$/, '').trim();
+    if (!newTaskInput || !cleanTitle) {
       setNewTaskInput(null);
+      setNewTaskCategory(undefined);
       return;
     }
+
+    const category = newTaskCategory || undefined;
 
     // Collision check before creating
     const allTasks = useTaskStore.getState().tasks;
@@ -647,30 +656,33 @@ export function TimelineColumn({
         setDragMsg('No space available');
         setTimeout(() => setDragMsg(''), 2000);
         setNewTaskInput(null);
+        setNewTaskCategory(undefined);
         return;
       }
-      // Use the clamped position
       addTask({
-        title: newTaskTitle.trim(),
+        title: cleanTitle,
         date,
         time: minutesToTime(validStart),
         duration: newTaskInput.duration,
         priority: 0,
         type: 'one-time',
+        category,
       });
     } else {
       addTask({
-        title: newTaskTitle.trim(),
+        title: cleanTitle,
         date,
         time: newTaskInput.time,
         duration: newTaskInput.duration,
         priority: 0,
         type: 'one-time',
+        category,
       });
     }
     setNewTaskInput(null);
     setNewTaskTitle('');
-  }, [newTaskInput, newTaskTitle, date, addTask]);
+    setNewTaskCategory(undefined);
+  }, [newTaskInput, newTaskTitle, newTaskCategory, date, addTask]);
 
   const creatingPreview = creating ? (() => {
     const startMin = Math.min(creating.startMin, creating.currentMin);
