@@ -31,6 +31,7 @@ function WaitingRoomItem({ task, isMobile, onClosePanel }: { task: Task; isMobil
         fromWaitingRoom: true,
         pickedUpAt: Date.now(),
       });
+      incrementPlaceCount();
       onClosePanel();
     }, 250);
   }, [task, onClosePanel]);
@@ -52,6 +53,7 @@ function WaitingRoomItem({ task, isMobile, onClosePanel }: { task: Task; isMobil
         fromWaitingRoom: true,
         pickedUpAt: Date.now(),
       });
+      incrementPlaceCount();
       onClosePanel();
     }
   }, [task, onClosePanel]);
