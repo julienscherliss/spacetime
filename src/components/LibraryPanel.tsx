@@ -52,13 +52,13 @@ function getDueBadge(dueDate?: string | null): { text: string; urgent: boolean }
   return { text: `${diffDays}d`, urgent: false };
 }
 
-function getLibraryPickupCount(): number {
-  return parseInt(localStorage.getItem('library-pickup-count') || '0', 10);
+export function getPlaceCount(): number {
+  return parseInt(localStorage.getItem('spacetime-place-count') || '0', 10);
 }
 
-function incrementLibraryPickupCount() {
-  const count = getLibraryPickupCount() + 1;
-  localStorage.setItem('library-pickup-count', String(count));
+export function incrementPlaceCount() {
+  const count = getPlaceCount() + 1;
+  localStorage.setItem('spacetime-place-count', String(count));
 }
 
 function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: boolean; onEdit: () => void }) {
@@ -66,14 +66,14 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFired = useRef(false);
   const [isHovered, setIsHovered] = useState(false);
-  const showHoldHint = !isMobile && isHovered;
+  const showHoldHint = !isMobile && isHovered && getPlaceCount() < 10;
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('[data-touch-ignore]')) return;
     longPressFired.current = false;
     longPressTimer.current = setTimeout(() => {
       longPressFired.current = true;
-      incrementLibraryPickupCount();
+      incrementPlaceCount();
       useCarryStore.getState().pickup({
         taskId: item.id,
         title: item.title,

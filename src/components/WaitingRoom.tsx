@@ -6,6 +6,7 @@ import { PriorityBadge } from '@/components/PriorityBadge';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useCarryStore } from '@/store/carryStore';
 import { useLibraryStore } from '@/store/libraryStore';
+import { incrementPlaceCount, getPlaceCount } from '@/components/LibraryPanel';
 
 
 
@@ -30,6 +31,7 @@ function WaitingRoomItem({ task, isMobile, onClosePanel }: { task: Task; isMobil
         fromWaitingRoom: true,
         pickedUpAt: Date.now(),
       });
+      incrementPlaceCount();
       onClosePanel();
     }, 250);
   }, [task, onClosePanel]);
@@ -51,6 +53,7 @@ function WaitingRoomItem({ task, isMobile, onClosePanel }: { task: Task; isMobil
         fromWaitingRoom: true,
         pickedUpAt: Date.now(),
       });
+      incrementPlaceCount();
       onClosePanel();
     }
   }, [task, onClosePanel]);
@@ -98,7 +101,7 @@ function WaitingRoomItem({ task, isMobile, onClosePanel }: { task: Task; isMobil
         }`}>
           <span className="truncate">{task.title}</span>
           <AnimatePresence>
-            {!isMobile && isHovered && (
+            {!isMobile && isHovered && getPlaceCount() < 10 && (
               <motion.span
                 initial={{ opacity: 0, x: -4 }}
                 animate={{ opacity: 1, x: 0 }}
