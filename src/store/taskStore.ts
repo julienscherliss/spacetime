@@ -757,13 +757,25 @@ export const useTaskStore = create<TaskState>()(
       moveOverdueToWaitingRoom: () => {
         const now = new Date();
         const nowMs = now.getTime();
+        const todayStr = now.toISOString().split('T')[0];
 
         set((s) => ({
           tasks: s.tasks.map((t) => {
             if (t.completed || t.inWaitingRoom || t.archivedAt) return t;
-            if (!t.time) return t;
-            // Check today and past days (not future days)
-            const todayStr = now.toISOString().split('T')[0];
+
+            // Past-day tasks without a time — sweep immediately
+            if (!t.time) {
+              if (t.date < todayStr) {
+                return {
+                  ...t,
+                  inWaitingRoom: true,
+                  waitingRoomCount: (t.waitingRoomCount || 0) + 1,
+                };
+              }
+              return t;
+            }
+
+            // Don't sweep future tasks
             if (t.date > todayStr) return t;
 
             const [h, m] = t.time.split(':').map(Number);
