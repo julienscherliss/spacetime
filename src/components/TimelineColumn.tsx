@@ -1341,28 +1341,45 @@ export function TimelineColumn({
           className="absolute right-1 z-30"
           style={{
             top: newTaskInput.top,
-            height: Math.max(newTaskInput.height, 32),
+            height: 'auto',
+            minHeight: Math.max(newTaskInput.height, 32),
             left: showTimeLabels ? '3.25rem' : '2px',
           }}
         >
-          <div className="h-full rounded-[2px] border border-primary/40 bg-card shadow-sm flex items-start px-2 py-1 gap-1.5"
-               style={{ borderLeftWidth: '2px', borderLeftColor: 'hsl(var(--priority-0) / 0.4)' }}>
-            <div className="flex-1 min-w-0">
+          <div className="relative rounded-[2px] border border-primary/40 bg-card shadow-sm flex items-start px-2 py-1 gap-1.5"
+               style={{ borderLeftWidth: '2px', borderLeftColor: 'hsl(var(--priority-0) / 0.4)', minHeight: Math.max(newTaskInput.height, 32) }}>
+            <div className="flex-1 min-w-0 relative">
               <input
                 ref={newTaskRef}
                 value={newTaskTitle}
                 onChange={(e) => setNewTaskTitle(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleNewTaskSubmit();
-                  if (e.key === 'Escape') setNewTaskInput(null);
+                  if (e.key === 'Escape') { setNewTaskInput(null); setNewTaskCategory(undefined); }
                 }}
-                onBlur={handleNewTaskSubmit}
-                placeholder="Task name..."
+                onBlur={(e) => {
+                  // Don't submit if clicking on autocomplete suggestion
+                  if (e.relatedTarget?.closest?.('[data-tag-autocomplete]')) return;
+                  handleNewTaskSubmit();
+                }}
+                placeholder="Task name... (# for tags)"
                 className="w-full bg-transparent text-[12px] font-mono text-foreground placeholder:text-muted-foreground/30 focus:outline-none leading-tight"
               />
+              {newTaskCategory && (
+                <span className="text-[10px] font-mono text-primary/60">#{newTaskCategory}</span>
+              )}
               <span className="text-[10px] font-mono text-muted-foreground/40">
                 {formatTime12h(newTaskInput.time)} · {formatDuration(newTaskInput.duration)}
               </span>
+              <TagAutocomplete
+                inputValue={newTaskTitle}
+                inputRef={newTaskRef as React.RefObject<HTMLInputElement>}
+                onSelectTag={(cat: CategoryDef, cleaned: string) => {
+                  setNewTaskTitle(cleaned);
+                  setNewTaskCategory(cat.value);
+                }}
+                onSubmitAfterSelect={handleNewTaskSubmit}
+              />
             </div>
           </div>
         </div>
