@@ -48,6 +48,7 @@ export function AppNav() {
   const waitingCount = tasks.filter((t) => t.inWaitingRoom && !t.completed && !t.archivedAt).length;
   const isMobile = useIsMobile();
   const [moreOpen, setMoreOpen] = useState(false);
+  const [showComfortHint, setShowComfortHint] = useState(() => !localStorage.getItem('comfort-hint-dismissed'));
   const moreRef = useRef<HTMLDivElement>(null);
 
   // Admin: check for new users
