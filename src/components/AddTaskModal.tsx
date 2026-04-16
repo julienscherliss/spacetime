@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { incrementEntryCount } from '@/hooks/useEntryHint';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Priority } from '@/store/taskStore';
 import { useLibraryStore } from '@/store/libraryStore';
@@ -36,9 +37,10 @@ export function AddTaskModal() {
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = () => {
-    const cleanTitle = title.replace(/#\S*$/, '').replace(/@\S*$/, '').trim();
+    const cleanTitle = title.replace(/#\S*$/, '').replace(/@\S*$/, '').replace(/\/\/\S*$/, '').trim();
     if (!cleanTitle) return;
     addTask({ title: cleanTitle, date, time, duration, priority, type: 'one-time', category: category || undefined });
+    incrementEntryCount();
     setTitle('');
     setDate(new Date().toISOString().split('T')[0]);
     setTime('09:00');
