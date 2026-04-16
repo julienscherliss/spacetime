@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { useEntryHint, incrementEntryCount } from '@/hooks/useEntryHint';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   useLibraryStore,
@@ -442,11 +443,12 @@ export function LibraryPanel() {
   }, [draggingTag]);
 
   const handleAdd = () => {
-    const titleText = input.replace(/#\S*$/, '').replace(/@\S*$/, '').trim();
+    const titleText = input.replace(/#\S*$/, '').replace(/@\S*$/, '').replace(/\/\/\S*$/, '').trim();
     if (!titleText) return;
     const store = useLibraryStore.getState();
     const autoCategory = quickCategory || (filters.category !== 'all' && filters.category !== 'none' ? filters.category : '');
     store.addItem(titleText, autoCategory || undefined, quickDueDate || null);
+    incrementEntryCount();
     setInput('');
     setQuickDueDate('');
     setQuickCategory('');
