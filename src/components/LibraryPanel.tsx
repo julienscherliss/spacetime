@@ -380,6 +380,7 @@ export function LibraryPanel() {
   const [editingTagLabel, setEditingTagLabel] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
+  const { hint: entryHint } = useEntryHint();
 
   const items = getFilteredItems();
   const allItems = useLibraryStore((s) => s.items);
