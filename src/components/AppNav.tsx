@@ -389,17 +389,17 @@ export function AppNav() {
             <AnimatePresence>
               {showComfortHint && (
                 <motion.div
-                  initial={{ opacity: 0, y: 6 }}
+                  initial={{ opacity: 0, y: -6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 4 }}
+                  exit={{ opacity: 0, y: -4 }}
                   transition={{ duration: 0.3, delay: 1.5 }}
-                  className="absolute bottom-full mb-2 right-0 w-52 z-50"
+                  className="absolute top-full mt-2 right-0 w-52 z-50"
                 >
                   <div className="bg-foreground text-background rounded-lg px-3 py-2.5 text-[10px] font-mono leading-relaxed shadow-lg relative">
+                    <div className="absolute -top-1 right-4 w-2 h-2 bg-foreground rotate-45" />
                     A bit hard to read?
                     <br />
-                    <span className="text-primary font-semibold">Try Comfortable mode here ↓</span>
-                    <div className="absolute -bottom-1 right-4 w-2 h-2 bg-foreground rotate-45" />
+                    <span className="text-primary font-semibold">Try Comfortable mode here ↑</span>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
