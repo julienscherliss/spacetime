@@ -26,15 +26,13 @@ import { Paywall } from '@/components/Paywall';
 import { useSubscription } from '@/hooks/useSubscription';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNativeNotifications } from '@/hooks/useNativeNotifications';
-import { useWebNotifications } from '@/hooks/useWebNotifications';
-import { useInAppSoundAlerts } from '@/hooks/useInAppSoundAlerts';
+import { useForegroundReminders } from '@/hooks/useForegroundReminders';
 import { InteractiveTutorial } from '@/components/InteractiveTutorial';
 
 const Index = () => {
   const { viewMode, daySubMode, routinesEnabled, moveOverdueToWaitingRoom } = useTaskStore();
   useNativeNotifications();
-  useWebNotifications();
-  useInAppSoundAlerts();
+  useForegroundReminders();
   const [waitingOpen, setWaitingOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
