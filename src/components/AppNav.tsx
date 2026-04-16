@@ -396,20 +396,20 @@ export function AppNav() {
                   className="absolute w-52 pointer-events-auto"
                   style={{ top: 'calc(var(--ui-nav-h, 40px) + 6px)', right: '48px' }}
                 >
-                  <div className="bg-foreground text-background rounded-lg px-3 py-2.5 text-[10px] font-mono leading-relaxed shadow-lg relative">
-                    <div className="absolute -top-1 right-4 w-2 h-2 bg-foreground rotate-45" />
-                    A bit hard to read?
+                  <div className="bg-white border border-border rounded-lg px-4 py-3 text-[12.5px] font-mono leading-relaxed shadow-lg relative">
+                    <div className="absolute -top-1.5 right-5 w-2.5 h-2.5 bg-white border-l border-t border-border rotate-45" />
+                    <span className="text-primary font-semibold">A bit hard to read?</span>
                     <br />
-                    <span className="text-primary font-semibold">Try Comfortable mode here ↑</span>
+                    <span className="text-foreground">Try Comfortable mode here ↑</span>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         localStorage.setItem('comfort-hint-dismissed', 'true');
                         setShowComfortHint(false);
                       }}
-                      className="absolute top-1 right-1 p-0.5 rounded hover:bg-background/20 transition-colors"
+                      className="absolute top-1.5 right-1.5 p-0.5 rounded hover:bg-muted transition-colors text-muted-foreground"
                     >
-                      <X size={8} />
+                      <X size={10} />
                     </button>
                   </div>
                 </motion.div>
