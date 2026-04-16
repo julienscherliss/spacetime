@@ -149,7 +149,7 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
                 transition={{ duration: 0.15 }}
                 className="text-[9px] font-mono text-muted-foreground/40 tracking-wider whitespace-nowrap shrink-0"
               >
-                hold to pickup
+                hold to place
               </motion.span>
             )}
           </AnimatePresence>
