@@ -1,4 +1,6 @@
 import { useRef, useState, useCallback, useEffect, Fragment, useMemo } from 'react';
+import { TagAutocomplete } from '@/components/TagAutocomplete';
+import { CategoryDef } from '@/store/libraryStore';
 import { useTaskStore, Task } from '@/store/taskStore';
 import { useCalendarStore, CalendarEvent, eventSpansDate } from '@/store/calendarStore';
 import { useLibraryStore } from '@/store/libraryStore';
@@ -260,6 +262,7 @@ export function TimelineColumn({
     height: number;
   } | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskCategory, setNewTaskCategory] = useState<string | undefined>();
   const newTaskRef = useRef<HTMLInputElement>(null);
   const proxyInputRef = useRef<HTMLInputElement>(null);
 
@@ -582,6 +585,7 @@ export function TimelineColumn({
         const height = (duration / 60) * HOUR_HEIGHT;
         setCreating(null);
         setNewTaskTitle('');
+        setNewTaskCategory(undefined);
         setNewTaskInput({ time, duration, top, height });
         // Focus proxy input synchronously within touchend to open iOS keyboard
         proxyInputRef.current?.focus();
@@ -620,6 +624,7 @@ export function TimelineColumn({
       const height = (duration / 60) * HOUR_HEIGHT;
       setCreating(null);
       setNewTaskTitle('');
+      setNewTaskCategory(undefined);
       setNewTaskInput({ time, duration, top, height });
       proxyInputRef.current?.focus();
     };
@@ -632,10 +637,14 @@ export function TimelineColumn({
   }, [creating, getMinutesFromY, HOUR_HEIGHT]);
 
   const handleNewTaskSubmit = useCallback(() => {
-    if (!newTaskInput || !newTaskTitle.trim()) {
+    const cleanTitle = newTaskTitle.replace(/#\S*$/, '').replace(/\/\/\S*$/, '').trim();
+    if (!newTaskInput || !cleanTitle) {
       setNewTaskInput(null);
+      setNewTaskCategory(undefined);
       return;
     }
+
+    const category = newTaskCategory || undefined;
 
     // Collision check before creating
     const allTasks = useTaskStore.getState().tasks;
@@ -647,30 +656,33 @@ export function TimelineColumn({
         setDragMsg('No space available');
         setTimeout(() => setDragMsg(''), 2000);
         setNewTaskInput(null);
+        setNewTaskCategory(undefined);
         return;
       }
-      // Use the clamped position
       addTask({
-        title: newTaskTitle.trim(),
+        title: cleanTitle,
         date,
         time: minutesToTime(validStart),
         duration: newTaskInput.duration,
         priority: 0,
         type: 'one-time',
+        category,
       });
     } else {
       addTask({
-        title: newTaskTitle.trim(),
+        title: cleanTitle,
         date,
         time: newTaskInput.time,
         duration: newTaskInput.duration,
         priority: 0,
         type: 'one-time',
+        category,
       });
     }
     setNewTaskInput(null);
     setNewTaskTitle('');
-  }, [newTaskInput, newTaskTitle, date, addTask]);
+    setNewTaskCategory(undefined);
+  }, [newTaskInput, newTaskTitle, newTaskCategory, date, addTask]);
 
   const creatingPreview = creating ? (() => {
     const startMin = Math.min(creating.startMin, creating.currentMin);
@@ -1329,28 +1341,45 @@ export function TimelineColumn({
           className="absolute right-1 z-30"
           style={{
             top: newTaskInput.top,
-            height: Math.max(newTaskInput.height, 32),
+            height: 'auto',
+            minHeight: Math.max(newTaskInput.height, 32),
             left: showTimeLabels ? '3.25rem' : '2px',
           }}
         >
-          <div className="h-full rounded-[2px] border border-primary/40 bg-card shadow-sm flex items-start px-2 py-1 gap-1.5"
-               style={{ borderLeftWidth: '2px', borderLeftColor: 'hsl(var(--priority-0) / 0.4)' }}>
-            <div className="flex-1 min-w-0">
+          <div className="relative rounded-[2px] border border-primary/40 bg-card shadow-sm flex items-start px-2 py-1 gap-1.5"
+               style={{ borderLeftWidth: '2px', borderLeftColor: 'hsl(var(--priority-0) / 0.4)', minHeight: Math.max(newTaskInput.height, 32) }}>
+            <div className="flex-1 min-w-0 relative">
               <input
                 ref={newTaskRef}
                 value={newTaskTitle}
                 onChange={(e) => setNewTaskTitle(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleNewTaskSubmit();
-                  if (e.key === 'Escape') setNewTaskInput(null);
+                  if (e.key === 'Escape') { setNewTaskInput(null); setNewTaskCategory(undefined); }
                 }}
-                onBlur={handleNewTaskSubmit}
-                placeholder="Task name..."
+                onBlur={(e) => {
+                  // Don't submit if clicking on autocomplete suggestion
+                  if (e.relatedTarget?.closest?.('[data-tag-autocomplete]')) return;
+                  handleNewTaskSubmit();
+                }}
+                placeholder="Task name... (# for tags)"
                 className="w-full bg-transparent text-[12px] font-mono text-foreground placeholder:text-muted-foreground/30 focus:outline-none leading-tight"
               />
+              {newTaskCategory && (
+                <span className="text-[10px] font-mono text-primary/60">#{newTaskCategory}</span>
+              )}
               <span className="text-[10px] font-mono text-muted-foreground/40">
                 {formatTime12h(newTaskInput.time)} · {formatDuration(newTaskInput.duration)}
               </span>
+              <TagAutocomplete
+                inputValue={newTaskTitle}
+                inputRef={newTaskRef as React.RefObject<HTMLInputElement>}
+                onSelectTag={(cat: CategoryDef, cleaned: string) => {
+                  setNewTaskTitle(cleaned);
+                  setNewTaskCategory(cat.value);
+                }}
+                onSubmitAfterSelect={handleNewTaskSubmit}
+              />
             </div>
           </div>
         </div>

@@ -166,7 +166,7 @@ export function TagAutocomplete({ inputValue, onSelectTag, onSubmitAfterSelect, 
   if (suggestions.length === 0) return null;
 
   return (
-    <div className="absolute left-0 right-0 top-full mt-1 z-[60] bg-card border border-border rounded-md shadow-lg py-1 max-h-48 overflow-y-auto">
+    <div data-tag-autocomplete className="absolute left-0 right-0 top-full mt-1 z-[60] bg-card border border-border rounded-md shadow-lg py-1 max-h-48 overflow-y-auto">
       {suggestions.map((cat, i) => (
         <button
           key={cat.value}
