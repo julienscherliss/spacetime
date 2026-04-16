@@ -365,19 +365,55 @@ export function AppNav() {
             </button>
           )}
 
-          <button
-            onClick={() => window.dispatchEvent(new CustomEvent('toggle-settings'))}
-            className={`${navItemBase} ${navItemInactive} px-2 relative`}
-            title="Settings"
-          >
-            <Settings size={13} strokeWidth={1.5} />
-            <span className="text-[9px] text-muted-foreground/25">{getTzAbbr(useTimezoneStore.getState().timezone)}</span>
-            {newUserCount > 0 && (
-              <span className="absolute -top-1 -right-1.5 min-w-[14px] h-[14px] rounded-full bg-destructive flex items-center justify-center px-0.5">
-                <span className="text-[7px] font-mono font-bold text-destructive-foreground leading-none">{newUserCount}</span>
-              </span>
-            )}
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('toggle-settings'));
+                if (!localStorage.getItem('comfort-hint-dismissed')) {
+                  localStorage.setItem('comfort-hint-dismissed', 'true');
+                  setShowComfortHint(false);
+                }
+              }}
+              className={`${navItemBase} ${navItemInactive} px-2 relative`}
+              title="Settings"
+            >
+              <Settings size={13} strokeWidth={1.5} />
+              <span className="text-[9px] text-muted-foreground/25">{getTzAbbr(useTimezoneStore.getState().timezone)}</span>
+              {newUserCount > 0 && (
+                <span className="absolute -top-1 -right-1.5 min-w-[14px] h-[14px] rounded-full bg-destructive flex items-center justify-center px-0.5">
+                  <span className="text-[7px] font-mono font-bold text-destructive-foreground leading-none">{newUserCount}</span>
+                </span>
+              )}
+            </button>
+            <AnimatePresence>
+              {showComfortHint && (
+                <motion.div
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 4 }}
+                  transition={{ duration: 0.3, delay: 1.5 }}
+                  className="absolute bottom-full mb-2 right-0 w-52 z-50"
+                >
+                  <div className="bg-foreground text-background rounded-lg px-3 py-2.5 text-[10px] font-mono leading-relaxed shadow-lg relative">
+                    A bit hard to read?
+                    <br />
+                    <span className="text-primary font-semibold">Try Comfortable mode here ↓</span>
+                    <div className="absolute -bottom-1 right-4 w-2 h-2 bg-foreground rotate-45" />
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        localStorage.setItem('comfort-hint-dismissed', 'true');
+                        setShowComfortHint(false);
+                      }}
+                      className="absolute top-1 right-1 p-0.5 rounded hover:bg-background/20 transition-colors"
+                    >
+                      <X size={8} />
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
           <button
             onClick={signOut}
             className="flex items-center justify-center p-2 rounded-md text-muted-foreground/35 hover:text-foreground hover:bg-muted/30 transition-colors"
