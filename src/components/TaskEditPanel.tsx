@@ -1019,7 +1019,9 @@ export function TaskEditPanel() {
                   <button type="button"
                     onClick={(e) => {
                       e.stopPropagation();
+                      e.preventDefault();
                       if (!task) return;
+                      const taskTitle = task.title;
                       useLibraryStore.getState().addFromSchedule({
                         title: task.title,
                         duration: task.duration || 30,
@@ -1028,6 +1030,7 @@ export function TaskEditPanel() {
                       });
                       deleteTask(task.id);
                       setEditingTask(null);
+                      toast.success(`"${taskTitle}" sent to library`);
                     }}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-sm text-[9px] font-mono tracking-wider text-muted-foreground/50 hover:text-foreground hover:bg-muted/30 transition-colors"
                     title="Send to Library">
