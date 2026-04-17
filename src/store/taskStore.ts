@@ -56,6 +56,12 @@ export interface Task {
   archiveReason?: 'completed' | 'deleted';
   attachments?: { name: string; url: string; type: string }[];
   reminders?: number[];
+  /** ID of the parent Group container (if this task lives inside a Group). */
+  groupId?: string;
+  /** Original duration captured when the task entered a Group; drives squeeze. */
+  preferredDuration?: number;
+  /** Position of this task inside its parent Group (0-indexed). */
+  groupOrder?: number;
 }
 
 export interface DailyStats {
