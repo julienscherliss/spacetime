@@ -244,6 +244,50 @@ function resolveGeneratedLinkState(seriesTasks: Task[], occurrenceDate: string):
   };
 }
 
+/**
+ * INVARIANT: a task with `recurrence` set must always be `linked: true`.
+ * The only way for a recurring task to become "unlinked" is to stop repeating
+ * (recurrence stripped, type → 'one-time'). This prevents zombie series where
+ * the parent doesn't propagate edits but instances keep generating.
+ *
+ * Detached single occurrences (`detachedFromSeries: true`) are exempt — they
+ * are no longer part of the series at all.
+ */
+function enforceRecurringLinkInvariant(task: Task): Task {
+  if (!task.recurrence) return task;
+  if (task.detachedFromSeries) return task;
+  if (task.linked === true && task.linkedGroupId) return task;
+
+  const seriesId = task.seriesId || task.recurrenceParentId || task.id;
+  return {
+    ...task,
+    linked: true,
+    linkedGroupId: task.linkedGroupId || seriesId,
+    seriesId,
+  };
+}
+
+function normalizeAllTasks(tasks: Task[]): Task[] {
+  // First pass: ensure every recurring parent/instance has a stable linkedGroupId.
+  // Second pass: propagate that group id to all members of the same series.
+  const normalized = tasks.map(enforceRecurringLinkInvariant);
+  const seriesGroupIds = new Map<string, string>();
+  for (const t of normalized) {
+    if (!t.recurrence || t.detachedFromSeries) continue;
+    const seriesId = t.seriesId || t.recurrenceParentId || t.id;
+    if (t.linkedGroupId && !seriesGroupIds.has(seriesId)) {
+      seriesGroupIds.set(seriesId, t.linkedGroupId);
+    }
+  }
+  return normalized.map((t) => {
+    if (!t.recurrence || t.detachedFromSeries) return t;
+    const seriesId = t.seriesId || t.recurrenceParentId || t.id;
+    const groupId = seriesGroupIds.get(seriesId) || t.linkedGroupId || seriesId;
+    if (t.linked === true && t.linkedGroupId === groupId) return t;
+    return { ...t, linked: true, linkedGroupId: groupId, seriesId };
+  });
+}
+
 function addDays(dateStr: string, n: number): string {
   const d = new Date(dateStr + 'T12:00:00');
   d.setDate(d.getDate() + n);
