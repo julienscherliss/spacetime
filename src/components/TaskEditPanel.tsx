@@ -1049,6 +1049,19 @@ export function TaskEditPanel() {
                     <Archive size={12} strokeWidth={1.5} />
                     LIBRARY
                   </button>
+                  {/* Convert to Group — only for normal scheduled tasks not already in a Group */}
+                  {task && task.type !== 'group' && !task.groupId && task.time && task.duration && (
+                    <button type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowGroupPrompt(true);
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-sm text-[9px] font-mono tracking-wider text-muted-foreground/50 hover:text-foreground hover:bg-muted/30 transition-colors"
+                      title="Convert this task into a Group container">
+                      <Layers size={12} strokeWidth={1.5} />
+                      GROUP
+                    </button>
+                  )}
                   <div className="flex-1" />
                   <button type="button"
                     onClick={(e) => {
