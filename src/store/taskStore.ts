@@ -503,7 +503,7 @@ export const useTaskStore = create<TaskState>()(
       toggleRoutines: () => set((s) => ({ routinesEnabled: !s.routinesEnabled })),
 
       addTask: (taskData) => {
-        const task: Task = {
+        let task: Task = {
           ...taskData,
           id: generateId(),
           originalPriority: taskData.priority,
@@ -517,6 +517,7 @@ export const useTaskStore = create<TaskState>()(
           const { startMin: resolved } = findValidPosition(timeToMinutes(task.time), task.duration || 30, slots);
           task.time = minutesToTime(resolved);
         }
+        task = enforceRecurringLinkInvariant(task);
         set((s) => ({ tasks: [...s.tasks, task] }));
         return task.id;
       },
