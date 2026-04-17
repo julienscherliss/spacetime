@@ -229,7 +229,7 @@ export function TimelineColumn({
   onZoomToCluster,
 }: TimelineColumnProps) {
   const HOUR_HEIGHT = hourHeightProp ?? DEFAULT_HOUR_HEIGHT;
-  const { setEditingTask, reorderTask, moveTask, resizeTask, completeTask, canMoveTask, addTask, routinesEnabled } = useTaskStore();
+  const { setEditingTask, reorderTask, moveTask, resizeTask, completeTask, canMoveTask, addTask, routinesEnabled, createEmptyGroup } = useTaskStore();
   const allStoreTasks = useTaskStore((s) => s.tasks);
   const colRef = useRef<HTMLDivElement>(null);
   const [columnWidthPx, setColumnWidthPx] = useState<number | undefined>(undefined);
