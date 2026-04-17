@@ -25,21 +25,23 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary/20">
-      {/* Nav */}
-      <nav className="fixed top-0 inset-x-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/40">
-        <div className="max-w-5xl mx-auto flex items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-2">
-            <img src={faviconUrl} alt="Spacetime" className="w-4 h-4" />
-            <span className="font-display text-sm font-bold tracking-tight">spacetime</span>
+      {/* Nav — hidden in native mobile app */}
+      {!isNativePlatform() && (
+        <nav className="fixed top-0 inset-x-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/40">
+          <div className="max-w-5xl mx-auto flex items-center justify-between px-6 py-4">
+            <div className="flex items-center gap-2">
+              <img src={faviconUrl} alt="Spacetime" className="w-4 h-4" />
+              <span className="font-display text-sm font-bold tracking-tight">spacetime</span>
+            </div>
+            <button
+              onClick={() => navigate('/auth')}
+              className="text-[10px] font-mono tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+            >
+              SIGN IN
+            </button>
           </div>
-          <button
-            onClick={() => navigate('/auth')}
-            className="text-[10px] font-mono tracking-widest text-muted-foreground hover:text-foreground transition-colors"
-          >
-            SIGN IN
-          </button>
-        </div>
-      </nav>
+        </nav>
+      )}
 
       {/* Hero with gravity animation */}
       <section className="relative min-h-screen flex items-center justify-center px-6 overflow-hidden">
