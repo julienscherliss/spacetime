@@ -8,9 +8,11 @@ import { cancelWebNotificationsForTask } from '@/utils/webNotificationService';
 import { playUISound } from '@/utils/soundEngine';
 import { getOccupiedSlots, findValidPosition } from '@/utils/collisionDetection';
 import { timeToMinutes, minutesToTime } from '@/hooks/useCurrentTime';
+import { rebalanceGroup as computeRebalance, MIN_CHILD_DURATION } from '@/utils/groupRebalance';
+import { toast } from 'sonner';
 
 export type Priority = 0 | 1 | 2 | 3;
-export type TaskType = 'one-time' | 'recurring';
+export type TaskType = 'one-time' | 'recurring' | 'group';
 export type ViewMode = 'focus' | 'day' | 'week' | 'calendar';
 export type DaySubMode = 'timeline' | 'list';
 
