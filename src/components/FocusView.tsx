@@ -12,6 +12,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { autosizeTextarea } from '@/lib/autosizeTextarea';
 import { useTrackpadSwipe } from '@/hooks/useTrackpadSwipe';
+import { GroupListRow } from '@/components/GroupListRow';
 
 type FocusPanel = 'completed' | 'main' | 'detail';
 
