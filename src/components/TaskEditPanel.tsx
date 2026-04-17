@@ -133,14 +133,10 @@ export function TaskEditPanel() {
   const task = tasks.find((t) => t.id === editingTaskId);
   const [showGroupPrompt, setShowGroupPrompt] = useState(false);
 
-  // If the editing target is a Group, this panel shouldn't render the normal
-  // task editor (Groups have only a name + scheduler). The dedicated
-  // GroupEditPanel ships in a follow-up step; for now we close cleanly.
-  useEffect(() => {
-    if (task?.type === 'group') {
-      setEditingTask(null);
-    }
-  }, [task?.type, task?.id, setEditingTask]);
+  // If the editing target is a Group, the dedicated GroupEditPanel handles it.
+  // We need to render nothing here, but we MUST keep all hooks running in
+  // order — so the gate is applied at the JSX level, not as an early return.
+  const isGroup = task?.type === 'group';
 
   const [title, setTitle] = useState(task?.title || '');
   const [description, setDescription] = useState(task?.description || '');
@@ -420,7 +416,7 @@ export function TaskEditPanel() {
 
   return (
     <AnimatePresence>
-      {task && (
+      {task && !isGroup && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -1050,7 +1046,7 @@ export function TaskEditPanel() {
                     LIBRARY
                   </button>
                   {/* Convert to Group — only for normal scheduled tasks not already in a Group */}
-                  {task && task.type !== 'group' && !task.groupId && task.time && task.duration && (
+                  {task && !task.groupId && task.time && task.duration && (
                     <button type="button"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -1122,7 +1118,7 @@ export function TaskEditPanel() {
       )}
       <GroupNamePrompt
         open={showGroupPrompt}
-        contextLabel={task ? `Convert "${task.title}" into a Group. The task stays as the first item inside.` : undefined}
+        contextLabel="CONVERT TO GROUP"
         defaultName={task?.title ? `${task.title} block` : ''}
         confirmLabel="CREATE GROUP"
         onCancel={() => setShowGroupPrompt(false)}
