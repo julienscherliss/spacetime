@@ -138,7 +138,7 @@ describe('linked recurrence schedule propagation', () => {
     expect(tasks.find((task) => task.id === 'parent')).toMatchObject({ linked: false, linkedGroupId: undefined });
   });
 
-  it('unlinks only the selected occurrence when turning linked off', () => {
+  it('converts the selected occurrence to one-time when unlinking, dropping future instances', () => {
     const parent = makeTask({ id: 'parent', linked: true, seriesId: 'series-1', linkedGroupId: 'group-1', date: '2026-04-01' });
     const linkedA = makeTask({ id: 'linked-a', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: true, seriesId: 'series-1', linkedGroupId: 'group-1', date: '2026-04-02' });
     const linkedB = makeTask({ id: 'linked-b', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: true, seriesId: 'series-1', linkedGroupId: 'group-1', date: '2026-04-03' });
@@ -148,7 +148,9 @@ describe('linked recurrence schedule propagation', () => {
 
     const tasks = useTaskStore.getState().tasks;
     expect(tasks.find((task) => task.id === 'parent')).toMatchObject({ linked: true, linkedGroupId: 'group-1' });
-    expect(tasks.find((task) => task.id === 'linked-a')).toMatchObject({ linked: false, linkedGroupId: undefined });
-    expect(tasks.find((task) => task.id === 'linked-b')).toMatchObject({ linked: true, linkedGroupId: 'group-1' });
+    expect(tasks.find((task) => task.id === 'linked-a')).toMatchObject({
+      linked: false, linkedGroupId: undefined, recurrence: undefined, type: 'one-time',
+    });
+    expect(tasks.find((task) => task.id === 'linked-b')).toBeUndefined();
   });
 });
