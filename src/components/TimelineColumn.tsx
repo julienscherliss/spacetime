@@ -13,6 +13,7 @@ import { useCarryStore, isInScrollCooldown } from '@/store/carryStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { TimelineTaskBlock } from '@/components/TimelineTaskBlock';
 import { GroupTimelineBlock } from '@/components/GroupTimelineBlock';
+import { GroupNamePrompt } from '@/components/GroupNamePrompt';
 import { CondensedTaskBlock } from '@/components/CondensedTaskBlock';
 import { timeToMinutes, minutesToTime, snapTo15, formatTime12h, formatHour12h } from '@/hooks/useCurrentTime';
 import { Calendar as CalIcon, Check, Copy, Unlink, Link, XCircle, Info } from 'lucide-react';
@@ -228,7 +229,7 @@ export function TimelineColumn({
   onZoomToCluster,
 }: TimelineColumnProps) {
   const HOUR_HEIGHT = hourHeightProp ?? DEFAULT_HOUR_HEIGHT;
-  const { setEditingTask, reorderTask, moveTask, resizeTask, completeTask, canMoveTask, addTask, routinesEnabled } = useTaskStore();
+  const { setEditingTask, reorderTask, moveTask, resizeTask, completeTask, canMoveTask, addTask, routinesEnabled, createEmptyGroup } = useTaskStore();
   const allStoreTasks = useTaskStore((s) => s.tasks);
   const colRef = useRef<HTMLDivElement>(null);
   const [columnWidthPx, setColumnWidthPx] = useState<number | undefined>(undefined);
@@ -270,6 +271,19 @@ export function TimelineColumn({
   const newTaskRef = useRef<HTMLInputElement>(null);
   const proxyInputRef = useRef<HTMLInputElement>(null);
   const { hint: entryHint } = useEntryHint();
+
+  // Hold-to-create-Group: 1.5s pointer hold on empty timeline opens a name prompt.
+  const [groupPromptSlot, setGroupPromptSlot] = useState<{ time: string; duration: number } | null>(null);
+  const groupHoldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const groupHoldStartRef = useRef<{ x: number; y: number; startMin: number } | null>(null);
+
+  const cancelGroupHoldTimer = useCallback(() => {
+    if (groupHoldTimerRef.current) {
+      clearTimeout(groupHoldTimerRef.current);
+      groupHoldTimerRef.current = null;
+    }
+    groupHoldStartRef.current = null;
+  }, []);
 
   // When the real input mounts, steal focus from the proxy input
   useEffect(() => {
@@ -351,6 +365,45 @@ export function TimelineColumn({
     const taskDuration = parseInt(e.dataTransfer.getData('taskDuration') || '30', 10);
     const libraryTaskId = e.dataTransfer.getData('libraryTaskId');
     const sourceDate = e.dataTransfer.getData('sourceDate');
+
+    // ── Drop INTO a Group (Library + scheduled task path) ──
+    const dropTargetEl = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
+    const groupEl = dropTargetEl?.closest('[data-group-block]') as HTMLElement | null;
+    const dropGroupId = groupEl?.getAttribute('data-group-id') || null;
+
+    if (dropGroupId && dropGroupId !== taskId) {
+      const { addTaskToGroup } = useTaskStore.getState();
+      if (libraryTaskId) {
+        const title = e.dataTransfer.getData('libraryTitle');
+        const dur = parseInt(e.dataTransfer.getData('libraryDuration') || '30', 10);
+        const newId = addTask({
+          title,
+          date,
+          time: '09:00',
+          duration: dur,
+          priority: 0,
+          type: 'one-time',
+        });
+        const ok = addTaskToGroup(newId, dropGroupId);
+        if (!ok) {
+          // Revert by removing the just-created task
+          useTaskStore.getState().deleteTask(newId);
+        } else {
+          useLibraryStore.getState().removeItem(libraryTaskId);
+        }
+        setDragOverTime(null);
+        return;
+      }
+      if (taskId) {
+        const ok = addTaskToGroup(taskId, dropGroupId);
+        if (!ok) {
+          setDragMsg("Couldn't add to Group");
+          setTimeout(() => setDragMsg(''), 2000);
+        }
+        setDragOverTime(null);
+        return;
+      }
+    }
 
     const mins = getMinutesFromY(e.clientY - dragOffsetRef.current);
     const snapped = snapTo15(mins);
@@ -495,7 +548,23 @@ export function TimelineColumn({
     const mins = getMinutesFromY(e.clientY);
     const snapped = snapTo15(mins);
     setCreating({ startMin: snapped, currentMin: snapped });
-  }, [getMinutesFromY, newTaskInput]);
+
+    // Arm the hold-to-create-Group timer. If the user holds for 1.5s without
+    // dragging more than 4px in any direction, we promote the gesture to a
+    // "new Group" prompt instead of a normal task drag-create.
+    cancelGroupHoldTimer();
+    groupHoldStartRef.current = { x: e.clientX, y: e.clientY, startMin: snapped };
+    groupHoldTimerRef.current = setTimeout(() => {
+      const start = groupHoldStartRef.current;
+      groupHoldTimerRef.current = null;
+      if (!start) return;
+      // Default Group span: 60 min, snapped to the slot the user pressed on.
+      const time = minutesToTime(start.startMin);
+      setCreating(null);
+      setGroupPromptSlot({ time, duration: 60 });
+      if (navigator.vibrate) navigator.vibrate(20);
+    }, 1500);
+  }, [getMinutesFromY, newTaskInput, cancelGroupHoldTimer]);
 
   // Drag-to-create: touch handlers
   // Strategy: require a 500ms hold before activating create mode.
@@ -623,9 +692,17 @@ export function TimelineColumn({
     const handleMouseMove = (e: MouseEvent) => {
       const mins = getMinutesFromY(e.clientY);
       const snapped = snapTo15(mins);
+      // Any meaningful movement cancels the hold-to-create-Group timer.
+      const start = groupHoldStartRef.current;
+      if (start) {
+        const dx = Math.abs(e.clientX - start.x);
+        const dy = Math.abs(e.clientY - start.y);
+        if (dx > 4 || dy > 4) cancelGroupHoldTimer();
+      }
       setCreating(prev => prev ? { ...prev, currentMin: snapped } : null);
     };
     const handleMouseUp = () => {
+      cancelGroupHoldTimer();
       if (!creating) return;
       const startMin = Math.min(creating.startMin, creating.currentMin);
       const endMin = Math.max(creating.startMin, creating.currentMin);
@@ -645,7 +722,7 @@ export function TimelineColumn({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [creating, getMinutesFromY, HOUR_HEIGHT]);
+  }, [creating, getMinutesFromY, HOUR_HEIGHT, cancelGroupHoldTimer]);
 
   const handleNewTaskSubmit = useCallback(() => {
     const cleanTitle = newTaskTitle.replace(/#\S*$/, '').replace(/\/\/\S*$/, '').replace(/@\S*$/, '').trim();
@@ -817,6 +894,47 @@ export function TimelineColumn({
         touch.clientY >= rect.top &&
         touch.clientY <= rect.bottom
       ) {
+        // ── Drop INTO a Group? ──
+        const dropEl = document.elementFromPoint(touch.clientX, touch.clientY) as HTMLElement | null;
+        const groupEl = dropEl?.closest('[data-group-block]') as HTMLElement | null;
+        const dropGroupId = groupEl?.getAttribute('data-group-id') || null;
+
+        if (dropGroupId && (dragging.type !== 'task' || dropGroupId !== dragging.id)) {
+          const { addTaskToGroup } = useTaskStore.getState();
+          if (dragging.type === 'library') {
+            const newId = addTask({
+              title: dragging.title,
+              date,
+              time: '09:00',
+              duration: dragging.duration,
+              priority: 0,
+              type: 'one-time',
+            });
+            const ok = addTaskToGroup(newId, dropGroupId);
+            if (!ok) {
+              useTaskStore.getState().deleteTask(newId);
+            } else if (dragging.id) {
+              useLibraryStore.getState().removeItem(dragging.id);
+            }
+          } else if (dragging.type === 'waitingRoom') {
+            const { updateTask } = useTaskStore.getState();
+            updateTask(dragging.id, { inWaitingRoom: false, date, time: '09:00' } as any);
+            const ok = addTaskToGroup(dragging.id, dropGroupId);
+            if (!ok) {
+              setDragMsg("Couldn't add to Group");
+              setTimeout(() => setDragMsg(''), 2000);
+            }
+          } else if (dragging.type === 'task') {
+            const ok = addTaskToGroup(dragging.id, dropGroupId);
+            if (!ok) {
+              setDragMsg("Couldn't add to Group");
+              setTimeout(() => setDragMsg(''), 2000);
+            }
+          }
+          useTouchDragStore.getState().endDrag();
+          return;
+        }
+
         // Use dragOffset to place task at its top edge, not finger position
         const y = touch.clientY - rect.top - dragOffsetRef.current;
         const mins = START_HOUR * 60 + (y / HOUR_HEIGHT) * 60;
@@ -1565,6 +1683,24 @@ export function TimelineColumn({
           const val = (e.target as HTMLInputElement).value;
           setNewTaskTitle(val);
           (e.target as HTMLInputElement).value = '';
+        }}
+      />
+
+      <GroupNamePrompt
+        open={!!groupPromptSlot}
+        contextLabel="NEW GROUP"
+        confirmLabel="CREATE GROUP"
+        onCancel={() => setGroupPromptSlot(null)}
+        onConfirm={(name) => {
+          if (groupPromptSlot) {
+            createEmptyGroup({
+              name,
+              date,
+              time: groupPromptSlot.time,
+              duration: groupPromptSlot.duration,
+            });
+          }
+          setGroupPromptSlot(null);
         }}
       />
     </div>

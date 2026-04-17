@@ -100,7 +100,7 @@ interface TaskState {
   setListReturnZoom: (zoom: ListReturnZoom | null) => void;
   setShowListReturn: (show: boolean) => void;
   toggleRoutines: () => void;
-  addTask: (task: Omit<Task, 'id' | 'createdAt' | 'completed' | 'moveCount' | 'originalPriority'> & { isRoutine?: boolean }) => void;
+  addTask: (task: Omit<Task, 'id' | 'createdAt' | 'completed' | 'moveCount' | 'originalPriority'> & { isRoutine?: boolean }) => string;
   updateTask: (id: string, updates: Partial<Task>) => void;
   updateFutureInstances: (taskId: string, fromDate: string, updates: Partial<Task>) => void;
   completeTask: (id: string) => void;
@@ -409,6 +409,7 @@ export const useTaskStore = create<TaskState>()(
           task.time = minutesToTime(resolved);
         }
         set((s) => ({ tasks: [...s.tasks, task] }));
+        return task.id;
       },
 
 
