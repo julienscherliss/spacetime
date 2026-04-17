@@ -297,9 +297,11 @@ export function TaskEditPanel() {
       recurrence,
       type: recurrence ? 'recurring' as const : 'one-time' as const,
       isRoutine: recurrence ? isRoutine : false,
-      linked: recurrence ? isLinked : false,
-      linkedGroupId: (recurrence && isLinked) ? (task?.linkedGroupId || task?.id || seriesId) : undefined,
-      detachedFromSeries: (recurrence && !isLinked && task?.recurrenceParentId) ? true : false,
+      // Invariant: any task with recurrence must be linked. Unlinking now means
+      // converting to a one-time task (handled by the dedicated UNLINK action).
+      linked: recurrence ? true : false,
+      linkedGroupId: recurrence ? (task?.linkedGroupId || task?.id || seriesId) : undefined,
+      detachedFromSeries: false,
       dueDate: dueDate || undefined,
       category: taskCategory || undefined,
       reminders: reminders.length > 0 ? reminders : undefined,
