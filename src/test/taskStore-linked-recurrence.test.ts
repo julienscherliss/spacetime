@@ -17,9 +17,9 @@ function makeTask(overrides: Partial<Task>): Task {
     createdAt: '2026-04-01T00:00:00.000Z',
     moveCount: 0,
     recurrence,
-    linked: false,
+    linked: true,
     seriesId: 'series-1',
-    linkedGroupId: undefined,
+    linkedGroupId: 'series-1',
     detachedFromSeries: false,
     ...overrides,
   };
@@ -44,51 +44,50 @@ describe('linked recurrence schedule propagation', () => {
     resetStore([]);
   });
 
-  it('moves only the active instance when the repeating task is unlinked', () => {
-    const parent = makeTask({ id: 'parent', linked: false, seriesId: 'series-1', linkedGroupId: undefined, date: '2026-04-01' });
-    const instance = makeTask({ id: 'instance', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: false, seriesId: 'series-1', linkedGroupId: undefined, date: '2026-04-02' });
+  it('treats every recurring task as linked (no zombie unlinked instances)', () => {
+    // Even legacy data seeded with linked=false on a recurring task is normalized
+    // back to linked at the next write.
+    const parent = makeTask({ id: 'parent', linked: false, linkedGroupId: undefined });
 
-    resetStore([parent, instance]);
-    useTaskStore.getState().reorderTask('instance', '14:00');
+    resetStore([parent]);
+    useTaskStore.getState().reorderTask('parent', '14:00');
 
     const tasks = useTaskStore.getState().tasks;
-    expect(tasks.find((task) => task.id === 'instance')?.time).toBe('14:00');
-    expect(tasks.find((task) => task.id === 'parent')?.time).toBe('13:00');
+    const updated = tasks.find((t) => t.id === 'parent')!;
+    expect(updated.linked).toBe(true);
+    expect(updated.linkedGroupId).toBeTruthy();
   });
 
-  it('propagates time changes across truly linked instances in the same recurrence series', () => {
-    const parent = makeTask({ id: 'parent', linked: true, seriesId: 'series-1', linkedGroupId: 'group-1', date: '2026-04-01' });
-    const linkedA = makeTask({ id: 'linked-a', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: true, seriesId: 'series-1', linkedGroupId: 'group-1', date: '2026-04-02' });
-    const linkedB = makeTask({ id: 'linked-b', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: true, seriesId: 'series-1', linkedGroupId: 'group-1', date: '2026-04-03' });
-    const detached = makeTask({ id: 'detached', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: false, seriesId: 'series-1', linkedGroupId: undefined, date: '2026-04-04' });
+  it('propagates time changes across linked instances in the same recurrence series', () => {
+    const parent = makeTask({ id: 'parent', linkedGroupId: 'group-1', date: '2026-04-01' });
+    const linkedA = makeTask({ id: 'linked-a', recurrenceParentId: 'parent', isRecurrenceInstance: true, linkedGroupId: 'group-1', date: '2026-04-02' });
+    const linkedB = makeTask({ id: 'linked-b', recurrenceParentId: 'parent', isRecurrenceInstance: true, linkedGroupId: 'group-1', date: '2026-04-03' });
 
-    resetStore([parent, linkedA, linkedB, detached]);
+    resetStore([parent, linkedA, linkedB]);
     useTaskStore.getState().reorderTask('linked-a', '14:00');
 
     const tasks = useTaskStore.getState().tasks;
     expect(tasks.find((task) => task.id === 'parent')?.time).toBe('14:00');
     expect(tasks.find((task) => task.id === 'linked-a')?.time).toBe('14:00');
     expect(tasks.find((task) => task.id === 'linked-b')?.time).toBe('14:00');
-    expect(tasks.find((task) => task.id === 'detached')?.time).toBe('13:00');
   });
 
-  it('propagates duration and start-time changes only across linked instances', () => {
-    const parent = makeTask({ id: 'parent', linked: true, seriesId: 'series-1', linkedGroupId: 'group-1', date: '2026-04-01' });
-    const linked = makeTask({ id: 'linked', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: true, seriesId: 'series-1', linkedGroupId: 'group-1', date: '2026-04-02' });
-    const detached = makeTask({ id: 'detached', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: false, seriesId: 'series-1', linkedGroupId: undefined, date: '2026-04-03' });
+  it('propagates duration and start-time changes across linked instances', () => {
+    const parent = makeTask({ id: 'parent', linkedGroupId: 'group-1', date: '2026-04-01' });
+    const linked = makeTask({ id: 'linked', recurrenceParentId: 'parent', isRecurrenceInstance: true, linkedGroupId: 'group-1', date: '2026-04-02' });
 
-    resetStore([parent, linked, detached]);
+    resetStore([parent, linked]);
     useTaskStore.getState().resizeTask('linked', '15:00', 45);
 
     const tasks = useTaskStore.getState().tasks;
     expect(tasks.find((task) => task.id === 'parent')).toMatchObject({ time: '15:00', duration: 45 });
     expect(tasks.find((task) => task.id === 'linked')).toMatchObject({ time: '15:00', duration: 45 });
-    expect(tasks.find((task) => task.id === 'detached')).toMatchObject({ time: '13:00', duration: 30 });
   });
+
   it('does NOT propagate across different linkedGroupIds even if seriesId matches', () => {
-    const parent = makeTask({ id: 'parent', linked: true, seriesId: 'series-1', linkedGroupId: 'group-A', date: '2026-04-01' });
-    const sameGroup = makeTask({ id: 'same-group', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: true, seriesId: 'series-1', linkedGroupId: 'group-A', date: '2026-04-02' });
-    const diffGroup = makeTask({ id: 'diff-group', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: true, seriesId: 'series-1', linkedGroupId: 'group-B', date: '2026-04-03' });
+    const parent = makeTask({ id: 'parent', linkedGroupId: 'group-A', date: '2026-04-01' });
+    const sameGroup = makeTask({ id: 'same-group', recurrenceParentId: 'parent', isRecurrenceInstance: true, linkedGroupId: 'group-A', date: '2026-04-02' });
+    const diffGroup = makeTask({ id: 'diff-group', recurrenceParentId: 'parent', isRecurrenceInstance: true, linkedGroupId: 'group-B', date: '2026-04-03' });
 
     resetStore([parent, sameGroup, diffGroup]);
     useTaskStore.getState().reorderTask('parent', '15:00');
@@ -99,52 +98,34 @@ describe('linked recurrence schedule propagation', () => {
     expect(tasks.find((task) => task.id === 'diff-group')?.time).toBe('13:00');
   });
 
-  it('links this and following when started from a later occurrence', () => {
-    const parent = makeTask({ id: 'parent', linked: false, seriesId: 'series-1', linkedGroupId: undefined, date: '2026-04-01' });
-    const tuesday = makeTask({ id: 'tuesday', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: false, seriesId: 'series-1', linkedGroupId: undefined, date: '2026-04-02' });
-    const wednesday = makeTask({ id: 'wednesday', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: false, seriesId: 'series-1', linkedGroupId: undefined, date: '2026-04-03' });
-    const thursday = makeTask({ id: 'thursday', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: false, seriesId: 'series-1', linkedGroupId: undefined, date: '2026-04-04' });
+  it('keeps generated future instances linked under the same group', () => {
+    const parent = makeTask({ id: 'parent', linkedGroupId: 'series-1', date: '2026-04-01' });
 
-    resetStore([parent, tuesday, wednesday, thursday]);
-    useTaskStore.getState().linkSeriesFromDate('wednesday', '2026-04-03', true);
-    useTaskStore.getState().reorderTask('wednesday', '16:00');
+    resetStore([parent]);
+    useTaskStore.getState().generateRecurringInstances('2026-04-02', '2026-04-03');
 
     const tasks = useTaskStore.getState().tasks;
-    expect(tasks.find((task) => task.id === 'parent')).toMatchObject({ linked: false, time: '13:00' });
-    expect(tasks.find((task) => task.id === 'tuesday')).toMatchObject({ linked: false, time: '13:00' });
-    expect(tasks.find((task) => task.id === 'wednesday')).toMatchObject({ linked: true, linkedGroupId: 'wednesday', time: '16:00' });
-    expect(tasks.find((task) => task.id === 'thursday')).toMatchObject({ linked: true, linkedGroupId: 'wednesday', time: '16:00' });
+    const generated = tasks.filter((t) => t.recurrenceParentId === 'parent');
+    expect(generated.length).toBeGreaterThan(0);
+    for (const inst of generated) {
+      expect(inst.linked).toBe(true);
+      expect(inst.linkedGroupId).toBe('series-1');
+    }
   });
 
-  it('keeps generated future instances linked after a mid-series link point', () => {
-    const parent = makeTask({ id: 'parent', linked: false, seriesId: 'series-1', linkedGroupId: undefined, date: '2026-04-01' });
-    const tuesday = makeTask({ id: 'tuesday', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: false, seriesId: 'series-1', linkedGroupId: undefined, date: '2026-04-02' });
-    const wednesday = makeTask({ id: 'wednesday', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: false, seriesId: 'series-1', linkedGroupId: undefined, date: '2026-04-03' });
-
-    resetStore([parent, tuesday, wednesday]);
-    useTaskStore.getState().linkSeriesFromDate('wednesday', '2026-04-03', true);
-    useTaskStore.getState().generateRecurringInstances('2026-04-04', '2026-04-05');
-
-    const tasks = useTaskStore.getState().tasks;
-    const thursday = tasks.find((task) => task.date === '2026-04-04');
-    const friday = tasks.find((task) => task.date === '2026-04-05');
-
-    expect(thursday).toMatchObject({ linked: true, linkedGroupId: 'wednesday', recurrenceParentId: 'parent' });
-    expect(friday).toMatchObject({ linked: true, linkedGroupId: 'wednesday', recurrenceParentId: 'parent' });
-    expect(tasks.find((task) => task.id === 'parent')).toMatchObject({ linked: false, linkedGroupId: undefined });
-  });
-
-  it('unlinks only the selected occurrence when turning linked off', () => {
-    const parent = makeTask({ id: 'parent', linked: true, seriesId: 'series-1', linkedGroupId: 'group-1', date: '2026-04-01' });
-    const linkedA = makeTask({ id: 'linked-a', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: true, seriesId: 'series-1', linkedGroupId: 'group-1', date: '2026-04-02' });
-    const linkedB = makeTask({ id: 'linked-b', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: true, seriesId: 'series-1', linkedGroupId: 'group-1', date: '2026-04-03' });
+  it('converts the selected occurrence to one-time when unlinking, dropping future instances', () => {
+    const parent = makeTask({ id: 'parent', linkedGroupId: 'group-1', date: '2026-04-01' });
+    const linkedA = makeTask({ id: 'linked-a', recurrenceParentId: 'parent', isRecurrenceInstance: true, linkedGroupId: 'group-1', date: '2026-04-02' });
+    const linkedB = makeTask({ id: 'linked-b', recurrenceParentId: 'parent', isRecurrenceInstance: true, linkedGroupId: 'group-1', date: '2026-04-03' });
 
     resetStore([parent, linkedA, linkedB]);
     useTaskStore.getState().linkSeriesFromDate('linked-a', '2026-04-02', false);
 
     const tasks = useTaskStore.getState().tasks;
     expect(tasks.find((task) => task.id === 'parent')).toMatchObject({ linked: true, linkedGroupId: 'group-1' });
-    expect(tasks.find((task) => task.id === 'linked-a')).toMatchObject({ linked: false, linkedGroupId: undefined });
-    expect(tasks.find((task) => task.id === 'linked-b')).toMatchObject({ linked: true, linkedGroupId: 'group-1' });
+    expect(tasks.find((task) => task.id === 'linked-a')).toMatchObject({
+      linked: false, linkedGroupId: undefined, recurrence: undefined, type: 'one-time',
+    });
+    expect(tasks.find((task) => task.id === 'linked-b')).toBeUndefined();
   });
 });

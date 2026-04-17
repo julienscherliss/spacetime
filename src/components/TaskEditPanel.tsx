@@ -182,7 +182,7 @@ export function TaskEditPanel() {
     return [{ week: 1, day: new Date().getDay() }];
   });
   const [isRoutine, setIsRoutine] = useState(task?.isRoutine !== false && task?.type === 'recurring');
-  const [isLinked, setIsLinked] = useState(task?.linked || false);
+  const [isLinked, setIsLinked] = useState(task?.recurrence ? true : (task?.linked || false));
   const [showRecurrence, setShowRecurrence] = useState(false);
   const [showCatPicker, setShowCatPicker] = useState(false);
   const [taskCategory, setTaskCategory] = useState(task?.category || '');
@@ -214,7 +214,7 @@ export function TaskEditPanel() {
       setSubtasks(task.subtasks || []);
       setPriority(task.priority);
       setIsRoutine(task.isRoutine !== false && task.type === 'recurring');
-      setIsLinked(task.linked || false);
+      setIsLinked(task.recurrence ? true : (task.linked || false));
       setRecurrenceType(recurrenceToType(task.recurrence));
       const taskDay = task.date ? new Date(task.date + 'T12:00:00').getDay() : new Date().getDay();
       setWeeklyDays(
@@ -297,9 +297,11 @@ export function TaskEditPanel() {
       recurrence,
       type: recurrence ? 'recurring' as const : 'one-time' as const,
       isRoutine: recurrence ? isRoutine : false,
-      linked: recurrence ? isLinked : false,
-      linkedGroupId: (recurrence && isLinked) ? (task?.linkedGroupId || task?.id || seriesId) : undefined,
-      detachedFromSeries: (recurrence && !isLinked && task?.recurrenceParentId) ? true : false,
+      // Invariant: any task with recurrence must be linked. Unlinking now means
+      // converting to a one-time task (handled by the dedicated UNLINK action).
+      linked: recurrence ? true : false,
+      linkedGroupId: recurrence ? (task?.linkedGroupId || task?.id || seriesId) : undefined,
+      detachedFromSeries: false,
       dueDate: dueDate || undefined,
       category: taskCategory || undefined,
       reminders: reminders.length > 0 ? reminders : undefined,

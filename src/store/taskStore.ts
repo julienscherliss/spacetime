@@ -244,6 +244,50 @@ function resolveGeneratedLinkState(seriesTasks: Task[], occurrenceDate: string):
   };
 }
 
+/**
+ * INVARIANT: a task with `recurrence` set must always be `linked: true`.
+ * The only way for a recurring task to become "unlinked" is to stop repeating
+ * (recurrence stripped, type → 'one-time'). This prevents zombie series where
+ * the parent doesn't propagate edits but instances keep generating.
+ *
+ * Detached single occurrences (`detachedFromSeries: true`) are exempt — they
+ * are no longer part of the series at all.
+ */
+function enforceRecurringLinkInvariant(task: Task): Task {
+  if (!task.recurrence) return task;
+  if (task.detachedFromSeries) return task;
+  if (task.linked === true && task.linkedGroupId) return task;
+
+  const seriesId = task.seriesId || task.recurrenceParentId || task.id;
+  return {
+    ...task,
+    linked: true,
+    linkedGroupId: task.linkedGroupId || seriesId,
+    seriesId,
+  };
+}
+
+function normalizeAllTasks(tasks: Task[]): Task[] {
+  // First pass: ensure every recurring parent/instance has a stable linkedGroupId.
+  // Second pass: propagate that group id to all members of the same series.
+  const normalized = tasks.map(enforceRecurringLinkInvariant);
+  const seriesGroupIds = new Map<string, string>();
+  for (const t of normalized) {
+    if (!t.recurrence || t.detachedFromSeries) continue;
+    const seriesId = t.seriesId || t.recurrenceParentId || t.id;
+    if (t.linkedGroupId && !seriesGroupIds.has(seriesId)) {
+      seriesGroupIds.set(seriesId, t.linkedGroupId);
+    }
+  }
+  return normalized.map((t) => {
+    if (!t.recurrence || t.detachedFromSeries) return t;
+    const seriesId = t.seriesId || t.recurrenceParentId || t.id;
+    const groupId = seriesGroupIds.get(seriesId) || t.linkedGroupId || seriesId;
+    if (t.linked === true && t.linkedGroupId === groupId) return t;
+    return { ...t, linked: true, linkedGroupId: groupId, seriesId };
+  });
+}
+
 function addDays(dateStr: string, n: number): string {
   const d = new Date(dateStr + 'T12:00:00');
   d.setDate(d.getDate() + n);
@@ -459,7 +503,7 @@ export const useTaskStore = create<TaskState>()(
       toggleRoutines: () => set((s) => ({ routinesEnabled: !s.routinesEnabled })),
 
       addTask: (taskData) => {
-        const task: Task = {
+        let task: Task = {
           ...taskData,
           id: generateId(),
           originalPriority: taskData.priority,
@@ -473,6 +517,7 @@ export const useTaskStore = create<TaskState>()(
           const { startMin: resolved } = findValidPosition(timeToMinutes(task.time), task.duration || 30, slots);
           task.time = minutesToTime(resolved);
         }
+        task = enforceRecurringLinkInvariant(task);
         set((s) => ({ tasks: [...s.tasks, task] }));
         return task.id;
       },
@@ -540,7 +585,7 @@ export const useTaskStore = create<TaskState>()(
                   merged.priority = effectiveMin;
                 }
               }
-              return merged;
+              return enforceRecurringLinkInvariant(merged);
             }),
           };
         });
@@ -561,7 +606,7 @@ export const useTaskStore = create<TaskState>()(
             if (t.date < fromDate && t.id !== taskId) return t;
 
             if (t.id === taskId || t.date >= fromDate) {
-              return { ...t, ...resolvedUpdates };
+              return enforceRecurringLinkInvariant({ ...t, ...resolvedUpdates });
             }
 
             return t;
@@ -725,21 +770,21 @@ export const useTaskStore = create<TaskState>()(
         set((s) => ({
           tasks: s.tasks.map((t) => {
             if (t.id === id) {
-              return {
+              return enforceRecurringLinkInvariant({
                 ...t,
                 date: newDate,
                 time: finalTime ?? t.time,
                 priority: newPriority,
                 moveCount: crossDay ? t.moveCount + 1 : t.moveCount,
                 inWaitingRoom: false,
-              };
+              });
             }
 
             if (targetIds.has(t.id)) {
-              return {
+              return enforceRecurringLinkInvariant({
                 ...t,
                 time: finalTime ?? t.time,
-              };
+              });
             }
 
             return t;
@@ -761,7 +806,7 @@ export const useTaskStore = create<TaskState>()(
         set((s) => ({
           tasks: s.tasks.map((t) =>
             targetIds.has(t.id)
-              ? { ...t, time: newTime, duration: Math.max(15, newDuration) }
+              ? enforceRecurringLinkInvariant({ ...t, time: newTime, duration: Math.max(15, newDuration) })
               : t
           ),
         }));
@@ -789,7 +834,7 @@ export const useTaskStore = create<TaskState>()(
 
         set((s) => ({
           tasks: s.tasks.map((t) =>
-            targetIds.has(t.id) ? { ...t, time: newTime } : t
+            targetIds.has(t.id) ? enforceRecurringLinkInvariant({ ...t, time: newTime }) : t
           ),
         }));
 
@@ -933,7 +978,7 @@ export const useTaskStore = create<TaskState>()(
 
               const newGroupOrTaskId = generateId();
 
-              nextTasks.push({
+              nextTasks.push(enforceRecurringLinkInvariant({
                 ...parent,
                 id: newGroupOrTaskId,
                 date: occurrenceDate,
@@ -949,7 +994,7 @@ export const useTaskStore = create<TaskState>()(
                 type: isGroupParent ? 'group' : deriveType(parent.recurrence),
                 linked: linkState.linked,
                 linkedGroupId: linkState.linkedGroupId,
-              });
+              }));
 
               // Clone children for the new Group occurrence (live template).
               if (isGroupParent && childTemplate.length > 0) {
@@ -985,28 +1030,46 @@ export const useTaskStore = create<TaskState>()(
           if (!sourceTask) return s;
 
           const seriesId = getTaskSeriesId(sourceTask);
-          const nextGroupId = linked ? (sourceTask.linkedGroupId || sourceTask.id) : undefined;
 
+          // Unlinking a recurring task is no longer "leave it as a zombie series".
+          // It means: stop repeating from this occurrence forward. The selected
+          // task becomes a one-time event; future generated instances are removed.
+          if (!linked) {
+            const remaining: Task[] = [];
+            for (const task of s.tasks) {
+              if (!isTaskInSameSeries(task, seriesId)) { remaining.push(task); continue; }
+              // Drop future occurrences of this series (other than the selected task)
+              if (task.id !== taskId && task.date >= fromDate) continue;
+              if (task.id === taskId) {
+                remaining.push({
+                  ...task,
+                  recurrence: undefined,
+                  type: task.type === 'group' ? 'group' : 'one-time',
+                  isRecurrenceInstance: false,
+                  recurrenceParentId: undefined,
+                  seriesId: undefined,
+                  linked: false,
+                  linkedGroupId: undefined,
+                  detachedFromSeries: true,
+                  isRoutine: false,
+                });
+              } else {
+                remaining.push(task);
+              }
+            }
+            return { tasks: remaining };
+          }
+
+          const nextGroupId = sourceTask.linkedGroupId || sourceTask.id;
           return {
             tasks: s.tasks.map((task) => {
               if (!isTaskInSameSeries(task, seriesId)) return task;
-
-              if (!linked) {
-                if (task.id !== taskId) return task;
-                return {
-                  ...task,
-                  linked: false,
-                  linkedGroupId: undefined,
-                };
-              }
-
               if (task.date < fromDate && task.id !== taskId) return task;
-
-              return {
+              return enforceRecurringLinkInvariant({
                 ...task,
                 linked: true,
                 linkedGroupId: nextGroupId,
-              };
+              });
             }),
           };
         }),
@@ -1339,6 +1402,12 @@ export const useTaskStore = create<TaskState>()(
     }),
     {
       name: 'task-storage',
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        // Backfill: any recurring task left "unlinked" by legacy code paths
+        // is normalized to be linked (recurring => linked is now an invariant).
+        state.tasks = normalizeAllTasks(state.tasks);
+      },
     }
   )
 );
