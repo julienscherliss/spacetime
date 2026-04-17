@@ -978,9 +978,10 @@ function MainFocusPanel({
   const { completeTask } = useTaskStore();
 
   // Group context: how many siblings are done, total siblings.
-  const groupSiblings = useTaskStore((s) =>
-    parentGroup ? s.tasks.filter((t) => t.groupId === parentGroup.id && !t.archivedAt) : [],
-  );
+  const allTasks = useTaskStore((s) => s.tasks);
+  const groupSiblings = parentGroup
+    ? allTasks.filter((t) => t.groupId === parentGroup.id && !t.archivedAt)
+    : [];
   const groupDone = groupSiblings.filter((t) => t.completed).length;
   const groupTotal = groupSiblings.length;
 
