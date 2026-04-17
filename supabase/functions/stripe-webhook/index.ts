@@ -38,8 +38,13 @@ Deno.serve(async (req) => {
     }
   }
 
+  // Live-mode safety: warn loudly if a test-mode event hits the live webhook
+  if ((event as any).livemode === false) {
+    console.warn("[stripe-webhook] Received TEST-MODE event on live webhook:", event.type, event.id);
+  }
+
   try {
-    console.log("Processing webhook event:", event.type);
+    console.log("Processing webhook event:", event.type, "livemode=", (event as any).livemode);
 
     switch (event.type) {
       case "checkout.session.completed": {
@@ -133,9 +138,46 @@ Deno.serve(async (req) => {
         }
         break;
       }
+      case "invoice.paid": {
+        // Fired on initial purchase AND every renewal. Ensures access stays active.
+        const invoice = event.data.object as Stripe.Invoice;
+        const customerId = invoice.customer as string;
+        const subscriptionId = (invoice as any).subscription as string | null;
+        if (!subscriptionId) break;
+
+        const { data: subRow } = await supabase
+          .from("subscriptions")
+          .select("user_id, status")
+          .eq("stripe_customer_id", customerId)
+          .maybeSingle();
+
+        if (subRow) {
+          // Only flip to "active" if not in a "cancelling" wind-down state
+          const newStatus = subRow.status === "cancelling" ? "cancelling" : "active";
+          const periodEnd = safeTimestamp((invoice as any).period_end);
+          await supabase.from("subscriptions").update({
+            status: newStatus,
+            stripe_subscription_id: subscriptionId,
+            ...(periodEnd ? { current_period_end: periodEnd } : {}),
+            updated_at: new Date().toISOString(),
+          }).eq("user_id", subRow.user_id);
+          console.log("Invoice paid → access confirmed:", { userId: subRow.user_id, status: newStatus });
+        } else {
+          console.warn("invoice.paid for unknown customer:", customerId);
+        }
+        break;
+      }
+      case "invoice.payment_failed": {
+        const invoice = event.data.object as Stripe.Invoice;
+        const customerId = invoice.customer as string;
+        console.warn("Invoice payment failed:", { customerId, invoiceId: invoice.id });
+        // We do NOT immediately revoke access — Stripe will retry per dunning settings,
+        // and customer.subscription.updated will move status to past_due/cancelled if it ultimately fails.
+        break;
+      }
     }
   } catch (err) {
-    console.error("Webhook processing error:", err);
+    console.error("Webhook processing error:", err, "event:", event.type, event.id);
   }
 
   return new Response(JSON.stringify({ received: true }), {
