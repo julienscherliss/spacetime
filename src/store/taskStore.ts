@@ -1069,7 +1069,50 @@ export const useTaskStore = create<TaskState>()(
         get().rebalanceGroupChildren(sourceGroupId);
       },
 
-      rebalanceGroupChildren: (groupId) => {
+      pickupFromGroup: (taskId) => {
+        const state = get();
+        const task = state.tasks.find((t) => t.id === taskId);
+        if (!task || !task.groupId) return;
+        const sourceGroupId = task.groupId;
+
+        // Restore the child's preferred duration before sending it to inventory
+        // so it lands at its "true" size (rounded to 15-min on drop).
+        const restoredDuration = task.preferredDuration ?? task.duration ?? 30;
+        const fromDate = task.date;
+        const fromTime = task.time;
+
+        // Detach the task from the group AND remove it from the timeline —
+        // it now lives only in the carry/inventory layer until the user drops it.
+        set((s) => ({
+          tasks: s.tasks.map((t) =>
+            t.id === taskId
+              ? {
+                  ...t,
+                  groupId: undefined,
+                  groupOrder: undefined,
+                  preferredDuration: undefined,
+                  duration: restoredDuration,
+                  time: undefined,
+                }
+              : t,
+          ),
+          editingTaskId: s.editingTaskId === taskId ? null : s.editingTaskId,
+        }));
+
+        get().rebalanceGroupChildren(sourceGroupId);
+
+        // Lazy-import to avoid circular dep with carryStore.
+        import('@/store/carryStore').then(({ useCarryStore }) => {
+          useCarryStore.getState().pickup({
+            taskId,
+            title: task.title,
+            duration: restoredDuration,
+            fromDate,
+            fromTime,
+            pickedUpAt: Date.now(),
+          });
+        });
+      },
         const state = get();
         const group = state.tasks.find((t) => t.id === groupId);
         if (!group || group.type !== 'group') return;
