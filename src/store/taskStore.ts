@@ -740,6 +740,7 @@ export const useTaskStore = create<TaskState>()(
         const today = new Date().toISOString().split('T')[0];
         return state.tasks
           .filter((t) => t.date === date && !t.completed && !t.inWaitingRoom && !t.archivedAt &&
+            !t.groupId && // hide Group children from main timeline — they live inside the Group block
             !(!state.routinesEnabled && t.isRoutine !== false && t.type === 'recurring'))
           .map((t) => {
             const ePri = computeEffectivePriority(t, today);
