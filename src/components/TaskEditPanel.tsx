@@ -416,7 +416,7 @@ export function TaskEditPanel() {
 
   return (
     <AnimatePresence>
-      {task && (
+      {task && !isGroup && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
