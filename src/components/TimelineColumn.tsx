@@ -352,6 +352,45 @@ export function TimelineColumn({
     const libraryTaskId = e.dataTransfer.getData('libraryTaskId');
     const sourceDate = e.dataTransfer.getData('sourceDate');
 
+    // ── Drop INTO a Group (Library + scheduled task path) ──
+    const dropTargetEl = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
+    const groupEl = dropTargetEl?.closest('[data-group-block]') as HTMLElement | null;
+    const dropGroupId = groupEl?.getAttribute('data-group-id') || null;
+
+    if (dropGroupId && dropGroupId !== taskId) {
+      const { addTaskToGroup } = useTaskStore.getState();
+      if (libraryTaskId) {
+        const title = e.dataTransfer.getData('libraryTitle');
+        const dur = parseInt(e.dataTransfer.getData('libraryDuration') || '30', 10);
+        const newId = addTask({
+          title,
+          date,
+          time: '09:00',
+          duration: dur,
+          priority: 0,
+          type: 'one-time',
+        });
+        const ok = addTaskToGroup(newId, dropGroupId);
+        if (!ok) {
+          // Revert by removing the just-created task
+          useTaskStore.getState().deleteTask(newId);
+        } else {
+          useLibraryStore.getState().removeItem(libraryTaskId);
+        }
+        setDragOverTime(null);
+        return;
+      }
+      if (taskId) {
+        const ok = addTaskToGroup(taskId, dropGroupId);
+        if (!ok) {
+          setDragMsg("Couldn't add to Group");
+          setTimeout(() => setDragMsg(''), 2000);
+        }
+        setDragOverTime(null);
+        return;
+      }
+    }
+
     const mins = getMinutesFromY(e.clientY - dragOffsetRef.current);
     const snapped = snapTo15(mins);
 
