@@ -1113,6 +1113,8 @@ export const useTaskStore = create<TaskState>()(
           });
         });
       },
+
+      rebalanceGroupChildren: (groupId) => {
         const state = get();
         const group = state.tasks.find((t) => t.id === groupId);
         if (!group || group.type !== 'group') return;
