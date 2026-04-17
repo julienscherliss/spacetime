@@ -337,24 +337,19 @@ export function TaskEditPanel() {
       linkSeriesFromDate(task.id, task.date, isLinked);
     }
 
-    if (isRecurring && !showEditScope) {
-      const hasRecurrenceChange = JSON.stringify(task.recurrence) !== JSON.stringify(updates.recurrence);
-      const hasContentChange = task.title !== updates.title || task.priority !== updates.priority;
-
-      if (hasRecurrenceChange || hasContentChange) {
-        setPendingUpdates(updates);
-        setShowEditScope(true);
-        scopeTriggeredRef.current = true;
-        return;
-      }
-    }
-
     const parentId = task.recurrenceParentId || task.id;
     const hadRecurrence = !!task.recurrence;
     const hasRecurrence = !!updates.recurrence;
     const hasRecurrenceChange = JSON.stringify(task.recurrence) !== JSON.stringify(updates.recurrence);
+    const wasLinked = task.linked !== false;
 
-    updateTask(task.id, updates);
+    // Linked + recurring → propagate edits to all future occurrences automatically.
+    // Unlinked → edits stay local (no prompt needed).
+    if (isRecurring && wasLinked && isLinked) {
+      updateFutureInstances(task.id, task.date, updates);
+    } else {
+      updateTask(task.id, updates);
+    }
 
     if (!hasRecurrence && hadRecurrence) {
       removeInstances(parentId);
@@ -369,41 +364,10 @@ export function TaskEditPanel() {
     }
   };
 
-  const handleSaveThisOnly = () => {
-    if (!task || !pendingUpdates) return;
-    updateTask(task.id, { ...pendingUpdates, date: task.date });
-    setShowEditScope(false);
-    setPendingUpdates(null);
-    scopeTriggeredRef.current = false;
-    setEditingTask(null);
-  };
-
-  const handleSaveAllFuture = () => {
-    if (!task || !pendingUpdates) return;
-    const parentId = task.recurrenceParentId || task.id;
-
-    if (!pendingUpdates.recurrence && task.recurrence) {
-      updateFutureInstances(task.id, task.date, pendingUpdates);
-      removeInstances(parentId);
-    } else {
-      updateFutureInstances(task.id, task.date, pendingUpdates);
-      syncUpcomingInstances();
-    }
-
-    setShowEditScope(false);
-    setPendingUpdates(null);
-    scopeTriggeredRef.current = false;
-    setEditingTask(null);
-  };
-
   const handleClose = () => {
-    if (showEditScope) return;
-    scopeTriggeredRef.current = false;
     handleSave();
-    if (!scopeTriggeredRef.current) {
-      showSaveConfirmation();
-      setTimeout(() => setEditingTask(null), 400);
-    }
+    showSaveConfirmation();
+    setTimeout(() => setEditingTask(null), 400);
   };
 
   const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
