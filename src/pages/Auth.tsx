@@ -57,18 +57,30 @@ export default function Auth() {
     if (!email) { toast.error('Enter your email first'); return; }
     setLoading(true);
     try {
+      // Email OTP flow — Supabase sends an email containing the {{ .Token }}
+      // (configured in Auth → Email Templates → Magic Link).
+      // We do NOT use ConfirmationURL / magic-link redirect for this flow;
+      // the user enters the 6-digit token in-app and we verify with verifyOtp.
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: { shouldCreateUser: true },
       });
-      if (error) throw error;
+      if (error) {
+        const msg = (error.message || '').toLowerCase();
+        if (msg.includes('rate') || msg.includes('too many')) {
+          toast.error('Too many requests. Please wait a moment before trying again.');
+        } else {
+          toast.error(error.message || 'Failed to send code');
+        }
+        return;
+      }
       setStep('otp');
       setOtpDigits(['', '', '', '', '', '']);
       setOtpAttempts(0);
       setResendCooldown(30);
-      toast.success('Code sent to your email');
+      toast.success('Check your email for a one-time code');
     } catch (err: any) {
-      toast.error(err.message || 'Failed to send code');
+      toast.error(err.message || 'Network error. Check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -105,22 +117,29 @@ export default function Auth() {
     setLoading(true);
     setOtpAttempts((a) => a + 1);
     try {
+      // type: 'email' is the correct type for the 6-digit code sent via signInWithOtp.
+      // This creates a session in-app — no redirect / deep link / browser handoff needed.
       const { error } = await supabase.auth.verifyOtp({
         email,
         token,
         type: 'email',
       });
       if (error) {
-        if (error.message.toLowerCase().includes('expired')) {
+        const msg = (error.message || '').toLowerCase();
+        if (msg.includes('expired')) {
           toast.error('Code expired. Request a new one.');
-        } else {
+        } else if (msg.includes('rate') || msg.includes('too many')) {
+          toast.error('Too many attempts. Please wait before trying again.');
+        } else if (msg.includes('invalid') || msg.includes('token')) {
           toast.error('Invalid code. Try again.');
+        } else {
+          toast.error(error.message || 'Verification failed');
         }
         return;
       }
-      // Success — auth state change will handle navigation
+      // Success — onAuthStateChange in useAuth() handles routing.
     } catch (err: any) {
-      toast.error(err.message || 'Verification failed');
+      toast.error(err.message || 'Network error. Check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -184,8 +203,8 @@ export default function Auth() {
 
   const transition = { duration: 0.35, ease: [0.22, 1, 0.36, 1] as const };
 
-  // ─── OTP code entry screen (mobile) ───
-  if (native && step === 'otp') {
+  // ─── OTP code entry screen (mobile + web) ───
+  if (step === 'otp') {
     return (
       <div
         className="min-h-screen bg-background flex items-center justify-center px-4"
@@ -543,6 +562,18 @@ export default function Auth() {
             <ArrowRight size={12} />
           </button>
         </form>
+
+        {/* Email me a code instead — passwordless OTP */}
+        {mode === 'login' && (
+          <button
+            type="button"
+            onClick={sendOtp}
+            disabled={loading || !email}
+            className="w-full mt-3 py-2.5 rounded-sm border border-border text-muted-foreground hover:text-foreground font-mono text-[10px] tracking-widest hover:bg-muted/30 transition-colors disabled:opacity-50"
+          >
+            EMAIL ME A CODE INSTEAD
+          </button>
+        )}
 
         <p className="text-center mt-4 text-[10px] font-mono text-muted-foreground/40">
           {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}{' '}
