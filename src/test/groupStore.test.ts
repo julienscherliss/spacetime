@@ -140,13 +140,14 @@ describe('Group store actions', () => {
 
   it('completeChild auto-completes parent Group when last child finishes', () => {
     const store = useTaskStore.getState();
-    const groupId = store.createEmptyGroup({ name: 'B', date: '2099-01-01', time: '09:00', duration: 30 });
-    store.addTask({ title: 'A', date: '2099-01-01', time: '10:00', duration: 15, priority: 0, type: 'one-time' });
-    store.addTask({ title: 'B', date: '2099-01-01', time: '11:00', duration: 15, priority: 0, type: 'one-time' });
-    const a = useTaskStore.getState().tasks.find((t) => t.title === 'A')!;
-    const b = useTaskStore.getState().tasks.find((t) => t.title === 'B')!;
-    useTaskStore.getState().addTaskToGroup(a.id, groupId);
-    useTaskStore.getState().addTaskToGroup(b.id, groupId);
+    const groupId = store.createEmptyGroup({ name: 'Container', date: '2099-01-01', time: '09:00', duration: 30 });
+    store.addTask({ title: 'ChildA', date: '2099-01-01', time: '11:00', duration: 15, priority: 0, type: 'one-time' });
+    store.addTask({ title: 'ChildB', date: '2099-01-01', time: '12:00', duration: 15, priority: 0, type: 'one-time' });
+    const a = useTaskStore.getState().tasks.find((t) => t.title === 'ChildA')!;
+    const b = useTaskStore.getState().tasks.find((t) => t.title === 'ChildB')!;
+    expect(useTaskStore.getState().addTaskToGroup(a.id, groupId)).toBe(true);
+    expect(useTaskStore.getState().addTaskToGroup(b.id, groupId)).toBe(true);
+    expect(useTaskStore.getState().getGroupChildren(groupId).length).toBe(2);
 
     useTaskStore.getState().completeChild(a.id);
     expect(useTaskStore.getState().tasks.find((t) => t.id === groupId)!.completed).toBe(false);
