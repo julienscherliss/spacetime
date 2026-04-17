@@ -109,6 +109,7 @@ export function WeekGrid({
         {weekDays.map((day) => {
           const showCompleted = useTimezoneStore.getState().showCompletedTasks;
           const dayTasks = tasks.filter((t) => t.date === day.date && !t.inWaitingRoom &&
+            !t.groupId && // hide Group children — they live inside the Group block
             (!t.archivedAt || (showCompleted && t.completed && t.archiveReason === 'completed')) &&
             !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring'));
           return (
