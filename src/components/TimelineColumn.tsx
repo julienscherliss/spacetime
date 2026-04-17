@@ -12,6 +12,7 @@ import { useScheduledDragStore } from '@/store/scheduledDragStore';
 import { useCarryStore, isInScrollCooldown } from '@/store/carryStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { TimelineTaskBlock } from '@/components/TimelineTaskBlock';
+import { GroupTimelineBlock } from '@/components/GroupTimelineBlock';
 import { CondensedTaskBlock } from '@/components/CondensedTaskBlock';
 import { timeToMinutes, minutesToTime, snapTo15, formatTime12h, formatHour12h } from '@/hooks/useCurrentTime';
 import { Calendar as CalIcon, Check, Copy, Unlink, Link, XCircle, Info } from 'lucide-react';
