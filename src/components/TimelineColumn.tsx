@@ -722,7 +722,7 @@ export function TimelineColumn({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [creating, getMinutesFromY, HOUR_HEIGHT]);
+  }, [creating, getMinutesFromY, HOUR_HEIGHT, cancelGroupHoldTimer]);
 
   const handleNewTaskSubmit = useCallback(() => {
     const cleanTitle = newTaskTitle.replace(/#\S*$/, '').replace(/\/\/\S*$/, '').replace(/@\S*$/, '').trim();
