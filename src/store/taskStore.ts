@@ -834,7 +834,7 @@ export const useTaskStore = create<TaskState>()(
 
         set((s) => ({
           tasks: s.tasks.map((t) =>
-            targetIds.has(t.id) ? { ...t, time: newTime } : t
+            targetIds.has(t.id) ? enforceRecurringLinkInvariant({ ...t, time: newTime }) : t
           ),
         }));
 
