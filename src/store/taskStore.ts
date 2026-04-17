@@ -1402,6 +1402,12 @@ export const useTaskStore = create<TaskState>()(
     }),
     {
       name: 'task-storage',
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        // Backfill: any recurring task left "unlinked" by legacy code paths
+        // is normalized to be linked (recurring => linked is now an invariant).
+        state.tasks = normalizeAllTasks(state.tasks);
+      },
     }
   )
 );
