@@ -956,6 +956,7 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
 // ── Main Focus Panel ──
 interface MainFocusPanelProps {
   activeTask: ReturnType<typeof useTaskStore.getState>['tasks'][0] | undefined;
+  parentGroup?: ReturnType<typeof useTaskStore.getState>['tasks'][0] | undefined;
   nextTask: ReturnType<typeof useTaskStore.getState>['tasks'][0] | undefined;
   elapsed: number;
   remaining: number;
@@ -970,11 +971,18 @@ interface MainFocusPanelProps {
 }
 
 function MainFocusPanel({
-  activeTask, nextTask, remaining, nowMinutes,
+  activeTask, parentGroup, nextTask, remaining, nowMinutes,
   holdProgress, isHolding, onHoldStart, onHoldEnd, onUpdateTask, overdueTasks, isGracePeriod,
 }: MainFocusPanelProps) {
   const [completing, setCompleting] = useState(false);
   const { completeTask } = useTaskStore();
+
+  // Group context: how many siblings are done, total siblings.
+  const groupSiblings = useTaskStore((s) =>
+    parentGroup ? s.tasks.filter((t) => t.groupId === parentGroup.id && !t.archivedAt) : [],
+  );
+  const groupDone = groupSiblings.filter((t) => t.completed).length;
+  const groupTotal = groupSiblings.length;
 
   useEffect(() => {
     setCompleting(false);
