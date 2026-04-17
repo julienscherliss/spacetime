@@ -1071,6 +1071,10 @@ export const useTaskStore = create<TaskState>()(
           toast.error('Groups cannot be nested');
           return false;
         }
+        if (task.recurrence || task.isRecurrenceInstance || task.recurrenceParentId) {
+          toast.error('Repeating tasks can\u2019t be added to a Group.');
+          return false;
+        }
         if (task.groupId === groupId) return true;
 
         const existingChildren = state.tasks.filter(
