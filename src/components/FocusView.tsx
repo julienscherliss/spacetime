@@ -130,8 +130,25 @@ export function FocusView() {
   }, [activePanel]);
 
   // Grace task takes priority for 5 minutes, then falls back to natural active task
-  const activeTask = graceTask || naturalActiveTask;
+  const rawActiveTask = graceTask || naturalActiveTask;
   const isGracePeriod = !!graceTask;
+
+  // ── Group resolution ──
+  // If the naturally-active task is a Group container, descend into the active
+  // child (the one whose time window covers "now"). Falls back to the first
+  // incomplete child if "now" doesn't land inside any child window — this can
+  // happen briefly between micro-blocks while the group is still in its overall
+  // span. Group children carry their own time/duration so the rest of the focus
+  // UI (countdown, ring, next task) keeps working unchanged.
+  const parentGroup = rawActiveTask?.type === 'group' ? rawActiveTask : undefined;
+  let activeTask = rawActiveTask;
+  if (parentGroup) {
+    const liveChild = getActiveChildInGroup(parentGroup.id);
+    const fallbackChild = tasks
+      .filter((t) => t.groupId === parentGroup.id && !t.completed && !t.archivedAt)
+      .sort((a, b) => (a.groupOrder ?? 0) - (b.groupOrder ?? 0))[0];
+    activeTask = liveChild || fallbackChild || rawActiveTask;
+  }
 
   const elapsed = activeTask?.time ? nowMinutes - timeToMinutes(activeTask.time) : 0;
   const remaining = activeTask ? (activeTask.duration || 30) - elapsed : 0;
