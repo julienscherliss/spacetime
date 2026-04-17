@@ -1183,6 +1183,11 @@ function MainFocusPanel({
                 }`}>
                   {activeTask.title}
                 </h1>
+                {parentGroup && groupTotal > 0 && (
+                  <span className="mt-1 text-[10px] font-mono text-muted-foreground/45 tracking-[0.15em] tabular-nums uppercase">
+                    {groupDone + (activeTask.completed ? 0 : 1)} / {groupTotal} · {parentGroup.title}
+                  </span>
+                )}
                 {isGracePeriod && (
                   <span className="mt-1 text-[10px] font-mono text-red-500/40 tracking-[0.15em] uppercase">
                     Overdue
