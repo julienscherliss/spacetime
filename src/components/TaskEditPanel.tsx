@@ -795,7 +795,7 @@ export function TaskEditPanel() {
                               const taskDay = new Date(task.date + 'T12:00:00').getDay();
                               if (!weeklyDays.includes(taskDay)) setWeeklyDays([taskDay]);
                             }
-                            if (opt.value !== 'custom') setShowRecurrence(false);
+                            if (opt.value !== 'custom' && opt.value !== 'monthlyNth') setShowRecurrence(false);
                           }}
                           className={`block w-full text-left text-[10px] font-mono tracking-wider py-1.5 px-2 rounded-sm transition-colors ${
                             recurrenceType === opt.value
