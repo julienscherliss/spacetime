@@ -910,6 +910,12 @@ export const useTaskStore = create<TaskState>()(
             const existingDates = new Set(existingSeriesTasks.map((task) => task.date));
             const occurrences = getAllOccurrences(parent.recurrence!, parent.date, startDate, endDate);
 
+            // For Group parents, snapshot the current child template once.
+            const isGroupParent = parent.type === 'group';
+            const childTemplate = isGroupParent
+              ? nextTasks.filter((t) => t.groupId === parent.id && !t.archivedAt)
+              : [];
+
             for (const occurrenceDate of occurrences) {
               if (existingDates.has(occurrenceDate)) continue;
 
@@ -918,9 +924,11 @@ export const useTaskStore = create<TaskState>()(
                 occurrenceDate,
               );
 
+              const newGroupOrTaskId = generateId();
+
               nextTasks.push({
                 ...parent,
-                id: generateId(),
+                id: newGroupOrTaskId,
                 date: occurrenceDate,
                 completed: false,
                 createdAt: new Date().toISOString(),
@@ -931,10 +939,31 @@ export const useTaskStore = create<TaskState>()(
                 isRecurrenceInstance: true,
                 recurrenceParentId: parent.id,
                 detachedFromSeries: false,
-                type: deriveType(parent.recurrence),
+                type: isGroupParent ? 'group' : deriveType(parent.recurrence),
                 linked: linkState.linked,
                 linkedGroupId: linkState.linkedGroupId,
               });
+
+              // Clone children for the new Group occurrence (live template).
+              if (isGroupParent && childTemplate.length > 0) {
+                for (const child of childTemplate) {
+                  nextTasks.push({
+                    ...child,
+                    id: generateId(),
+                    date: occurrenceDate,
+                    completed: false,
+                    createdAt: new Date().toISOString(),
+                    archivedAt: undefined,
+                    archiveReason: undefined,
+                    inWaitingRoom: false,
+                    waitingRoomCount: 0,
+                    isRecurrenceInstance: true,
+                    recurrenceParentId: child.id,
+                    groupId: newGroupOrTaskId,
+                    detachedFromSeries: false,
+                  });
+                }
+              }
 
               existingDates.add(occurrenceDate);
             }
