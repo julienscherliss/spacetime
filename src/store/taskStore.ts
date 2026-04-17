@@ -903,6 +903,279 @@ export const useTaskStore = create<TaskState>()(
             }),
           };
         }),
+
+      // ─── Groups (compound tasks) ────────────────────────────
+      convertTaskToGroup: (taskId, groupName) => {
+        const original = get().tasks.find((t) => t.id === taskId);
+        if (!original) return null;
+        if (original.type === 'group') {
+          toast.error('This task is already a Group');
+          return null;
+        }
+        if (original.groupId) {
+          toast.error('This task is already inside a Group');
+          return null;
+        }
+        if (!original.time || !original.duration) {
+          toast.error('Only scheduled tasks can be converted to a Group');
+          return null;
+        }
+
+        const groupId = generateId();
+        const now = new Date().toISOString();
+        const groupTask: Task = {
+          id: groupId,
+          title: groupName.trim() || 'Group',
+          type: 'group',
+          priority: original.priority,
+          originalPriority: original.originalPriority,
+          date: original.date,
+          time: original.time,
+          duration: original.duration,
+          completed: false,
+          createdAt: now,
+          moveCount: 0,
+        };
+
+        // Original task becomes the first child of the new Group, filling its full span.
+        set((s) => ({
+          tasks: [
+            ...s.tasks.map((t) =>
+              t.id === taskId
+                ? {
+                    ...t,
+                    groupId,
+                    groupOrder: 0,
+                    preferredDuration: t.duration ?? 30,
+                    time: groupTask.time,
+                    duration: groupTask.duration,
+                  }
+                : t,
+            ),
+            groupTask,
+          ],
+        }));
+
+        return groupId;
+      },
+
+      createEmptyGroup: ({ name, date, time, duration }) => {
+        const groupId = generateId();
+        const groupTask: Task = {
+          id: groupId,
+          title: name.trim() || 'Group',
+          type: 'group',
+          priority: 0,
+          originalPriority: 0,
+          date,
+          time,
+          duration,
+          completed: false,
+          createdAt: new Date().toISOString(),
+          moveCount: 0,
+        };
+
+        const slots = getOccupiedSlots(get().tasks, date, groupId, get().routinesEnabled);
+        const { startMin: resolved } = findValidPosition(timeToMinutes(time), duration, slots);
+        groupTask.time = minutesToTime(resolved);
+
+        set((s) => ({ tasks: [...s.tasks, groupTask] }));
+        return groupId;
+      },
+
+      addTaskToGroup: (taskId, groupId) => {
+        const state = get();
+        const task = state.tasks.find((t) => t.id === taskId);
+        const group = state.tasks.find((t) => t.id === groupId);
+        if (!task || !group) return false;
+        if (group.type !== 'group') {
+          toast.error('Target is not a Group');
+          return false;
+        }
+        if (task.type === 'group') {
+          toast.error('Groups cannot be nested');
+          return false;
+        }
+        if (task.groupId === groupId) return true;
+
+        const existingChildren = state.tasks.filter(
+          (t) => t.groupId === groupId && !t.archivedAt && t.id !== taskId,
+        );
+        const groupDuration = group.duration ?? 30;
+
+        if (groupDuration < MIN_CHILD_DURATION * (existingChildren.length + 1)) {
+          toast.error(`Group is too short to fit ${existingChildren.length + 1} tasks`);
+          return false;
+        }
+
+        const nextOrder = existingChildren.reduce((max, c) => Math.max(max, c.groupOrder ?? 0), -1) + 1;
+        const preferred = task.preferredDuration ?? task.duration ?? 30;
+
+        set((s) => ({
+          tasks: s.tasks.map((t) =>
+            t.id === taskId
+              ? {
+                  ...t,
+                  groupId,
+                  groupOrder: nextOrder,
+                  preferredDuration: preferred,
+                  date: group.date,
+                }
+              : t,
+          ),
+        }));
+        get().rebalanceGroupChildren(groupId);
+        return true;
+      },
+
+      removeTaskFromGroup: (taskId, dropDate, dropTime) => {
+        const state = get();
+        const task = state.tasks.find((t) => t.id === taskId);
+        if (!task || !task.groupId) return;
+        const sourceGroupId = task.groupId;
+
+        const restoredDuration = task.preferredDuration ?? task.duration ?? 30;
+        const slots = getOccupiedSlots(state.tasks, dropDate, taskId, state.routinesEnabled);
+        const { startMin: resolved } = findValidPosition(timeToMinutes(dropTime), restoredDuration, slots);
+        const finalTime = minutesToTime(resolved);
+
+        set((s) => ({
+          tasks: s.tasks.map((t) =>
+            t.id === taskId
+              ? {
+                  ...t,
+                  groupId: undefined,
+                  groupOrder: undefined,
+                  preferredDuration: undefined,
+                  date: dropDate,
+                  time: finalTime,
+                  duration: restoredDuration,
+                }
+              : t,
+          ),
+        }));
+        get().rebalanceGroupChildren(sourceGroupId);
+      },
+
+      rebalanceGroupChildren: (groupId) => {
+        const state = get();
+        const group = state.tasks.find((t) => t.id === groupId);
+        if (!group || group.type !== 'group') return;
+        const children = state.tasks.filter((t) => t.groupId === groupId && !t.archivedAt);
+        if (children.length === 0) return;
+
+        const layout = computeRebalance(
+          children.map((c, i) => ({
+            id: c.id,
+            preferredDuration: c.preferredDuration ?? c.duration ?? 30,
+            groupOrder: c.groupOrder ?? i,
+          })),
+          group.duration ?? 30,
+        );
+        if (!layout) return;
+
+        const groupStartMin = timeToMinutes(group.time ?? '09:00');
+        const layoutById = new Map(layout.map((l) => [l.id, l]));
+
+        set((s) => ({
+          tasks: s.tasks.map((t) => {
+            const lay = layoutById.get(t.id);
+            if (!lay) return t;
+            return {
+              ...t,
+              date: group.date,
+              time: minutesToTime(groupStartMin + lay.offsetMinutes),
+              duration: lay.duration,
+            };
+          }),
+        }));
+      },
+
+      completeGroup: (groupId) => {
+        const now = new Date().toISOString();
+        playUISound('tapeClick');
+        set((s) => ({
+          tasks: s.tasks.map((t) => {
+            if (t.id === groupId || t.groupId === groupId) {
+              return { ...t, completed: true, archivedAt: now, archiveReason: 'completed' as const };
+            }
+            return t;
+          }),
+          editingTaskId: s.editingTaskId === groupId ? null : s.editingTaskId,
+        }));
+        const affected = get().tasks.filter((t) => t.id === groupId || t.groupId === groupId);
+        affected.forEach((t) => {
+          void cancelNotificationsForTask(t.id);
+          cancelWebNotificationsForTask(t.id);
+        });
+      },
+
+      completeChild: (taskId) => {
+        const task = get().tasks.find((t) => t.id === taskId);
+        if (!task || !task.groupId) {
+          get().completeTask(taskId);
+          return;
+        }
+        const groupId = task.groupId;
+        const now = new Date().toISOString();
+        playUISound('tapeClick');
+
+        set((s) => ({
+          tasks: s.tasks.map((t) =>
+            t.id === taskId
+              ? { ...t, completed: true, archivedAt: now, archiveReason: 'completed' as const }
+              : t,
+          ),
+        }));
+        void cancelNotificationsForTask(taskId);
+        cancelWebNotificationsForTask(taskId);
+
+        const after = get().tasks;
+        const siblings = after.filter((t) => t.groupId === groupId);
+        if (siblings.length > 0 && siblings.every((t) => t.completed)) {
+          set((s) => ({
+            tasks: s.tasks.map((t) =>
+              t.id === groupId
+                ? { ...t, completed: true, archivedAt: now, archiveReason: 'completed' as const }
+                : t,
+            ),
+          }));
+          void cancelNotificationsForTask(groupId);
+          cancelWebNotificationsForTask(groupId);
+        }
+      },
+
+      renameGroup: (groupId, name) => {
+        set((s) => ({
+          tasks: s.tasks.map((t) =>
+            t.id === groupId && t.type === 'group' ? { ...t, title: name.trim() || t.title } : t,
+          ),
+        }));
+      },
+
+      getGroupChildren: (groupId) => {
+        return get()
+          .tasks.filter((t) => t.groupId === groupId && !t.archivedAt)
+          .sort((a, b) => (a.groupOrder ?? 0) - (b.groupOrder ?? 0));
+      },
+
+      getActiveChildInGroup: (groupId, atDate = new Date()) => {
+        const state = get();
+        const group = state.tasks.find((t) => t.id === groupId);
+        if (!group) return undefined;
+        const nowMin = atDate.getHours() * 60 + atDate.getMinutes();
+        const todayStr = atDate.toISOString().split('T')[0];
+        if (group.date !== todayStr) return undefined;
+
+        const children = state.getGroupChildren(groupId).filter((c) => !c.completed);
+        for (const c of children) {
+          if (!c.time || !c.duration) continue;
+          const start = timeToMinutes(c.time);
+          const end = start + c.duration;
+          if (nowMin >= start && nowMin < end) return c;
+        }
+        return undefined;
+      },
     }),
     {
       name: 'task-storage',
