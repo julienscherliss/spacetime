@@ -585,7 +585,7 @@ export const useTaskStore = create<TaskState>()(
                   merged.priority = effectiveMin;
                 }
               }
-              return merged;
+              return enforceRecurringLinkInvariant(merged);
             }),
           };
         });
