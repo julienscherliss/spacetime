@@ -323,8 +323,7 @@ export function GroupTimelineBlock({
             data-touch-ignore
             onMouseDown={(e) => handleResizeStart(e, task, 'top')}
             onTouchStart={(e) => handleResizeStart(e, task, 'top')}
-            onPointerDown={(e) => e.stopPropagation()}
-            className="absolute top-0 right-0 cursor-ns-resize z-20 opacity-0 group-hover:opacity-100 flex items-start justify-end pr-1 pt-[2px]"
+            className="absolute top-0 right-0 cursor-ns-resize z-20 opacity-0 group-hover:opacity-100 touch:opacity-100 flex items-start justify-end pr-1 pt-[2px]"
             style={{ width: 'var(--ui-resize-w)', height: 'var(--ui-resize-handle)', touchAction: 'none' }}
           >
             <svg width="8" height="8" viewBox="0 0 8 8" className="text-muted-foreground/40">
@@ -336,8 +335,7 @@ export function GroupTimelineBlock({
             data-touch-ignore
             onMouseDown={(e) => handleResizeStart(e, task, 'bottom')}
             onTouchStart={(e) => handleResizeStart(e, task, 'bottom')}
-            onPointerDown={(e) => e.stopPropagation()}
-            className="absolute bottom-0 right-0 cursor-ns-resize z-20 opacity-0 group-hover:opacity-100 flex items-end justify-end pr-1 pb-[2px]"
+            className="absolute bottom-0 right-0 cursor-ns-resize z-20 opacity-0 group-hover:opacity-100 touch:opacity-100 flex items-end justify-end pr-1 pb-[2px]"
             style={{ width: 'var(--ui-resize-w)', height: 'var(--ui-resize-handle)', touchAction: 'none' }}
           >
             <svg width="8" height="8" viewBox="0 0 8 8" className="text-muted-foreground/40">
