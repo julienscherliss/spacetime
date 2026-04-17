@@ -268,6 +268,12 @@ export function TimelineColumn({
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskCategory, setNewTaskCategory] = useState<string | undefined>();
   const [newTaskDueDate, setNewTaskDueDate] = useState<string | undefined>();
+  // Refs mirror the latest category/dueDate/title so handleNewTaskSubmit can
+  // read them synchronously even when invoked right after a setState (e.g. from
+  // TagAutocomplete's Enter-to-select path) before React has committed.
+  const newTaskTitleRef = useRef('');
+  const newTaskCategoryRef = useRef<string | undefined>();
+  const newTaskDueDateRef = useRef<string | undefined>();
   const newTaskRef = useRef<HTMLInputElement>(null);
   const proxyInputRef = useRef<HTMLInputElement>(null);
   const { hint: entryHint } = useEntryHint();
@@ -291,6 +297,12 @@ export function TimelineColumn({
       newTaskRef.current.focus();
     }
   }, [newTaskInput]);
+
+  // Keep refs in sync with state for synchronous reads inside handleNewTaskSubmit
+  // (e.g. when TagAutocomplete fires submit immediately after setState).
+  useEffect(() => { newTaskTitleRef.current = newTaskTitle; }, [newTaskTitle]);
+  useEffect(() => { newTaskCategoryRef.current = newTaskCategory; }, [newTaskCategory]);
+  useEffect(() => { newTaskDueDateRef.current = newTaskDueDate; }, [newTaskDueDate]);
 
   const showCompletedTasks = useTimezoneStore((s) => s.showCompletedTasks);
   const timezone = useTimezoneStore((s) => s.timezone);
@@ -725,7 +737,10 @@ export function TimelineColumn({
   }, [creating, getMinutesFromY, HOUR_HEIGHT, cancelGroupHoldTimer]);
 
   const handleNewTaskSubmit = useCallback(() => {
-    const cleanTitle = newTaskTitle.replace(/#\S*$/, '').replace(/\/\/\S*$/, '').replace(/@\S*$/, '').trim();
+    // Read from refs so values set synchronously (e.g. by TagAutocomplete just
+    // before invoking submit) are visible even if React hasn't re-rendered yet.
+    const rawTitle = newTaskTitleRef.current || newTaskTitle;
+    const cleanTitle = rawTitle.replace(/#\S*$/, '').replace(/\/\/\S*$/, '').replace(/@\S*$/, '').trim();
     if (!newTaskInput || !cleanTitle) {
       setNewTaskInput(null);
       setNewTaskCategory(undefined);
@@ -733,8 +748,8 @@ export function TimelineColumn({
       return;
     }
 
-    const category = newTaskCategory || undefined;
-    const dueDate = newTaskDueDate || undefined;
+    const category = newTaskCategoryRef.current || newTaskCategory || undefined;
+    const dueDate = newTaskDueDateRef.current || newTaskDueDate || undefined;
 
     // Collision check before creating
     const allTasks = useTaskStore.getState().tasks;
@@ -1582,6 +1597,10 @@ export function TimelineColumn({
                 inputValue={newTaskTitle}
                 inputRef={newTaskRef as React.RefObject<HTMLInputElement>}
                 onSelectTag={(cat: CategoryDef, cleaned: string) => {
+                  // Update refs synchronously so submit (potentially fired in
+                  // the same tick) sees the chosen category, not stale state.
+                  newTaskTitleRef.current = cleaned;
+                  newTaskCategoryRef.current = cat.value;
                   setNewTaskTitle(cleaned);
                   setNewTaskCategory(cat.value);
                 }}
@@ -1591,6 +1610,8 @@ export function TimelineColumn({
                 inputValue={newTaskTitle}
                 inputRef={newTaskRef as React.RefObject<HTMLInputElement>}
                 onSelectDate={(dateStr: string, cleaned: string) => {
+                  newTaskTitleRef.current = cleaned;
+                  newTaskDueDateRef.current = dateStr;
                   setNewTaskTitle(cleaned);
                   setNewTaskDueDate(dateStr);
                 }}
