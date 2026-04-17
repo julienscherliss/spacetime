@@ -217,6 +217,14 @@ export function TaskEditPanel() {
       );
       setCustomInterval(task.recurrence?.type === 'custom' ? task.recurrence.interval : 1);
       setCustomUnit(task.recurrence?.type === 'custom' ? task.recurrence.unit : 'weeks');
+      if (task.recurrence?.type === 'monthlyNth') {
+        setNthPositions(task.recurrence.positions);
+      } else if (task.date) {
+        const dt = new Date(task.date + 'T12:00:00');
+        const dayOfMonth = dt.getDate();
+        const week = (Math.ceil(dayOfMonth / 7) as 1 | 2 | 3 | 4 | -1);
+        setNthPositions([{ week, day: dt.getDay() }]);
+      }
       setShowDeleteConfirm(false);
       setShowEditScope(false);
       setPendingUpdates(null);
