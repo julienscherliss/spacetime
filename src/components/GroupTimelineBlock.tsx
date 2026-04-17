@@ -13,6 +13,10 @@ interface GroupTimelineBlockProps {
   formatDuration: (mins: number) => string;
 }
 
+// Match the inset used by TimelineTaskBlock so Group blocks line up with regular tasks.
+const LEFT_INSET_WITH_LABELS = '3.25rem';
+const LEFT_INSET_WITHOUT_LABELS = '2px';
+
 /**
  * Compact "stacked" representation of a Group on the main timeline.
  *
@@ -79,8 +83,13 @@ export function GroupTimelineBlock({
 
   return (
     <div
-      className="absolute left-1 right-1"
-      style={{ top, height }}
+      data-task-block
+      className="absolute right-1 z-10"
+      style={{
+        top,
+        height,
+        left: showTimeLabels ? LEFT_INSET_WITH_LABELS : LEFT_INSET_WITHOUT_LABELS,
+      }}
     >
       {/* Stacked layer hints behind the main block */}
       <div

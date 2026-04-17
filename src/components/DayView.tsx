@@ -252,6 +252,7 @@ export function DayView() {
 
   const showCompletedSetting = useTimezoneStore((s) => s.showCompletedTasks);
   const dayTasks = tasks.filter((t) => t.date === selectedDate && !t.inWaitingRoom &&
+    !t.groupId && // hide Group children — they live inside the Group block
     (!t.archivedAt || (showCompletedSetting && t.completed && t.archiveReason === 'completed')) &&
     !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring'));
   const completedCount = dayTasks.filter((t) => t.completed).length;
