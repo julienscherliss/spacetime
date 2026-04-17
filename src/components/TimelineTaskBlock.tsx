@@ -10,6 +10,7 @@ import { useCarryStore } from '@/store/carryStore';
 import { START_HOUR } from '@/components/TimelineColumn';
 import { getOccupiedSlots, findValidPosition } from '@/utils/collisionDetection';
 import { TASK_TEXT_FIT_PX, TASK_TEXT_FIT_PX_COMFORT } from '@/utils/taskClustering';
+import { GroupTimelineBlock } from '@/components/GroupTimelineBlock';
 
 interface TimelineTaskBlockProps {
   task: Task;
@@ -78,6 +79,20 @@ export function TimelineTaskBlock({
   isCompact = false,
   onZoomIn,
 }: TimelineTaskBlockProps) {
+  // Groups have their own compact representation and bypass all task-block logic.
+  if (task.type === 'group') {
+    return (
+      <GroupTimelineBlock
+        task={task}
+        top={top}
+        height={height}
+        isActive={isActive}
+        showTimeLabels={showTimeLabels}
+        formatDuration={formatDuration}
+      />
+    );
+  }
+
   const taskMinutes = task.time ? parseInt(task.time.split(':')[0], 10) * 60 + parseInt(task.time.split(':')[1], 10) : 0;
   const taskEndMinutes = taskMinutes + (task.duration || 30);
   const timezone = useTimezoneStore((s) => s.timezone);
