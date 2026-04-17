@@ -240,7 +240,7 @@ export function TaskEditPanel() {
       setIsUploading(false);
       setReminders(task.reminders || []);
       setShowReminderModal(false);
-      scopeTriggeredRef.current = false;
+      
     }
   }, [task?.id]);
 
