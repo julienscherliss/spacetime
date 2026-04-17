@@ -38,8 +38,13 @@ Deno.serve(async (req) => {
     }
   }
 
+  // Live-mode safety: warn loudly if a test-mode event hits the live webhook
+  if ((event as any).livemode === false) {
+    console.warn("[stripe-webhook] Received TEST-MODE event on live webhook:", event.type, event.id);
+  }
+
   try {
-    console.log("Processing webhook event:", event.type);
+    console.log("Processing webhook event:", event.type, "livemode=", (event as any).livemode);
 
     switch (event.type) {
       case "checkout.session.completed": {
