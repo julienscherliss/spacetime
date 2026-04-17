@@ -98,7 +98,7 @@ export default function Landing() {
               {isNativePlatform() && (
                 <button
                   onClick={() => navigate('/auth')}
-                  className="px-5 py-3 border border-border text-foreground text-[11px] font-mono tracking-widest rounded-sm hover:bg-muted/40 transition-colors"
+                  className="px-5 py-3 bg-card text-foreground border border-border text-[11px] font-mono tracking-widest rounded-sm hover:bg-card/80 transition-colors"
                 >
                   SIGN IN
                 </button>
