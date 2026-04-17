@@ -737,7 +737,10 @@ export function TimelineColumn({
   }, [creating, getMinutesFromY, HOUR_HEIGHT, cancelGroupHoldTimer]);
 
   const handleNewTaskSubmit = useCallback(() => {
-    const cleanTitle = newTaskTitle.replace(/#\S*$/, '').replace(/\/\/\S*$/, '').replace(/@\S*$/, '').trim();
+    // Read from refs so values set synchronously (e.g. by TagAutocomplete just
+    // before invoking submit) are visible even if React hasn't re-rendered yet.
+    const rawTitle = newTaskTitleRef.current || newTaskTitle;
+    const cleanTitle = rawTitle.replace(/#\S*$/, '').replace(/\/\/\S*$/, '').replace(/@\S*$/, '').trim();
     if (!newTaskInput || !cleanTitle) {
       setNewTaskInput(null);
       setNewTaskCategory(undefined);
@@ -745,8 +748,8 @@ export function TimelineColumn({
       return;
     }
 
-    const category = newTaskCategory || undefined;
-    const dueDate = newTaskDueDate || undefined;
+    const category = newTaskCategoryRef.current || newTaskCategory || undefined;
+    const dueDate = newTaskDueDateRef.current || newTaskDueDate || undefined;
 
     // Collision check before creating
     const allTasks = useTaskStore.getState().tasks;
