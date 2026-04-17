@@ -9,7 +9,7 @@ import { useLibraryStore } from '@/store/libraryStore';
 import { useTouchDragStore } from '@/store/touchDragStore';
 import { useTimezoneStore, getTodayInTz } from '@/store/timezoneStore';
 import { useScheduledDragStore } from '@/store/scheduledDragStore';
-import { useCarryStore, isInScrollCooldown } from '@/store/carryStore';
+import { useCarryStore, isInScrollCooldown, roundCarriedDuration } from '@/store/carryStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { TimelineTaskBlock } from '@/components/TimelineTaskBlock';
 import { GroupTimelineBlock } from '@/components/GroupTimelineBlock';
@@ -824,11 +824,15 @@ export function TimelineColumn({
     const mins = getMinutesFromY(e.clientY);
     const snapped = snapTo15(mins);
 
+    // Round carried duration to nearest 15-min (≥15) so dropped tasks always
+    // land on a clean grid increment, regardless of where they came from.
+    const dropDuration = roundCarriedDuration(carried.duration);
+
     // Collision check for carry drop
     const allTasks = useTaskStore.getState().tasks;
     const excludeId = carried.fromLibrary ? undefined : carried.taskId;
     const occupiedSlots = getOccupiedSlots(allTasks, date, excludeId, routinesEnabled);
-    const { startMin, blocked } = findValidPosition(snapped, carried.duration, occupiedSlots);
+    const { startMin, blocked } = findValidPosition(snapped, dropDuration, occupiedSlots);
 
     if (blocked) {
       setDragMsg('No space available');
@@ -847,7 +851,7 @@ export function TimelineColumn({
         title: dropped.title,
         date,
         time: newTime,
-        duration: dropped.duration,
+        duration: dropDuration,
         priority: 0,
         type: 'one-time',
       });
@@ -859,9 +863,10 @@ export function TimelineColumn({
         inWaitingRoom: false,
         date,
         time: newTime,
+        duration: dropDuration,
       } as any);
     } else {
-      // Regular scheduled task
+      // Regular scheduled task (incl. tasks picked up from a Group)
       if (dropped.fromDate !== date) {
         const validation = canMoveTask(dropped.taskId, date);
         if (!validation.allowed) {
@@ -872,8 +877,10 @@ export function TimelineColumn({
           return;
         }
         moveTask(dropped.taskId, date, newTime);
+        useTaskStore.getState().updateTask(dropped.taskId, { duration: dropDuration } as any);
       } else {
         reorderTask(dropped.taskId, newTime);
+        useTaskStore.getState().updateTask(dropped.taskId, { duration: dropDuration, time: newTime } as any);
       }
     }
   }, [date, getMinutesFromY, addTask, canMoveTask, moveTask, reorderTask]);
