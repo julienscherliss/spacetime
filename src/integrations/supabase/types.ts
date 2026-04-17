@@ -14,6 +14,90 @@ export type Database = {
   }
   public: {
     Tables: {
+      feedback: {
+        Row: {
+          admin_response: string | null
+          app_version: string | null
+          browser: string | null
+          created_at: string
+          current_route: string | null
+          expected_behavior: string | null
+          followup_email: string | null
+          id: string
+          internal_notes: string | null
+          location_context: string | null
+          message: string
+          metadata: Json | null
+          os: string | null
+          platform: string | null
+          priority: string
+          resolved_at: string | null
+          response_sent_at: string | null
+          reviewed_at: string | null
+          screen_size: string | null
+          screenshot_url: string | null
+          status: string
+          title: string | null
+          type: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          admin_response?: string | null
+          app_version?: string | null
+          browser?: string | null
+          created_at?: string
+          current_route?: string | null
+          expected_behavior?: string | null
+          followup_email?: string | null
+          id?: string
+          internal_notes?: string | null
+          location_context?: string | null
+          message: string
+          metadata?: Json | null
+          os?: string | null
+          platform?: string | null
+          priority?: string
+          resolved_at?: string | null
+          response_sent_at?: string | null
+          reviewed_at?: string | null
+          screen_size?: string | null
+          screenshot_url?: string | null
+          status?: string
+          title?: string | null
+          type: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          admin_response?: string | null
+          app_version?: string | null
+          browser?: string | null
+          created_at?: string
+          current_route?: string | null
+          expected_behavior?: string | null
+          followup_email?: string | null
+          id?: string
+          internal_notes?: string | null
+          location_context?: string | null
+          message?: string
+          metadata?: Json | null
+          os?: string | null
+          platform?: string | null
+          priority?: string
+          resolved_at?: string | null
+          response_sent_at?: string | null
+          reviewed_at?: string | null
+          screen_size?: string | null
+          screenshot_url?: string | null
+          status?: string
+          title?: string | null
+          type?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       google_calendars: {
         Row: {
           color: string | null
