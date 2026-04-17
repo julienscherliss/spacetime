@@ -881,6 +881,7 @@ export function TaskEditPanel() {
                         </div>
                       )}
 
+                      {recurrenceType === 'custom' && (
                         <div className="pt-2 space-y-2.5">
                           <div className="flex items-center gap-2">
                             <input
