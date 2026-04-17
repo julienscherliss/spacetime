@@ -31,12 +31,20 @@ const RECURRENCE_OPTIONS = [
   { label: 'Daily', value: 'daily' },
   { label: 'Every weekday (Mon–Fri)', value: 'weekdays' },
   { label: 'Weekly', value: 'weekly' },
-  { label: 'Monthly', value: 'monthly' },
+  { label: 'Monthly (by date)', value: 'monthly' },
+  { label: 'Monthly (by weekday)', value: 'monthlyNth' },
   { label: 'Yearly', value: 'yearly' },
   { label: 'Custom...', value: 'custom' },
 ] as const;
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const NTH_WEEK_LABELS: { label: string; value: 1 | 2 | 3 | 4 | -1 }[] = [
+  { label: '1st', value: 1 },
+  { label: '2nd', value: 2 },
+  { label: '3rd', value: 3 },
+  { label: '4th', value: 4 },
+  { label: 'Last', value: -1 },
+];
 const UNIT_OPTIONS: { label: string; value: CustomUnit }[] = [
   { label: 'days', value: 'days' },
   { label: 'weeks', value: 'weeks' },
