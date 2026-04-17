@@ -103,7 +103,20 @@ describe('linked recurrence schedule propagation', () => {
     expect(tasks.find((task) => task.id === 'diff-group')?.time).toBe('13:00');
   });
 
-  it('links this and following when started from a later occurrence', () => {
+  it('keeps generated future instances linked after generation', () => {
+    const parent = makeTask({ id: 'parent', linked: true, seriesId: 'series-1', linkedGroupId: 'series-1', date: '2026-04-01' });
+
+    resetStore([parent]);
+    useTaskStore.getState().generateRecurringInstances('2026-04-02', '2026-04-03');
+
+    const tasks = useTaskStore.getState().tasks;
+    const generated = tasks.filter((t) => t.recurrenceParentId === 'parent');
+    expect(generated.length).toBeGreaterThan(0);
+    for (const inst of generated) {
+      expect(inst.linked).toBe(true);
+      expect(inst.linkedGroupId).toBe('series-1');
+    }
+  });
     const parent = makeTask({ id: 'parent', linked: false, seriesId: 'series-1', linkedGroupId: undefined, date: '2026-04-01' });
     const tuesday = makeTask({ id: 'tuesday', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: false, seriesId: 'series-1', linkedGroupId: undefined, date: '2026-04-02' });
     const wednesday = makeTask({ id: 'wednesday', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: false, seriesId: 'series-1', linkedGroupId: undefined, date: '2026-04-03' });
