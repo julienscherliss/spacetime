@@ -148,6 +148,11 @@ export function TagAutocomplete({ inputValue, onSelectTag, onSubmitAfterSelect, 
         const tagMatch = inputValue.match(/#\S*$/) || inputValue.match(/\/\/\S*$/);
         if (tagMatch && suggestions[selectedIdx]) {
           e.preventDefault();
+          e.stopPropagation();
+          // Stop React's delegated onKeyDown (e.g. parent's Enter → submit) from
+          // also firing for this same key — otherwise selecting a tag with Enter
+          // both inserts the tag AND submits the form, creating a duplicate task.
+          (e as any).stopImmediatePropagation?.();
           const cleaned = inputValue.replace(/#\S*$/, '').replace(/\/\/\S*$/, '').trim();
           onSelectTag(suggestions[selectedIdx], cleaned);
           setSuggestions([]);
