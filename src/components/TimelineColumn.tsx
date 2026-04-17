@@ -18,7 +18,7 @@ import { CondensedTaskBlock } from '@/components/CondensedTaskBlock';
 import { timeToMinutes, minutesToTime, snapTo15, formatTime12h, formatHour12h } from '@/hooks/useCurrentTime';
 import { Calendar as CalIcon, Check, Copy, Unlink, Link, XCircle, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getOccupiedSlots, findValidPosition, clampResize, wouldOverlap, getRoutineConflicts } from '@/utils/collisionDetection';
+import { getOccupiedSlots, findValidPosition, clampResize, wouldOverlap, getRoutineConflicts, getCalendarConflicts } from '@/utils/collisionDetection';
 import { clusterTasks, TaskCluster, getZoomForCluster } from '@/utils/taskClustering';
 
 export const DEFAULT_HOUR_HEIGHT = 56;
@@ -323,6 +323,18 @@ export function TimelineColumn({
     if (!routinesEnabled) return new Set<string>();
     return getRoutineConflicts(allStoreTasks, date);
   }, [allStoreTasks, date, routinesEnabled]);
+
+  // Compute calendar conflict IDs — tasks overlapping timed Google Calendar events
+  const allCalendarEvents = useCalendarStore((s) => s.events);
+  const visibleCalendars = useCalendarStore((s) => s.calendars);
+  const deletedCalendarEventIds = useCalendarStore((s) => s.deletedEventIds);
+  const calendarConflictIds = useMemo(() => {
+    const visibleIds = new Set(visibleCalendars.filter(c => c.visible).map(c => c.google_calendar_id));
+    const visibleEvents = allCalendarEvents.filter(e =>
+      visibleIds.has(e.calendarId) && !deletedCalendarEventIds.includes(e.id)
+    );
+    return getCalendarConflicts(allStoreTasks, visibleEvents, date);
+  }, [allStoreTasks, allCalendarEvents, visibleCalendars, deletedCalendarEventIds, date]);
 
   const activeTaskId = isToday
     ? activeTasks.find((t) => {
@@ -1417,7 +1429,7 @@ export function TimelineColumn({
             const isResizingThis = resizing?.id === task.id;
             const isLocked = task.priority >= 3;
             const showUnlinkedOutline = false;
-            const hasConflict = routineConflictIds.has(task.id);
+            const hasConflict = routineConflictIds.has(task.id) || calendarConflictIds.has(task.id);
 
             // Groups have their own compact representation (single block, no inline expansion).
             if ((task as Task).type === 'group') {
