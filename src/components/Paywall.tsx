@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Zap, Check, Tag } from 'lucide-react';
+import { Zap, Check, Tag, LogOut } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -81,8 +81,27 @@ export function Paywall({ trialDaysLeft, trialExpired, onAccessGranted, subscrip
     }
   };
 
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      window.location.href = '/auth';
+    } catch {
+      toast.error('Failed to sign out');
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative">
+      {/* Sign out — pinned top-right, respects iOS safe area */}
+      <button
+        onClick={handleSignOut}
+        className="absolute right-4 flex items-center gap-1.5 px-3 py-2 rounded-sm border border-border/60 bg-card/70 backdrop-blur-sm text-[10px] font-mono tracking-widest text-foreground/80 hover:text-foreground hover:border-foreground/40 hover:bg-card transition-colors z-10"
+        style={{ top: 'max(1rem, calc(env(safe-area-inset-top, 0px) + 0.75rem))' }}
+        aria-label="Sign out"
+      >
+        <LogOut size={12} />
+        SIGN OUT
+      </button>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
