@@ -907,6 +907,25 @@ export function TimelineColumn({
   const scheduledDragRelinkMode = useScheduledDragStore((s) => s.relinkMode);
   const scheduledDragRelinkTargetId = useScheduledDragStore((s) => s.relinkTargetId);
 
+  // Track whether the active drag is hovering over any Group block (drop-to-add)
+  useEffect(() => {
+    if (!scheduledDragActive) return;
+    const handleMove = (e: PointerEvent) => {
+      const s = useScheduledDragStore.getState();
+      if (!s.active || !s.taskId) return;
+      const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
+      const groupEl = el?.closest('[data-group-block]') as HTMLElement | null;
+      const groupId = groupEl?.getAttribute('data-group-id') || null;
+      // Don't treat the dragged group itself as a drop target
+      const validGroupId = groupId && groupId !== s.taskId ? groupId : null;
+      if (s.dropTargetGroupId !== validGroupId) {
+        useScheduledDragStore.getState().setDropTargetGroup(validGroupId);
+      }
+    };
+    window.addEventListener('pointermove', handleMove);
+    return () => window.removeEventListener('pointermove', handleMove);
+  }, [scheduledDragActive]);
+
   // Scheduled drag: single global drop handler — only the column matching targetDate processes it
   useEffect(() => {
     if (!scheduledDragActive) return;
@@ -915,6 +934,25 @@ export function TimelineColumn({
       if (!state.active || state.currentMinutes === null || !state.taskId) {
         return; // let another column or cancel handle it
       }
+
+      // ── Drop INTO a Group ────────────────────────────────────────────────
+      // If the pointer is currently over a Group block, add the dragged task
+      // to that Group instead of repositioning it on the timeline.
+      if (state.dropTargetGroupId && state.dropTargetGroupId !== state.taskId) {
+        const groupId = state.dropTargetGroupId;
+        // Only one column should handle this — the one whose date matches the group's date.
+        const group = useTaskStore.getState().tasks.find((t) => t.id === groupId);
+        if (!group || group.date !== date) return;
+        const ok = useTaskStore.getState().addTaskToGroup(state.taskId, groupId);
+        if (!ok && state.currentMinutes !== null) {
+          setDragMsgTop(((state.currentMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT);
+          setDragMsg("Couldn't add to Group");
+          setTimeout(() => { setDragMsg(''); setDragMsgTop(null); }, 2000);
+        }
+        useScheduledDragStore.getState().endDrag();
+        return;
+      }
+
       // Only the column that matches targetDate should process the drop
       if (state.targetDate !== date) return;
 
@@ -1246,6 +1284,10 @@ export function TimelineColumn({
                   isActive={isActive}
                   showTimeLabels={showTimeLabels}
                   formatDuration={formatDuration}
+                  hourHeight={HOUR_HEIGHT}
+                  isResizingThis={isResizingThis}
+                  resizePreview={resizePreview}
+                  handleResizeStart={handleResizeStart}
                 />
               );
             }
