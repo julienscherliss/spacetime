@@ -692,9 +692,17 @@ export function TimelineColumn({
     const handleMouseMove = (e: MouseEvent) => {
       const mins = getMinutesFromY(e.clientY);
       const snapped = snapTo15(mins);
+      // Any meaningful movement cancels the hold-to-create-Group timer.
+      const start = groupHoldStartRef.current;
+      if (start) {
+        const dx = Math.abs(e.clientX - start.x);
+        const dy = Math.abs(e.clientY - start.y);
+        if (dx > 4 || dy > 4) cancelGroupHoldTimer();
+      }
       setCreating(prev => prev ? { ...prev, currentMin: snapped } : null);
     };
     const handleMouseUp = () => {
+      cancelGroupHoldTimer();
       if (!creating) return;
       const startMin = Math.min(creating.startMin, creating.currentMin);
       const endMin = Math.max(creating.startMin, creating.currentMin);
