@@ -4,7 +4,8 @@ import {
   Layers, X, Check, ListOrdered, Sliders, Trash2, ArrowUp, ArrowDown,
   LogOut, Minus, Plus,
 } from 'lucide-react';
-import { useTaskStore, Task } from '@/store/taskStore';
+import { useTaskStore, Task, RecurrencePattern } from '@/store/taskStore';
+import { Repeat } from 'lucide-react';
 import { formatTime12h, timeToMinutes } from '@/hooks/useCurrentTime';
 import { MIN_CHILD_DURATION } from '@/utils/groupRebalance';
 import { toast } from 'sonner';
@@ -168,6 +169,9 @@ export function GroupEditPanel() {
               {completedChildren}/{totalChildren} TASK{totalChildren === 1 ? '' : 'S'} COMPLETE
             </div>
           </div>
+
+          {/* Recurrence */}
+          <GroupRecurrenceRow group={group} updateTask={updateTask} />
 
           {/* Mode toggle */}
           <div className="px-5 pt-2 pb-3 flex gap-1.5">
@@ -478,6 +482,95 @@ function SchedulerMode({
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// ── Recurrence row inside Group editor ──
+const GROUP_REPEAT_PRESETS: { label: string; value: string; build: (date: string) => RecurrencePattern | undefined }[] = [
+  { label: 'No repeat', value: 'none', build: () => undefined },
+  { label: 'Daily', value: 'daily', build: () => ({ type: 'daily' }) },
+  { label: 'Weekdays', value: 'weekdays', build: () => ({ type: 'weekdays' }) },
+  {
+    label: 'Weekly (same day)',
+    value: 'weekly',
+    build: (d) => ({ type: 'weekly', days: [new Date(d + 'T12:00:00').getDay()] }),
+  },
+  {
+    label: 'Monthly (by date)',
+    value: 'monthly',
+    build: (d) => ({ type: 'monthly', dayOfMonth: new Date(d + 'T12:00:00').getDate() }),
+  },
+];
+
+function describeGroupRecurrence(r?: RecurrencePattern): string {
+  if (!r) return 'No repeat';
+  switch (r.type) {
+    case 'daily': return 'Daily';
+    case 'weekdays': return 'Weekdays';
+    case 'weekly': return 'Weekly';
+    case 'monthly': return `Monthly (day ${r.dayOfMonth})`;
+    case 'monthlyNth': return 'Monthly (by weekday)';
+    case 'yearly': return 'Yearly';
+    case 'custom': return `Every ${r.interval} ${r.unit}`;
+    default: return 'Repeats';
+  }
+}
+
+function GroupRecurrenceRow({ group, updateTask }: { group: Task; updateTask: (id: string, u: Partial<Task>) => void }) {
+  const [open, setOpen] = useState(false);
+  // Only the source group (non-instance) carries the recurrence rule.
+  if (group.isRecurrenceInstance) {
+    return (
+      <div className="px-5 pb-3 -mt-1">
+        <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm font-mono text-[9px] tracking-widest text-muted-foreground/60 bg-muted/20">
+          <Repeat size={10} strokeWidth={1.5} />
+          INSTANCE OF REPEATING GROUP
+        </div>
+      </div>
+    );
+  }
+  const current = describeGroupRecurrence(group.recurrence);
+  return (
+    <div className="px-5 pb-3 -mt-1 relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm font-mono text-[9px] tracking-widest text-foreground/70 bg-muted/30 hover:bg-muted/50 transition-colors"
+      >
+        <Repeat size={10} strokeWidth={1.5} />
+        {current.toUpperCase()}
+      </button>
+      {open && (
+        <div className="absolute z-10 mt-1 left-5 right-5 bg-card border border-border rounded-sm shadow-lg p-1">
+          {GROUP_REPEAT_PRESETS.map((preset) => (
+            <button
+              key={preset.value}
+              onClick={() => {
+                const recurrence = preset.build(group.date);
+                updateTask(group.id, { recurrence } as Partial<Task>);
+                // Pre-generate ~60 days of occurrences so they appear immediately.
+                if (recurrence) {
+                  const end = new Date();
+                  end.setDate(end.getDate() + 60);
+                  useTaskStore.getState().generateRecurringInstances(
+                    new Date().toISOString().split('T')[0],
+                    end.toISOString().split('T')[0],
+                  );
+                }
+                setOpen(false);
+                if (recurrence) {
+                  toast.success(`Group repeats: ${preset.label.toLowerCase()}`);
+                } else {
+                  toast.success('Group no longer repeats');
+                }
+              }}
+              className="block w-full text-left text-[10px] font-mono tracking-wider py-1.5 px-2 rounded-sm text-muted-foreground/70 hover:text-foreground hover:bg-muted/30 transition-colors"
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

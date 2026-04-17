@@ -18,10 +18,18 @@ export type DaySubMode = 'timeline' | 'list';
 
 export type CustomUnit = 'days' | 'weeks' | 'months' | 'years';
 
+/** Position-in-month for "Nth weekday" recurrence. -1 = last. */
+export type NthWeek = 1 | 2 | 3 | 4 | -1;
+export interface NthWeekday {
+  week: NthWeek;
+  day: number; // 0 (Sun) – 6 (Sat)
+}
+
 export type RecurrencePattern =
   | { type: 'daily' }
   | { type: 'weekly'; days: number[] }
   | { type: 'monthly'; dayOfMonth: number }
+  | { type: 'monthlyNth'; positions: NthWeekday[] }
   | { type: 'yearly'; month: number; dayOfMonth: number }
   | { type: 'weekdays' }
   | { type: 'custom'; interval: number; unit: CustomUnit; days?: number[] };
@@ -263,6 +271,33 @@ function getDayOfWeek(dateStr: string): number {
   return new Date(dateStr + 'T12:00:00').getDay();
 }
 
+function nthWeekdayOfMonth(year: number, month: number, week: NthWeek, day: number): string | null {
+  if (week === -1) {
+    // Last occurrence of `day` in month
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    for (let d = lastDay; d >= 1; d--) {
+      const dt = new Date(year, month, d);
+      if (dt.getDay() === day) {
+        return `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      }
+    }
+    return null;
+  }
+  // 1st-4th
+  let count = 0;
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  for (let d = 1; d <= lastDay; d++) {
+    const dt = new Date(year, month, d);
+    if (dt.getDay() === day) {
+      count++;
+      if (count === week) {
+        return `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      }
+    }
+  }
+  return null;
+}
+
 function getAllOccurrences(
   pattern: RecurrencePattern,
   startDate: string,
@@ -309,6 +344,30 @@ function getAllOccurrences(
         if (cur > rangeEnd) break;
         if (cur >= rangeStart) dates.push(cur);
         cur = addMonths(cur, 1, pattern.dayOfMonth);
+      }
+      break;
+    }
+    case 'monthlyNth': {
+      // Walk month by month from startDate; emit every Nth-weekday match in range.
+      const sd = new Date(startDate + 'T12:00:00');
+      let year = sd.getFullYear();
+      let month = sd.getMonth();
+      for (let i = 0; i < limit; i++) {
+        const matchesThisMonth: string[] = [];
+        for (const pos of pattern.positions) {
+          const dStr = nthWeekdayOfMonth(year, month, pos.week, pos.day);
+          if (dStr && dStr >= startDate && dStr >= rangeStart && dStr <= rangeEnd) {
+            matchesThisMonth.push(dStr);
+          }
+        }
+        matchesThisMonth.sort();
+        for (const m of matchesThisMonth) dates.push(m);
+        // Advance to next month
+        month++;
+        if (month > 11) { month = 0; year++; }
+        // Stop if next month start exceeds rangeEnd
+        const nextMonthStart = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+        if (nextMonthStart > rangeEnd) break;
       }
       break;
     }
@@ -472,7 +531,7 @@ export const useTaskStore = create<TaskState>()(
               const mobilityMode = useTimezoneStore.getState().mobilityMode;
               let merged = { ...t, ...updates };
               if ('recurrence' in updates) {
-                merged.type = deriveType(merged.recurrence);
+                merged.type = t.type === 'group' ? 'group' : deriveType(merged.recurrence);
               }
               if (mobilityMode === 'elite' && 'priority' in updates && updates.priority !== undefined) {
                 const today = new Date().toISOString().split('T')[0];
@@ -493,7 +552,7 @@ export const useTaskStore = create<TaskState>()(
         const seriesId = getTaskSeriesId(sourceTask);
         const resolvedUpdates = { ...updates };
         if ('recurrence' in updates) {
-          resolvedUpdates.type = deriveType(updates.recurrence);
+          resolvedUpdates.type = sourceTask.type === 'group' ? 'group' : deriveType(updates.recurrence);
         }
 
         set((s) => ({
@@ -851,6 +910,12 @@ export const useTaskStore = create<TaskState>()(
             const existingDates = new Set(existingSeriesTasks.map((task) => task.date));
             const occurrences = getAllOccurrences(parent.recurrence!, parent.date, startDate, endDate);
 
+            // For Group parents, snapshot the current child template once.
+            const isGroupParent = parent.type === 'group';
+            const childTemplate = isGroupParent
+              ? nextTasks.filter((t) => t.groupId === parent.id && !t.archivedAt)
+              : [];
+
             for (const occurrenceDate of occurrences) {
               if (existingDates.has(occurrenceDate)) continue;
 
@@ -859,9 +924,11 @@ export const useTaskStore = create<TaskState>()(
                 occurrenceDate,
               );
 
+              const newGroupOrTaskId = generateId();
+
               nextTasks.push({
                 ...parent,
-                id: generateId(),
+                id: newGroupOrTaskId,
                 date: occurrenceDate,
                 completed: false,
                 createdAt: new Date().toISOString(),
@@ -872,10 +939,31 @@ export const useTaskStore = create<TaskState>()(
                 isRecurrenceInstance: true,
                 recurrenceParentId: parent.id,
                 detachedFromSeries: false,
-                type: deriveType(parent.recurrence),
+                type: isGroupParent ? 'group' : deriveType(parent.recurrence),
                 linked: linkState.linked,
                 linkedGroupId: linkState.linkedGroupId,
               });
+
+              // Clone children for the new Group occurrence (live template).
+              if (isGroupParent && childTemplate.length > 0) {
+                for (const child of childTemplate) {
+                  nextTasks.push({
+                    ...child,
+                    id: generateId(),
+                    date: occurrenceDate,
+                    completed: false,
+                    createdAt: new Date().toISOString(),
+                    archivedAt: undefined,
+                    archiveReason: undefined,
+                    inWaitingRoom: false,
+                    waitingRoomCount: 0,
+                    isRecurrenceInstance: true,
+                    recurrenceParentId: child.id,
+                    groupId: newGroupOrTaskId,
+                    detachedFromSeries: false,
+                  });
+                }
+              }
 
               existingDates.add(occurrenceDate);
             }
@@ -930,6 +1018,10 @@ export const useTaskStore = create<TaskState>()(
         }
         if (!original.time || !original.duration) {
           toast.error('Only scheduled tasks can be converted to a Group');
+          return null;
+        }
+        if (original.recurrence || original.isRecurrenceInstance || original.recurrenceParentId) {
+          toast.error('Repeating tasks can\u2019t be turned into a Group. Convert it to a one-time task first.');
           return null;
         }
 
@@ -1006,6 +1098,10 @@ export const useTaskStore = create<TaskState>()(
         }
         if (task.type === 'group') {
           toast.error('Groups cannot be nested');
+          return false;
+        }
+        if (task.recurrence || task.isRecurrenceInstance || task.recurrenceParentId) {
+          toast.error('Repeating tasks can\u2019t be added to a Group.');
           return false;
         }
         if (task.groupId === groupId) return true;

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useTaskStore, Priority, RecurrencePattern, CustomUnit } from '@/store/taskStore';
+import { useTaskStore, Priority, RecurrencePattern, CustomUnit, NthWeekday, NthWeek } from '@/store/taskStore';
 import { SubtaskList, Subtask } from '@/components/SubtaskList';
 import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar, Inbox, CalendarCheck, XCircle, Paperclip, ExternalLink, Check, AlertTriangle, Tag, Upload, FileText, Bell, PauseCircle, Layers } from 'lucide-react';
 import { GroupNamePrompt } from '@/components/GroupNamePrompt';
@@ -31,12 +31,20 @@ const RECURRENCE_OPTIONS = [
   { label: 'Daily', value: 'daily' },
   { label: 'Every weekday (Mon–Fri)', value: 'weekdays' },
   { label: 'Weekly', value: 'weekly' },
-  { label: 'Monthly', value: 'monthly' },
+  { label: 'Monthly (by date)', value: 'monthly' },
+  { label: 'Monthly (by weekday)', value: 'monthlyNth' },
   { label: 'Yearly', value: 'yearly' },
   { label: 'Custom...', value: 'custom' },
 ] as const;
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const NTH_WEEK_LABELS: { label: string; value: 1 | 2 | 3 | 4 | -1 }[] = [
+  { label: '1st', value: 1 },
+  { label: '2nd', value: 2 },
+  { label: '3rd', value: 3 },
+  { label: '4th', value: 4 },
+  { label: 'Last', value: -1 },
+];
 const UNIT_OPTIONS: { label: string; value: CustomUnit }[] = [
   { label: 'days', value: 'days' },
   { label: 'weeks', value: 'weeks' },
@@ -70,6 +78,13 @@ function recurrenceLabel(r?: RecurrencePattern): string {
     case 'weekdays': return 'Mon–Fri';
     case 'weekly': return `Weekly (${r.days.map(d => DAY_LABELS[d]).join(', ')})`;
     case 'monthly': return `Monthly (day ${r.dayOfMonth})`;
+    case 'monthlyNth': {
+      const labels = r.positions.map((p) => {
+        const wk = NTH_WEEK_LABELS.find((w) => w.value === p.week)?.label ?? `${p.week}`;
+        return `${wk} ${DAY_LABELS[p.day]}`;
+      });
+      return `Monthly (${labels.join(', ')})`;
+    }
     case 'yearly': return 'Yearly';
     case 'custom': {
       const base = `Every ${r.interval} ${r.unit}`;
@@ -155,6 +170,17 @@ export function TaskEditPanel() {
   const [customUnit, setCustomUnit] = useState<CustomUnit>(
     task?.recurrence?.type === 'custom' ? task.recurrence.unit : 'weeks'
   );
+  const [nthPositions, setNthPositions] = useState<NthWeekday[]>(() => {
+    if (task?.recurrence?.type === 'monthlyNth') return task.recurrence.positions;
+    if (task?.date) {
+      const dt = new Date(task.date + 'T12:00:00');
+      // Default: same day-of-week, same nth occurrence within month
+      const dayOfMonth = dt.getDate();
+      const week = (Math.ceil(dayOfMonth / 7) as 1 | 2 | 3 | 4 | -1);
+      return [{ week, day: dt.getDay() }];
+    }
+    return [{ week: 1, day: new Date().getDay() }];
+  });
   const [isRoutine, setIsRoutine] = useState(task?.isRoutine !== false && task?.type === 'recurring');
   const [isLinked, setIsLinked] = useState(task?.linked || false);
   const [showRecurrence, setShowRecurrence] = useState(false);
@@ -198,6 +224,14 @@ export function TaskEditPanel() {
       );
       setCustomInterval(task.recurrence?.type === 'custom' ? task.recurrence.interval : 1);
       setCustomUnit(task.recurrence?.type === 'custom' ? task.recurrence.unit : 'weeks');
+      if (task.recurrence?.type === 'monthlyNth') {
+        setNthPositions(task.recurrence.positions);
+      } else if (task.date) {
+        const dt = new Date(task.date + 'T12:00:00');
+        const dayOfMonth = dt.getDate();
+        const week = (Math.ceil(dayOfMonth / 7) as 1 | 2 | 3 | 4 | -1);
+        setNthPositions([{ week, day: dt.getDay() }]);
+      }
       setShowDeleteConfirm(false);
       setShowEditScope(false);
       setPendingUpdates(null);
@@ -228,6 +262,10 @@ export function TaskEditPanel() {
       case 'weekdays': return { type: 'weekdays' };
       case 'weekly': return { type: 'weekly', days: weeklyDays.length > 0 ? weeklyDays : [taskDay] };
       case 'monthly': return { type: 'monthly', dayOfMonth: new Date((task?.date || '') + 'T12:00:00').getDate() };
+      case 'monthlyNth': {
+        const positions = nthPositions.length > 0 ? nthPositions : [{ week: 1 as NthWeek, day: taskDay }];
+        return { type: 'monthlyNth', positions };
+      }
       case 'yearly': {
         const d = new Date((task?.date || '') + 'T12:00:00');
         return { type: 'yearly', month: d.getMonth(), dayOfMonth: d.getDate() };
@@ -757,7 +795,7 @@ export function TaskEditPanel() {
                               const taskDay = new Date(task.date + 'T12:00:00').getDay();
                               if (!weeklyDays.includes(taskDay)) setWeeklyDays([taskDay]);
                             }
-                            if (opt.value !== 'custom') setShowRecurrence(false);
+                            if (opt.value !== 'custom' && opt.value !== 'monthlyNth') setShowRecurrence(false);
                           }}
                           className={`block w-full text-left text-[10px] font-mono tracking-wider py-1.5 px-2 rounded-sm transition-colors ${
                             recurrenceType === opt.value
@@ -792,6 +830,54 @@ export function TaskEditPanel() {
                               </button>
                             ))}
                           </div>
+                        </div>
+                      )}
+
+                      {recurrenceType === 'monthlyNth' && (
+                        <div className="pt-2 space-y-2">
+                          <div className="text-[8px] font-mono tracking-wider text-muted-foreground/50">
+                            PICK ONE OR MORE
+                          </div>
+                          {NTH_WEEK_LABELS.map((wk) => (
+                            <div key={wk.value} className="flex items-center gap-1.5">
+                              <span className="w-7 text-[8px] font-mono tracking-wider text-muted-foreground/60">
+                                {wk.label}
+                              </span>
+                              <div className="flex gap-0.5 flex-1">
+                                {DAY_LABELS.map((label, dayIdx) => {
+                                  const isOn = nthPositions.some(
+                                    (p) => p.week === wk.value && p.day === dayIdx,
+                                  );
+                                  return (
+                                    <button
+                                      key={dayIdx}
+                                      onClick={() => {
+                                        setNthPositions((prev) => {
+                                          const exists = prev.some(
+                                            (p) => p.week === wk.value && p.day === dayIdx,
+                                          );
+                                          if (exists) {
+                                            const next = prev.filter(
+                                              (p) => !(p.week === wk.value && p.day === dayIdx),
+                                            );
+                                            return next.length > 0 ? next : prev;
+                                          }
+                                          return [...prev, { week: wk.value, day: dayIdx }];
+                                        });
+                                      }}
+                                      className={`flex-1 h-6 rounded-sm text-[8px] font-mono transition-colors ${
+                                        isOn
+                                          ? 'bg-primary/10 text-primary border border-primary/20'
+                                          : 'text-muted-foreground/40 border border-border hover:border-border'
+                                      }`}
+                                    >
+                                      {label[0]}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       )}
 
@@ -1045,8 +1131,8 @@ export function TaskEditPanel() {
                     <Archive size={12} strokeWidth={1.5} />
                     LIBRARY
                   </button>
-                  {/* Convert to Group — only for normal scheduled tasks not already in a Group */}
-                  {task && !task.groupId && task.time && task.duration && (
+                  {/* Convert to Group — only for normal scheduled, non-recurring tasks not already in a Group */}
+                  {task && !task.groupId && task.time && task.duration && !task.recurrence && !task.isRecurrenceInstance && !task.recurrenceParentId && (
                     <button type="button"
                       onClick={(e) => {
                         e.stopPropagation();
