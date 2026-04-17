@@ -272,6 +272,19 @@ export function TimelineColumn({
   const proxyInputRef = useRef<HTMLInputElement>(null);
   const { hint: entryHint } = useEntryHint();
 
+  // Hold-to-create-Group: 1.5s pointer hold on empty timeline opens a name prompt.
+  const [groupPromptSlot, setGroupPromptSlot] = useState<{ time: string; duration: number } | null>(null);
+  const groupHoldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const groupHoldStartRef = useRef<{ x: number; y: number; startMin: number } | null>(null);
+
+  const cancelGroupHoldTimer = useCallback(() => {
+    if (groupHoldTimerRef.current) {
+      clearTimeout(groupHoldTimerRef.current);
+      groupHoldTimerRef.current = null;
+    }
+    groupHoldStartRef.current = null;
+  }, []);
+
   // When the real input mounts, steal focus from the proxy input
   useEffect(() => {
     if (newTaskInput && newTaskRef.current) {
