@@ -548,6 +548,15 @@ function GroupRecurrenceRow({ group, updateTask }: { group: Task; updateTask: (i
               onClick={() => {
                 const recurrence = preset.build(group.date);
                 updateTask(group.id, { recurrence } as Partial<Task>);
+                // Pre-generate ~60 days of occurrences so they appear immediately.
+                if (recurrence) {
+                  const end = new Date();
+                  end.setDate(end.getDate() + 60);
+                  useTaskStore.getState().generateRecurringInstances(
+                    new Date().toISOString().split('T')[0],
+                    end.toISOString().split('T')[0],
+                  );
+                }
                 setOpen(false);
                 if (recurrence) {
                   toast.success(`Group repeats: ${preset.label.toLowerCase()}`);
