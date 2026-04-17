@@ -1560,6 +1560,10 @@ export function TimelineColumn({
                 onBlur={(e) => {
                   if (e.relatedTarget?.closest?.('[data-tag-autocomplete]')) return;
                   if (e.relatedTarget?.closest?.('[data-date-autocomplete]')) return;
+                  // Don't submit while a tag/date autocomplete is mid-completion
+                  // (#foo or @bar at end of input). Selecting a suggestion will
+                  // continue the flow; submitting here would create a duplicate.
+                  if (/[#@]\S*$/.test(newTaskTitle) || /\/\/\S*$/.test(newTaskTitle)) return;
                   handleNewTaskSubmit();
                 }}
                 placeholder={entryHint ? `Task name... (${entryHint})` : 'Task name...'}
