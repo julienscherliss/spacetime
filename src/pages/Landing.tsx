@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import { GravityCanvas } from '@/components/GravityCanvas';
 import { LandingFeatureGrid } from '@/components/landing/LandingFeatureGrid';
+import { isNativePlatform } from '@/utils/nativePlatform';
 import faviconUrl from '/favicon.png';
 
 const fadeUp = {
@@ -91,13 +92,23 @@ export default function Landing() {
             variants={fadeUp}
             className="flex flex-col items-center justify-center gap-3"
           >
-            <button
-              onClick={() => navigate('/auth', { state: { plan: 'yearly' } })}
-              className="group flex items-center gap-2 px-6 py-3 bg-foreground text-background text-[11px] font-mono tracking-widest rounded-sm hover:bg-foreground/90 transition-colors"
-            >
-              START FREE TRIAL
-              <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
-            </button>
+            <div className="flex items-center justify-center gap-2">
+              {isNativePlatform() && (
+                <button
+                  onClick={() => navigate('/auth')}
+                  className="px-5 py-3 border border-border text-foreground text-[11px] font-mono tracking-widest rounded-sm hover:bg-muted/40 transition-colors"
+                >
+                  SIGN IN
+                </button>
+              )}
+              <button
+                onClick={() => navigate('/auth', { state: { plan: 'yearly' } })}
+                className="group flex items-center gap-2 px-6 py-3 bg-foreground text-background text-[11px] font-mono tracking-widest rounded-sm hover:bg-foreground/90 transition-colors"
+              >
+                START FREE TRIAL
+                <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            </div>
             <span className="text-[9px] font-mono text-muted-foreground/40 tracking-wider">
               30 DAYS FREE · THEN $2/MO
             </span>
