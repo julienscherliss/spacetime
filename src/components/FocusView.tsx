@@ -346,6 +346,7 @@ export function FocusView() {
           >
             <MainFocusPanel
               activeTask={activeTask}
+              parentGroup={parentGroup}
               nextTask={nextTask}
               elapsed={elapsed}
               remaining={remaining}
