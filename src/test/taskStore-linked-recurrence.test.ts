@@ -44,16 +44,20 @@ describe('linked recurrence schedule propagation', () => {
     resetStore([]);
   });
 
-  it('moves only the active instance when the repeating task is unlinked', () => {
+  it('treats every recurring task as linked (no zombie unlinked instances)', () => {
+    // Even if legacy data tries to seed an unlinked recurring task, normalization
+    // / write-path enforcement promotes it to linked.
     const parent = makeTask({ id: 'parent', linked: false, seriesId: 'series-1', linkedGroupId: undefined, date: '2026-04-01' });
     const instance = makeTask({ id: 'instance', recurrenceParentId: 'parent', isRecurrenceInstance: true, linked: false, seriesId: 'series-1', linkedGroupId: undefined, date: '2026-04-02' });
 
     resetStore([parent, instance]);
-    useTaskStore.getState().reorderTask('instance', '14:00');
+    // Any updateTask should normalize this task to linked.
+    useTaskStore.getState().reorderTask('parent', '14:00');
 
     const tasks = useTaskStore.getState().tasks;
-    expect(tasks.find((task) => task.id === 'instance')?.time).toBe('14:00');
-    expect(tasks.find((task) => task.id === 'parent')?.time).toBe('13:00');
+    const updatedParent = tasks.find((t) => t.id === 'parent')!;
+    expect(updatedParent.linked).toBe(true);
+    expect(updatedParent.linkedGroupId).toBeTruthy();
   });
 
   it('propagates time changes across truly linked instances in the same recurrence series', () => {
