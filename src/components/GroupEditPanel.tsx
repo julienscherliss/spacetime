@@ -374,11 +374,13 @@ function SchedulerMode({
   children,
   onAdjust,
   onComplete,
+  onOpenChild,
 }: {
   group: Task;
   children: Task[];
   onAdjust: (child: Task, delta: number) => void;
   onComplete: (id: string) => void;
+  onOpenChild: (id: string) => void;
 }) {
   const totalDuration = group.duration ?? 30;
   const groupStart = timeToMinutes(group.time ?? '09:00');
@@ -410,7 +412,7 @@ function SchedulerMode({
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   <button
-                    onClick={() => onComplete(c.id)}
+                    onClick={(e) => { e.stopPropagation(); onComplete(c.id); }}
                     disabled={c.completed}
                     className={`shrink-0 w-3.5 h-3.5 rounded-[2px] border flex items-center justify-center transition-colors ${
                       c.completed
@@ -420,11 +422,16 @@ function SchedulerMode({
                   >
                     {c.completed && <Check size={8} strokeWidth={2.5} />}
                   </button>
-                  <span className={`font-display text-[12px] truncate ${
-                    c.completed ? 'line-through text-muted-foreground' : 'text-foreground'
-                  }`}>
+                  <button
+                    type="button"
+                    onClick={() => onOpenChild(c.id)}
+                    className={`font-display text-[12px] truncate text-left hover:opacity-80 transition-opacity ${
+                      c.completed ? 'line-through text-muted-foreground' : 'text-foreground'
+                    }`}
+                    title="Edit task"
+                  >
                     {c.title}
-                  </span>
+                  </button>
                 </div>
 
                 <div className="flex items-center gap-1 shrink-0">
