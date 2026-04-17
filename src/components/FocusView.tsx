@@ -12,6 +12,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { autosizeTextarea } from '@/lib/autosizeTextarea';
 import { useTrackpadSwipe } from '@/hooks/useTrackpadSwipe';
+import { GroupListRow } from '@/components/GroupListRow';
 
 type FocusPanel = 'completed' | 'main' | 'detail';
 
@@ -441,81 +442,25 @@ function FocusDayListPanel({ allTodayTasks, completedCount, nowMinutes, activeTa
               <p className="text-muted-foreground/30 font-mono text-sm tracking-wider">NO TASKS</p>
             </div>
           ) : (
-            allTodayTasks.map((task) => {
-              const isOverdue = !task.completed && task.time &&
-                nowMinutes >= timeToMinutes(task.time) + (task.duration || 30);
+            allTodayTasks.filter((t) => !t.groupId).map((task) => {
+              if (task.type === 'group') {
+                return (
+                  <GroupListRow
+                    key={task.id}
+                    group={task}
+                    onGroupTap={onTaskTap}
+                    renderChild={(child) => renderFocusRow(child, false, true)}
+                  />
+                );
+              }
               const isCurrent = task.id === activeTaskId;
-
               return (
                 <div
                   key={task.id}
                   ref={isCurrent ? activeRowRef : undefined}
-                  className={`w-full text-left px-3 py-4 transition-colors ${
-                    task.completed ? 'opacity-50' : ''
-                  } ${isCurrent ? 'border border-foreground/15 rounded-md my-1' : 'border-b border-border/20'}`}
+                  className={isCurrent ? 'border border-foreground/15 rounded-md my-1' : ''}
                 >
-                  <div className="flex items-start gap-3">
-                    {/* Time column */}
-                    <div className="w-16 flex-shrink-0 pt-0.5">
-                      {task.time ? (
-                        <div>
-                          <p className={`text-[11px] font-mono leading-tight ${
-                            isOverdue ? 'text-red-500/80' : 'text-foreground/80'
-                          }`}>
-                            {formatTime12h(task.time)}
-                          </p>
-                          {task.duration && (
-                            <p className={`text-[9px] font-mono mt-0.5 ${
-                              isOverdue ? 'text-red-500/40' : 'text-muted-foreground/40'
-                            }`}>
-                              {Math.floor(task.duration / 60) > 0 ? `${Math.floor(task.duration / 60)}h ` : ''}{task.duration % 60 > 0 ? `${task.duration % 60}m` : ''}
-                            </p>
-                          )}
-                        </div>
-                      ) : (
-                        <p className="text-[9px] font-mono text-muted-foreground/30 tracking-wider">
-                          ANYTIME
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Content — double tap to complete */}
-                    <button
-                      onClick={() => onTaskTap(task.id)}
-                      className="flex-1 min-w-0 text-left active:bg-muted/40 rounded-sm -m-1 p-1 transition-colors"
-                    >
-                      <p className={`text-sm font-display font-medium leading-snug ${
-                        task.completed
-                          ? 'line-through text-muted-foreground/50'
-                          : isOverdue
-                            ? 'text-red-500'
-                            : 'text-foreground'
-                      }`}>
-                        {task.title}
-                      </p>
-                      {task.description && (
-                        <p className={`text-[11px] mt-0.5 line-clamp-1 ${
-                          isOverdue ? 'text-red-500/40' : 'text-muted-foreground/50'
-                        }`}>
-                          {task.description}
-                        </p>
-                      )}
-                      {task.subtasks && task.subtasks.length > 0 && (
-                        <p className="text-[9px] font-mono text-muted-foreground/40 mt-1 tracking-wider">
-                          {task.subtasks.filter((s: any) => s.completed).length}/{task.subtasks.length} SUBTASKS
-                        </p>
-                      )}
-                    </button>
-
-                    {/* Priority dot */}
-                    <div
-                      className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
-                      style={{
-                        backgroundColor: `hsl(var(--priority-${task.priority}))`,
-                        opacity: 0.6,
-                      }}
-                    />
-                  </div>
+                  {renderFocusRow(task, isCurrent, false)}
                 </div>
               );
             })
@@ -540,6 +485,79 @@ function FocusDayListPanel({ allTodayTasks, completedCount, nowMinutes, activeTa
       />
     </div>
   );
+
+  function renderFocusRow(task: any, isCurrent: boolean, isChild: boolean) {
+    const isOverdue = !task.completed && task.time &&
+      nowMinutes >= timeToMinutes(task.time) + (task.duration || 30);
+    return (
+      <div
+        className={`w-full text-left px-3 py-${isChild ? '2' : '4'} ${isChild ? 'border-b border-border/10' : 'border-b border-border/20'} transition-colors ${
+          task.completed ? 'opacity-50' : ''
+        }`}
+      >
+        <div className="flex items-start gap-3">
+          {/* Time column */}
+          <div className={`${isChild ? 'w-12' : 'w-16'} flex-shrink-0 pt-0.5`}>
+            {task.time ? (
+              <div>
+                <p className={`text-[11px] font-mono leading-tight ${
+                  isOverdue ? 'text-red-500/80' : 'text-foreground/80'
+                }`}>
+                  {formatTime12h(task.time)}
+                </p>
+                {task.duration && !isChild && (
+                  <p className={`text-[9px] font-mono mt-0.5 ${
+                    isOverdue ? 'text-red-500/40' : 'text-muted-foreground/40'
+                  }`}>
+                    {Math.floor(task.duration / 60) > 0 ? `${Math.floor(task.duration / 60)}h ` : ''}{task.duration % 60 > 0 ? `${task.duration % 60}m` : ''}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-[9px] font-mono text-muted-foreground/30 tracking-wider">ANYTIME</p>
+            )}
+          </div>
+
+          {/* Content */}
+          <button
+            onClick={() => onTaskTap(task.id)}
+            className="flex-1 min-w-0 text-left active:bg-muted/40 rounded-sm -m-1 p-1 transition-colors"
+          >
+            <p className={`${isChild ? 'text-xs' : 'text-sm'} font-display font-medium leading-snug ${
+              task.completed
+                ? 'line-through text-muted-foreground/50'
+                : isOverdue
+                  ? 'text-red-500'
+                  : 'text-foreground'
+            }`}>
+              {task.title}
+            </p>
+            {task.description && !isChild && (
+              <p className={`text-[11px] mt-0.5 line-clamp-1 ${
+                isOverdue ? 'text-red-500/40' : 'text-muted-foreground/50'
+              }`}>
+                {task.description}
+              </p>
+            )}
+            {task.subtasks && task.subtasks.length > 0 && (
+              <p className="text-[9px] font-mono text-muted-foreground/40 mt-1 tracking-wider">
+                {task.subtasks.filter((s: any) => s.completed).length}/{task.subtasks.length} SUBTASKS
+              </p>
+            )}
+          </button>
+
+          {/* Priority dot */}
+          <div
+            className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
+            style={{
+              backgroundColor: `hsl(var(--priority-${task.priority}))`,
+              opacity: 0.6,
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
 }
 
 
