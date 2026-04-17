@@ -43,7 +43,7 @@ function linkify(text: string) {
 const PRIORITY_LABELS = ['FLEX', 'SEMI', 'FIXED', 'LOCK'] as const;
 
 export function FocusView() {
-  const { tasks, routinesEnabled, getNextTask, updateTask, completeTask, setEditingTask, setViewMode, setDaySubMode, setListReturnZoom, setShowListReturn } = useTaskStore();
+  const { tasks, routinesEnabled, getNextTask, updateTask, completeTask, completeChild, getActiveChildInGroup, setEditingTask, setViewMode, setDaySubMode, setListReturnZoom, setShowListReturn } = useTaskStore();
   const { minutes: nowMinutes, dateStr: today } = useCurrentTime(1000);
   const [activePanel, setActivePanel] = useState<FocusPanel>('main');
   const [completedExpanded, setCompletedExpanded] = useState(false);
