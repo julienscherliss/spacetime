@@ -570,6 +570,13 @@ export const useTaskStore = create<TaskState>()(
       },
 
       completeTask: (id) => {
+        // If this task is a child of a Group, route through completeChild so the
+        // parent Group cascades to "complete" once every child is done.
+        const target = get().tasks.find((t) => t.id === id);
+        if (target?.groupId) {
+          get().completeChild(id);
+          return;
+        }
         const now = new Date().toISOString();
         playUISound('tapeClick');
         set((s) => ({
