@@ -4,7 +4,8 @@ import {
   Layers, X, Check, ListOrdered, Sliders, Trash2, ArrowUp, ArrowDown,
   LogOut, Minus, Plus,
 } from 'lucide-react';
-import { useTaskStore, Task } from '@/store/taskStore';
+import { useTaskStore, Task, RecurrencePattern } from '@/store/taskStore';
+import { Repeat } from 'lucide-react';
 import { formatTime12h, timeToMinutes } from '@/hooks/useCurrentTime';
 import { MIN_CHILD_DURATION } from '@/utils/groupRebalance';
 import { toast } from 'sonner';
