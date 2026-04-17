@@ -163,6 +163,17 @@ export function TaskEditPanel() {
   const [customUnit, setCustomUnit] = useState<CustomUnit>(
     task?.recurrence?.type === 'custom' ? task.recurrence.unit : 'weeks'
   );
+  const [nthPositions, setNthPositions] = useState<NthWeekday[]>(() => {
+    if (task?.recurrence?.type === 'monthlyNth') return task.recurrence.positions;
+    if (task?.date) {
+      const dt = new Date(task.date + 'T12:00:00');
+      // Default: same day-of-week, same nth occurrence within month
+      const dayOfMonth = dt.getDate();
+      const week = (Math.ceil(dayOfMonth / 7) as 1 | 2 | 3 | 4 | -1);
+      return [{ week, day: dt.getDay() }];
+    }
+    return [{ week: 1, day: new Date().getDay() }];
+  });
   const [isRoutine, setIsRoutine] = useState(task?.isRoutine !== false && task?.type === 'recurring');
   const [isLinked, setIsLinked] = useState(task?.linked || false);
   const [showRecurrence, setShowRecurrence] = useState(false);
