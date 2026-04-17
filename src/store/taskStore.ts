@@ -697,6 +697,11 @@ export const useTaskStore = create<TaskState>()(
           void cancelNotificationsForTask(taskId);
         cancelWebNotificationsForTask(taskId);
         });
+
+        // If we resized a Group container, re-flow its children to fit the new span.
+        if (task.type === 'group') {
+          get().rebalanceGroupChildren(task.id);
+        }
       },
 
       reorderTask: (id, newTime) => {
