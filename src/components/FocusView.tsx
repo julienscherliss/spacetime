@@ -181,7 +181,13 @@ export function FocusView() {
       const p = Math.min(1, el / HOLD_DURATION);
       setHoldProgress(p);
       if (p >= 1) {
-        completeTask(targetTask.id);
+        // Group children must go through completeChild so the parent Group
+        // auto-completes when its last child finishes.
+        if (targetTask.groupId) {
+          completeChild(targetTask.id);
+        } else {
+          completeTask(targetTask.id);
+        }
         // Track hold completions for hint
         const count = parseInt(localStorage.getItem('focus-hold-completions') || '0', 10);
         localStorage.setItem('focus-hold-completions', String(count + 1));
@@ -193,7 +199,7 @@ export function FocusView() {
       holdTimerRef.current = requestAnimationFrame(tick);
     };
     holdTimerRef.current = requestAnimationFrame(tick);
-  }, [activeTask, overdueTasks, nowMinutes, completeTask]);
+  }, [activeTask, overdueTasks, nowMinutes, completeTask, completeChild]);
 
   const cancelHold = useCallback(() => {
     if (holdTimerRef.current) {
