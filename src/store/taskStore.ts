@@ -127,6 +127,28 @@ interface TaskState {
   generateRecurringInstances: (startDate: string, endDate: string) => void;
   moveOverdueToWaitingRoom: () => void;
   linkSeriesFromDate: (taskId: string, fromDate: string, linked: boolean) => void;
+
+  // ─── Groups (compound tasks) ──────────────────────────
+  /** Convert an existing task into a Group. The original task becomes the first
+   *  child of the new Group. Returns the new Group's id, or null on failure. */
+  convertTaskToGroup: (taskId: string, groupName: string) => string | null;
+  /** Create an empty Group container at the given slot. */
+  createEmptyGroup: (params: { name: string; date: string; time: string; duration: number }) => string;
+  /** Move an existing scheduled task into a Group. Returns false if rejected. */
+  addTaskToGroup: (taskId: string, groupId: string) => boolean;
+  /** Pull a child task back out of its Group onto the main timeline. */
+  removeTaskFromGroup: (taskId: string, dropDate: string, dropTime: string) => void;
+  /** Re-run the proportional-squeeze layout for a Group's children. */
+  rebalanceGroupChildren: (groupId: string) => void;
+  /** Mark a Group + every child complete. */
+  completeGroup: (groupId: string) => void;
+  /** Mark one child complete; auto-completes the parent Group when last child finishes. */
+  completeChild: (taskId: string) => void;
+  renameGroup: (groupId: string, name: string) => void;
+  /** All non-archived children of a Group, sorted by groupOrder. */
+  getGroupChildren: (groupId: string) => Task[];
+  /** The child currently active in a Group at the given moment (for focus mode). */
+  getActiveChildInGroup: (groupId: string, atDate?: Date) => Task | undefined;
 }
 
 const generateId = () => crypto.randomUUID();
