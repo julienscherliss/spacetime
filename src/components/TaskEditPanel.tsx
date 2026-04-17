@@ -1042,25 +1042,9 @@ export function TaskEditPanel() {
                 </div>
               )}
 
-              {/* Edit scope prompt */}
-              {showEditScope && (
-                <div className="p-3 border border-border/40 rounded-sm bg-muted/20 mb-3">
-                  <p className="text-[9px] font-mono text-foreground/60 mb-2.5">Apply changes to:</p>
-                  <div className="flex gap-2">
-                    <button onClick={handleSaveThisOnly}
-                      className="flex-1 py-2 rounded-sm border border-border text-[9px] font-mono tracking-wider text-muted-foreground hover:text-foreground transition-colors">
-                      This only
-                    </button>
-                    <button onClick={handleSaveAllFuture}
-                      className="flex-1 py-2 rounded-sm border border-primary/20 text-[9px] font-mono tracking-wider text-primary hover:bg-primary/5 transition-colors">
-                      All future
-                    </button>
-                  </div>
-                </div>
-              )}
-
               {/* ─── Actions ─── */}
-              {!showEditScope && (
+              {(
+
                 <div className="flex items-center gap-2 pt-3 border-t border-border/20"
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={(e) => e.stopPropagation()}>
