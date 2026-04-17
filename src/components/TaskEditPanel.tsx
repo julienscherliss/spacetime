@@ -231,8 +231,6 @@ export function TaskEditPanel() {
         setNthPositions([{ week, day: dt.getDay() }]);
       }
       setShowDeleteConfirm(false);
-      setShowEditScope(false);
-      setPendingUpdates(null);
       setDueDate(task.dueDate || '');
       setTaskCategory(task.category || '');
       setShowDuePicker(false);
