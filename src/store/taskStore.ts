@@ -770,21 +770,21 @@ export const useTaskStore = create<TaskState>()(
         set((s) => ({
           tasks: s.tasks.map((t) => {
             if (t.id === id) {
-              return {
+              return enforceRecurringLinkInvariant({
                 ...t,
                 date: newDate,
                 time: finalTime ?? t.time,
                 priority: newPriority,
                 moveCount: crossDay ? t.moveCount + 1 : t.moveCount,
                 inWaitingRoom: false,
-              };
+              });
             }
 
             if (targetIds.has(t.id)) {
-              return {
+              return enforceRecurringLinkInvariant({
                 ...t,
                 time: finalTime ?? t.time,
-              };
+              });
             }
 
             return t;
@@ -806,7 +806,7 @@ export const useTaskStore = create<TaskState>()(
         set((s) => ({
           tasks: s.tasks.map((t) =>
             targetIds.has(t.id)
-              ? { ...t, time: newTime, duration: Math.max(15, newDuration) }
+              ? enforceRecurringLinkInvariant({ ...t, time: newTime, duration: Math.max(15, newDuration) })
               : t
           ),
         }));
