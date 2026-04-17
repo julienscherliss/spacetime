@@ -10,6 +10,7 @@ import { DayListView } from '@/components/DayListView';
 import { WeekView } from '@/components/WeekView';
 import { CalendarView } from '@/components/CalendarView';
 import { TaskEditPanel } from '@/components/TaskEditPanel';
+import { GroupEditPanel } from '@/components/GroupEditPanel';
 import { CalendarEventEditPanel } from '@/components/CalendarEventEditPanel';
 import { DailyCompletionModal } from '@/components/DailyCompletionModal';
 
@@ -168,6 +169,7 @@ const Index = () => {
       </AnimatePresence>
 
       <TaskEditPanel />
+      <GroupEditPanel />
       <CalendarEventEditPanel />
       <DailyCompletionModal />
       

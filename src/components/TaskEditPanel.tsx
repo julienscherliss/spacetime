@@ -133,14 +133,9 @@ export function TaskEditPanel() {
   const task = tasks.find((t) => t.id === editingTaskId);
   const [showGroupPrompt, setShowGroupPrompt] = useState(false);
 
-  // If the editing target is a Group, this panel shouldn't render the normal
-  // task editor (Groups have only a name + scheduler). The dedicated
-  // GroupEditPanel ships in a follow-up step; for now we close cleanly.
-  useEffect(() => {
-    if (task?.type === 'group') {
-      setEditingTask(null);
-    }
-  }, [task?.type, task?.id, setEditingTask]);
+  // If the editing target is a Group, this panel bails out early — the
+  // dedicated GroupEditPanel handles Groups (rendered alongside in Index).
+  if (task?.type === 'group') return null;
 
   const [title, setTitle] = useState(task?.title || '');
   const [description, setDescription] = useState(task?.description || '');
@@ -1122,7 +1117,7 @@ export function TaskEditPanel() {
       )}
       <GroupNamePrompt
         open={showGroupPrompt}
-        contextLabel={task ? `Convert "${task.title}" into a Group. The task stays as the first item inside.` : undefined}
+        contextLabel="CONVERT TO GROUP"
         defaultName={task?.title ? `${task.title} block` : ''}
         confirmLabel="CREATE GROUP"
         onCancel={() => setShowGroupPrompt(false)}
