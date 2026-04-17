@@ -394,6 +394,8 @@ export type Database = {
           detached_from_series: boolean
           due_date: string | null
           duration: number | null
+          group_id: string | null
+          group_order: number | null
           id: string
           in_waiting_room: boolean | null
           is_recurrence_instance: boolean | null
@@ -402,6 +404,7 @@ export type Database = {
           linked_group_id: string | null
           move_count: number
           original_priority: number
+          preferred_duration: number | null
           priority: number
           recurrence: Json | null
           recurrence_parent_id: string | null
@@ -426,6 +429,8 @@ export type Database = {
           detached_from_series?: boolean
           due_date?: string | null
           duration?: number | null
+          group_id?: string | null
+          group_order?: number | null
           id?: string
           in_waiting_room?: boolean | null
           is_recurrence_instance?: boolean | null
@@ -434,6 +439,7 @@ export type Database = {
           linked_group_id?: string | null
           move_count?: number
           original_priority?: number
+          preferred_duration?: number | null
           priority?: number
           recurrence?: Json | null
           recurrence_parent_id?: string | null
@@ -458,6 +464,8 @@ export type Database = {
           detached_from_series?: boolean
           due_date?: string | null
           duration?: number | null
+          group_id?: string | null
+          group_order?: number | null
           id?: string
           in_waiting_room?: boolean | null
           is_recurrence_instance?: boolean | null
@@ -466,6 +474,7 @@ export type Database = {
           linked_group_id?: string | null
           move_count?: number
           original_priority?: number
+          preferred_duration?: number | null
           priority?: number
           recurrence?: Json | null
           recurrence_parent_id?: string | null
