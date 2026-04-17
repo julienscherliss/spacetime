@@ -18,10 +18,18 @@ export type DaySubMode = 'timeline' | 'list';
 
 export type CustomUnit = 'days' | 'weeks' | 'months' | 'years';
 
+/** Position-in-month for "Nth weekday" recurrence. -1 = last. */
+export type NthWeek = 1 | 2 | 3 | 4 | -1;
+export interface NthWeekday {
+  week: NthWeek;
+  day: number; // 0 (Sun) – 6 (Sat)
+}
+
 export type RecurrencePattern =
   | { type: 'daily' }
   | { type: 'weekly'; days: number[] }
   | { type: 'monthly'; dayOfMonth: number }
+  | { type: 'monthlyNth'; positions: NthWeekday[] }
   | { type: 'yearly'; month: number; dayOfMonth: number }
   | { type: 'weekdays' }
   | { type: 'custom'; interval: number; unit: CustomUnit; days?: number[] };
