@@ -1120,6 +1120,23 @@ export function TaskEditPanel() {
           onNavigate={setLightboxIndex}
         />
       )}
+      <GroupNamePrompt
+        open={showGroupPrompt}
+        contextLabel={task ? `Convert "${task.title}" into a Group. The task stays as the first item inside.` : undefined}
+        defaultName={task?.title ? `${task.title} block` : ''}
+        confirmLabel="CREATE GROUP"
+        onCancel={() => setShowGroupPrompt(false)}
+        onConfirm={(name) => {
+          if (!task) return;
+          const groupId = convertTaskToGroup(task.id, name);
+          setShowGroupPrompt(false);
+          if (groupId) {
+            toast.success(`Group "${name}" created`);
+            // Open the new Group for editing — GroupEditPanel will replace this view in a follow-up step.
+            setEditingTask(groupId);
+          }
+        }}
+      />
     </AnimatePresence>
   );
 }
