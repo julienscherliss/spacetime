@@ -3,7 +3,7 @@ import { useTimezoneStore, getTzAbbr, TIMEZONES } from '@/store/timezoneStore';
 import type { MobilityMode } from '@/store/timezoneStore';
 import { useCalendarStore } from '@/store/calendarStore';
 import { supabase } from '@/integrations/supabase/client';
-import { X, Search, Globe, Repeat, MapPin, Calendar as CalIcon, RefreshCw, Unplug, HelpCircle, Moon, Shield, Lock, Bell, Type, Volume2 } from 'lucide-react';
+import { X, Search, Globe, Repeat, MapPin, Calendar as CalIcon, RefreshCw, Unplug, HelpCircle, Moon, Shield, Lock, Bell, Type, Volume2, MessageSquarePlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { HelpPanel } from './HelpPanel';
 import { ColorSchemePanel } from './ColorSchemePanel';
@@ -83,13 +83,20 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {/* Help & Tips — top of settings */}
-          <div>
+          <div className="space-y-2">
             <button
               onClick={() => setHelpOpen(true)}
               className="w-full flex items-center justify-center gap-2 bg-muted/30 border border-border/50 rounded-sm p-3 min-h-[48px] text-[12px] font-mono tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
             >
               <HelpCircle size={14} strokeWidth={1.5} />
               <span>HELP & TIPS</span>
+            </button>
+            <button
+              onClick={() => { onClose(); window.dispatchEvent(new CustomEvent('toggle-feedback')); }}
+              className="w-full flex items-center justify-center gap-2 bg-muted/30 border border-border/50 rounded-sm p-3 min-h-[48px] text-[12px] font-mono tracking-wider text-primary hover:bg-primary/5 transition-colors"
+            >
+              <MessageSquarePlus size={14} strokeWidth={1.5} />
+              <span>SEND FEEDBACK</span>
             </button>
           </div>
 

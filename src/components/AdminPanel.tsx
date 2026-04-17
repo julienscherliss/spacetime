@@ -4,10 +4,11 @@ import {
   X, Shield, Users, Tag, BarChart3, Plus, Trash2, Copy, Eye, EyeOff,
   ChevronDown, ChevronUp, Activity, AlertTriangle, Zap, HardDrive,
   TrendingUp, TrendingDown, RefreshCw, Bell, Clock, CheckCircle2,
-  Circle, UserPlus, UserCheck, UserX,
+  Circle, UserPlus, UserCheck, UserX, MessageSquare,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { FeedbackAdminTab } from './admin/FeedbackAdminTab';
 
 // ─── Types ───
 
@@ -16,7 +17,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Tab = 'health' | 'users' | 'promos';
+type Tab = 'health' | 'users' | 'promos' | 'feedback';
 
 interface HealthMetrics {
   health: { status: 'healthy' | 'warning' | 'critical'; message: string };
@@ -399,6 +400,7 @@ export function AdminPanel({ open, onClose }: Props) {
   const tabs: { key: Tab; label: string; icon: typeof BarChart3 }[] = [
     { key: 'health', label: 'HEALTH', icon: Activity },
     { key: 'users', label: 'USERS', icon: Users },
+    { key: 'feedback', label: 'FEEDBACK', icon: MessageSquare },
     { key: 'promos', label: 'PROMOS', icon: Tag },
   ];
 
@@ -714,6 +716,9 @@ export function AdminPanel({ open, onClose }: Props) {
               )}
             </div>
           )}
+
+          {/* ═══ FEEDBACK TAB ═══ */}
+          {!loading && tab === 'feedback' && <FeedbackAdminTab />}
 
           {/* ═══ PROMOS TAB ═══ */}
           {!loading && tab === 'promos' && (
