@@ -78,6 +78,13 @@ function recurrenceLabel(r?: RecurrencePattern): string {
     case 'weekdays': return 'Mon–Fri';
     case 'weekly': return `Weekly (${r.days.map(d => DAY_LABELS[d]).join(', ')})`;
     case 'monthly': return `Monthly (day ${r.dayOfMonth})`;
+    case 'monthlyNth': {
+      const labels = r.positions.map((p) => {
+        const wk = NTH_WEEK_LABELS.find((w) => w.value === p.week)?.label ?? `${p.week}`;
+        return `${wk} ${DAY_LABELS[p.day]}`;
+      });
+      return `Monthly (${labels.join(', ')})`;
+    }
     case 'yearly': return 'Yearly';
     case 'custom': {
       const base = `Every ${r.interval} ${r.unit}`;
