@@ -268,6 +268,12 @@ export function TimelineColumn({
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskCategory, setNewTaskCategory] = useState<string | undefined>();
   const [newTaskDueDate, setNewTaskDueDate] = useState<string | undefined>();
+  // Refs mirror the latest category/dueDate/title so handleNewTaskSubmit can
+  // read them synchronously even when invoked right after a setState (e.g. from
+  // TagAutocomplete's Enter-to-select path) before React has committed.
+  const newTaskTitleRef = useRef('');
+  const newTaskCategoryRef = useRef<string | undefined>();
+  const newTaskDueDateRef = useRef<string | undefined>();
   const newTaskRef = useRef<HTMLInputElement>(null);
   const proxyInputRef = useRef<HTMLInputElement>(null);
   const { hint: entryHint } = useEntryHint();
