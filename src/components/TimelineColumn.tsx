@@ -12,6 +12,7 @@ import { useScheduledDragStore } from '@/store/scheduledDragStore';
 import { useCarryStore, isInScrollCooldown } from '@/store/carryStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { TimelineTaskBlock } from '@/components/TimelineTaskBlock';
+import { GroupTimelineBlock } from '@/components/GroupTimelineBlock';
 import { CondensedTaskBlock } from '@/components/CondensedTaskBlock';
 import { timeToMinutes, minutesToTime, snapTo15, formatTime12h, formatHour12h } from '@/hooks/useCurrentTime';
 import { Calendar as CalIcon, Check, Copy, Unlink, Link, XCircle, Info } from 'lucide-react';
@@ -1233,6 +1234,21 @@ export function TimelineColumn({
             const isLocked = task.priority >= 3;
             const showUnlinkedOutline = false;
             const hasConflict = routineConflictIds.has(task.id);
+
+            // Groups have their own compact representation (single block, no inline expansion).
+            if ((task as Task).type === 'group') {
+              return (
+                <GroupTimelineBlock
+                  key={task.id}
+                  task={task as Task}
+                  top={top}
+                  height={height}
+                  isActive={isActive}
+                  showTimeLabels={showTimeLabels}
+                  formatDuration={formatDuration}
+                />
+              );
+            }
 
             return (
               <TimelineTaskBlock

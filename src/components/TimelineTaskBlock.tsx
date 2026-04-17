@@ -11,6 +11,7 @@ import { START_HOUR } from '@/components/TimelineColumn';
 import { getOccupiedSlots, findValidPosition } from '@/utils/collisionDetection';
 import { TASK_TEXT_FIT_PX, TASK_TEXT_FIT_PX_COMFORT } from '@/utils/taskClustering';
 
+
 interface TimelineTaskBlockProps {
   task: Task;
   top: number;

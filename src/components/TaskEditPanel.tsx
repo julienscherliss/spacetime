@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Priority, RecurrencePattern, CustomUnit } from '@/store/taskStore';
 import { SubtaskList, Subtask } from '@/components/SubtaskList';
-import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar, Inbox, CalendarCheck, XCircle, Paperclip, ExternalLink, Check, AlertTriangle, Tag, Upload, FileText, Bell, PauseCircle } from 'lucide-react';
+import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar, Inbox, CalendarCheck, XCircle, Paperclip, ExternalLink, Check, AlertTriangle, Tag, Upload, FileText, Bell, PauseCircle, Layers } from 'lucide-react';
+import { GroupNamePrompt } from '@/components/GroupNamePrompt';
 import { AttachmentLightbox } from '@/components/AttachmentLightbox';
 import { useTimezoneStore } from '@/store/timezoneStore';
 import { supabase } from '@/integrations/supabase/client';
@@ -127,8 +128,19 @@ export function TaskEditPanel() {
     tasks, editingTaskId, setEditingTask, updateTask, updateFutureInstances,
     deleteTask, deleteFutureInstances, deleteRecurrenceSeries, removeInstances,
     setFocusTask, setViewMode, generateRecurringInstances, linkSeriesFromDate,
+    convertTaskToGroup,
   } = useTaskStore();
   const task = tasks.find((t) => t.id === editingTaskId);
+  const [showGroupPrompt, setShowGroupPrompt] = useState(false);
+
+  // If the editing target is a Group, this panel shouldn't render the normal
+  // task editor (Groups have only a name + scheduler). The dedicated
+  // GroupEditPanel ships in a follow-up step; for now we close cleanly.
+  useEffect(() => {
+    if (task?.type === 'group') {
+      setEditingTask(null);
+    }
+  }, [task?.type, task?.id, setEditingTask]);
 
   const [title, setTitle] = useState(task?.title || '');
   const [description, setDescription] = useState(task?.description || '');
@@ -1037,6 +1049,19 @@ export function TaskEditPanel() {
                     <Archive size={12} strokeWidth={1.5} />
                     LIBRARY
                   </button>
+                  {/* Convert to Group — only for normal scheduled tasks not already in a Group */}
+                  {task && task.type !== 'group' && !task.groupId && task.time && task.duration && (
+                    <button type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowGroupPrompt(true);
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-sm text-[9px] font-mono tracking-wider text-muted-foreground/50 hover:text-foreground hover:bg-muted/30 transition-colors"
+                      title="Convert this task into a Group container">
+                      <Layers size={12} strokeWidth={1.5} />
+                      GROUP
+                    </button>
+                  )}
                   <div className="flex-1" />
                   <button type="button"
                     onClick={(e) => {
@@ -1095,6 +1120,23 @@ export function TaskEditPanel() {
           onNavigate={setLightboxIndex}
         />
       )}
+      <GroupNamePrompt
+        open={showGroupPrompt}
+        contextLabel={task ? `Convert "${task.title}" into a Group. The task stays as the first item inside.` : undefined}
+        defaultName={task?.title ? `${task.title} block` : ''}
+        confirmLabel="CREATE GROUP"
+        onCancel={() => setShowGroupPrompt(false)}
+        onConfirm={(name) => {
+          if (!task) return;
+          const groupId = convertTaskToGroup(task.id, name);
+          setShowGroupPrompt(false);
+          if (groupId) {
+            toast.success(`Group "${name}" created`);
+            // Open the new Group for editing — GroupEditPanel will replace this view in a follow-up step.
+            setEditingTask(groupId);
+          }
+        }}
+      />
     </AnimatePresence>
   );
 }
