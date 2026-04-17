@@ -271,6 +271,33 @@ function getDayOfWeek(dateStr: string): number {
   return new Date(dateStr + 'T12:00:00').getDay();
 }
 
+function nthWeekdayOfMonth(year: number, month: number, week: NthWeek, day: number): string | null {
+  if (week === -1) {
+    // Last occurrence of `day` in month
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    for (let d = lastDay; d >= 1; d--) {
+      const dt = new Date(year, month, d);
+      if (dt.getDay() === day) {
+        return `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      }
+    }
+    return null;
+  }
+  // 1st-4th
+  let count = 0;
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  for (let d = 1; d <= lastDay; d++) {
+    const dt = new Date(year, month, d);
+    if (dt.getDay() === day) {
+      count++;
+      if (count === week) {
+        return `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      }
+    }
+  }
+  return null;
+}
+
 function getAllOccurrences(
   pattern: RecurrencePattern,
   startDate: string,
