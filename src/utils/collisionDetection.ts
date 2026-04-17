@@ -226,3 +226,51 @@ export function getRoutineConflicts(
 
   return conflictIds;
 }
+
+/**
+ * Detect non-completed tasks that overlap timed (non-all-day) calendar events on a given date.
+ * Calendar events are treated like locked blocks — tasks overlapping them are flagged as conflicts.
+ */
+export function getCalendarConflicts(
+  tasks: Array<{ id: string; time?: string; duration?: number; date: string; completed: boolean; archivedAt?: string; inWaitingRoom?: boolean }>,
+  calendarEvents: Array<{ id: string; time: string | null; duration: number; isAllDay: boolean; date: string; endDate?: string | null }>,
+  date: string
+): Set<string> {
+  const conflictIds = new Set<string>();
+
+  const eventSpans = (event: { date: string; endDate?: string | null }, d: string): boolean => {
+    if (event.date === d) return true;
+    if (!event.endDate) return false;
+    return d >= event.date && d <= event.endDate;
+  };
+
+  const eventSlots = calendarEvents
+    .filter(e => !e.isAllDay && e.time && eventSpans(e, date))
+    .map(e => {
+      const startMin = timeToMinutes(e.time!);
+      return { startMin, endMin: startMin + (e.duration || 30) };
+    });
+
+  if (eventSlots.length === 0) return conflictIds;
+
+  const dayTasks = tasks.filter(t =>
+    t.date === date &&
+    !t.completed &&
+    !t.archivedAt &&
+    !t.inWaitingRoom &&
+    t.time
+  );
+
+  for (const task of dayTasks) {
+    const slot = taskToSlot(task);
+    if (!slot) continue;
+    for (const ev of eventSlots) {
+      if (slotsOverlap(slot, ev)) {
+        conflictIds.add(task.id);
+        break;
+      }
+    }
+  }
+
+  return conflictIds;
+}

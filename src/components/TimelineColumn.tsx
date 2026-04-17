@@ -18,7 +18,7 @@ import { CondensedTaskBlock } from '@/components/CondensedTaskBlock';
 import { timeToMinutes, minutesToTime, snapTo15, formatTime12h, formatHour12h } from '@/hooks/useCurrentTime';
 import { Calendar as CalIcon, Check, Copy, Unlink, Link, XCircle, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getOccupiedSlots, findValidPosition, clampResize, wouldOverlap, getRoutineConflicts } from '@/utils/collisionDetection';
+import { getOccupiedSlots, findValidPosition, clampResize, wouldOverlap, getRoutineConflicts, getCalendarConflicts } from '@/utils/collisionDetection';
 import { clusterTasks, TaskCluster, getZoomForCluster } from '@/utils/taskClustering';
 
 export const DEFAULT_HOUR_HEIGHT = 56;
@@ -97,29 +97,50 @@ function CalendarEventBlocks({ date, hourHeight, showTimeLabels }: { date: strin
             onClick={() => handleClick(event.id)}
           >
             <div
-              className={`h-full rounded-[2px] overflow-hidden transition-colors ${
-                isCompleted ? 'opacity-50' : 'hover:bg-muted/40'
+              className={`h-full rounded-[2px] overflow-hidden transition-colors shadow-sm ${
+                isCompleted ? 'opacity-50' : ''
               }`}
               style={{
-                border: `1.5px solid ${color}`,
-                backgroundColor: isCompleted ? undefined : `${color}08`,
+                backgroundColor: isCompleted ? undefined : 'hsl(var(--locked-fill))',
+                border: '1.5px solid hsl(var(--locked-fill))',
+                boxShadow: '0 1px 2px 0 hsl(var(--foreground) / 0.04)',
               }}
             >
-              <div className="flex items-start h-full px-2 py-0.5 overflow-hidden relative">
+              <div className="flex items-start h-full px-2 py-1 overflow-hidden relative">
                 <div className="flex-1 min-w-0">
-                  <div className={`font-mono leading-tight truncate ${
-                    isCompleted ? 'line-through text-muted-foreground/30' : 'text-muted-foreground/70'
-                  }`} style={{ fontSize: 'var(--ui-text-base)' }}>
+                  <div
+                    className={`font-mono leading-tight truncate font-medium ${
+                      isCompleted ? 'line-through text-muted-foreground/40' : ''
+                    }`}
+                    style={{
+                      fontSize: 'var(--ui-task-title)',
+                      lineHeight: 'var(--ui-leading-tight)',
+                      ...(isCompleted ? {} : { color: 'hsl(var(--locked-text))' }),
+                    }}
+                  >
                     {event.title}
                   </div>
                   {height > 24 && (
                     <div className="flex items-center gap-1 mt-0.5">
-                      <span className="font-mono text-muted-foreground/35" style={{ fontSize: 'var(--ui-text-xs)' }}>
+                      <span
+                        className="font-mono"
+                        style={{
+                          fontSize: 'var(--ui-task-meta)',
+                          color: isCompleted ? undefined : 'hsl(var(--locked-text) / 0.7)',
+                          opacity: isCompleted ? 0.5 : 1,
+                        }}
+                      >
                         {formatTime12h(event.time!)}
                       </span>
-                      <CalIcon size={8} className="text-muted-foreground/25" />
+                      <CalIcon size={9} style={{ color: isCompleted ? undefined : 'hsl(var(--locked-text) / 0.6)' }} />
                       {category && (
-                        <span className="text-[8px] font-mono text-muted-foreground/40 tracking-wider uppercase">
+                        <span
+                          className="font-mono tracking-wider uppercase"
+                          style={{
+                            fontSize: 'var(--ui-task-badge)',
+                            color: isCompleted ? undefined : 'hsl(var(--locked-text) / 0.7)',
+                          }}
+                        >
                           {category}
                         </span>
                       )}
@@ -323,6 +344,18 @@ export function TimelineColumn({
     if (!routinesEnabled) return new Set<string>();
     return getRoutineConflicts(allStoreTasks, date);
   }, [allStoreTasks, date, routinesEnabled]);
+
+  // Compute calendar conflict IDs — tasks overlapping timed Google Calendar events
+  const allCalendarEvents = useCalendarStore((s) => s.events);
+  const visibleCalendars = useCalendarStore((s) => s.calendars);
+  const deletedCalendarEventIds = useCalendarStore((s) => s.deletedEventIds);
+  const calendarConflictIds = useMemo(() => {
+    const visibleIds = new Set(visibleCalendars.filter(c => c.visible).map(c => c.google_calendar_id));
+    const visibleEvents = allCalendarEvents.filter(e =>
+      visibleIds.has(e.calendarId) && !deletedCalendarEventIds.includes(e.id)
+    );
+    return getCalendarConflicts(allStoreTasks, visibleEvents, date);
+  }, [allStoreTasks, allCalendarEvents, visibleCalendars, deletedCalendarEventIds, date]);
 
   const activeTaskId = isToday
     ? activeTasks.find((t) => {
@@ -1417,7 +1450,7 @@ export function TimelineColumn({
             const isResizingThis = resizing?.id === task.id;
             const isLocked = task.priority >= 3;
             const showUnlinkedOutline = false;
-            const hasConflict = routineConflictIds.has(task.id);
+            const hasConflict = routineConflictIds.has(task.id) || calendarConflictIds.has(task.id);
 
             // Groups have their own compact representation (single block, no inline expansion).
             if ((task as Task).type === 'group') {
