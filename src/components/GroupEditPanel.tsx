@@ -170,6 +170,9 @@ export function GroupEditPanel() {
             </div>
           </div>
 
+          {/* Recurrence */}
+          <GroupRecurrenceRow group={group} updateTask={updateTask} />
+
           {/* Mode toggle */}
           <div className="px-5 pt-2 pb-3 flex gap-1.5">
             <button
