@@ -187,8 +187,6 @@ export function TaskEditPanel() {
   const [showCatPicker, setShowCatPicker] = useState(false);
   const [taskCategory, setTaskCategory] = useState(task?.category || '');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showEditScope, setShowEditScope] = useState(false);
-  const [pendingUpdates, setPendingUpdates] = useState<any>(null);
   const [dueDate, setDueDate] = useState<string>(task?.dueDate || '');
   const [showDuePicker, setShowDuePicker] = useState(false);
   const [showDurationPicker, setShowDurationPicker] = useState(false);
