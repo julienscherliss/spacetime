@@ -138,6 +138,12 @@ interface TaskState {
   addTaskToGroup: (taskId: string, groupId: string) => boolean;
   /** Pull a child task back out of its Group onto the main timeline. */
   removeTaskFromGroup: (taskId: string, dropDate: string, dropTime: string) => void;
+  /**
+   * Detach a child from its Group and pick it up into "inventory" (carry mode)
+   * so the user can choose where to place it next. Removes the task from the
+   * timeline (no date/time) and rebalances remaining siblings.
+   */
+  pickupFromGroup: (taskId: string) => void;
   /** Re-run the proportional-squeeze layout for a Group's children. */
   rebalanceGroupChildren: (groupId: string) => void;
   /** Mark a Group + every child complete. */
