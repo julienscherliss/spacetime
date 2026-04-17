@@ -1597,6 +1597,10 @@ export function TimelineColumn({
                 inputValue={newTaskTitle}
                 inputRef={newTaskRef as React.RefObject<HTMLInputElement>}
                 onSelectTag={(cat: CategoryDef, cleaned: string) => {
+                  // Update refs synchronously so submit (potentially fired in
+                  // the same tick) sees the chosen category, not stale state.
+                  newTaskTitleRef.current = cleaned;
+                  newTaskCategoryRef.current = cat.value;
                   setNewTaskTitle(cleaned);
                   setNewTaskCategory(cat.value);
                 }}
@@ -1606,6 +1610,8 @@ export function TimelineColumn({
                 inputValue={newTaskTitle}
                 inputRef={newTaskRef as React.RefObject<HTMLInputElement>}
                 onSelectDate={(dateStr: string, cleaned: string) => {
+                  newTaskTitleRef.current = cleaned;
+                  newTaskDueDateRef.current = dateStr;
                   setNewTaskTitle(cleaned);
                   setNewTaskDueDate(dateStr);
                 }}
