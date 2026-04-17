@@ -232,14 +232,15 @@ export function GroupEditPanel() {
                 </button>
                 <button
                   onClick={() => {
-                    // Pick up every child into inventory (the user places them
-                    // one-by-one), then dispose of the empty Group shell.
+                    // Dissolve: restore every child onto the timeline at the
+                    // group's slot (carry only holds one task at a time, so we
+                    // can't pick them all up). Individual children can still be
+                    // picked up via the LIST mode "remove" action.
                     const groupId = group.id;
-                    // Snapshot child ids first — pickupFromGroup mutates state.
-                    const childIds = children.map((c) => c.id);
-                    childIds.forEach((cid) => pickupFromGroup(cid));
+                    const baseTime = group.time ?? '09:00';
+                    children.forEach((c) => removeTaskFromGroup(c.id, c.date, c.time ?? baseTime));
                     deleteTask(groupId);
-                    toast.success('Group dissolved — tasks moved to inventory');
+                    toast.success('Group dissolved — tasks restored');
                     setEditingTask(null);
                   }}
                   className="flex-1 py-2.5 rounded-sm bg-destructive/90 text-destructive-foreground font-mono text-[10px] tracking-widest hover:bg-destructive transition-colors"
