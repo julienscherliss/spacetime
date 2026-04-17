@@ -97,29 +97,50 @@ function CalendarEventBlocks({ date, hourHeight, showTimeLabels }: { date: strin
             onClick={() => handleClick(event.id)}
           >
             <div
-              className={`h-full rounded-[2px] overflow-hidden transition-colors ${
-                isCompleted ? 'opacity-50' : 'hover:bg-muted/40'
+              className={`h-full rounded-[2px] overflow-hidden transition-colors shadow-sm ${
+                isCompleted ? 'opacity-50' : ''
               }`}
               style={{
-                border: `1.5px solid ${color}`,
-                backgroundColor: isCompleted ? undefined : `${color}08`,
+                backgroundColor: isCompleted ? undefined : 'hsl(var(--locked-fill))',
+                border: '1.5px solid hsl(var(--locked-fill))',
+                boxShadow: '0 1px 2px 0 hsl(var(--foreground) / 0.04)',
               }}
             >
-              <div className="flex items-start h-full px-2 py-0.5 overflow-hidden relative">
+              <div className="flex items-start h-full px-2 py-1 overflow-hidden relative">
                 <div className="flex-1 min-w-0">
-                  <div className={`font-mono leading-tight truncate ${
-                    isCompleted ? 'line-through text-muted-foreground/30' : 'text-muted-foreground/70'
-                  }`} style={{ fontSize: 'var(--ui-text-base)' }}>
+                  <div
+                    className={`font-mono leading-tight truncate font-medium ${
+                      isCompleted ? 'line-through text-muted-foreground/40' : ''
+                    }`}
+                    style={{
+                      fontSize: 'var(--ui-task-title)',
+                      lineHeight: 'var(--ui-leading-tight)',
+                      ...(isCompleted ? {} : { color: 'hsl(var(--locked-text))' }),
+                    }}
+                  >
                     {event.title}
                   </div>
                   {height > 24 && (
                     <div className="flex items-center gap-1 mt-0.5">
-                      <span className="font-mono text-muted-foreground/35" style={{ fontSize: 'var(--ui-text-xs)' }}>
+                      <span
+                        className="font-mono"
+                        style={{
+                          fontSize: 'var(--ui-task-meta)',
+                          color: isCompleted ? undefined : 'hsl(var(--locked-text) / 0.7)',
+                          opacity: isCompleted ? 0.5 : 1,
+                        }}
+                      >
                         {formatTime12h(event.time!)}
                       </span>
-                      <CalIcon size={8} className="text-muted-foreground/25" />
+                      <CalIcon size={9} style={{ color: isCompleted ? undefined : 'hsl(var(--locked-text) / 0.6)' }} />
                       {category && (
-                        <span className="text-[8px] font-mono text-muted-foreground/40 tracking-wider uppercase">
+                        <span
+                          className="font-mono tracking-wider uppercase"
+                          style={{
+                            fontSize: 'var(--ui-task-badge)',
+                            color: isCompleted ? undefined : 'hsl(var(--locked-text) / 0.7)',
+                          }}
+                        >
                           {category}
                         </span>
                       )}
