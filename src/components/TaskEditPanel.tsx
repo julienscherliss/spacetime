@@ -199,7 +199,7 @@ export function TaskEditPanel() {
   const [reminders, setReminders] = useState<number[]>(task?.reminders || []);
   const [showReminderModal, setShowReminderModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const scopeTriggeredRef = useRef(false);
+  
   const titleInputRef = useRef<HTMLInputElement>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
