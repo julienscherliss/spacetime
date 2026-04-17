@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Layers, Check } from 'lucide-react';
 import { Task, useTaskStore } from '@/store/taskStore';
 import { formatTime12h } from '@/hooks/useCurrentTime';
