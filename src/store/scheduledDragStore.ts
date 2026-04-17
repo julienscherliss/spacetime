@@ -24,6 +24,8 @@ export interface ScheduledDragState {
   relinkMode: boolean;
   /** The task ID to relink to */
   relinkTargetId: string | null;
+  /** When the pointer is hovering over a Group block, dropping adds the task to that Group */
+  dropTargetGroupId: string | null;
 }
 
 interface ScheduledDragActions {
@@ -41,6 +43,7 @@ interface ScheduledDragActions {
   setBlocked: (blocked: boolean) => void;
   setCopyMode: (copy: boolean) => void;
   setRelinkMode: (relink: boolean, targetId?: string | null) => void;
+  setDropTargetGroup: (groupId: string | null) => void;
   endDrag: () => ScheduledDragState;
   cancel: () => void;
 }
@@ -60,6 +63,7 @@ const initial: ScheduledDragState = {
   copyMode: false,
   relinkMode: false,
   relinkTargetId: null,
+  dropTargetGroupId: null,
 };
 
 export const useScheduledDragStore = create<ScheduledDragState & ScheduledDragActions>((set, get) => ({
@@ -84,6 +88,7 @@ export const useScheduledDragStore = create<ScheduledDragState & ScheduledDragAc
   setBlocked: (blocked) => set({ blocked }),
   setCopyMode: (copyMode) => set({ copyMode }),
   setRelinkMode: (relinkMode, targetId = null) => set({ relinkMode, relinkTargetId: targetId }),
+  setDropTargetGroup: (groupId) => set({ dropTargetGroupId: groupId }),
   endDrag: () => {
     const state = { ...get() };
     set(initial);
