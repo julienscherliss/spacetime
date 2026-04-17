@@ -833,7 +833,54 @@ export function TaskEditPanel() {
                         </div>
                       )}
 
-                      {recurrenceType === 'custom' && (
+                      {recurrenceType === 'monthlyNth' && (
+                        <div className="pt-2 space-y-2">
+                          <div className="text-[8px] font-mono tracking-wider text-muted-foreground/50">
+                            PICK ONE OR MORE
+                          </div>
+                          {NTH_WEEK_LABELS.map((wk) => (
+                            <div key={wk.value} className="flex items-center gap-1.5">
+                              <span className="w-7 text-[8px] font-mono tracking-wider text-muted-foreground/60">
+                                {wk.label}
+                              </span>
+                              <div className="flex gap-0.5 flex-1">
+                                {DAY_LABELS.map((label, dayIdx) => {
+                                  const isOn = nthPositions.some(
+                                    (p) => p.week === wk.value && p.day === dayIdx,
+                                  );
+                                  return (
+                                    <button
+                                      key={dayIdx}
+                                      onClick={() => {
+                                        setNthPositions((prev) => {
+                                          const exists = prev.some(
+                                            (p) => p.week === wk.value && p.day === dayIdx,
+                                          );
+                                          if (exists) {
+                                            const next = prev.filter(
+                                              (p) => !(p.week === wk.value && p.day === dayIdx),
+                                            );
+                                            return next.length > 0 ? next : prev;
+                                          }
+                                          return [...prev, { week: wk.value, day: dayIdx }];
+                                        });
+                                      }}
+                                      className={`flex-1 h-6 rounded-sm text-[8px] font-mono transition-colors ${
+                                        isOn
+                                          ? 'bg-primary/10 text-primary border border-primary/20'
+                                          : 'text-muted-foreground/40 border border-border hover:border-border'
+                                      }`}
+                                    >
+                                      {label[0]}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
                         <div className="pt-2 space-y-2.5">
                           <div className="flex items-center gap-2">
                             <input
