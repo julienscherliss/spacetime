@@ -280,11 +280,13 @@ function ListMode({
   onReorder,
   onComplete,
   onUngroup,
+  onOpenChild,
 }: {
   children: Task[];
   onReorder: (id: string, dir: -1 | 1) => void;
   onComplete: (id: string) => void;
   onUngroup: (child: Task) => void;
+  onOpenChild: (id: string) => void;
 }) {
   return (
     <div className="space-y-1.5 py-1">
@@ -298,7 +300,7 @@ function ListMode({
           }`}
         >
           <button
-            onClick={() => onComplete(c.id)}
+            onClick={(e) => { e.stopPropagation(); onComplete(c.id); }}
             disabled={c.completed}
             className={`shrink-0 w-4 h-4 rounded-[2px] border flex items-center justify-center transition-colors ${
               c.completed
@@ -310,7 +312,12 @@ function ListMode({
             {c.completed && <Check size={10} strokeWidth={2.5} />}
           </button>
 
-          <div className="flex-1 min-w-0">
+          <button
+            type="button"
+            onClick={() => onOpenChild(c.id)}
+            className="flex-1 min-w-0 text-left cursor-pointer hover:opacity-80 transition-opacity"
+            title="Edit task"
+          >
             <div
               className={`font-display font-medium text-[13px] leading-tight truncate ${
                 c.completed ? 'line-through text-muted-foreground' : 'text-foreground'
@@ -326,7 +333,7 @@ function ListMode({
                 </span>
               )}
             </div>
-          </div>
+          </button>
 
           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
