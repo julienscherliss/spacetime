@@ -552,7 +552,7 @@ export const useTaskStore = create<TaskState>()(
         const seriesId = getTaskSeriesId(sourceTask);
         const resolvedUpdates = { ...updates };
         if ('recurrence' in updates) {
-          resolvedUpdates.type = deriveType(updates.recurrence);
+          resolvedUpdates.type = sourceTask.type === 'group' ? 'group' : deriveType(updates.recurrence);
         }
 
         set((s) => ({
