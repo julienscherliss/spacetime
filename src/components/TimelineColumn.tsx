@@ -1246,6 +1246,10 @@ export function TimelineColumn({
                   isActive={isActive}
                   showTimeLabels={showTimeLabels}
                   formatDuration={formatDuration}
+                  hourHeight={HOUR_HEIGHT}
+                  isResizingThis={isResizingThis}
+                  resizePreview={resizePreview}
+                  handleResizeStart={handleResizeStart}
                 />
               );
             }
