@@ -563,6 +563,18 @@ export default function Auth() {
           </button>
         </form>
 
+        {/* Email me a code instead — passwordless OTP */}
+        {mode === 'login' && (
+          <button
+            type="button"
+            onClick={sendOtp}
+            disabled={loading || !email}
+            className="w-full mt-3 py-2.5 rounded-sm border border-border text-muted-foreground hover:text-foreground font-mono text-[10px] tracking-widest hover:bg-muted/30 transition-colors disabled:opacity-50"
+          >
+            EMAIL ME A CODE INSTEAD
+          </button>
+        )}
+
         <p className="text-center mt-4 text-[10px] font-mono text-muted-foreground/40">
           {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}{' '}
           <button onClick={() => setMode(mode === 'login' ? 'signup' : 'login')} className="text-primary hover:underline">
