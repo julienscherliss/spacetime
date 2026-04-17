@@ -1234,6 +1234,21 @@ export function TimelineColumn({
             const showUnlinkedOutline = false;
             const hasConflict = routineConflictIds.has(task.id);
 
+            // Groups have their own compact representation (single block, no inline expansion).
+            if ((task as Task).type === 'group') {
+              return (
+                <GroupTimelineBlock
+                  key={task.id}
+                  task={task as Task}
+                  top={top}
+                  height={height}
+                  isActive={isActive}
+                  showTimeLabels={showTimeLabels}
+                  formatDuration={formatDuration}
+                />
+              );
+            }
+
             return (
               <TimelineTaskBlock
                 key={task.id}
