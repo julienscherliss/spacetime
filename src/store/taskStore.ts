@@ -1030,28 +1030,46 @@ export const useTaskStore = create<TaskState>()(
           if (!sourceTask) return s;
 
           const seriesId = getTaskSeriesId(sourceTask);
-          const nextGroupId = linked ? (sourceTask.linkedGroupId || sourceTask.id) : undefined;
 
+          // Unlinking a recurring task is no longer "leave it as a zombie series".
+          // It means: stop repeating from this occurrence forward. The selected
+          // task becomes a one-time event; future generated instances are removed.
+          if (!linked) {
+            const remaining: Task[] = [];
+            for (const task of s.tasks) {
+              if (!isTaskInSameSeries(task, seriesId)) { remaining.push(task); continue; }
+              // Drop future occurrences of this series (other than the selected task)
+              if (task.id !== taskId && task.date >= fromDate) continue;
+              if (task.id === taskId) {
+                remaining.push({
+                  ...task,
+                  recurrence: undefined,
+                  type: task.type === 'group' ? 'group' : 'one-time',
+                  isRecurrenceInstance: false,
+                  recurrenceParentId: undefined,
+                  seriesId: undefined,
+                  linked: false,
+                  linkedGroupId: undefined,
+                  detachedFromSeries: true,
+                  isRoutine: false,
+                });
+              } else {
+                remaining.push(task);
+              }
+            }
+            return { tasks: remaining };
+          }
+
+          const nextGroupId = sourceTask.linkedGroupId || sourceTask.id;
           return {
             tasks: s.tasks.map((task) => {
               if (!isTaskInSameSeries(task, seriesId)) return task;
-
-              if (!linked) {
-                if (task.id !== taskId) return task;
-                return {
-                  ...task,
-                  linked: false,
-                  linkedGroupId: undefined,
-                };
-              }
-
               if (task.date < fromDate && task.id !== taskId) return task;
-
-              return {
+              return enforceRecurringLinkInvariant({
                 ...task,
                 linked: true,
                 linkedGroupId: nextGroupId,
-              };
+              });
             }),
           };
         }),
