@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Priority, RecurrencePattern, CustomUnit } from '@/store/taskStore';
 import { SubtaskList, Subtask } from '@/components/SubtaskList';
-import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar, Inbox, CalendarCheck, XCircle, Paperclip, ExternalLink, Check, AlertTriangle, Tag, Upload, FileText, Bell, PauseCircle } from 'lucide-react';
+import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar, Inbox, CalendarCheck, XCircle, Paperclip, ExternalLink, Check, AlertTriangle, Tag, Upload, FileText, Bell, PauseCircle, Layers } from 'lucide-react';
+import { GroupNamePrompt } from '@/components/GroupNamePrompt';
 import { AttachmentLightbox } from '@/components/AttachmentLightbox';
 import { useTimezoneStore } from '@/store/timezoneStore';
 import { supabase } from '@/integrations/supabase/client';
@@ -127,8 +128,19 @@ export function TaskEditPanel() {
     tasks, editingTaskId, setEditingTask, updateTask, updateFutureInstances,
     deleteTask, deleteFutureInstances, deleteRecurrenceSeries, removeInstances,
     setFocusTask, setViewMode, generateRecurringInstances, linkSeriesFromDate,
+    convertTaskToGroup,
   } = useTaskStore();
   const task = tasks.find((t) => t.id === editingTaskId);
+  const [showGroupPrompt, setShowGroupPrompt] = useState(false);
+
+  // If the editing target is a Group, this panel shouldn't render the normal
+  // task editor (Groups have only a name + scheduler). The dedicated
+  // GroupEditPanel ships in a follow-up step; for now we close cleanly.
+  useEffect(() => {
+    if (task?.type === 'group') {
+      setEditingTask(null);
+    }
+  }, [task?.type, task?.id, setEditingTask]);
 
   const [title, setTitle] = useState(task?.title || '');
   const [description, setDescription] = useState(task?.description || '');
