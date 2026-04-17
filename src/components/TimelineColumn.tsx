@@ -434,9 +434,15 @@ export function TimelineColumn({
       const deltaY = clientY - resizing.startY;
       const deltaMinutes = (deltaY / HOUR_HEIGHT) * 60;
 
-      // Get collision bounds
+      // Get collision bounds. When resizing a Group container, its own children
+      // should not block the resize because they live inside that container.
       const allTasks = useTaskStore.getState().tasks;
-      const occupiedSlots = getOccupiedSlots(allTasks, date, resizing.id, routinesEnabled);
+      const resizingTask = allTasks.find((t) => t.id === resizing.id);
+      const occupiedSlots = getOccupiedSlots(allTasks, date, resizing.id, routinesEnabled).filter((slot) => {
+        if (resizingTask?.type !== 'group') return true;
+        const child = allTasks.find((t) => t.id === slot.id);
+        return child?.groupId !== resizing.id;
+      });
       const origStartMin = timeToMinutes(resizing.origTime);
       const origEndMin = origStartMin + resizing.origDuration;
       const bounds = clampResize(resizing.id, resizing.edge, origStartMin, origEndMin, occupiedSlots);
