@@ -717,6 +717,9 @@ export function AdminPanel({ open, onClose }: Props) {
             </div>
           )}
 
+          {/* ═══ FEEDBACK TAB ═══ */}
+          {!loading && tab === 'feedback' && <FeedbackAdminTab />}
+
           {/* ═══ PROMOS TAB ═══ */}
           {!loading && tab === 'promos' && (
             <div className="space-y-4">
