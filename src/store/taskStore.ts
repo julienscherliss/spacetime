@@ -606,7 +606,7 @@ export const useTaskStore = create<TaskState>()(
             if (t.date < fromDate && t.id !== taskId) return t;
 
             if (t.id === taskId || t.date >= fromDate) {
-              return { ...t, ...resolvedUpdates };
+              return enforceRecurringLinkInvariant({ ...t, ...resolvedUpdates });
             }
 
             return t;
