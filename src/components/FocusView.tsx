@@ -43,7 +43,7 @@ function linkify(text: string) {
 const PRIORITY_LABELS = ['FLEX', 'SEMI', 'FIXED', 'LOCK'] as const;
 
 export function FocusView() {
-  const { tasks, routinesEnabled, getNextTask, updateTask, completeTask, setEditingTask, setViewMode, setDaySubMode, setListReturnZoom, setShowListReturn } = useTaskStore();
+  const { tasks, routinesEnabled, getNextTask, updateTask, completeTask, completeChild, getActiveChildInGroup, setEditingTask, setViewMode, setDaySubMode, setListReturnZoom, setShowListReturn } = useTaskStore();
   const { minutes: nowMinutes, dateStr: today } = useCurrentTime(1000);
   const [activePanel, setActivePanel] = useState<FocusPanel>('main');
   const [completedExpanded, setCompletedExpanded] = useState(false);
@@ -130,8 +130,25 @@ export function FocusView() {
   }, [activePanel]);
 
   // Grace task takes priority for 5 minutes, then falls back to natural active task
-  const activeTask = graceTask || naturalActiveTask;
+  const rawActiveTask = graceTask || naturalActiveTask;
   const isGracePeriod = !!graceTask;
+
+  // ── Group resolution ──
+  // If the naturally-active task is a Group container, descend into the active
+  // child (the one whose time window covers "now"). Falls back to the first
+  // incomplete child if "now" doesn't land inside any child window — this can
+  // happen briefly between micro-blocks while the group is still in its overall
+  // span. Group children carry their own time/duration so the rest of the focus
+  // UI (countdown, ring, next task) keeps working unchanged.
+  const parentGroup = rawActiveTask?.type === 'group' ? rawActiveTask : undefined;
+  let activeTask = rawActiveTask;
+  if (parentGroup) {
+    const liveChild = getActiveChildInGroup(parentGroup.id);
+    const fallbackChild = tasks
+      .filter((t) => t.groupId === parentGroup.id && !t.completed && !t.archivedAt)
+      .sort((a, b) => (a.groupOrder ?? 0) - (b.groupOrder ?? 0))[0];
+    activeTask = liveChild || fallbackChild || rawActiveTask;
+  }
 
   const elapsed = activeTask?.time ? nowMinutes - timeToMinutes(activeTask.time) : 0;
   const remaining = activeTask ? (activeTask.duration || 30) - elapsed : 0;
@@ -164,7 +181,13 @@ export function FocusView() {
       const p = Math.min(1, el / HOLD_DURATION);
       setHoldProgress(p);
       if (p >= 1) {
-        completeTask(targetTask.id);
+        // Group children must go through completeChild so the parent Group
+        // auto-completes when its last child finishes.
+        if (targetTask.groupId) {
+          completeChild(targetTask.id);
+        } else {
+          completeTask(targetTask.id);
+        }
         // Track hold completions for hint
         const count = parseInt(localStorage.getItem('focus-hold-completions') || '0', 10);
         localStorage.setItem('focus-hold-completions', String(count + 1));
@@ -176,7 +199,7 @@ export function FocusView() {
       holdTimerRef.current = requestAnimationFrame(tick);
     };
     holdTimerRef.current = requestAnimationFrame(tick);
-  }, [activeTask, overdueTasks, nowMinutes, completeTask]);
+  }, [activeTask, overdueTasks, nowMinutes, completeTask, completeChild]);
 
   const cancelHold = useCallback(() => {
     if (holdTimerRef.current) {
@@ -323,6 +346,7 @@ export function FocusView() {
           >
             <MainFocusPanel
               activeTask={activeTask}
+              parentGroup={parentGroup}
               nextTask={nextTask}
               elapsed={elapsed}
               remaining={remaining}
@@ -932,6 +956,7 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
 // ── Main Focus Panel ──
 interface MainFocusPanelProps {
   activeTask: ReturnType<typeof useTaskStore.getState>['tasks'][0] | undefined;
+  parentGroup?: ReturnType<typeof useTaskStore.getState>['tasks'][0] | undefined;
   nextTask: ReturnType<typeof useTaskStore.getState>['tasks'][0] | undefined;
   elapsed: number;
   remaining: number;
@@ -946,11 +971,18 @@ interface MainFocusPanelProps {
 }
 
 function MainFocusPanel({
-  activeTask, nextTask, remaining, nowMinutes,
+  activeTask, parentGroup, nextTask, remaining, nowMinutes,
   holdProgress, isHolding, onHoldStart, onHoldEnd, onUpdateTask, overdueTasks, isGracePeriod,
 }: MainFocusPanelProps) {
   const [completing, setCompleting] = useState(false);
   const { completeTask } = useTaskStore();
+
+  // Group context: how many siblings are done, total siblings.
+  const groupSiblings = useTaskStore((s) =>
+    parentGroup ? s.tasks.filter((t) => t.groupId === parentGroup.id && !t.archivedAt) : [],
+  );
+  const groupDone = groupSiblings.filter((t) => t.completed).length;
+  const groupTotal = groupSiblings.length;
 
   useEffect(() => {
     setCompleting(false);
@@ -1092,9 +1124,22 @@ function MainFocusPanel({
 
       {/* ═══ ZONE 1: TOP STATUS STRIP ═══ */}
       <div className="relative z-10 flex items-center justify-between px-5 py-3">
-        <span className="text-[9px] font-mono tracking-[0.2em] text-muted-foreground/40 uppercase">
-          {priorityLabel}
-        </span>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-[9px] font-mono tracking-[0.2em] text-muted-foreground/40 uppercase">
+            {priorityLabel}
+          </span>
+          {parentGroup && (
+            <>
+              <span className="text-[9px] font-mono text-muted-foreground/20">·</span>
+              <span
+                className="text-[9px] font-mono tracking-[0.2em] text-foreground/55 uppercase truncate max-w-[180px]"
+                title={`Group · ${parentGroup.title}`}
+              >
+                GROUP · {parentGroup.title}
+              </span>
+            </>
+          )}
+        </div>
         <span className="text-[9px] font-mono text-muted-foreground/25 tabular-nums tracking-wider">
           {timeStart} – {timeEnd}
         </span>
@@ -1138,6 +1183,11 @@ function MainFocusPanel({
                 }`}>
                   {activeTask.title}
                 </h1>
+                {parentGroup && groupTotal > 0 && (
+                  <span className="mt-1 text-[10px] font-mono text-muted-foreground/45 tracking-[0.15em] tabular-nums uppercase">
+                    {groupDone + (activeTask.completed ? 0 : 1)} / {groupTotal} · {parentGroup.title}
+                  </span>
+                )}
                 {isGracePeriod && (
                   <span className="mt-1 text-[10px] font-mono text-red-500/40 tracking-[0.15em] uppercase">
                     Overdue
