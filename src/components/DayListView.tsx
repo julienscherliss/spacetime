@@ -227,84 +227,113 @@ export function DayListView() {
         ) : (
           <div className="flex flex-col">
             {dayTasks.map((task, i) => {
-              const endTime = task.time && task.duration
-                ? getEndTime(task.time, task.duration)
-                : null;
-
+              if (task.type === 'group') {
+                return (
+                  <motion.div
+                    key={task.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.03 }}
+                  >
+                    <GroupListRow
+                      group={task}
+                      onGroupTap={(id) => setEditingTask(id)}
+                      renderChild={(child) => renderTaskRow(child, true)}
+                    />
+                  </motion.div>
+                );
+              }
               return (
                 <motion.div
                   key={task.id}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.03 }}
-                  className={`w-full text-left px-3 py-4 border-b border-border/20 transition-colors ${
-                    task.completed ? 'opacity-40' : ''
-                  }`}
                 >
-                  <div className="flex items-start gap-3">
-                    {/* Time column — tappable to zoom timeline */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleTimeTap(task);
-                      }}
-                      className="w-16 flex-shrink-0 pt-0.5 text-left active:bg-muted/40 rounded-sm -m-1 p-1 transition-colors"
-                    >
-                      {task.time ? (
-                        <div>
-                          <p className="text-[11px] font-mono text-foreground/80 leading-tight">
-                            {formatTime12h(task.time)}
-                          </p>
-                          {task.duration && (
-                            <p className="text-[9px] font-mono text-muted-foreground/40 mt-0.5">
-                              {formatDuration(task.duration)}
-                            </p>
-                          )}
-                        </div>
-                      ) : (
-                        <p className="text-[9px] font-mono text-muted-foreground/30 tracking-wider">
-                          ANYTIME
-                        </p>
-                      )}
-                    </button>
-
-                    {/* Content — tappable to edit */}
-                    <button
-                      onClick={() => handleTaskTap(task.id)}
-                      className="flex-1 min-w-0 text-left active:bg-muted/40 rounded-sm -m-1 p-1 transition-colors"
-                    >
-                      <p className={`text-sm font-display font-medium text-foreground leading-snug ${
-                        task.completed ? 'line-through' : ''
-                      }`}>
-                        {task.title}
-                      </p>
-                      {task.description && (
-                        <p className="text-[11px] text-muted-foreground/50 mt-0.5 line-clamp-1">
-                          {task.description}
-                        </p>
-                      )}
-                      {task.subtasks && task.subtasks.length > 0 && (
-                        <p className="text-[9px] font-mono text-muted-foreground/40 mt-1 tracking-wider">
-                          {task.subtasks.filter((s: any) => s.completed).length}/{task.subtasks.length} SUBTASKS
-                        </p>
-                      )}
-                    </button>
-
-                    {/* Priority dot */}
-                    <div
-                      className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
-                      style={{
-                        backgroundColor: `hsl(var(--priority-${task.priority}))`,
-                        opacity: 0.6,
-                      }}
-                    />
-                  </div>
+                  {renderTaskRow(task, false)}
                 </motion.div>
               );
             })}
           </div>
         )}
       </div>
+
+      {/* FAB — positioned above bottom nav on mobile */}
+      <button
+        onClick={handleAddTask}
+        className="fixed bottom-20 sm:bottom-6 right-6 z-40 w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center active:scale-95 transition-transform"
+      >
+        <Plus size={22} strokeWidth={2} />
+      </button>
+    </div>
+  );
+
+  function renderTaskRow(task: Task, isChild: boolean) {
+    return (
+      <div
+        className={`w-full text-left px-3 py-${isChild ? '2' : '4'} ${isChild ? 'border-b border-border/10' : 'border-b border-border/20'} transition-colors ${
+          task.completed ? 'opacity-40' : ''
+        }`}
+      >
+        <div className="flex items-start gap-3">
+          {/* Time column — tappable to zoom timeline */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleTimeTap(task);
+            }}
+            className={`${isChild ? 'w-12' : 'w-16'} flex-shrink-0 pt-0.5 text-left active:bg-muted/40 rounded-sm -m-1 p-1 transition-colors`}
+          >
+            {task.time ? (
+              <div>
+                <p className="text-[11px] font-mono text-foreground/80 leading-tight">
+                  {formatTime12h(task.time)}
+                </p>
+                {task.duration && !isChild && (
+                  <p className="text-[9px] font-mono text-muted-foreground/40 mt-0.5">
+                    {formatDuration(task.duration)}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-[9px] font-mono text-muted-foreground/30 tracking-wider">ANYTIME</p>
+            )}
+          </button>
+
+          {/* Content — tappable to edit */}
+          <button
+            onClick={() => handleTaskTap(task.id)}
+            className="flex-1 min-w-0 text-left active:bg-muted/40 rounded-sm -m-1 p-1 transition-colors"
+          >
+            <p className={`${isChild ? 'text-xs' : 'text-sm'} font-display font-medium text-foreground leading-snug ${
+              task.completed ? 'line-through' : ''
+            }`}>
+              {task.title}
+            </p>
+            {task.description && !isChild && (
+              <p className="text-[11px] text-muted-foreground/50 mt-0.5 line-clamp-1">
+                {task.description}
+              </p>
+            )}
+            {task.subtasks && task.subtasks.length > 0 && (
+              <p className="text-[9px] font-mono text-muted-foreground/40 mt-1 tracking-wider">
+                {task.subtasks.filter((s: any) => s.completed).length}/{task.subtasks.length} SUBTASKS
+              </p>
+            )}
+          </button>
+
+          {/* Priority dot */}
+          <div
+            className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
+            style={{
+              backgroundColor: `hsl(var(--priority-${task.priority}))`,
+              opacity: 0.6,
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
 
       {/* FAB — positioned above bottom nav on mobile */}
       <button
