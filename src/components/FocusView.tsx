@@ -1124,9 +1124,22 @@ function MainFocusPanel({
 
       {/* ═══ ZONE 1: TOP STATUS STRIP ═══ */}
       <div className="relative z-10 flex items-center justify-between px-5 py-3">
-        <span className="text-[9px] font-mono tracking-[0.2em] text-muted-foreground/40 uppercase">
-          {priorityLabel}
-        </span>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-[9px] font-mono tracking-[0.2em] text-muted-foreground/40 uppercase">
+            {priorityLabel}
+          </span>
+          {parentGroup && (
+            <>
+              <span className="text-[9px] font-mono text-muted-foreground/20">·</span>
+              <span
+                className="text-[9px] font-mono tracking-[0.2em] text-foreground/55 uppercase truncate max-w-[180px]"
+                title={`Group · ${parentGroup.title}`}
+              >
+                GROUP · {parentGroup.title}
+              </span>
+            </>
+          )}
+        </div>
         <span className="text-[9px] font-mono text-muted-foreground/25 tabular-nums tracking-wider">
           {timeStart} – {timeEnd}
         </span>
