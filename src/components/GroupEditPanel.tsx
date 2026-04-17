@@ -37,6 +37,7 @@ export function GroupEditPanel() {
   const completeGroup = useTaskStore((s) => s.completeGroup);
   const completeChild = useTaskStore((s) => s.completeChild);
   const removeTaskFromGroup = useTaskStore((s) => s.removeTaskFromGroup);
+  const pickupFromGroup = useTaskStore((s) => s.pickupFromGroup);
   const deleteTask = useTaskStore((s) => s.deleteTask);
   const updateTask = useTaskStore((s) => s.updateTask);
   const rebalanceGroupChildren = useTaskStore((s) => s.rebalanceGroupChildren);
@@ -97,10 +98,10 @@ export function GroupEditPanel() {
   };
 
   const handleUngroupChild = (child: Task) => {
-    // Drop back onto the same date/time of the child itself; collision-resolved
-    // by removeTaskFromGroup → findValidPosition.
-    removeTaskFromGroup(child.id, child.date, child.time ?? group.time ?? '09:00');
-    toast.success(`"${child.title}" removed from Group`);
+    // Pull the child out into the inventory (carry mode) — the user then chooses
+    // where to place it, exactly like picking up from Library or Waiting Room.
+    pickupFromGroup(child.id);
+    toast.success(`"${child.title}" picked up — tap a slot to place`);
   };
 
   const groupDuration = group.duration ?? 30;
@@ -231,12 +232,14 @@ export function GroupEditPanel() {
                 </button>
                 <button
                   onClick={() => {
-                    // Ungroup all children back onto the timeline at the group's slot, then delete shell.
+                    // Pick up every child into inventory (the user places them
+                    // one-by-one), then dispose of the empty Group shell.
                     const groupId = group.id;
-                    const baseTime = group.time ?? '09:00';
-                    children.forEach((c) => removeTaskFromGroup(c.id, c.date, c.time ?? baseTime));
+                    // Snapshot child ids first — pickupFromGroup mutates state.
+                    const childIds = children.map((c) => c.id);
+                    childIds.forEach((cid) => pickupFromGroup(cid));
                     deleteTask(groupId);
-                    toast.success('Group dissolved — tasks restored');
+                    toast.success('Group dissolved — tasks moved to inventory');
                     setEditingTask(null);
                   }}
                   className="flex-1 py-2.5 rounded-sm bg-destructive/90 text-destructive-foreground font-mono text-[10px] tracking-widest hover:bg-destructive transition-colors"
