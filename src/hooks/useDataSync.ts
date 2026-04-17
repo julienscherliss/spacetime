@@ -37,6 +37,9 @@ function rowToTask(row: any): Task {
     archivedAt: row.archived_at ?? undefined,
     archiveReason: row.archive_reason ?? undefined,
     attachments: row.attachments ?? [],
+    groupId: row.group_id ?? undefined,
+    preferredDuration: row.preferred_duration ?? undefined,
+    groupOrder: row.group_order ?? undefined,
   };
 }
 
@@ -70,7 +73,10 @@ function taskToRow(task: Task, userId: string) {
     archived_at: task.archivedAt ?? null,
     archive_reason: task.archiveReason ?? null,
     attachments: task.attachments ?? [],
-  };
+    group_id: task.groupId ?? null,
+    preferred_duration: task.preferredDuration ?? null,
+    group_order: task.groupOrder ?? null,
+  } as any; // group_* columns exist in DB but the auto-generated types haven't regenerated yet
 }
 
 function rowToLibraryItem(row: any): LibraryTask {
