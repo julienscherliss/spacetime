@@ -298,6 +298,12 @@ export function TimelineColumn({
     }
   }, [newTaskInput]);
 
+  // Keep refs in sync with state for synchronous reads inside handleNewTaskSubmit
+  // (e.g. when TagAutocomplete fires submit immediately after setState).
+  useEffect(() => { newTaskTitleRef.current = newTaskTitle; }, [newTaskTitle]);
+  useEffect(() => { newTaskCategoryRef.current = newTaskCategory; }, [newTaskCategory]);
+  useEffect(() => { newTaskDueDateRef.current = newTaskDueDate; }, [newTaskDueDate]);
+
   const showCompletedTasks = useTimezoneStore((s) => s.showCompletedTasks);
   const timezone = useTimezoneStore((s) => s.timezone);
   const todayStr = getTodayInTz(timezone);
