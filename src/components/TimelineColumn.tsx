@@ -548,7 +548,23 @@ export function TimelineColumn({
     const mins = getMinutesFromY(e.clientY);
     const snapped = snapTo15(mins);
     setCreating({ startMin: snapped, currentMin: snapped });
-  }, [getMinutesFromY, newTaskInput]);
+
+    // Arm the hold-to-create-Group timer. If the user holds for 1.5s without
+    // dragging more than 4px in any direction, we promote the gesture to a
+    // "new Group" prompt instead of a normal task drag-create.
+    cancelGroupHoldTimer();
+    groupHoldStartRef.current = { x: e.clientX, y: e.clientY, startMin: snapped };
+    groupHoldTimerRef.current = setTimeout(() => {
+      const start = groupHoldStartRef.current;
+      groupHoldTimerRef.current = null;
+      if (!start) return;
+      // Default Group span: 60 min, snapped to the slot the user pressed on.
+      const time = minutesToTime(start.startMin);
+      setCreating(null);
+      setGroupPromptSlot({ time, duration: 60 });
+      if (navigator.vibrate) navigator.vibrate(20);
+    }, 1500);
+  }, [getMinutesFromY, newTaskInput, cancelGroupHoldTimer]);
 
   // Drag-to-create: touch handlers
   // Strategy: require a 500ms hold before activating create mode.
