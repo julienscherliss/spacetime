@@ -255,6 +255,10 @@ export function TaskEditPanel() {
       case 'weekdays': return { type: 'weekdays' };
       case 'weekly': return { type: 'weekly', days: weeklyDays.length > 0 ? weeklyDays : [taskDay] };
       case 'monthly': return { type: 'monthly', dayOfMonth: new Date((task?.date || '') + 'T12:00:00').getDate() };
+      case 'monthlyNth': {
+        const positions = nthPositions.length > 0 ? nthPositions : [{ week: 1 as NthWeek, day: taskDay }];
+        return { type: 'monthlyNth', positions };
+      }
       case 'yearly': {
         const d = new Date((task?.date || '') + 'T12:00:00');
         return { type: 'yearly', month: d.getMonth(), dayOfMonth: d.getDate() };
