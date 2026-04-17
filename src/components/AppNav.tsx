@@ -10,7 +10,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import {
   Focus, List, CalendarDays, Grid3X3, Repeat,
-  Archive, Clock, LogOut, Settings, MoreHorizontal, X, ArchiveRestore, BarChart3, Scan, Maximize, PauseCircle
+  Archive, Clock, LogOut, Settings, MoreHorizontal, X, ArchiveRestore, BarChart3, Scan, Maximize, PauseCircle, MessageSquarePlus
 } from 'lucide-react';
 
 const views: { mode: ViewMode; icon: typeof Focus; label: string }[] = [
@@ -141,6 +141,11 @@ export function AppNav() {
 
                 <div className="border-t border-border/40 my-1" />
 
+                <OverflowItem
+                  icon={<MessageSquarePlus size={18} strokeWidth={1.5} />}
+                  label="Send feedback"
+                  onClick={() => { window.dispatchEvent(new CustomEvent('toggle-feedback')); setMoreOpen(false); }}
+                />
                 <OverflowItem
                   icon={<Settings size={18} strokeWidth={1.5} />}
                   label={`Settings · ${getTzAbbr(useTimezoneStore.getState().timezone)}`}
@@ -329,6 +334,15 @@ export function AppNav() {
 
           {/* Utility separator */}
           <div className="w-px h-4 bg-border/25 mx-1.5" />
+
+          {/* Send feedback */}
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('toggle-feedback'))}
+            className={`${navItemBase} ${navItemInactive} px-2`}
+            title="Send feedback"
+          >
+            <MessageSquarePlus size={13} strokeWidth={1.5} />
+          </button>
 
           {/* Trial indicator — clickable to open subscription */}
           {subscription?.status === 'trialing' && trialDaysLeft > 0 && (
