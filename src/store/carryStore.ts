@@ -58,3 +58,13 @@ export function isInScrollCooldown(): boolean {
   const COOLDOWN_MS = 200;
   return Date.now() - useCarryStore.getState().lastScrollEnd < COOLDOWN_MS;
 }
+
+/**
+ * Round a duration (in minutes) to the nearest 15-min increment, with a hard
+ * floor of 15 minutes. Used whenever a carried/inventory task is placed onto
+ * the day or week schedule so we never end up with odd, non-grid durations.
+ */
+export function roundCarriedDuration(mins: number): number {
+  const rounded = Math.round(mins / 15) * 15;
+  return Math.max(15, rounded);
+}

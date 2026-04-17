@@ -37,6 +37,7 @@ export function GroupEditPanel() {
   const completeGroup = useTaskStore((s) => s.completeGroup);
   const completeChild = useTaskStore((s) => s.completeChild);
   const removeTaskFromGroup = useTaskStore((s) => s.removeTaskFromGroup);
+  const pickupFromGroup = useTaskStore((s) => s.pickupFromGroup);
   const deleteTask = useTaskStore((s) => s.deleteTask);
   const updateTask = useTaskStore((s) => s.updateTask);
   const rebalanceGroupChildren = useTaskStore((s) => s.rebalanceGroupChildren);
@@ -97,10 +98,10 @@ export function GroupEditPanel() {
   };
 
   const handleUngroupChild = (child: Task) => {
-    // Drop back onto the same date/time of the child itself; collision-resolved
-    // by removeTaskFromGroup → findValidPosition.
-    removeTaskFromGroup(child.id, child.date, child.time ?? group.time ?? '09:00');
-    toast.success(`"${child.title}" removed from Group`);
+    // Pull the child out into the inventory (carry mode) — the user then chooses
+    // where to place it, exactly like picking up from Library or Waiting Room.
+    pickupFromGroup(child.id);
+    toast.success(`"${child.title}" picked up — tap a slot to place`);
   };
 
   const groupDuration = group.duration ?? 30;
@@ -231,7 +232,10 @@ export function GroupEditPanel() {
                 </button>
                 <button
                   onClick={() => {
-                    // Ungroup all children back onto the timeline at the group's slot, then delete shell.
+                    // Dissolve: restore every child onto the timeline at the
+                    // group's slot (carry only holds one task at a time, so we
+                    // can't pick them all up). Individual children can still be
+                    // picked up via the LIST mode "remove" action.
                     const groupId = group.id;
                     const baseTime = group.time ?? '09:00';
                     children.forEach((c) => removeTaskFromGroup(c.id, c.date, c.time ?? baseTime));
