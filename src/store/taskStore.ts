@@ -978,7 +978,7 @@ export const useTaskStore = create<TaskState>()(
 
               const newGroupOrTaskId = generateId();
 
-              nextTasks.push({
+              nextTasks.push(enforceRecurringLinkInvariant({
                 ...parent,
                 id: newGroupOrTaskId,
                 date: occurrenceDate,
@@ -994,7 +994,7 @@ export const useTaskStore = create<TaskState>()(
                 type: isGroupParent ? 'group' : deriveType(parent.recurrence),
                 linked: linkState.linked,
                 linkedGroupId: linkState.linkedGroupId,
-              });
+              }));
 
               // Clone children for the new Group occurrence (live template).
               if (isGroupParent && childTemplate.length > 0) {
