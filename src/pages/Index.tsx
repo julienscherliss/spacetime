@@ -28,6 +28,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNativeNotifications } from '@/hooks/useNativeNotifications';
 import { useForegroundReminders } from '@/hooks/useForegroundReminders';
 import { InteractiveTutorial } from '@/components/InteractiveTutorial';
+import { FeedbackModal } from '@/components/FeedbackModal';
 
 const Index = () => {
   const { viewMode, daySubMode, routinesEnabled, moveOverdueToWaitingRoom } = useTaskStore();
@@ -39,6 +40,7 @@ const Index = () => {
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [subscribeOpen, setSubscribeOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const { trialDaysLeft, cancellingDaysLeft, subscription, refresh: refreshSub } = useSubscription();
   const [helpSection, setHelpSection] = useState<string | undefined>();
   const [tutorialNeeded, setTutorialNeeded] = useState(() => !localStorage.getItem('tutorial-completed'));
@@ -132,6 +134,13 @@ const Index = () => {
     return () => window.removeEventListener('toggle-subscribe', handler);
   }, []);
 
+  // Listen for feedback modal toggle
+  useEffect(() => {
+    const handler = () => setFeedbackOpen((o) => !o);
+    window.addEventListener('toggle-feedback', handler);
+    return () => window.removeEventListener('toggle-feedback', handler);
+  }, []);
+
   return (
     <div className={`min-h-screen bg-background pb-16 sm:pb-0`}>
       {/* Mandatory tutorial for first-time users */}
@@ -171,6 +180,7 @@ const Index = () => {
       <ArchivePanel open={archiveOpen} onClose={() => setArchiveOpen(false)} />
       <AnalyticsPanel open={analyticsOpen} onClose={() => setAnalyticsOpen(false)} />
       <HelpPanel open={helpOpen} onClose={() => { setHelpOpen(false); setHelpSection(undefined); }} initialSection={helpSection} />
+      <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
 
       {/* Subscribe dialog */}
       <AnimatePresence>
