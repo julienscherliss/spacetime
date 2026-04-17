@@ -65,18 +65,12 @@ export function GroupNamePrompt({
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header chip */}
-            <div className="px-5 pt-4 pb-2 flex items-center gap-1.5">
+            <div className="px-5 pt-4 pb-3 flex items-center gap-1.5">
               <span className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide text-foreground/70 bg-muted/40">
                 <Layers size={11} strokeWidth={1.5} />
-                GROUP
+                {contextLabel ?? 'NEW GROUP'}
               </span>
             </div>
-
-            {contextLabel && (
-              <p className="px-5 pb-1 text-[10px] font-mono text-muted-foreground/50 tracking-wide">
-                {contextLabel}
-              </p>
-            )}
 
             {/* Name input */}
             <div className="px-5 pb-2">
@@ -93,28 +87,21 @@ export function GroupNamePrompt({
               />
             </div>
 
-            {/* Hint + actions */}
-            <div className="px-5 pb-5 pt-2">
-              <p className="text-[10px] font-mono text-muted-foreground/35 tracking-wider mb-3">
-                A Group bundles multiple tasks into one timeline block. You can
-                add tasks to it after creation.
-              </p>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={onCancel}
-                  className="flex-1 py-3 rounded-sm border border-border text-foreground/60 hover:text-foreground hover:bg-muted/30 font-mono text-[11px] tracking-widest transition-colors"
-                >
-                  CANCEL
-                </button>
-                <button
-                  onClick={handleConfirm}
-                  disabled={!name.trim()}
-                  className="flex-1 py-3 rounded-sm bg-primary text-primary-foreground font-mono text-[11px] tracking-widest hover:bg-primary/90 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
-                >
-                  {confirmLabel}
-                </button>
-              </div>
+            {/* Actions */}
+            <div className="px-5 pb-5 pt-3 flex gap-2">
+              <button
+                onClick={onCancel}
+                className="flex-1 py-3 rounded-sm border border-border text-foreground/60 hover:text-foreground hover:bg-muted/30 font-mono text-[11px] tracking-widest transition-colors"
+              >
+                CANCEL
+              </button>
+              <button
+                onClick={handleConfirm}
+                disabled={!name.trim()}
+                className="flex-1 py-3 rounded-sm bg-primary text-primary-foreground font-mono text-[11px] tracking-widest hover:bg-primary/90 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+              >
+                {confirmLabel}
+              </button>
             </div>
           </motion.div>
         </motion.div>
