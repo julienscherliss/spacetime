@@ -991,6 +991,10 @@ export const useTaskStore = create<TaskState>()(
           toast.error('Only scheduled tasks can be converted to a Group');
           return null;
         }
+        if (original.recurrence || original.isRecurrenceInstance || original.recurrenceParentId) {
+          toast.error('Repeating tasks can\u2019t be turned into a Group. Convert it to a one-time task first.');
+          return null;
+        }
 
         const groupId = generateId();
         const now = new Date().toISOString();
