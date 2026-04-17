@@ -69,6 +69,8 @@ export function DayListView() {
   const dayTasks = tasks
     .filter((t) => t.date === selectedDate && !t.inWaitingRoom && !t.archivedAt &&
       !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring'))
+    // Hide children of Groups from the top-level list — they render inside the group expander.
+    .filter((t) => !t.groupId)
     .sort((a, b) => {
       if (!a.time && !b.time) return 0;
       if (!a.time) return 1;
@@ -76,7 +78,13 @@ export function DayListView() {
       return a.time.localeCompare(b.time);
     });
 
-  const completedCount = dayTasks.filter((t) => t.completed).length;
+  // For the "completed" counter, count every visible task (groups + non-grouped) plus
+  // their group children, so progress reflects real work done.
+  const visibleWithChildren = tasks.filter(
+    (t) => t.date === selectedDate && !t.inWaitingRoom && !t.archivedAt &&
+      !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring'),
+  );
+  const completedCount = visibleWithChildren.filter((t) => t.completed).length;
   const isToday = selectedDate === today;
 
   // Double-tap to complete
