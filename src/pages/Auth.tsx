@@ -187,7 +187,13 @@ export default function Auth() {
   // ─── OTP code entry screen (mobile) ───
   if (native && step === 'otp') {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+      <div
+        className="min-h-screen bg-background flex items-center justify-center px-4"
+        style={{
+          paddingTop: 'max(1rem, calc(env(safe-area-inset-top, 0px) + 1.5rem))',
+          paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))',
+        }}
+      >
         <motion.div
           key="otp"
           initial={{ opacity: 0, x: 40 }}
@@ -262,7 +268,13 @@ export default function Auth() {
   // ─── Password login screen (mobile) ───
   if (native && step === 'password-login') {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+      <div
+        className="min-h-screen bg-background flex items-center justify-center px-4"
+        style={{
+          paddingTop: 'max(1rem, calc(env(safe-area-inset-top, 0px) + 1.5rem))',
+          paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))',
+        }}
+      >
         <motion.div
           key="pw"
           initial={{ opacity: 0, x: 40 }}
@@ -364,7 +376,13 @@ export default function Auth() {
   // ─── Native mobile entry screen ───
   if (native && step === 'entry') {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+      <div
+        className="min-h-screen bg-background flex items-center justify-center px-4"
+        style={{
+          paddingTop: 'max(1rem, calc(env(safe-area-inset-top, 0px) + 1.5rem))',
+          paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))',
+        }}
+      >
         <motion.div
           key="entry"
           initial={{ opacity: 0, y: 20 }}
@@ -417,7 +435,13 @@ export default function Auth() {
 
   // ─── Web (desktop) auth — unchanged ───
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4">
+    <div
+      className="min-h-screen bg-background flex items-center justify-center px-4"
+      style={{
+        paddingTop: 'max(1rem, calc(env(safe-area-inset-top, 0px) + 1.5rem))',
+        paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))',
+      }}
+    >
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
