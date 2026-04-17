@@ -856,6 +856,47 @@ export function TimelineColumn({
         touch.clientY >= rect.top &&
         touch.clientY <= rect.bottom
       ) {
+        // ── Drop INTO a Group? ──
+        const dropEl = document.elementFromPoint(touch.clientX, touch.clientY) as HTMLElement | null;
+        const groupEl = dropEl?.closest('[data-group-block]') as HTMLElement | null;
+        const dropGroupId = groupEl?.getAttribute('data-group-id') || null;
+
+        if (dropGroupId && (dragging.type !== 'task' || dropGroupId !== dragging.id)) {
+          const { addTaskToGroup } = useTaskStore.getState();
+          if (dragging.type === 'library') {
+            const newId = addTask({
+              title: dragging.title,
+              date,
+              time: '09:00',
+              duration: dragging.duration,
+              priority: 0,
+              type: 'one-time',
+            });
+            const ok = addTaskToGroup(newId, dropGroupId);
+            if (!ok) {
+              useTaskStore.getState().deleteTask(newId);
+            } else if (dragging.id) {
+              useLibraryStore.getState().removeItem(dragging.id);
+            }
+          } else if (dragging.type === 'waitingRoom') {
+            const { updateTask } = useTaskStore.getState();
+            updateTask(dragging.id, { inWaitingRoom: false, date, time: '09:00' } as any);
+            const ok = addTaskToGroup(dragging.id, dropGroupId);
+            if (!ok) {
+              setDragMsg("Couldn't add to Group");
+              setTimeout(() => setDragMsg(''), 2000);
+            }
+          } else if (dragging.type === 'task') {
+            const ok = addTaskToGroup(dragging.id, dropGroupId);
+            if (!ok) {
+              setDragMsg("Couldn't add to Group");
+              setTimeout(() => setDragMsg(''), 2000);
+            }
+          }
+          useTouchDragStore.getState().endDrag();
+          return;
+        }
+
         // Use dragOffset to place task at its top edge, not finger position
         const y = touch.clientY - rect.top - dragOffsetRef.current;
         const mins = START_HOUR * 60 + (y / HOUR_HEIGHT) * 60;
