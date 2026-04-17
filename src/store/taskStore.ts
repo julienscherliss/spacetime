@@ -531,7 +531,7 @@ export const useTaskStore = create<TaskState>()(
               const mobilityMode = useTimezoneStore.getState().mobilityMode;
               let merged = { ...t, ...updates };
               if ('recurrence' in updates) {
-                merged.type = deriveType(merged.recurrence);
+                merged.type = t.type === 'group' ? 'group' : deriveType(merged.recurrence);
               }
               if (mobilityMode === 'elite' && 'priority' in updates && updates.priority !== undefined) {
                 const today = new Date().toISOString().split('T')[0];
