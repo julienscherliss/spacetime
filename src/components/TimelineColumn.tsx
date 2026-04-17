@@ -1685,6 +1685,24 @@ export function TimelineColumn({
           (e.target as HTMLInputElement).value = '';
         }}
       />
+
+      <GroupNamePrompt
+        open={!!groupPromptSlot}
+        contextLabel="NEW GROUP"
+        confirmLabel="CREATE GROUP"
+        onCancel={() => setGroupPromptSlot(null)}
+        onConfirm={(name) => {
+          if (groupPromptSlot) {
+            createEmptyGroup({
+              name,
+              date,
+              time: groupPromptSlot.time,
+              duration: groupPromptSlot.duration,
+            });
+          }
+          setGroupPromptSlot(null);
+        }}
+      />
     </div>
   );
 }
