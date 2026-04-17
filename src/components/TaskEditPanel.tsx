@@ -187,8 +187,6 @@ export function TaskEditPanel() {
   const [showCatPicker, setShowCatPicker] = useState(false);
   const [taskCategory, setTaskCategory] = useState(task?.category || '');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showEditScope, setShowEditScope] = useState(false);
-  const [pendingUpdates, setPendingUpdates] = useState<any>(null);
   const [dueDate, setDueDate] = useState<string>(task?.dueDate || '');
   const [showDuePicker, setShowDuePicker] = useState(false);
   const [showDurationPicker, setShowDurationPicker] = useState(false);
@@ -201,7 +199,7 @@ export function TaskEditPanel() {
   const [reminders, setReminders] = useState<number[]>(task?.reminders || []);
   const [showReminderModal, setShowReminderModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const scopeTriggeredRef = useRef(false);
+  
   const titleInputRef = useRef<HTMLInputElement>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -233,8 +231,6 @@ export function TaskEditPanel() {
         setNthPositions([{ week, day: dt.getDay() }]);
       }
       setShowDeleteConfirm(false);
-      setShowEditScope(false);
-      setPendingUpdates(null);
       setDueDate(task.dueDate || '');
       setTaskCategory(task.category || '');
       setShowDuePicker(false);
@@ -244,7 +240,7 @@ export function TaskEditPanel() {
       setIsUploading(false);
       setReminders(task.reminders || []);
       setShowReminderModal(false);
-      scopeTriggeredRef.current = false;
+      
     }
   }, [task?.id]);
 
@@ -337,24 +333,19 @@ export function TaskEditPanel() {
       linkSeriesFromDate(task.id, task.date, isLinked);
     }
 
-    if (isRecurring && !showEditScope) {
-      const hasRecurrenceChange = JSON.stringify(task.recurrence) !== JSON.stringify(updates.recurrence);
-      const hasContentChange = task.title !== updates.title || task.priority !== updates.priority;
-
-      if (hasRecurrenceChange || hasContentChange) {
-        setPendingUpdates(updates);
-        setShowEditScope(true);
-        scopeTriggeredRef.current = true;
-        return;
-      }
-    }
-
     const parentId = task.recurrenceParentId || task.id;
     const hadRecurrence = !!task.recurrence;
     const hasRecurrence = !!updates.recurrence;
     const hasRecurrenceChange = JSON.stringify(task.recurrence) !== JSON.stringify(updates.recurrence);
+    const wasLinked = task.linked !== false;
 
-    updateTask(task.id, updates);
+    // Linked + recurring → propagate edits to all future occurrences automatically.
+    // Unlinked → edits stay local (no prompt needed).
+    if (isRecurring && wasLinked && isLinked) {
+      updateFutureInstances(task.id, task.date, updates);
+    } else {
+      updateTask(task.id, updates);
+    }
 
     if (!hasRecurrence && hadRecurrence) {
       removeInstances(parentId);
@@ -369,41 +360,10 @@ export function TaskEditPanel() {
     }
   };
 
-  const handleSaveThisOnly = () => {
-    if (!task || !pendingUpdates) return;
-    updateTask(task.id, { ...pendingUpdates, date: task.date });
-    setShowEditScope(false);
-    setPendingUpdates(null);
-    scopeTriggeredRef.current = false;
-    setEditingTask(null);
-  };
-
-  const handleSaveAllFuture = () => {
-    if (!task || !pendingUpdates) return;
-    const parentId = task.recurrenceParentId || task.id;
-
-    if (!pendingUpdates.recurrence && task.recurrence) {
-      updateFutureInstances(task.id, task.date, pendingUpdates);
-      removeInstances(parentId);
-    } else {
-      updateFutureInstances(task.id, task.date, pendingUpdates);
-      syncUpcomingInstances();
-    }
-
-    setShowEditScope(false);
-    setPendingUpdates(null);
-    scopeTriggeredRef.current = false;
-    setEditingTask(null);
-  };
-
   const handleClose = () => {
-    if (showEditScope) return;
-    scopeTriggeredRef.current = false;
     handleSave();
-    if (!scopeTriggeredRef.current) {
-      showSaveConfirmation();
-      setTimeout(() => setEditingTask(null), 400);
-    }
+    showSaveConfirmation();
+    setTimeout(() => setEditingTask(null), 400);
   };
 
   const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
@@ -1078,25 +1038,9 @@ export function TaskEditPanel() {
                 </div>
               )}
 
-              {/* Edit scope prompt */}
-              {showEditScope && (
-                <div className="p-3 border border-border/40 rounded-sm bg-muted/20 mb-3">
-                  <p className="text-[9px] font-mono text-foreground/60 mb-2.5">Apply changes to:</p>
-                  <div className="flex gap-2">
-                    <button onClick={handleSaveThisOnly}
-                      className="flex-1 py-2 rounded-sm border border-border text-[9px] font-mono tracking-wider text-muted-foreground hover:text-foreground transition-colors">
-                      This only
-                    </button>
-                    <button onClick={handleSaveAllFuture}
-                      className="flex-1 py-2 rounded-sm border border-primary/20 text-[9px] font-mono tracking-wider text-primary hover:bg-primary/5 transition-colors">
-                      All future
-                    </button>
-                  </div>
-                </div>
-              )}
-
               {/* ─── Actions ─── */}
-              {!showEditScope && (
+              {(
+
                 <div className="flex items-center gap-2 pt-3 border-t border-border/20"
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={(e) => e.stopPropagation()}>
