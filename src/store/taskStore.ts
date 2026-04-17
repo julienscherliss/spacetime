@@ -347,6 +347,30 @@ function getAllOccurrences(
       }
       break;
     }
+    case 'monthlyNth': {
+      // Walk month by month from startDate; emit every Nth-weekday match in range.
+      const sd = new Date(startDate + 'T12:00:00');
+      let year = sd.getFullYear();
+      let month = sd.getMonth();
+      for (let i = 0; i < limit; i++) {
+        const matchesThisMonth: string[] = [];
+        for (const pos of pattern.positions) {
+          const dStr = nthWeekdayOfMonth(year, month, pos.week, pos.day);
+          if (dStr && dStr >= startDate && dStr >= rangeStart && dStr <= rangeEnd) {
+            matchesThisMonth.push(dStr);
+          }
+        }
+        matchesThisMonth.sort();
+        for (const m of matchesThisMonth) dates.push(m);
+        // Advance to next month
+        month++;
+        if (month > 11) { month = 0; year++; }
+        // Stop if next month start exceeds rangeEnd
+        const nextMonthStart = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+        if (nextMonthStart > rangeEnd) break;
+      }
+      break;
+    }
     case 'yearly': {
       let cur = startDate;
       for (let i = 0; i < limit; i++) {
