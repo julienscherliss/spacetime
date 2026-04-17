@@ -206,6 +206,7 @@ export function GroupEditPanel() {
                 onReorder={reorder}
                 onComplete={completeChild}
                 onUngroup={handleUngroupChild}
+                onOpenChild={(id) => setEditingTask(id)}
               />
             ) : (
               <SchedulerMode
@@ -213,6 +214,7 @@ export function GroupEditPanel() {
                 children={children}
                 onAdjust={adjustChildDuration}
                 onComplete={completeChild}
+                onOpenChild={(id) => setEditingTask(id)}
               />
             )}
           </div>
