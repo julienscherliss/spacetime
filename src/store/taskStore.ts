@@ -1180,7 +1180,7 @@ export const useTaskStore = create<TaskState>()(
         set((s) => ({
           tasks: s.tasks.map((t) =>
             t.id === taskId
-              ? { ...t, completed: true, archivedAt: now, archiveReason: 'completed' as const }
+              ? { ...t, completed: true }
               : t,
           ),
         }));
