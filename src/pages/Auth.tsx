@@ -190,7 +190,7 @@ export default function Auth() {
       <div
         className="min-h-screen bg-background flex items-center justify-center px-4"
         style={{
-          paddingTop: 'max(1rem, calc(env(safe-area-inset-top, 0px) + 1.5rem))',
+          paddingTop: 'max(4rem, calc(env(safe-area-inset-top, 0px) + 3rem))',
           paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))',
         }}
       >
@@ -271,7 +271,7 @@ export default function Auth() {
       <div
         className="min-h-screen bg-background flex items-center justify-center px-4"
         style={{
-          paddingTop: 'max(1rem, calc(env(safe-area-inset-top, 0px) + 1.5rem))',
+          paddingTop: 'max(4rem, calc(env(safe-area-inset-top, 0px) + 3rem))',
           paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))',
         }}
       >
@@ -379,7 +379,7 @@ export default function Auth() {
       <div
         className="min-h-screen bg-background flex items-center justify-center px-4"
         style={{
-          paddingTop: 'max(1rem, calc(env(safe-area-inset-top, 0px) + 1.5rem))',
+          paddingTop: 'max(4rem, calc(env(safe-area-inset-top, 0px) + 3rem))',
           paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))',
         }}
       >
@@ -438,7 +438,7 @@ export default function Auth() {
     <div
       className="min-h-screen bg-background flex items-center justify-center px-4"
       style={{
-        paddingTop: 'max(1rem, calc(env(safe-area-inset-top, 0px) + 1.5rem))',
+        paddingTop: 'max(4rem, calc(env(safe-area-inset-top, 0px) + 3rem))',
         paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))',
       }}
     >

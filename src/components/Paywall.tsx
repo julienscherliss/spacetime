@@ -91,13 +91,7 @@ export function Paywall({ trialDaysLeft, trialExpired, onAccessGranted, subscrip
   };
 
   return (
-    <div
-      className="min-h-screen bg-background flex items-center justify-center px-4 relative"
-      style={{
-        paddingTop: 'max(1rem, calc(env(safe-area-inset-top, 0px) + 3.5rem))',
-        paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))',
-      }}
-    >
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative">
       {/* Sign out — pinned top-right, respects iOS safe area */}
       <button
         onClick={handleSignOut}
