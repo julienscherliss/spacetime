@@ -357,17 +357,11 @@ export default function Auth() {
               <div className="text-right">
                 <button
                   type="button"
-                  onClick={async () => {
-                    if (!email) { toast.error('Enter your email first'); return; }
-                    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                      redirectTo: `${getAuthRedirectOrigin()}/reset-password`,
-                    });
-                    if (error) toast.error(error.message);
-                    else toast.success('Password reset link sent to your email');
-                  }}
-                  className="text-[9px] font-mono text-primary/60 hover:text-primary hover:underline transition-colors"
+                  onClick={() => { setStep('entry'); sendOtp(); }}
+                  disabled={loading || !email}
+                  className="text-[9px] font-mono text-primary/60 hover:text-primary hover:underline transition-colors disabled:opacity-50"
                 >
-                  FORGOT PASSWORD?
+                  FORGOT? EMAIL ME A CODE
                 </button>
               </div>
             )}
@@ -539,17 +533,11 @@ export default function Auth() {
             <div className="text-right">
               <button
                 type="button"
-                onClick={async () => {
-                  if (!email) { toast.error('Enter your email first'); return; }
-                  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                    redirectTo: `${getAuthRedirectOrigin()}/reset-password`,
-                  });
-                  if (error) toast.error(error.message);
-                  else toast.success('Password reset link sent to your email');
-                }}
-                className="text-[9px] font-mono text-primary/60 hover:text-primary hover:underline transition-colors"
+                onClick={sendOtp}
+                disabled={loading || !email}
+                className="text-[9px] font-mono text-primary/60 hover:text-primary hover:underline transition-colors disabled:opacity-50"
               >
-                FORGOT PASSWORD?
+                FORGOT? EMAIL ME A CODE
               </button>
             </div>
           )}
