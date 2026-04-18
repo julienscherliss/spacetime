@@ -338,6 +338,7 @@ export function DayView() {
             hideButton={isMobile}
           />
         </div>
+        </div>
       </div>
 
       <AllDayEventStrip dates={[selectedDate]} />
