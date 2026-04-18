@@ -1,5 +1,5 @@
 {
-  "appId": "com.yourdoamnin.yourapp",
+  "appId": "com.julienscherliss.spacetime",
   "directories": {
     "buildResources": "resources"
   },
@@ -24,6 +24,10 @@
     "icon": "assets/appIcon.ico"
   },
   "mac": {
-  "category": "public.app-category.productivity",
-  "target": ["dmg", "zip"]
+    "category": "public.app-category.productivity",
+    "target": [
+      "dmg",
+      "zip"
+    ]
+  }
 }
