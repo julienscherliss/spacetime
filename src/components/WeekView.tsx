@@ -224,27 +224,25 @@ export function WeekView() {
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Bold title row with navigation — scrolls away naturally */}
-      <div className="pt-3 pb-2 flex items-center gap-2">
-        <button onClick={goToCurrentWeek} className="text-lg sm:text-xl font-display font-bold text-foreground tracking-tight hover:text-primary transition-colors">
-          {monthLabel}
-        </button>
-        <button
-          onClick={() => setWeekOffset(o => o - 1)}
-          className="p-1 rounded-sm text-muted-foreground/40 hover:text-foreground transition-colors"
-        >
-          <ChevronLeft size={16} strokeWidth={1.5} />
-        </button>
-        <button
-          onClick={() => setWeekOffset(o => o + 1)}
-          className="p-1 rounded-sm text-muted-foreground/40 hover:text-foreground transition-colors"
-        >
-          <ChevronRight size={16} strokeWidth={1.5} />
-        </button>
-      </div>
-
-      {/* Sticky weekday/date header with controls — top-0 on mobile (bottom nav), top-12 on desktop */}
+      {/* Sticky header: title row + weekday headers pinned together */}
       <div className="sticky top-0 sm:top-12 z-30 bg-background border-b border-border/30">
+        <div className="pt-3 pb-2 flex items-center gap-2">
+          <button onClick={goToCurrentWeek} className="text-lg sm:text-xl font-display font-bold text-foreground tracking-tight hover:text-primary transition-colors">
+            {monthLabel}
+          </button>
+          <button
+            onClick={() => setWeekOffset(o => o - 1)}
+            className="p-1 rounded-sm text-muted-foreground/40 hover:text-foreground transition-colors"
+          >
+            <ChevronLeft size={16} strokeWidth={1.5} />
+          </button>
+          <button
+            onClick={() => setWeekOffset(o => o + 1)}
+            className="p-1 rounded-sm text-muted-foreground/40 hover:text-foreground transition-colors"
+          >
+            <ChevronRight size={16} strokeWidth={1.5} />
+          </button>
+        </div>
         <div className="flex items-center justify-between">
           <div className="flex-1 min-w-0">
             <WeekDayHeaders

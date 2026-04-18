@@ -167,49 +167,51 @@ export function DayListView() {
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Header */}
-      <div className="pt-3 pb-2">
-        <h2 className="text-lg sm:text-xl font-display font-bold text-foreground tracking-tight">
-          {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', {
-            weekday: 'long',
-            month: 'long',
-            day: 'numeric',
-          })}
-        </h2>
-        <p className="text-[10px] font-mono text-muted-foreground/50 mt-0.5 tracking-widest">
-          {completedCount}/{dayTasks.length} COMPLETED
-        </p>
-      </div>
-
-      {/* Navigation bar */}
-      <div className="sticky top-0 z-30 bg-background py-1.5 flex items-center justify-between border-b border-border/30">
-        <div className="flex items-center gap-0.5">
-          <button
-            onClick={() => setSelectedDate(d => addDaysToDate(d, -1))}
-            className="p-1.5 rounded-sm text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors"
-          >
-            <ChevronLeft size={16} strokeWidth={1.5} />
-          </button>
-          <button
-            onClick={() => setSelectedDate(today)}
-            className={`px-2.5 py-1 rounded-sm text-[10px] font-mono tracking-widest transition-colors ${
-              isToday
-                ? 'text-primary bg-primary/5'
-                : 'text-muted-foreground/50 hover:text-foreground hover:bg-muted/50'
-            }`}
-          >
-            TODAY
-          </button>
-          <button
-            onClick={() => setSelectedDate(d => addDaysToDate(d, 1))}
-            className="p-1.5 rounded-sm text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors"
-          >
-            <ChevronRight size={16} strokeWidth={1.5} />
-          </button>
+      {/* Sticky header: title + controls pinned together */}
+      <div className="sticky top-0 sm:top-12 z-30 bg-background border-b border-border/30">
+        <div className="pt-3 pb-2">
+          <h2 className="text-lg sm:text-xl font-display font-bold text-foreground tracking-tight">
+            {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', {
+              weekday: 'long',
+              month: 'long',
+              day: 'numeric',
+            })}
+          </h2>
+          <p className="text-[10px] font-mono text-muted-foreground/50 mt-0.5 tracking-widest">
+            {completedCount}/{dayTasks.length} COMPLETED
+          </p>
         </div>
 
-        <div className="text-[9px] font-mono text-muted-foreground/40 tracking-widest">
-          LIST
+        {/* Navigation bar */}
+        <div className="py-1.5 flex items-center justify-between border-t border-border/20">
+          <div className="flex items-center gap-0.5">
+            <button
+              onClick={() => setSelectedDate(d => addDaysToDate(d, -1))}
+              className="p-1.5 rounded-sm text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors"
+            >
+              <ChevronLeft size={16} strokeWidth={1.5} />
+            </button>
+            <button
+              onClick={() => setSelectedDate(today)}
+              className={`px-2.5 py-1 rounded-sm text-[10px] font-mono tracking-widest transition-colors ${
+                isToday
+                  ? 'text-primary bg-primary/5'
+                  : 'text-muted-foreground/50 hover:text-foreground hover:bg-muted/50'
+              }`}
+            >
+              TODAY
+            </button>
+            <button
+              onClick={() => setSelectedDate(d => addDaysToDate(d, 1))}
+              className="p-1.5 rounded-sm text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors"
+            >
+              <ChevronRight size={16} strokeWidth={1.5} />
+            </button>
+          </div>
+
+          <div className="text-[9px] font-mono text-muted-foreground/40 tracking-widest">
+            LIST
+          </div>
         </div>
       </div>
 

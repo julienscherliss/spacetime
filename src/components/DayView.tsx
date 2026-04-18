@@ -266,22 +266,21 @@ export function DayView() {
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Bold title row — scrolls away naturally */}
-      <div className="pt-1 pb-0.5">
-        <h2 className="font-display font-bold text-foreground tracking-tight" style={{ fontSize: 'var(--ui-text-3xl)' }}>
-          {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', {
-            weekday: 'long',
-            month: 'long',
-            day: 'numeric',
-          })}
-        </h2>
-        <p className="font-mono text-muted-foreground/50 tracking-widest" style={{ fontSize: 'var(--ui-task-meta)' }}>
-          {completedCount}/{dayTasks.length} COMPLETED
-        </p>
-      </div>
-
-      {/* Sticky compact control row — top-0 on mobile (bottom nav), top-12 on desktop (top nav) */}
-      <div className="sticky top-0 sm:top-12 z-30 bg-background py-1 flex items-center justify-between border-b border-border/30">
+      {/* Sticky header: title + controls pinned together */}
+      <div className="sticky top-0 sm:top-12 z-30 bg-background border-b border-border/30">
+        <div className="pt-1 pb-0.5">
+          <h2 className="font-display font-bold text-foreground tracking-tight" style={{ fontSize: 'var(--ui-text-3xl)' }}>
+            {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', {
+              weekday: 'long',
+              month: 'long',
+              day: 'numeric',
+            })}
+          </h2>
+          <p className="font-mono text-muted-foreground/50 tracking-widest" style={{ fontSize: 'var(--ui-task-meta)' }}>
+            {completedCount}/{dayTasks.length} COMPLETED
+          </p>
+        </div>
+        <div className="py-1 flex items-center justify-between">
         <div className="flex items-center gap-0.5">
           <button
             onClick={() => setSelectedDate(d => addDaysToDate(d, -1))}
@@ -338,6 +337,7 @@ export function DayView() {
             nowMinutes={nowMinutes}
             hideButton={isMobile}
           />
+        </div>
         </div>
       </div>
 
