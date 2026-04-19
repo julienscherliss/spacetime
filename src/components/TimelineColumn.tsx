@@ -1136,17 +1136,14 @@ export function TimelineColumn({
 
       // Block drop if collision detected
       if (state.blocked) {
-        // Check if it's a move restriction vs collision
+        // Distinguish constraint violation (priority) from physical collision.
         if (state.sourceDate && state.sourceDate !== state.targetDate) {
           const validation = canMoveTask(state.taskId, state.targetDate);
-          if (!validation.allowed) {
-            // Position message at the drag location
-            if (state.currentMinutes !== null) {
-              setDragMsgTop(((state.currentMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT);
-            }
-            setDragMsg('reason' in validation ? validation.reason : 'Cannot move');
-            setTimeout(() => { setDragMsg(''); setDragMsgTop(null); }, 3000);
-            useScheduledDragStore.getState().cancel();
+          if (!validation.allowed && state.currentMinutes !== null) {
+            const violation = 'reason' in validation ? validation.reason : 'Cannot move';
+            const newTime = minutesToTime(state.currentMinutes);
+            requestPendingMove({ taskId: state.taskId, newDate: state.targetDate, newTime, violation });
+            useScheduledDragStore.getState().endDrag();
             return;
           }
         }
@@ -1229,9 +1226,9 @@ export function TimelineColumn({
       if (state.sourceDate && state.sourceDate !== state.targetDate) {
         const validation = canMoveTask(state.taskId, state.targetDate);
         if (!validation.allowed) {
-          setDragMsg('reason' in validation ? validation.reason : 'Cannot move');
-          setTimeout(() => setDragMsg(''), 2000);
-          useScheduledDragStore.getState().cancel();
+          const violation = 'reason' in validation ? validation.reason : 'Cannot move';
+          requestPendingMove({ taskId: state.taskId, newDate: state.targetDate, newTime, violation });
+          useScheduledDragStore.getState().endDrag();
           return;
         }
         moveTask(state.taskId, state.targetDate, newTime);
