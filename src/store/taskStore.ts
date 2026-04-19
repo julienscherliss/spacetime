@@ -799,8 +799,55 @@ export const useTaskStore = create<TaskState>()(
           void cancelNotificationsForTask(taskId);
         cancelWebNotificationsForTask(taskId);
         });
-        // Reflection tracking — gated to Elite mode internally.
-        recordReflectionAdjustment(id, reflectionKind);
+        return { blocked: false };
+      },
+
+      forceMoveTask: (id, newDate, newTime) => {
+        const task = get().tasks.find((t) => t.id === id);
+        if (!task) return { blocked: false };
+
+        // Resolve overlap at destination, but don't enforce priority constraints.
+        let finalTime = newTime ?? task.time;
+        if (finalTime) {
+          const slots = getOccupiedSlots(get().tasks, newDate, id, get().routinesEnabled);
+          const { startMin: resolved, blocked } = findValidPosition(timeToMinutes(finalTime), task.duration || 30, slots);
+          if (blocked) return { blocked: true };
+          finalTime = minutesToTime(resolved);
+        }
+
+        const crossDay = task.date !== newDate;
+        const mobilityMode = useTimezoneStore.getState().mobilityMode;
+        // Reflection-confirmed move still escalates priority (same rule as moveTask).
+        const newPriority = (crossDay && mobilityMode !== 'disabled')
+          ? Math.min(3, task.priority + 1) as Priority
+          : task.priority;
+        const targetIds = getLinkedScheduleTargetIds(get().tasks, task);
+
+        set((s) => ({
+          tasks: s.tasks.map((t) => {
+            if (t.id === id) {
+              return enforceRecurringLinkInvariant({
+                ...t,
+                date: newDate,
+                time: finalTime ?? t.time,
+                priority: newPriority,
+                moveCount: crossDay ? t.moveCount + 1 : t.moveCount,
+                inWaitingRoom: false,
+              });
+            }
+            if (targetIds.has(t.id)) {
+              return enforceRecurringLinkInvariant({
+                ...t,
+                time: finalTime ?? t.time,
+              });
+            }
+            return t;
+          }),
+        }));
+        Array.from(targetIds).forEach((tid) => {
+          void cancelNotificationsForTask(tid);
+          cancelWebNotificationsForTask(tid);
+        });
         return { blocked: false };
       },
 
@@ -827,8 +874,6 @@ export const useTaskStore = create<TaskState>()(
         if (task.type === 'group') {
           get().rebalanceGroupChildren(task.id);
         }
-
-        recordReflectionAdjustment(id, 'resize');
       },
 
       reorderTask: (id, newTime) => {
