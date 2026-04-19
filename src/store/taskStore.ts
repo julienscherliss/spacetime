@@ -799,13 +799,8 @@ export const useTaskStore = create<TaskState>()(
           void cancelNotificationsForTask(taskId);
         cancelWebNotificationsForTask(taskId);
         });
-        // Reflection tracking — fire-and-forget; gated to Elite mode internally.
-        try {
-          // Lazy import avoids cycles at module init time.
-          // eslint-disable-next-line @typescript-eslint/no-var-requires
-          const { recordAdjustment } = require('@/store/reflectionStore');
-          recordAdjustment(id, reflectionKind);
-        } catch {}
+        // Reflection tracking — gated to Elite mode internally.
+        recordReflectionAdjustment(id, reflectionKind);
         return { blocked: false };
       },
 
