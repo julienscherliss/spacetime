@@ -1142,7 +1142,7 @@ export function LibraryPanel() {
       </AnimatePresence>
 
       {/* Modal edit — mobile only */}
-      {isMobile && editingItem && (
+      {(isMobile || (isDesktop && sidebarMode)) && editingItem && (
         <LibraryEditModal
           item={editingItem}
           onClose={() => setEditingItem(null)}
