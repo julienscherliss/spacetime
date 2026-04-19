@@ -798,6 +798,13 @@ export const useTaskStore = create<TaskState>()(
           void cancelNotificationsForTask(taskId);
         cancelWebNotificationsForTask(taskId);
         });
+        // Reflection tracking — fire-and-forget; gated to Elite mode internally.
+        try {
+          // Lazy import avoids cycles at module init time.
+          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          const { recordAdjustment } = require('@/store/reflectionStore');
+          recordAdjustment(id, reflectionKind);
+        } catch {}
         return { blocked: false };
       },
 
@@ -824,6 +831,12 @@ export const useTaskStore = create<TaskState>()(
         if (task.type === 'group') {
           get().rebalanceGroupChildren(task.id);
         }
+
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          const { recordAdjustment } = require('@/store/reflectionStore');
+          recordAdjustment(id, 'resize');
+        } catch {}
       },
 
       reorderTask: (id, newTime) => {
