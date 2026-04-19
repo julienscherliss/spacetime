@@ -8,6 +8,7 @@ import {
 import {
   X, Plus, Check, Clock, AlertTriangle, Trash2,
   ArrowDownAZ, CalendarClock, Tag, ChevronDown, ChevronRight, GripVertical, CalendarDays,
+  PanelRightClose, PanelRightOpen,
 } from 'lucide-react';
 import { TagAutocomplete, isSubtagOf, hasSubtags, getParentValue } from '@/components/TagAutocomplete';
 import { DateAutocomplete } from '@/components/DateAutocomplete';
@@ -381,6 +382,17 @@ export function LibraryPanel() {
   const inputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
   const { hint: entryHint } = useEntryHint();
+  const viewMode = useTaskStore((s) => s.viewMode);
+  const [sidebarMode, setSidebarMode] = useState(false);
+
+  // When panel opens, default to sidebar mode in day/week views, full-screen in focus/calendar.
+  const prevPanelOpen = useRef(false);
+  useEffect(() => {
+    if (panelOpen && !prevPanelOpen.current) {
+      setSidebarMode(viewMode === 'day' || viewMode === 'week');
+    }
+    prevPanelOpen.current = panelOpen;
+  }, [panelOpen, viewMode]);
 
   const items = getFilteredItems();
   const allItems = useLibraryStore((s) => s.items);
@@ -488,11 +500,15 @@ export function LibraryPanel() {
       <AnimatePresence>
         {panelOpen && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0, x: isDesktop && sidebarMode ? 40 : 0 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: isDesktop && sidebarMode ? 40 : 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-50 bg-background flex flex-col"
+            className={
+              isDesktop && sidebarMode
+                ? 'fixed top-0 right-0 bottom-0 z-50 bg-background flex flex-col border-l border-border/50 shadow-xl w-[480px] max-w-[90vw]'
+                : 'fixed inset-0 z-50 bg-background flex flex-col'
+            }
           >
             {isDesktop ? (
               /* ═══ DESKTOP: 3-panel layout ═══ */
@@ -505,6 +521,13 @@ export function LibraryPanel() {
                   <div className="flex items-center gap-3">
                     <span className="text-[11px] font-mono text-muted-foreground/50">{totalCount}</span>
                     <button
+                      onClick={() => setSidebarMode((s) => !s)}
+                      className="p-1.5 text-muted-foreground/60 hover:text-foreground transition-colors"
+                      title={sidebarMode ? 'Expand to full screen' : 'Collapse to sidebar'}
+                    >
+                      {sidebarMode ? <PanelRightOpen size={16} strokeWidth={1.5} /> : <PanelRightClose size={16} strokeWidth={1.5} />}
+                    </button>
+                    <button
                       onClick={() => setPanelOpen(false)}
                       className="p-1.5 text-muted-foreground/60 hover:text-foreground transition-colors"
                     >
@@ -515,6 +538,7 @@ export function LibraryPanel() {
 
                 <div className="flex flex-1 min-h-0">
                   {/* ── LEFT: Tags / Sorting / Filters ── */}
+                  {!sidebarMode && (
                   <div className="w-[220px] shrink-0 border-r border-border/30 flex flex-col overflow-y-auto">
                     {/* Sort selector */}
                     <div className="px-3 py-3 border-b border-border/20">
@@ -678,7 +702,7 @@ export function LibraryPanel() {
                       </div>
                     </div>
                   </div>
-
+                  )}
                   {/* ── MIDDLE: Add input + Task list ── */}
                   <div className="flex-1 flex flex-col min-w-0">
                     {/* Add input */}
@@ -782,7 +806,7 @@ export function LibraryPanel() {
                   </div>
 
                   {/* ── RIGHT: Detail pane ── */}
-                  {editingItem && (
+                  {editingItem && !sidebarMode && (
                     <div className="w-1/2 shrink-0 border-l border-border/30 bg-card/30">
                       <LibraryDetailPane
                         item={editingItem}
@@ -1118,7 +1142,7 @@ export function LibraryPanel() {
       </AnimatePresence>
 
       {/* Modal edit — mobile only */}
-      {isMobile && editingItem && (
+      {(isMobile || (isDesktop && sidebarMode)) && editingItem && (
         <LibraryEditModal
           item={editingItem}
           onClose={() => setEditingItem(null)}
