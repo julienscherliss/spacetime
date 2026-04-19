@@ -921,10 +921,10 @@ export function TimelineColumn({
       if (dropped.fromDate !== date) {
         const validation = canMoveTask(dropped.taskId, date);
         if (!validation.allowed) {
-          setDragMsg('reason' in validation ? validation.reason : 'Cannot move');
-          setTimeout(() => setDragMsg(''), 2000);
-          // Re-pickup since drop failed
-          useCarryStore.getState().pickup(dropped);
+          const violation = 'reason' in validation ? validation.reason : 'Cannot move';
+          requestPendingMove({ taskId: dropped.taskId, newDate: date, newTime, violation });
+          // Apply duration immediately so the deferred move uses it.
+          useTaskStore.getState().updateTask(dropped.taskId, { duration: dropDuration } as any);
           return;
         }
         moveTask(dropped.taskId, date, newTime);
