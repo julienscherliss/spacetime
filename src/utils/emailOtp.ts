@@ -91,32 +91,32 @@ export async function verifyEmailOtp(
   email: string,
   token: string,
 ): Promise<{ error: Error | null }> {
-  console.log('[AUTH/OTP] verifyEmailOtp v3 →', email, 'token.length=', token.length);
+  console.log('[AUTH/OTP] verifyEmailOtp v4 →', email, 'token.length=', token.length);
 
-  // The auth logs show Supabase routes signInWithOtp through `user_recovery_requested`
-  // for existing users, even though the edge function gets `action_type: "magiclink"`.
-  // The token stored in the DB is keyed to the `recovery` type for those users.
+  // Supabase's `signInWithOtp` uses action_type "magiclink" for new users and
+  // "recovery" for existing users. Both are verified with type: 'email' — that
+  // is the unified verification type for any signInWithOtp-issued code.
   //
-  // To handle ALL cases without ordering/short-circuit issues, we try ALL three
-  // verifyOtp types in sequence and accept whichever succeeds.
-  const types: Array<'email' | 'recovery' | 'magiclink'> = ['recovery', 'email', 'magiclink'];
+  // We do NOT try multiple types: each failed verifyOtp attempt counts against
+  // the OTP and after the first mismatch Supabase marks the code as consumed,
+  // so subsequent attempts return "otp_expired" even though the code was valid.
+  const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
 
-  let lastError: Error | null = null;
-  for (const type of types) {
-    try {
-      const { error } = await supabase.auth.verifyOtp({ email, token, type });
-      if (!error) {
-        console.log(`[AUTH/OTP] verifyEmailOtp v3 SUCCESS via type=${type}`);
+  if (error) {
+    console.warn('[AUTH/OTP] verifyEmailOtp v4 failed:', error.message);
+    // If `email` type didn't match (some legacy users), try `recovery` ONCE as fallback.
+    if (/expired|invalid|not found/i.test(error.message)) {
+      console.log('[AUTH/OTP] retrying with type=recovery');
+      const retry = await supabase.auth.verifyOtp({ email, token, type: 'recovery' });
+      if (!retry.error) {
+        console.log('[AUTH/OTP] verifyEmailOtp v4 SUCCESS via type=recovery');
         return { error: null };
       }
-      console.warn(`[AUTH/OTP] type=${type} failed:`, error.message);
-      lastError = error as Error;
-    } catch (e: any) {
-      console.warn(`[AUTH/OTP] type=${type} threw:`, e?.message);
-      lastError = e;
+      return { error: retry.error as Error };
     }
+    return { error: error as Error };
   }
 
-  console.error('[AUTH/OTP] verifyEmailOtp v3 all attempts failed');
-  return { error: lastError };
+  console.log('[AUTH/OTP] verifyEmailOtp v4 SUCCESS via type=email');
+  return { error: null };
 }
