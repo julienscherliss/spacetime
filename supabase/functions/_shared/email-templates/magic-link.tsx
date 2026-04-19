@@ -35,7 +35,7 @@ export const MagicLinkEmail = ({
         <Section style={codeBox}>
           <Text style={codeStyle}>{token}</Text>
         </Section>
-        <Text style={meta}>This code expires in 1 hour.</Text>
+        <Text style={meta}>This code expires in 10 minutes.</Text>
         <Text style={footer}>
           If you didn't request this code, you can safely ignore this email — no one will be signed in.
         </Text>
