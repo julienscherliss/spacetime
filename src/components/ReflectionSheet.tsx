@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useReflectionStore } from '@/store/reflectionStore';
+import { useTaskStore } from '@/store/taskStore';
 import { REASON_LABELS, type ReflectionReason } from '@/utils/reflectionTips';
 import { X } from 'lucide-react';
 
@@ -33,13 +34,15 @@ export function ReflectionSheet() {
 
   useEffect(() => {
     if (otherMode) {
-      // Slight delay so animation completes
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [otherMode]);
 
   const handlePick = (reasonKey: ReflectionReason, customText?: string) => {
-    const tip = selectReason(reasonKey, customText);
+    const tip = selectReason(reasonKey, customText, (move) => {
+      // Commit the held move using the unrestricted path.
+      useTaskStore.getState().forceMoveTask(move.taskId, move.newDate, move.newTime);
+    });
     if (tip) {
       toast(tip, { duration: 2800 });
     }
@@ -58,11 +61,14 @@ export function ReflectionSheet() {
     handlePick('other', trimmed);
   };
 
+  const taskTitle = activePrompt
+    ? useTaskStore.getState().tasks.find((t) => t.id === activePrompt.taskId)?.title
+    : undefined;
+
   return (
     <AnimatePresence>
       {activePrompt && (
         <>
-          {/* No backdrop — non-blocking. Tap outside via dismiss button only. */}
           <motion.div
             initial={{ y: 80, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -73,18 +79,18 @@ export function ReflectionSheet() {
             style={{ pointerEvents: 'auto' }}
           >
             <div className="flex items-start justify-between mb-2">
-              <div>
-                <div className="text-[11px] font-mono uppercase tracking-wider text-foreground">
-                  Adjusted {activePrompt.count} times
+              <div className="min-w-0 pr-2">
+                <div className="text-[11px] font-mono uppercase tracking-wider text-foreground truncate">
+                  {activePrompt.violation}
                 </div>
                 <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-0.5">
-                  What's driving this shift?
+                  {taskTitle ? `“${taskTitle}” — why move it anyway?` : 'Why move it anyway?'}
                 </div>
               </div>
               <button
                 onClick={dismissPrompt}
-                className="text-muted-foreground hover:text-foreground transition-colors -mt-0.5 -mr-1 p-1"
-                aria-label="Dismiss reflection prompt"
+                className="text-muted-foreground hover:text-foreground transition-colors -mt-0.5 -mr-1 p-1 shrink-0"
+                aria-label="Dismiss reflection prompt and revert move"
               >
                 <X size={14} />
               </button>

@@ -20,6 +20,7 @@ import { Calendar as CalIcon, Check, Copy, Unlink, Link, XCircle, Info } from 'l
 import { motion, AnimatePresence } from 'framer-motion';
 import { getOccupiedSlots, findValidPosition, clampResize, wouldOverlap, getRoutineConflicts, getCalendarConflicts } from '@/utils/collisionDetection';
 import { clusterTasks, TaskCluster, getZoomForCluster } from '@/utils/taskClustering';
+import { requestPendingMove } from '@/store/reflectionStore';
 
 export const DEFAULT_HOUR_HEIGHT = 56;
 export const HOUR_HEIGHT = DEFAULT_HOUR_HEIGHT;
@@ -493,9 +494,11 @@ export function TimelineColumn({
     if (sourceDate && sourceDate !== date) {
       const validation = canMoveTask(taskId, date);
       if (!validation.allowed) {
-        setDragMsg('reason' in validation ? validation.reason : 'Cannot move');
-        setDragValid(false);
-        setTimeout(() => { setDragMsg(''); setDragValid(true); }, 2000);
+        const violation = 'reason' in validation ? validation.reason : 'Cannot move';
+        const opened = requestPendingMove({ taskId, newDate: date, newTime, violation });
+        if (!opened) {
+          // Another prompt was already open — silently swallow this attempt.
+        }
         setDragOverTime(null);
         return;
       }
@@ -918,10 +921,10 @@ export function TimelineColumn({
       if (dropped.fromDate !== date) {
         const validation = canMoveTask(dropped.taskId, date);
         if (!validation.allowed) {
-          setDragMsg('reason' in validation ? validation.reason : 'Cannot move');
-          setTimeout(() => setDragMsg(''), 2000);
-          // Re-pickup since drop failed
-          useCarryStore.getState().pickup(dropped);
+          const violation = 'reason' in validation ? validation.reason : 'Cannot move';
+          requestPendingMove({ taskId: dropped.taskId, newDate: date, newTime, violation });
+          // Apply duration immediately so the deferred move uses it.
+          useTaskStore.getState().updateTask(dropped.taskId, { duration: dropDuration } as any);
           return;
         }
         moveTask(dropped.taskId, date, newTime);
@@ -1034,12 +1037,8 @@ export function TimelineColumn({
           if (dragging.sourceDate && dragging.sourceDate !== date) {
             const validation = canMoveTask(dragging.id, date);
             if (!validation.allowed) {
-              setDragMsg('reason' in validation ? validation.reason : 'Cannot move');
-              setDragValid(false);
-              setTimeout(() => {
-                setDragMsg('');
-                setDragValid(true);
-              }, 2000);
+              const violation = 'reason' in validation ? validation.reason : 'Cannot move';
+              requestPendingMove({ taskId: dragging.id, newDate: date, newTime, violation });
             } else {
               moveTask(dragging.id, date, newTime);
             }
@@ -1137,17 +1136,14 @@ export function TimelineColumn({
 
       // Block drop if collision detected
       if (state.blocked) {
-        // Check if it's a move restriction vs collision
+        // Distinguish constraint violation (priority) from physical collision.
         if (state.sourceDate && state.sourceDate !== state.targetDate) {
           const validation = canMoveTask(state.taskId, state.targetDate);
-          if (!validation.allowed) {
-            // Position message at the drag location
-            if (state.currentMinutes !== null) {
-              setDragMsgTop(((state.currentMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT);
-            }
-            setDragMsg('reason' in validation ? validation.reason : 'Cannot move');
-            setTimeout(() => { setDragMsg(''); setDragMsgTop(null); }, 3000);
-            useScheduledDragStore.getState().cancel();
+          if (!validation.allowed && state.currentMinutes !== null) {
+            const violation = 'reason' in validation ? validation.reason : 'Cannot move';
+            const newTime = minutesToTime(state.currentMinutes);
+            requestPendingMove({ taskId: state.taskId, newDate: state.targetDate, newTime, violation });
+            useScheduledDragStore.getState().endDrag();
             return;
           }
         }
@@ -1230,9 +1226,9 @@ export function TimelineColumn({
       if (state.sourceDate && state.sourceDate !== state.targetDate) {
         const validation = canMoveTask(state.taskId, state.targetDate);
         if (!validation.allowed) {
-          setDragMsg('reason' in validation ? validation.reason : 'Cannot move');
-          setTimeout(() => setDragMsg(''), 2000);
-          useScheduledDragStore.getState().cancel();
+          const violation = 'reason' in validation ? validation.reason : 'Cannot move';
+          requestPendingMove({ taskId: state.taskId, newDate: state.targetDate, newTime, violation });
+          useScheduledDragStore.getState().endDrag();
           return;
         }
         moveTask(state.taskId, state.targetDate, newTime);
