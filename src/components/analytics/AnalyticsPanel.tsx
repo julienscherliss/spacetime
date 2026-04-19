@@ -7,6 +7,7 @@ import { TimeOverTimeChart } from './TimeOverTimeChart';
 import { ActivityHeatmap } from './ActivityHeatmap';
 import { CompletionMetrics } from './CompletionMetrics';
 import { NeglectedTags } from './NeglectedTags';
+import { ReflectionInsights } from './ReflectionInsights';
 import { TagDetailPanel } from './TagDetailPanel';
 import { useAnalyticsData, defaultFilters, type AnalyticsFilters } from '@/hooks/useAnalyticsData';
 import { format } from 'date-fns';
@@ -115,6 +116,10 @@ export function AnalyticsPanel({ open, onClose }: Props) {
                   <NeglectedTags />
                 </ModuleCard>
               </div>
+
+              <ModuleCard title="REFLECTION · IMMOBILE TASK OVERRIDES">
+                <ReflectionInsights range={data.range} />
+              </ModuleCard>
             </div>
 
             {/* Empty state */}
