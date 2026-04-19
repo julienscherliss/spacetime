@@ -746,6 +746,10 @@ export const useTaskStore = create<TaskState>()(
           return { blocked: true };
         }
 
+        // Detect adjustment kind for reflection tracking (move vs retime)
+        const reflectionKind: 'move' | 'retime' =
+          task.date !== newDate ? 'move' : 'retime';
+
         const validation = get().canMoveTask(id, newDate);
         if (!validation.allowed) {
           return { blocked: true };
