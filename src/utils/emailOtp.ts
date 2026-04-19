@@ -77,23 +77,23 @@ export async function sendEmailOtp(email: string): Promise<{ error: Error | null
  * Verify a 6-digit code in-app. Creates a session on success.
  *
  * HARD RULE: this performs exactly ONE verification attempt using
- * `type: 'email'`. There is no fallback to `recovery`, `magiclink`, or
- * any other alternate type.
+ * the same auth type the backend is issuing for this flow: `magiclink`.
+ * There is no fallback to `email`, `recovery`, or any other alternate type.
  */
 export async function verifyEmailOtp(
   email: string,
   token: string,
 ): Promise<{ error: Error | null }> {
-  console.log('[AUTH/OTP] verifyEmailOtp v5 →', email, 'token.length=', token.length);
+  console.log('[AUTH/OTP] verifyEmailOtp v6 →', email, 'token.length=', token.length);
 
-  const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
+  const { error } = await supabase.auth.verifyOtp({ email, token, type: 'magiclink' });
 
   if (error) {
-    console.warn('[AUTH/OTP] verifyEmailOtp v5 failed:', error.message);
-    console.warn('[AUTH/OTP] hard stop after type=email failure');
+    console.warn('[AUTH/OTP] verifyEmailOtp v6 failed:', error.message);
+    console.warn('[AUTH/OTP] hard stop after type=magiclink failure');
     return { error: error as Error };
   }
 
-  console.log('[AUTH/OTP] verifyEmailOtp v5 SUCCESS via type=email');
+  console.log('[AUTH/OTP] verifyEmailOtp v6 SUCCESS via type=magiclink');
   return { error: null };
 }
