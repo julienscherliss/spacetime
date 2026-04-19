@@ -246,7 +246,7 @@ export default function Auth() {
           </div>
 
           <button
-            onClick={verifyOtp}
+            onClick={handleVerifyOtp}
             disabled={loading || otpDigits.join('').length !== 6}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-sm bg-primary text-primary-foreground font-mono text-[11px] tracking-widest hover:bg-primary/90 disabled:opacity-50 transition-colors"
           >
