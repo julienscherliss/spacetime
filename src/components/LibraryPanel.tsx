@@ -382,6 +382,17 @@ export function LibraryPanel() {
   const inputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
   const { hint: entryHint } = useEntryHint();
+  const viewMode = useTaskStore((s) => s.viewMode);
+  const [sidebarMode, setSidebarMode] = useState(false);
+
+  // When panel opens, default to sidebar mode in day/week views, full-screen in focus/calendar.
+  const prevPanelOpen = useRef(false);
+  useEffect(() => {
+    if (panelOpen && !prevPanelOpen.current) {
+      setSidebarMode(viewMode === 'day' || viewMode === 'week');
+    }
+    prevPanelOpen.current = panelOpen;
+  }, [panelOpen, viewMode]);
 
   const items = getFilteredItems();
   const allItems = useLibraryStore((s) => s.items);
