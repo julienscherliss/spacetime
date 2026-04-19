@@ -78,6 +78,7 @@ export function FeatureCarousel({ activeIndex = null, onSlideChange }: FeatureCa
                 playsInline
                 preload="metadata"
                 aria-label={slide.key}
+                style={slide.key === 'LIBRARY' ? { objectPosition: 'center top' } : undefined}
                 className="w-full h-auto object-cover aspect-video bg-muted"
               />
             </div>
