@@ -6,12 +6,12 @@ import { formatHour12h } from '@/hooks/useCurrentTime';
 import { TaskCluster } from '@/utils/taskClustering';
 
 
-function getWeekDays(offset: number, today: string, count: number = 7) {
+function getWeekDays(offset: number, today: string, count: number = 7, dayShift: number = 0) {
   const todayDate = new Date();
   if (count === 7) {
-    // Full week starting Monday
+    // Full week starting Monday, with optional day-level shift
     const monday = new Date(todayDate);
-    monday.setDate(todayDate.getDate() - ((todayDate.getDay() + 6) % 7) + offset * 7);
+    monday.setDate(todayDate.getDate() - ((todayDate.getDay() + 6) % 7) + offset * 7 + dayShift);
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(monday);
       d.setDate(monday.getDate() + i);
@@ -26,7 +26,7 @@ function getWeekDays(offset: number, today: string, count: number = 7) {
       };
     });
   }
-  // 3-day view centered on today + offset
+  // 3-day view centered on today + offset (dayShift ignored in this mode)
   const center = new Date(todayDate);
   center.setDate(todayDate.getDate() + offset * count);
   return Array.from({ length: count }, (_, i) => {
@@ -54,8 +54,8 @@ export function formatWeekRange(days: { date: string; day: number; month: string
   return `${first.month} ${first.day} – ${last.month} ${last.day}`;
 }
 
-export function useWeekDays(offset: number, today: string, count: number = 7) {
-  return useMemo(() => getWeekDays(offset, today, count), [offset, today, count]);
+export function useWeekDays(offset: number, today: string, count: number = 7, dayShift: number = 0) {
+  return useMemo(() => getWeekDays(offset, today, count, dayShift), [offset, today, count, dayShift]);
 }
 
 interface WeekGridProps {
@@ -67,6 +67,7 @@ interface WeekGridProps {
   label?: string;
   compact?: boolean;
   dayCount?: number;
+  dayShift?: number;
   onZoomToCluster?: (cluster: TaskCluster, targetHourHeight: number, scrollToMin: number) => void;
 }
 
@@ -79,10 +80,11 @@ export function WeekGrid({
   label,
   compact = false,
   dayCount = 7,
+  dayShift = 0,
   onZoomToCluster,
 }: WeekGridProps) {
   const { tasks } = useTaskStore();
-  const weekDays = useWeekDays(weekOffset, today, dayCount);
+  const weekDays = useWeekDays(weekOffset, today, dayCount, dayShift);
   const rangeLabel = label || formatWeekRange(weekDays);
 
   return (
@@ -139,11 +141,12 @@ interface WeekDayHeadersProps {
   today: string;
   compact?: boolean;
   dayCount?: number;
+  dayShift?: number;
   controls?: React.ReactNode;
 }
 
-export function WeekDayHeaders({ weekOffset, today, compact = false, dayCount = 7, controls }: WeekDayHeadersProps) {
-  const weekDays = useWeekDays(weekOffset, today, dayCount);
+export function WeekDayHeaders({ weekOffset, today, compact = false, dayCount = 7, dayShift = 0, controls }: WeekDayHeadersProps) {
+  const weekDays = useWeekDays(weekOffset, today, dayCount, dayShift);
 
   return (
     <div className="flex bg-background items-end">
