@@ -6,12 +6,12 @@ import { formatHour12h } from '@/hooks/useCurrentTime';
 import { TaskCluster } from '@/utils/taskClustering';
 
 
-function getWeekDays(offset: number, today: string, count: number = 7) {
+function getWeekDays(offset: number, today: string, count: number = 7, dayShift: number = 0) {
   const todayDate = new Date();
   if (count === 7) {
-    // Full week starting Monday
+    // Full week starting Monday, with optional day-level shift
     const monday = new Date(todayDate);
-    monday.setDate(todayDate.getDate() - ((todayDate.getDay() + 6) % 7) + offset * 7);
+    monday.setDate(todayDate.getDate() - ((todayDate.getDay() + 6) % 7) + offset * 7 + dayShift);
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(monday);
       d.setDate(monday.getDate() + i);
