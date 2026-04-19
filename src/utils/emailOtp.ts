@@ -76,47 +76,24 @@ export async function sendEmailOtp(email: string): Promise<{ error: Error | null
 /**
  * Verify a 6-digit code in-app. Creates a session on success.
  *
- * IMPORTANT — Supabase routes `signInWithOtp` differently depending on whether
- * the user already exists:
- *   - NEW user → action_type "magiclink" → verify with type: 'email'
- *   - EXISTING user → action_type "recovery" (we observed this in auth logs:
- *     `user_recovery_requested`) → verify with type: 'recovery'
- *
- * Because the app cannot know in advance which path Supabase took, we try
- * `email` first and fall back to `recovery` on failure. Both paths produce
- * a real session — there is NO password reset side effect from verifying
- * a recovery OTP without then calling updateUser({ password }).
+ * HARD RULE: this performs exactly ONE verification attempt using
+ * `type: 'email'`. There is no fallback to `recovery`, `magiclink`, or
+ * any other alternate type.
  */
 export async function verifyEmailOtp(
   email: string,
   token: string,
 ): Promise<{ error: Error | null }> {
-  console.log('[AUTH/OTP] verifyEmailOtp v4 →', email, 'token.length=', token.length);
+  console.log('[AUTH/OTP] verifyEmailOtp v5 →', email, 'token.length=', token.length);
 
-  // Supabase's `signInWithOtp` uses action_type "magiclink" for new users and
-  // "recovery" for existing users. Both are verified with type: 'email' — that
-  // is the unified verification type for any signInWithOtp-issued code.
-  //
-  // We do NOT try multiple types: each failed verifyOtp attempt counts against
-  // the OTP and after the first mismatch Supabase marks the code as consumed,
-  // so subsequent attempts return "otp_expired" even though the code was valid.
   const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
 
   if (error) {
-    console.warn('[AUTH/OTP] verifyEmailOtp v4 failed:', error.message);
-    // If `email` type didn't match (some legacy users), try `recovery` ONCE as fallback.
-    if (/expired|invalid|not found/i.test(error.message)) {
-      console.log('[AUTH/OTP] retrying with type=recovery');
-      const retry = await supabase.auth.verifyOtp({ email, token, type: 'recovery' });
-      if (!retry.error) {
-        console.log('[AUTH/OTP] verifyEmailOtp v4 SUCCESS via type=recovery');
-        return { error: null };
-      }
-      return { error: retry.error as Error };
-    }
+    console.warn('[AUTH/OTP] verifyEmailOtp v5 failed:', error.message);
+    console.warn('[AUTH/OTP] hard stop after type=email failure');
     return { error: error as Error };
   }
 
-  console.log('[AUTH/OTP] verifyEmailOtp v4 SUCCESS via type=email');
+  console.log('[AUTH/OTP] verifyEmailOtp v5 SUCCESS via type=email');
   return { error: null };
 }
