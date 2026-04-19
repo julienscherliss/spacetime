@@ -21,6 +21,7 @@ export default function Landing() {
   const navigate = useNavigate();
 
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
+  const [activeFeature, setActiveFeature] = useState<number>(0);
 
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary/20">
@@ -134,10 +135,10 @@ export default function Landing() {
           </motion.div>
 
           <div className="mb-10">
-            <FeatureCarousel />
+            <FeatureCarousel activeIndex={activeFeature} onSlideChange={setActiveFeature} />
           </div>
 
-          <LandingFeatureGrid />
+          <LandingFeatureGrid activeIndex={activeFeature} onSelect={setActiveFeature} />
         </div>
       </section>
 
