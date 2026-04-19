@@ -879,7 +879,19 @@ export const useTaskStore = create<TaskState>()(
       reorderTask: (id, newTime) => {
         const task = get().tasks.find((t) => t.id === id);
         if (!task) return;
-        if (task.priority >= 3) return;
+        // LOCK same-day reorder → route through Reflection prompt instead of silent no-op.
+        if (task.priority >= 3) {
+          // Lazy import to avoid a circular dependency at module load.
+          import('@/store/reflectionStore').then(({ requestPendingMove }) => {
+            requestPendingMove({
+              taskId: id,
+              newDate: task.date,
+              newTime,
+              violation: 'Task is marked as “Locked” — why would you like to move it?',
+            });
+          });
+          return;
+        }
         // Resolve overlap
         const slots = getOccupiedSlots(get().tasks, task.date, id, get().routinesEnabled);
         const resolvedMin = findValidPosition(timeToMinutes(newTime), task.duration || 30, slots).startMin;
