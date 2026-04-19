@@ -465,11 +465,14 @@ export function LibraryPanel() {
       // User already picked a date inline — skip the prompt.
       useLibraryStore.getState().addItem(titleText, autoCategory || undefined, quickDueDate);
     } else {
-      // Always prompt for due date on enter.
+      // Always prompt for due date on enter — anchored to the quick-add input.
       useLibraryDuePrompt.getState().request({
         title: titleText,
         category: autoCategory || undefined,
         duration: 30,
+        anchor: inputRef.current,
+        side: 'top',
+        align: 'start',
       });
     }
     incrementEntryCount();

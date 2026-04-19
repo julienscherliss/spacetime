@@ -1062,6 +1062,7 @@ export function TaskEditPanel() {
                       e.preventDefault();
                       if (!task) return;
                       const taskTitle = task.title;
+                      const libNavBtn = document.querySelector('[data-library-nav-btn]') as HTMLElement | null;
                       import('@/components/LibraryDueDatePrompt').then(({ useLibraryDuePrompt }) => {
                         useLibraryDuePrompt.getState().request({
                           title: task.title,
@@ -1069,6 +1070,9 @@ export function TaskEditPanel() {
                           category: task.category,
                           note: task.description,
                           dueDate: task.dueDate ?? null,
+                          anchor: libNavBtn,
+                          side: 'bottom',
+                          align: 'end',
                         });
                       });
                       deleteTask(task.id);

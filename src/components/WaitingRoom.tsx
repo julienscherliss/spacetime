@@ -72,6 +72,7 @@ function WaitingRoomItem({ task, isMobile, onClosePanel }: { task: Task; isMobil
 
   const handleMoveToLibrary = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
+    const anchor = e.currentTarget as HTMLElement;
     import('@/components/LibraryDueDatePrompt').then(({ useLibraryDuePrompt }) => {
       useLibraryDuePrompt.getState().request({
         title: task.title,
@@ -79,6 +80,9 @@ function WaitingRoomItem({ task, isMobile, onClosePanel }: { task: Task; isMobil
         category: task.category,
         note: task.description,
         dueDate: task.dueDate ?? null,
+        anchor,
+        side: 'right',
+        align: 'start',
       });
     });
     deleteTask(task.id);

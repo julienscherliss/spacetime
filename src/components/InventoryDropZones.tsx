@@ -97,9 +97,10 @@ export function InventoryDropZones() {
     if (!state.taskId) return;
 
     if (zone === 'library') {
-      // Move task to library — prompt for due date
+      // Move task to library — prompt for due date, anchored to library nav button.
       const task = useTaskStore.getState().tasks.find(t => t.id === state.taskId);
       if (task) {
+        const libNavBtn = document.querySelector('[data-library-nav-btn]') as HTMLElement | null;
         import('@/components/LibraryDueDatePrompt').then(({ useLibraryDuePrompt }) => {
           useLibraryDuePrompt.getState().request({
             title: task.title,
@@ -107,6 +108,9 @@ export function InventoryDropZones() {
             category: task.category,
             note: task.description,
             dueDate: task.dueDate ?? null,
+            anchor: libNavBtn,
+            side: 'bottom',
+            align: 'end',
           });
         });
         useTaskStore.getState().deleteTask(task.id);

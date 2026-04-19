@@ -287,6 +287,7 @@ export function AppNav() {
             <span className={routinesEnabled ? 'font-medium' : ''}>{routinesEnabled ? 'ROUTINES' : 'OFF'}</span>
           </button>
           <button
+            data-library-nav-btn
             onClick={() => setLibPanelOpen(!libPanelOpen)}
             className={`${navItemBase} ${
               libPanelOpen
