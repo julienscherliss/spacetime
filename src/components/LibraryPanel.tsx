@@ -806,7 +806,7 @@ export function LibraryPanel() {
                   </div>
 
                   {/* ── RIGHT: Detail pane ── */}
-                  {editingItem && (
+                  {editingItem && !sidebarMode && (
                     <div className="w-1/2 shrink-0 border-l border-border/30 bg-card/30">
                       <LibraryDetailPane
                         item={editingItem}
