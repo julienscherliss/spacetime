@@ -40,11 +40,15 @@ export function ReflectionSheet() {
 
   const handlePick = (reasonKey: ReflectionReason, customText?: string) => {
     const tip = selectReason(reasonKey, customText, (move) => {
-      // Commit the held move using the unrestricted path.
       useTaskStore.getState().forceMoveTask(move.taskId, move.newDate, move.newTime);
     });
     if (tip) {
-      toast(tip, { duration: 2800 });
+      // Persistent until dismissed — user closes via the toast's X.
+      toast(tip, {
+        duration: Infinity,
+        dismissible: true,
+        closeButton: true,
+      });
     }
   };
 
