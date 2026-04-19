@@ -106,6 +106,7 @@ export function InventoryDropZones() {
             duration: task.duration || 30,
             category: task.category,
             note: task.description,
+            dueDate: task.dueDate ?? null,
           });
         });
         useTaskStore.getState().deleteTask(task.id);
