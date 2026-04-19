@@ -8,8 +8,19 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up listener first — handles all future auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Set up listener first — handles all future auth changes.
+    // We log every event with enough detail to distinguish OTP / OAuth / recovery.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[AUTH/EVENT]', event, {
+        userId: session?.user?.id ?? null,
+        email: session?.user?.email ?? null,
+        provider: session?.user?.app_metadata?.provider ?? null,
+      });
+      if (event === 'PASSWORD_RECOVERY') {
+        // Recovery events must ONLY be handled by the /reset-password page.
+        // If you see this on the OTP screen, something is wrong with the flow.
+        console.warn('[AUTH/EVENT] PASSWORD_RECOVERY received — only /reset-password should handle this');
+      }
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);

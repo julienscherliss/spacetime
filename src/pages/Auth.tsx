@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { lovable } from '@/integrations/lovable/index';
 import { isNativePlatform } from '@/utils/nativeAuth';
+import { sendEmailOtp, verifyEmailOtp } from '@/utils/emailOtp';
 import { Mail, Lock, User, ArrowRight, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAuthRedirectOrigin, debugLogAuthEnv } from '@/utils/authEnvironment';
@@ -57,14 +58,8 @@ export default function Auth() {
     if (!email) { toast.error('Enter your email first'); return; }
     setLoading(true);
     try {
-      // Email OTP flow — Supabase sends an email containing the {{ .Token }}
-      // (configured in Auth → Email Templates → Magic Link).
-      // We do NOT use ConfirmationURL / magic-link redirect for this flow;
-      // the user enters the 6-digit token in-app and we verify with verifyOtp.
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: { shouldCreateUser: true },
-      });
+      // Unified email OTP — see src/utils/emailOtp.ts for the full contract.
+      const { error } = await sendEmailOtp(email);
       if (error) {
         const msg = (error.message || '').toLowerCase();
         if (msg.includes('rate') || msg.includes('too many')) {
@@ -78,7 +73,7 @@ export default function Auth() {
       setOtpDigits(['', '', '', '', '', '']);
       setOtpAttempts(0);
       setResendCooldown(30);
-      toast.success('Check your email for a one-time code');
+      toast.success('Check your email — use the LATEST code (older codes are now invalid)');
     } catch (err: any) {
       toast.error(err.message || 'Network error. Check your connection and try again.');
     } finally {
@@ -109,7 +104,7 @@ export default function Auth() {
     }
   };
 
-  const verifyOtp = async () => {
+  const handleVerifyOtp = async () => {
     const token = otpDigits.join('');
     if (token.length !== 6) { toast.error('Enter all 6 digits'); return; }
     if (otpAttempts >= 5) { toast.error('Too many attempts. Request a new code.'); return; }
@@ -117,13 +112,8 @@ export default function Auth() {
     setLoading(true);
     setOtpAttempts((a) => a + 1);
     try {
-      // type: 'email' is the correct type for the 6-digit code sent via signInWithOtp.
-      // This creates a session in-app — no redirect / deep link / browser handoff needed.
-      const { error } = await supabase.auth.verifyOtp({
-        email,
-        token,
-        type: 'email',
-      });
+      // Unified email OTP verification — see src/utils/emailOtp.ts.
+      const { error } = await verifyEmailOtp(email, token);
       if (error) {
         const msg = (error.message || '').toLowerCase();
         if (msg.includes('expired')) {
@@ -256,7 +246,7 @@ export default function Auth() {
           </div>
 
           <button
-            onClick={verifyOtp}
+            onClick={handleVerifyOtp}
             disabled={loading || otpDigits.join('').length !== 6}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-sm bg-primary text-primary-foreground font-mono text-[11px] tracking-widest hover:bg-primary/90 disabled:opacity-50 transition-colors"
           >
