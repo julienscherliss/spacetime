@@ -898,6 +898,7 @@ export function TimelineColumn({
     if (!dropped) return;
 
     if (dropped.fromLibrary && dropped.libraryItemId) {
+      const libItem = useLibraryStore.getState().items.find(i => i.id === dropped.libraryItemId);
       addTask({
         title: dropped.title,
         date,
@@ -905,7 +906,12 @@ export function TimelineColumn({
         duration: dropDuration,
         priority: 0,
         type: 'one-time',
-      });
+        ...(libItem ? {
+          dueDate: libItem.dueDate ?? undefined,
+          description: libItem.note || undefined,
+          category: libItem.category || undefined,
+        } : {}),
+      } as any);
       // Remove from library after placing on schedule
       useLibraryStore.getState().deleteItem(dropped.libraryItemId);
     } else if (dropped.fromWaitingRoom) {
