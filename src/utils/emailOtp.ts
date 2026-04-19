@@ -73,26 +73,42 @@ export async function sendEmailOtp(email: string): Promise<{ error: Error | null
   return { error: error as Error | null };
 }
 
-/** Verify a 6-digit code in-app. Creates a session on success. */
+/**
+ * Verify a 6-digit code in-app. Creates a session on success.
+ *
+ * IMPORTANT — Supabase routes `signInWithOtp` differently depending on whether
+ * the user already exists:
+ *   - NEW user → action_type "magiclink" → verify with type: 'email'
+ *   - EXISTING user → action_type "recovery" (we observed this in auth logs:
+ *     `user_recovery_requested`) → verify with type: 'recovery'
+ *
+ * Because the app cannot know in advance which path Supabase took, we try
+ * `email` first and fall back to `recovery` on failure. Both paths produce
+ * a real session — there is NO password reset side effect from verifying
+ * a recovery OTP without then calling updateUser({ password }).
+ */
 export async function verifyEmailOtp(
   email: string,
   token: string,
 ): Promise<{ error: Error | null }> {
   console.log('[AUTH/OTP] verifyEmailOtp →', email, 'token.length=', token.length);
 
-  // GUARD: type MUST be 'email' for the 6-digit code from signInWithOtp.
-  // Do NOT use 'recovery' here — that is the password-reset verification path.
-  const { error } = await supabase.auth.verifyOtp({
-    email,
-    token,
-    type: 'email',
-  });
-
-  if (error) {
-    console.warn('[AUTH/OTP] verifyEmailOtp failed:', error.message);
-  } else {
-    console.log('[AUTH/OTP] verifyEmailOtp success — session established');
+  // Attempt 1: standard email OTP (new users / magiclink path)
+  const first = await supabase.auth.verifyOtp({ email, token, type: 'email' });
+  if (!first.error) {
+    console.log('[AUTH/OTP] verifyEmailOtp success via type=email');
+    return { error: null };
   }
+  console.warn('[AUTH/OTP] type=email failed:', first.error.message, '— trying recovery');
 
-  return { error: error as Error | null };
+  // Attempt 2: recovery OTP (existing users — Supabase routes signInWithOtp
+  // through user_recovery_requested for already-registered emails).
+  const second = await supabase.auth.verifyOtp({ email, token, type: 'recovery' });
+  if (!second.error) {
+    console.log('[AUTH/OTP] verifyEmailOtp success via type=recovery');
+    return { error: null };
+  }
+  console.warn('[AUTH/OTP] type=recovery also failed:', second.error.message);
+
+  return { error: second.error as Error | null };
 }
