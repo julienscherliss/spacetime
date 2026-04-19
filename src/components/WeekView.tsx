@@ -10,7 +10,7 @@ import { useCurrentTime } from '@/hooks/useCurrentTime';
 import { WeekGrid, WeekDayHeaders, useWeekDays } from '@/components/WeekGrid';
 import { BlockedModal } from '@/components/BlockedModal';
 import { useTimeScale, SCALE_MIN, SCALE_MAX, animatePinchZoom } from '@/hooks/useTimeScale';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, ChevronsRight } from 'lucide-react';
 import { FitViewButton } from '@/components/FitViewButton';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AllDayEventStrip } from '@/components/AllDayEventStrip';
@@ -22,6 +22,7 @@ export function WeekView() {
   const { minutes: nowMinutes, dateStr: today } = useCurrentTime(15000);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [weekOffset, setWeekOffset] = useState(0);
+  const [dayShift, setDayShift] = useState(0);
   const isMobile = useIsMobile();
 
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -102,7 +103,7 @@ export function WeekView() {
     });
   }, [hourHeight, setScale, getTimelineDocTop]);
 
-  const week = useWeekDays(weekOffset, today, dayCount);
+  const week = useWeekDays(weekOffset, today, dayCount, dayShift);
 
   useEffect(() => {
     const start = week[0]?.date;
@@ -236,6 +237,20 @@ export function WeekView() {
           >
             <ChevronLeft size={16} strokeWidth={1.5} />
           </button>
+          {!isMobile && (
+            <button
+              onClick={() => setDayShift(s => (s === 0 ? 3 : 0))}
+              title={dayShift === 0 ? 'Shift forward 3 days' : 'Shift back 3 days'}
+              aria-label={dayShift === 0 ? 'Shift forward 3 days' : 'Shift back 3 days'}
+              className={`p-1 rounded-sm transition-colors ${
+                dayShift !== 0
+                  ? 'text-primary hover:text-primary/80'
+                  : 'text-muted-foreground/40 hover:text-foreground'
+              }`}
+            >
+              <ChevronsRight size={14} strokeWidth={1.5} />
+            </button>
+          )}
           <button
             onClick={() => setWeekOffset(o => o + 1)}
             className="p-1 rounded-sm text-muted-foreground/40 hover:text-foreground transition-colors"
@@ -250,6 +265,7 @@ export function WeekView() {
               today={today}
               compact={isMobile}
               dayCount={dayCount}
+              dayShift={dayShift}
               controls={null}
             />
           </div>
@@ -296,6 +312,7 @@ export function WeekView() {
           routinesEnabled={routinesEnabled}
           compact={isMobile}
           dayCount={dayCount}
+          dayShift={dayShift}
           onZoomToCluster={handleZoomToCluster}
         />
       </div>
