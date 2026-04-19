@@ -20,6 +20,7 @@ import { Calendar as CalIcon, Check, Copy, Unlink, Link, XCircle, Info } from 'l
 import { motion, AnimatePresence } from 'framer-motion';
 import { getOccupiedSlots, findValidPosition, clampResize, wouldOverlap, getRoutineConflicts, getCalendarConflicts } from '@/utils/collisionDetection';
 import { clusterTasks, TaskCluster, getZoomForCluster } from '@/utils/taskClustering';
+import { requestPendingMove } from '@/store/reflectionStore';
 
 export const DEFAULT_HOUR_HEIGHT = 56;
 export const HOUR_HEIGHT = DEFAULT_HOUR_HEIGHT;
@@ -493,9 +494,11 @@ export function TimelineColumn({
     if (sourceDate && sourceDate !== date) {
       const validation = canMoveTask(taskId, date);
       if (!validation.allowed) {
-        setDragMsg('reason' in validation ? validation.reason : 'Cannot move');
-        setDragValid(false);
-        setTimeout(() => { setDragMsg(''); setDragValid(true); }, 2000);
+        const violation = 'reason' in validation ? validation.reason : 'Cannot move';
+        const opened = requestPendingMove({ taskId, newDate: date, newTime, violation });
+        if (!opened) {
+          // Another prompt was already open — silently swallow this attempt.
+        }
         setDragOverTime(null);
         return;
       }
