@@ -828,11 +828,7 @@ export const useTaskStore = create<TaskState>()(
           get().rebalanceGroupChildren(task.id);
         }
 
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-var-requires
-          const { recordAdjustment } = require('@/store/reflectionStore');
-          recordAdjustment(id, 'resize');
-        } catch {}
+        recordReflectionAdjustment(id, 'resize');
       },
 
       reorderTask: (id, newTime) => {
