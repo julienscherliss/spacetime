@@ -17,9 +17,20 @@ export function useAuth() {
         provider: session?.user?.app_metadata?.provider ?? null,
       });
       if (event === 'PASSWORD_RECOVERY') {
-        // Recovery events must ONLY be handled by the /reset-password page.
-        // If you see this on the OTP screen, something is wrong with the flow.
         console.warn('[AUTH/EVENT] PASSWORD_RECOVERY received — only /reset-password should handle this');
+      }
+      // On a fresh sign-in, always land on Day view at "today".
+      if (event === 'SIGNED_IN') {
+        import('@/store/taskStore').then(({ useTaskStore }) => {
+          useTaskStore.setState({
+            viewMode: 'day',
+            daySubMode: 'timeline',
+            navigateToDate: null,
+            currentDate: null,
+            focusTaskId: null,
+            editingTaskId: null,
+          });
+        });
       }
       setSession(session);
       setUser(session?.user ?? null);
