@@ -97,14 +97,16 @@ export function InventoryDropZones() {
     if (!state.taskId) return;
 
     if (zone === 'library') {
-      // Move task to library
+      // Move task to library — prompt for due date
       const task = useTaskStore.getState().tasks.find(t => t.id === state.taskId);
       if (task) {
-        useLibraryStore.getState().addFromSchedule({
-          title: task.title,
-          duration: task.duration || 30,
-          category: task.category,
-          note: task.description,
+        import('@/components/LibraryDueDatePrompt').then(({ useLibraryDuePrompt }) => {
+          useLibraryDuePrompt.getState().request({
+            title: task.title,
+            duration: task.duration || 30,
+            category: task.category,
+            note: task.description,
+          });
         });
         useTaskStore.getState().deleteTask(task.id);
       }
