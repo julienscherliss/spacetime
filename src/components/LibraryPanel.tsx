@@ -506,7 +506,7 @@ export function LibraryPanel() {
             transition={{ duration: 0.2 }}
             className={
               isDesktop && sidebarMode
-                ? 'fixed top-0 left-0 bottom-0 z-50 bg-background flex flex-col border-r border-border/50 shadow-xl w-[360px] max-w-[90vw]'
+                ? 'fixed top-0 left-0 bottom-0 z-50 bg-background flex flex-col border-r border-border/50 shadow-xl w-[408px] max-w-[90vw]'
                 : 'fixed inset-0 z-50 bg-background flex flex-col'
             }
           >
