@@ -142,5 +142,5 @@ export function recordAdjustment(taskId: string, kind: AdjustmentKind) {
   useReflectionStore.getState().recordAdjustment(taskId, kind);
 }
 
-// Re-export for components.
-export { useTaskStore };
+// (no re-exports — keep this module independent of taskStore to avoid cycles)
+
