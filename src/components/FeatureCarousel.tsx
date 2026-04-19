@@ -82,7 +82,7 @@ export function FeatureCarousel({ activeIndex = null, onSlideChange }: FeatureCa
                   slide.key === 'LIBRARY'
                     ? { objectPosition: 'center top' }
                     : slide.key === 'FOCUS MODE'
-                    ? { width: 'calc(100% + 10px)', marginLeft: '-5px', marginRight: '-5px' }
+                    ? { width: 'calc(100% + 10px)', marginLeft: '-5px', maxWidth: 'none' }
                     : undefined
                 }
                 className="h-auto object-cover aspect-video bg-muted w-full"
