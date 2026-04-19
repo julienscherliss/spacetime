@@ -69,7 +69,7 @@ export function FeatureCarousel({ activeIndex = null, onSlideChange }: FeatureCa
       <div ref={emblaRef} className="overflow-hidden rounded-md border border-border/40">
         <div className="flex">
           {slides.map((slide, i) => (
-            <div key={slide.key} className="min-w-0 shrink-0 grow-0 basis-full">
+            <div key={slide.key} className="min-w-0 shrink-0 grow-0 basis-full overflow-hidden">
               <video
                 ref={(el) => { videoRefs.current[i] = el; }}
                 src={slide.src}
@@ -78,8 +78,14 @@ export function FeatureCarousel({ activeIndex = null, onSlideChange }: FeatureCa
                 playsInline
                 preload="metadata"
                 aria-label={slide.key}
-                style={slide.key === 'LIBRARY' ? { objectPosition: 'center top' } : undefined}
-                className="w-full h-auto object-cover aspect-video bg-muted"
+                style={
+                  slide.key === 'LIBRARY'
+                    ? { objectPosition: 'center top' }
+                    : slide.key === 'FOCUS MODE'
+                    ? { width: 'calc(100% + 10px)', marginLeft: '-5px' }
+                    : undefined
+                }
+                className="h-auto object-cover aspect-video bg-muted w-full"
               />
             </div>
           ))}
