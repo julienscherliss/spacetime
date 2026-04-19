@@ -21,6 +21,7 @@ import { TouchDragGhost } from '@/components/TouchDragGhost';
 import { SettingsPanel } from '@/components/SettingsPanel';
 import { HelpPanel } from '@/components/HelpPanel';
 import { InventoryDropZones } from '@/components/InventoryDropZones';
+import { ReflectionSheet } from '@/components/ReflectionSheet';
 import { CarryIndicator } from '@/components/CarryIndicator';
 import { AnalyticsPanel } from '@/components/analytics/AnalyticsPanel';
 import { Paywall } from '@/components/Paywall';
@@ -178,6 +179,7 @@ const Index = () => {
       <TouchDragGhost />
       <CarryIndicator />
       <InventoryDropZones />
+      <ReflectionSheet />
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <ArchivePanel open={archiveOpen} onClose={() => setArchiveOpen(false)} />
       <AnalyticsPanel open={analyticsOpen} onClose={() => setAnalyticsOpen(false)} />

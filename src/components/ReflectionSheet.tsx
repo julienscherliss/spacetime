@@ -78,7 +78,7 @@ export function ReflectionSheet() {
                   Adjusted {activePrompt.count} times
                 </div>
                 <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-0.5">
-                  What\u2019s driving this shift?
+                  What's driving this shift?
                 </div>
               </div>
               <button
@@ -135,7 +135,7 @@ export function ReflectionSheet() {
                     if (e.key === 'Enter') submitOther();
                     if (e.key === 'Escape') setOtherMode(false);
                   }}
-                  placeholder="Your reason\u2026"
+                  placeholder="Your reason…"
                   maxLength={48}
                   className="flex-1 text-[11px] font-mono px-2 py-1.5 bg-background
                              border border-border rounded
