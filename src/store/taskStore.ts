@@ -10,7 +10,8 @@ import { getOccupiedSlots, findValidPosition } from '@/utils/collisionDetection'
 import { timeToMinutes, minutesToTime } from '@/hooks/useCurrentTime';
 import { rebalanceGroup as computeRebalance, MIN_CHILD_DURATION } from '@/utils/groupRebalance';
 import { toast } from 'sonner';
-import { recordAdjustment as recordReflectionAdjustment } from '@/store/reflectionStore';
+// Reflection prompt is now triggered from drop handlers (constraint violations),
+// not from inside taskStore. See src/store/reflectionStore.ts.
 
 export type Priority = 0 | 1 | 2 | 3;
 export type TaskType = 'one-time' | 'recurring' | 'group';
@@ -123,6 +124,9 @@ interface TaskState {
   deleteRecurrenceSeries: (parentId: string) => void;
   canMoveTask: (id: string, newDate: string) => MoveValidation;
   moveTask: (id: string, newDate: string, newTime?: string) => { blocked: boolean };
+  /** Bypasses canMoveTask checks. Used by Reflection flow after the user
+   *  acknowledges a constraint violation. Still resolves collisions. */
+  forceMoveTask: (id: string, newDate: string, newTime?: string) => { blocked: boolean };
   resizeTask: (id: string, newTime: string, newDuration: number) => void;
   reorderTask: (id: string, newTime: string) => void;
   skipFocusTask: () => void;
@@ -746,10 +750,6 @@ export const useTaskStore = create<TaskState>()(
         if (task.priority >= 3) {
           return { blocked: true };
         }
-
-        // Detect adjustment kind for reflection tracking (move vs retime)
-        const reflectionKind: 'move' | 'retime' =
-          task.date !== newDate ? 'move' : 'retime';
 
         const validation = get().canMoveTask(id, newDate);
         if (!validation.allowed) {
