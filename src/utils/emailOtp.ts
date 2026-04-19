@@ -40,11 +40,9 @@
  *
  *  ── Why "recovery" template also renders a token ────────────────────────────
  *
- *  In rare auth configurations Supabase may route signInWithOtp through the
- *  "recovery" action_type instead of "magiclink". To be defensive, BOTH the
- *  magic-link AND recovery templates render `{token}` as a 6-digit code so
- *  the user always sees a code, never a link. The actual flow we use is
- *  magiclink — recovery is a defensive fallback only.
+ *  In rare auth configurations the backend may label the send action as
+ *  "magiclink" or "recovery", but the in-app code entry flow must still verify
+ *  as `type: 'email'` when the user is entering the numeric token.
  *
  *  ============================================================================
  */
@@ -76,24 +74,41 @@ export async function sendEmailOtp(email: string): Promise<{ error: Error | null
 /**
  * Verify a 6-digit code in-app. Creates a session on success.
  *
- * HARD RULE: this performs exactly ONE verification attempt using
- * the same auth type the backend is issuing for this flow: `magiclink`.
- * There is no fallback to `email`, `recovery`, or any other alternate type.
+ * HARD RULE: this performs exactly ONE verification attempt with
+ * `type: 'email'`. There is no fallback to `recovery`, `magiclink`, or any
+ * other alternate type.
  */
 export async function verifyEmailOtp(
   email: string,
   token: string,
 ): Promise<{ error: Error | null }> {
-  console.log('[AUTH/OTP] verifyEmailOtp v6 →', email, 'token.length=', token.length);
+  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedToken = token.replace(/\s+/g, '').trim();
+  const maskedToken = normalizedToken.length >= 2
+    ? `${normalizedToken.slice(0, 1)}${'•'.repeat(Math.max(normalizedToken.length - 2, 0))}${normalizedToken.slice(-1)}`
+    : normalizedToken;
 
-  const { error } = await supabase.auth.verifyOtp({ email, token, type: 'magiclink' });
+  console.log('[AUTH/OTP] verifyEmailOtp v7 →', normalizedEmail, 'token.length=', normalizedToken.length);
+  console.log('[AUTH/OTP] token normalization →', {
+    originalLength: token.length,
+    normalizedLength: normalizedToken.length,
+    whitespaceRemoved: token !== normalizedToken,
+    digitsOnly: /^\d+$/.test(normalizedToken),
+    maskedToken,
+  });
+
+  const { error } = await supabase.auth.verifyOtp({
+    email: normalizedEmail,
+    token: normalizedToken,
+    type: 'email',
+  });
 
   if (error) {
-    console.warn('[AUTH/OTP] verifyEmailOtp v6 failed:', error.message);
-    console.warn('[AUTH/OTP] hard stop after type=magiclink failure');
+    console.warn('[AUTH/OTP] verifyEmailOtp v7 failed:', error.message);
+    console.warn('[AUTH/OTP] hard stop after type=email failure');
     return { error: error as Error };
   }
 
-  console.log('[AUTH/OTP] verifyEmailOtp v6 SUCCESS via type=magiclink');
+  console.log('[AUTH/OTP] verifyEmailOtp v7 SUCCESS via type=email');
   return { error: null };
 }
