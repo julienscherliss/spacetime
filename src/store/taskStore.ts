@@ -10,6 +10,7 @@ import { getOccupiedSlots, findValidPosition } from '@/utils/collisionDetection'
 import { timeToMinutes, minutesToTime } from '@/hooks/useCurrentTime';
 import { rebalanceGroup as computeRebalance, MIN_CHILD_DURATION } from '@/utils/groupRebalance';
 import { toast } from 'sonner';
+import { recordAdjustment as recordReflectionAdjustment } from '@/store/reflectionStore';
 
 export type Priority = 0 | 1 | 2 | 3;
 export type TaskType = 'one-time' | 'recurring' | 'group';
