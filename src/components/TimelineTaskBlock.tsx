@@ -315,12 +315,10 @@ export function TimelineTaskBlock({
           const occupiedSlots = getOccupiedSlots(allTasks, col.date, task.id, routinesOn);
           const { startMin: clampedMin, blocked } = findValidPosition(snapped, taskDuration, occupiedSlots);
 
-          // Check movement restriction (priority-based)
-          let moveBlocked = blocked;
-          if (!blocked && col.date !== task.date) {
-            const validation = useTaskStore.getState().canMoveTask(task.id, col.date);
-            if (!validation.allowed) moveBlocked = true;
-          }
+          // NOTE: We intentionally no longer mark priority-constraint violations
+          // as "blocked" during drag. The drop is allowed to proceed and the
+          // Reflection prompt takes over. Only physical collisions stay red.
+          const moveBlocked = blocked;
 
           useScheduledDragStore.getState().updatePosition(clampedMin);
           useScheduledDragStore.getState().setTargetDate(col.date);

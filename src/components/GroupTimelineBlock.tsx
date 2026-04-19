@@ -142,11 +142,9 @@ export function GroupTimelineBlock({
         const occupied = getOccupiedSlots(allTasks, col.date, task.id, routinesOn);
         const { startMin: clamped, blocked } = findValidPosition(snapped, taskDuration, occupied);
 
-        let moveBlocked = blocked;
-        if (!blocked && col.date !== task.date) {
-          const validation = useTaskStore.getState().canMoveTask(task.id, col.date);
-          if (!validation.allowed) moveBlocked = true;
-        }
+        // Priority-constraint violations are no longer marked as blocked during
+        // drag — the drop triggers the Reflection prompt instead.
+        const moveBlocked = blocked;
 
         useScheduledDragStore.getState().updatePosition(clamped);
         useScheduledDragStore.getState().setTargetDate(col.date);
