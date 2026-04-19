@@ -586,15 +586,10 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                   onClick={async () => {
                     setPwLoading(true);
                     try {
-                      const { data: { user } } = await supabase.auth.getUser();
-                      if (!user?.email) { toast.error('No email found'); return; }
-                      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-                        redirectTo: `${window.location.origin}/reset-password`,
-                      });
-                      if (error) throw error;
-                      toast.success('Password reset link sent to your email');
+                      await supabase.auth.signOut();
+                      toast.success('Signed out. Use "EMAIL ME A CODE" on the sign-in screen to reset.');
                     } catch (err: any) {
-                      toast.error(err.message || 'Failed to send reset email');
+                      toast.error(err.message || 'Failed to sign out');
                     } finally {
                       setPwLoading(false);
                     }
@@ -602,7 +597,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                   disabled={pwLoading}
                   className="w-full flex items-center justify-center gap-2 bg-muted/30 border border-border/50 rounded-sm p-3 min-h-[48px] text-[12px] font-mono tracking-wider text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-50"
                 >
-                  {pwLoading ? 'SENDING...' : "FORGOT PASSWORD? SEND RESET LINK"}
+                  {pwLoading ? 'SIGNING OUT...' : "FORGOT PASSWORD? SIGN OUT & USE CODE"}
                 </button>
               </div>
             )}
