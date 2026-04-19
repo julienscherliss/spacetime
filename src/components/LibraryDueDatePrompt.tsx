@@ -12,6 +12,7 @@ export interface PendingLibraryItem {
   isUrgent?: boolean;
   isImportant?: boolean;
   subtasks?: LibrarySubtask[];
+  dueDate?: string | null;
 }
 
 interface PromptState {
@@ -22,7 +23,23 @@ interface PromptState {
 
 export const useLibraryDuePrompt = create<PromptState>((set) => ({
   pending: null,
-  request: (item) => set({ pending: item }),
+  request: (item) => {
+    // If the source already has a due date, skip the prompt and add directly.
+    if (item.dueDate) {
+      useLibraryStore.getState().addFromSchedule({
+        title: item.title,
+        duration: item.duration,
+        category: item.category,
+        note: item.note,
+        isUrgent: item.isUrgent,
+        isImportant: item.isImportant,
+        dueDate: item.dueDate,
+        subtasks: item.subtasks,
+      });
+      return;
+    }
+    set({ pending: item });
+  },
   clear: () => set({ pending: null }),
 }));
 
