@@ -67,6 +67,7 @@ interface WeekGridProps {
   label?: string;
   compact?: boolean;
   dayCount?: number;
+  dayShift?: number;
   onZoomToCluster?: (cluster: TaskCluster, targetHourHeight: number, scrollToMin: number) => void;
 }
 
@@ -79,10 +80,11 @@ export function WeekGrid({
   label,
   compact = false,
   dayCount = 7,
+  dayShift = 0,
   onZoomToCluster,
 }: WeekGridProps) {
   const { tasks } = useTaskStore();
-  const weekDays = useWeekDays(weekOffset, today, dayCount);
+  const weekDays = useWeekDays(weekOffset, today, dayCount, dayShift);
   const rangeLabel = label || formatWeekRange(weekDays);
 
   return (
@@ -139,11 +141,12 @@ interface WeekDayHeadersProps {
   today: string;
   compact?: boolean;
   dayCount?: number;
+  dayShift?: number;
   controls?: React.ReactNode;
 }
 
-export function WeekDayHeaders({ weekOffset, today, compact = false, dayCount = 7, controls }: WeekDayHeadersProps) {
-  const weekDays = useWeekDays(weekOffset, today, dayCount);
+export function WeekDayHeaders({ weekOffset, today, compact = false, dayCount = 7, dayShift = 0, controls }: WeekDayHeadersProps) {
+  const weekDays = useWeekDays(weekOffset, today, dayCount, dayShift);
 
   return (
     <div className="flex bg-background items-end">
