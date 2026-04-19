@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-// FeatureCarousel temporarily removed — will re-add with video content
-// import { FeatureCarousel } from '@/components/FeatureCarousel';
+import { FeatureCarousel } from '@/components/FeatureCarousel';
 import { ArrowRight } from 'lucide-react';
 import { GravityCanvas } from '@/components/GravityCanvas';
 import { LandingFeatureGrid } from '@/components/landing/LandingFeatureGrid';
@@ -134,7 +133,9 @@ export default function Landing() {
             </span>
           </motion.div>
 
-          {/* Feature carousel — temporarily removed, waiting for video assets */}
+          <div className="mb-10">
+            <FeatureCarousel />
+          </div>
 
           <LandingFeatureGrid />
         </div>
