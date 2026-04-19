@@ -1444,7 +1444,8 @@ export function TimelineColumn({
             const height = cluster.displayHeightPx ?? ((task.duration || 30) / 60) * HOUR_HEIGHT;
             const isActive = task.id === activeTaskId;
             const isResizingThis = resizing?.id === task.id;
-            const isLocked = task.priority >= 3;
+            // LOCK no longer prevents drag — drop triggers Reflection prompt instead.
+            const isLocked = false;
             const showUnlinkedOutline = false;
             const hasConflict = routineConflictIds.has(task.id) || calendarConflictIds.has(task.id);
 

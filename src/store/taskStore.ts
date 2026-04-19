@@ -712,10 +712,10 @@ export const useTaskStore = create<TaskState>()(
         const mobilityMode = useTimezoneStore.getState().mobilityMode;
         if (mobilityMode === 'disabled') {
           if (task.priority >= 3 && task.date !== newDate) {
-            return { allowed: false, reason: 'Cannot move locked task' };
+            return { allowed: false, reason: 'Task is marked as “Locked” — why would you like to move it?' };
           }
           if (task.priority >= 3 && task.date === newDate) {
-            return { allowed: false, reason: 'Task is locked' };
+            return { allowed: false, reason: 'Task is marked as “Locked” — why would you like to move it?' };
           }
           return { allowed: true };
         }
@@ -723,21 +723,21 @@ export const useTaskStore = create<TaskState>()(
         const pri = computeEffectivePriority(task, today);
         if (task.date === newDate) {
           if (pri >= 3) {
-            return { allowed: false, reason: 'Task is locked' };
+            return { allowed: false, reason: 'Task is marked as “Locked” — why would you like to move it?' };
           }
           return { allowed: true };
         }
 
         if (pri >= 3) {
-          return { allowed: false, reason: 'Cannot move locked task' };
+          return { allowed: false, reason: 'Task is marked as “Locked” — why would you like to move it?' };
         }
         if (pri >= 2) {
-          return { allowed: false, reason: 'Cannot move outside current day' };
+          return { allowed: false, reason: 'Task is marked as “Fixed” — why would you like to move it?' };
         }
         if (pri >= 1) {
           const srcWeek = getWeekBounds(task.date);
           if (newDate < srcWeek.start || newDate > srcWeek.end) {
-            return { allowed: false, reason: 'Cannot move outside current week' };
+            return { allowed: false, reason: 'Task is marked as “Semi-flexible” — why would you like to move it?' };
           }
         }
         return { allowed: true };
