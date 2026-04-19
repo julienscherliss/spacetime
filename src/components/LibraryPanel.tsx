@@ -538,6 +538,7 @@ export function LibraryPanel() {
 
                 <div className="flex flex-1 min-h-0">
                   {/* ── LEFT: Tags / Sorting / Filters ── */}
+                  {!sidebarMode && (
                   <div className="w-[220px] shrink-0 border-r border-border/30 flex flex-col overflow-y-auto">
                     {/* Sort selector */}
                     <div className="px-3 py-3 border-b border-border/20">
