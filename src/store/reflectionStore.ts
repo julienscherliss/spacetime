@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { useTimezoneStore, getTodayInTz } from '@/store/timezoneStore';
-import { useTaskStore } from '@/store/taskStore';
 import { pickTip, type ReflectionReason } from '@/utils/reflectionTips';
 
 export type AdjustmentKind = 'move' | 'retime' | 'resize';
