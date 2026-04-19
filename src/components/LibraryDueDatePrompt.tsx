@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { create } from 'zustand';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverAnchor } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { useLibraryStore, LibrarySubtask, LibraryCategory } from '@/store/libraryStore';
 
@@ -13,6 +13,12 @@ export interface PendingLibraryItem {
   isImportant?: boolean;
   subtasks?: LibrarySubtask[];
   dueDate?: string | null;
+  /** DOM element to anchor the popover to (e.g. the "Send to library" button or quick-add input). */
+  anchor?: HTMLElement | null;
+  /** Popover side relative to anchor. */
+  side?: 'top' | 'bottom' | 'left' | 'right';
+  /** Popover alignment. */
+  align?: 'start' | 'center' | 'end';
 }
 
 interface PromptState {
@@ -24,7 +30,7 @@ interface PromptState {
 export const useLibraryDuePrompt = create<PromptState>((set) => ({
   pending: null,
   request: (item) => {
-    // If the source already has a due date, skip the prompt and add directly.
+    // If the source already has a due date, skip the prompt entirely.
     if (item.dueDate) {
       useLibraryStore.getState().addFromSchedule({
         title: item.title,
@@ -52,13 +58,20 @@ function formatYMD(d: Date): string {
 
 export function LibraryDueDatePrompt() {
   const { pending, clear } = useLibraryDuePrompt();
-  const [date, setDate] = useState<Date | undefined>(undefined);
+  const [date, setDate] = useState<string>('');
   const enterCountRef = useRef(0);
   const open = !!pending;
 
+  // Virtual element wrapping the anchor DOM node.
+  const virtualAnchor = pending?.anchor
+    ? {
+        getBoundingClientRect: () => pending.anchor!.getBoundingClientRect(),
+      }
+    : null;
+
   useEffect(() => {
     if (open) {
-      setDate(undefined);
+      setDate('');
       enterCountRef.current = 0;
     }
   }, [open]);
@@ -84,12 +97,10 @@ export function LibraryDueDatePrompt() {
       if (e.key === 'Enter') {
         e.preventDefault();
         if (date) {
-          commit(formatYMD(date));
+          commit(date);
         } else {
           enterCountRef.current += 1;
-          if (enterCountRef.current >= 2) {
-            commit(null);
-          }
+          if (enterCountRef.current >= 2) commit(null);
         }
       } else if (e.key === 'Escape') {
         e.preventDefault();
@@ -100,45 +111,61 @@ export function LibraryDueDatePrompt() {
     return () => window.removeEventListener('keydown', handler);
   }, [open, date, pending]);
 
+  if (!open) return null;
+
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) clear(); }}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle className="font-mono text-sm tracking-wider">
-            Add due date?
-          </DialogTitle>
-          <DialogDescription className="font-mono text-[11px] text-muted-foreground/70">
-            "{pending?.title}" — pick a date, or press Enter twice to skip.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="flex flex-col items-center">
-          <Calendar
-            mode="single"
-            selected={date}
-            onSelect={(d) => setDate(d)}
-            className="p-3 pointer-events-auto"
-          />
-
-          <div className="flex items-center gap-2 w-full mt-2">
+    <Popover open={open} onOpenChange={(o) => { if (!o) clear(); }}>
+      {virtualAnchor && (
+        <PopoverAnchor virtualRef={{ current: virtualAnchor as any }} />
+      )}
+      <PopoverContent
+        className="w-auto p-0 z-[60]"
+        align={pending?.align ?? 'end'}
+        side={pending?.side ?? 'top'}
+      >
+        <Calendar
+          mode="single"
+          selected={date ? new Date(date + 'T12:00:00') : undefined}
+          onSelect={(d) => { if (d) setDate(formatYMD(d)); }}
+          className="p-3 pointer-events-auto"
+        />
+        <div className="flex items-center gap-1.5 px-3 pb-2">
+          {[
+            { label: '1w', days: 7 },
+            { label: '1m', days: 30 },
+            { label: '6m', days: 182 },
+            { label: '1y', days: 365 },
+          ].map((opt) => (
             <button
-              type="button"
-              onClick={() => commit(null)}
-              className="flex-1 py-2 rounded-md text-[11px] font-mono tracking-wider text-muted-foreground/70 hover:text-foreground hover:bg-muted/40 transition-colors border border-border/40"
+              key={opt.label}
+              onClick={() => {
+                const d = new Date();
+                d.setDate(d.getDate() + opt.days);
+                commit(formatYMD(d));
+              }}
+              className="flex-1 py-1.5 text-[10px] font-mono tracking-wider text-muted-foreground/60 hover:text-foreground hover:bg-muted/30 rounded transition-colors"
             >
-              No due date
+              {opt.label}
             </button>
+          ))}
+          <button
+            onClick={() => commit(null)}
+            className="text-[10px] font-mono tracking-wider text-muted-foreground/60 hover:text-foreground ml-auto px-2 py-1.5 rounded transition-colors"
+          >
+            None
+          </button>
+        </div>
+        {date && (
+          <div className="px-3 pb-2">
             <button
-              type="button"
-              disabled={!date}
-              onClick={() => date && commit(formatYMD(date))}
-              className="flex-1 py-2 rounded-md text-[11px] font-mono tracking-wider bg-foreground text-background hover:bg-foreground/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              onClick={() => commit(date)}
+              className="w-full py-1.5 text-[10px] font-mono tracking-wider bg-foreground text-background rounded hover:bg-foreground/90 transition-colors"
             >
               Save
             </button>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }
