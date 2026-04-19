@@ -59,15 +59,22 @@ function formatYMD(d: Date): string {
 export function LibraryDueDatePrompt() {
   const { pending, clear } = useLibraryDuePrompt();
   const [date, setDate] = useState<string>('');
+  const [rect, setRect] = useState<DOMRect | null>(null);
   const enterCountRef = useRef(0);
   const open = !!pending;
 
-  // Virtual element wrapping the anchor DOM node.
-  const virtualAnchor = pending?.anchor
-    ? {
-        getBoundingClientRect: () => pending.anchor!.getBoundingClientRect(),
-      }
-    : null;
+  // Track anchor element rect (re-measure on scroll/resize while open).
+  useEffect(() => {
+    if (!open || !pending?.anchor) { setRect(null); return; }
+    const update = () => setRect(pending.anchor!.getBoundingClientRect());
+    update();
+    window.addEventListener('scroll', update, true);
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update, true);
+      window.removeEventListener('resize', update);
+    };
+  }, [open, pending]);
 
   useEffect(() => {
     if (open) {
@@ -115,8 +122,19 @@ export function LibraryDueDatePrompt() {
 
   return (
     <Popover open={open} onOpenChange={(o) => { if (!o) clear(); }}>
-      {virtualAnchor && (
-        <PopoverAnchor virtualRef={{ current: virtualAnchor as any }} />
+      {rect && (
+        <PopoverAnchor asChild>
+          <div
+            style={{
+              position: 'fixed',
+              top: rect.top,
+              left: rect.left,
+              width: rect.width,
+              height: rect.height,
+              pointerEvents: 'none',
+            }}
+          />
+        </PopoverAnchor>
       )}
       <PopoverContent
         className="w-auto p-0 z-[60]"
