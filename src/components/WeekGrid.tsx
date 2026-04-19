@@ -26,7 +26,7 @@ function getWeekDays(offset: number, today: string, count: number = 7, dayShift:
       };
     });
   }
-  // 3-day view centered on today + offset
+  // 3-day view centered on today + offset (dayShift ignored in this mode)
   const center = new Date(todayDate);
   center.setDate(todayDate.getDate() + offset * count);
   return Array.from({ length: count }, (_, i) => {
@@ -54,8 +54,8 @@ export function formatWeekRange(days: { date: string; day: number; month: string
   return `${first.month} ${first.day} – ${last.month} ${last.day}`;
 }
 
-export function useWeekDays(offset: number, today: string, count: number = 7) {
-  return useMemo(() => getWeekDays(offset, today, count), [offset, today, count]);
+export function useWeekDays(offset: number, today: string, count: number = 7, dayShift: number = 0) {
+  return useMemo(() => getWeekDays(offset, today, count, dayShift), [offset, today, count, dayShift]);
 }
 
 interface WeekGridProps {
