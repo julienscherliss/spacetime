@@ -8,7 +8,7 @@ import {
 import {
   X, Plus, Check, Clock, AlertTriangle, Trash2,
   ArrowDownAZ, CalendarClock, Tag, ChevronDown, ChevronRight, GripVertical, CalendarDays,
-  PanelRightClose, PanelRightOpen,
+  PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react';
 import { TagAutocomplete, isSubtagOf, hasSubtags, getParentValue } from '@/components/TagAutocomplete';
 import { DateAutocomplete } from '@/components/DateAutocomplete';
@@ -506,7 +506,7 @@ export function LibraryPanel() {
             transition={{ duration: 0.2 }}
             className={
               isDesktop && sidebarMode
-                ? 'fixed top-0 left-0 bottom-0 z-50 bg-background flex flex-col border-r border-border/50 shadow-xl w-[360px] max-w-[90vw]'
+                ? 'fixed top-0 left-0 bottom-0 z-50 bg-background flex flex-col border-r border-border/50 shadow-xl w-[408px] max-w-[90vw]'
                 : 'fixed inset-0 z-50 bg-background flex flex-col'
             }
           >
@@ -525,7 +525,7 @@ export function LibraryPanel() {
                       className="p-1.5 text-muted-foreground/60 hover:text-foreground transition-colors"
                       title={sidebarMode ? 'Expand to full screen' : 'Collapse to sidebar'}
                     >
-                      {sidebarMode ? <PanelRightOpen size={16} strokeWidth={1.5} /> : <PanelRightClose size={16} strokeWidth={1.5} />}
+                      {sidebarMode ? <PanelLeftOpen size={16} strokeWidth={1.5} /> : <PanelLeftClose size={16} strokeWidth={1.5} />}
                     </button>
                     <button
                       onClick={() => setPanelOpen(false)}
