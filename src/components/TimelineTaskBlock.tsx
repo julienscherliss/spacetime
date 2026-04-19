@@ -81,6 +81,9 @@ export function TimelineTaskBlock({
 }: TimelineTaskBlockProps) {
   const taskMinutes = task.time ? parseInt(task.time.split(':')[0], 10) * 60 + parseInt(task.time.split(':')[1], 10) : 0;
   const taskEndMinutes = taskMinutes + (task.duration || 30);
+  // Visual lock styling — driven by priority, independent of drag-gating.
+  // (`isLocked` prop only controls interaction behavior now.)
+  const lockedVisuals = task.priority >= 3;
   const timezone = useTimezoneStore((s) => s.timezone);
   const todayStr = getTodayInTz(timezone);
   const isPastDate = task.date < todayStr;
