@@ -80,12 +80,14 @@ export function ReflectionSheet() {
           >
             <div className="flex items-start justify-between mb-2">
               <div className="min-w-0 pr-2">
-                <div className="text-[11px] font-mono uppercase tracking-wider text-foreground truncate">
+                <div className="text-[11px] font-mono text-foreground leading-snug">
                   {activePrompt.violation}
                 </div>
-                <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-0.5">
-                  {taskTitle ? `“${taskTitle}” — why move it anyway?` : 'Why move it anyway?'}
-                </div>
+                {taskTitle && (
+                  <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-1 truncate">
+                    {taskTitle}
+                  </div>
+                )}
               </div>
               <button
                 onClick={dismissPrompt}
