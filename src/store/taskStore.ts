@@ -10,6 +10,7 @@ import { getOccupiedSlots, findValidPosition } from '@/utils/collisionDetection'
 import { timeToMinutes, minutesToTime } from '@/hooks/useCurrentTime';
 import { rebalanceGroup as computeRebalance, MIN_CHILD_DURATION } from '@/utils/groupRebalance';
 import { toast } from 'sonner';
+import { recordAdjustment as recordReflectionAdjustment } from '@/store/reflectionStore';
 
 export type Priority = 0 | 1 | 2 | 3;
 export type TaskType = 'one-time' | 'recurring' | 'group';
@@ -746,6 +747,10 @@ export const useTaskStore = create<TaskState>()(
           return { blocked: true };
         }
 
+        // Detect adjustment kind for reflection tracking (move vs retime)
+        const reflectionKind: 'move' | 'retime' =
+          task.date !== newDate ? 'move' : 'retime';
+
         const validation = get().canMoveTask(id, newDate);
         if (!validation.allowed) {
           return { blocked: true };
@@ -794,6 +799,8 @@ export const useTaskStore = create<TaskState>()(
           void cancelNotificationsForTask(taskId);
         cancelWebNotificationsForTask(taskId);
         });
+        // Reflection tracking — gated to Elite mode internally.
+        recordReflectionAdjustment(id, reflectionKind);
         return { blocked: false };
       },
 
@@ -820,6 +827,8 @@ export const useTaskStore = create<TaskState>()(
         if (task.type === 'group') {
           get().rebalanceGroupChildren(task.id);
         }
+
+        recordReflectionAdjustment(id, 'resize');
       },
 
       reorderTask: (id, newTime) => {
