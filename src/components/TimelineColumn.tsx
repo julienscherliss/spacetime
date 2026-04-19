@@ -1037,12 +1037,8 @@ export function TimelineColumn({
           if (dragging.sourceDate && dragging.sourceDate !== date) {
             const validation = canMoveTask(dragging.id, date);
             if (!validation.allowed) {
-              setDragMsg('reason' in validation ? validation.reason : 'Cannot move');
-              setDragValid(false);
-              setTimeout(() => {
-                setDragMsg('');
-                setDragValid(true);
-              }, 2000);
+              const violation = 'reason' in validation ? validation.reason : 'Cannot move';
+              requestPendingMove({ taskId: dragging.id, newDate: date, newTime, violation });
             } else {
               moveTask(dragging.id, date, newTime);
             }
