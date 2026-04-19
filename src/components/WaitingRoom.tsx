@@ -78,6 +78,7 @@ function WaitingRoomItem({ task, isMobile, onClosePanel }: { task: Task; isMobil
         duration: task.duration || 30,
         category: task.category,
         note: task.description,
+        dueDate: task.dueDate ?? null,
       });
     });
     deleteTask(task.id);
