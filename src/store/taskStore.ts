@@ -216,7 +216,8 @@ function sortTasksBySeriesOrder(tasks: Task[]): Task[] {
 
 function computeEffectivePriority(task: Task, today: string): Priority {
   const mobilityMode = useTimezoneStore.getState().mobilityMode;
-  if (mobilityMode === 'disabled') return task.priority;
+  // Only Elite mode auto-escalates priority based on due dates.
+  if (mobilityMode !== 'elite') return task.priority;
   if (!task.dueDate) return task.priority;
 
   let minPriority = task.priority;
@@ -710,13 +711,8 @@ export const useTaskStore = create<TaskState>()(
         const task = get().tasks.find((t) => t.id === id);
         if (!task) return { allowed: false, reason: 'Task not found' };
         const mobilityMode = useTimezoneStore.getState().mobilityMode;
+        // Disabled mode: free movement, no constraint prompts.
         if (mobilityMode === 'disabled') {
-          if (task.priority >= 3 && task.date !== newDate) {
-            return { allowed: false, reason: 'Task is marked as “Locked” — why would you like to move it?' };
-          }
-          if (task.priority >= 3 && task.date === newDate) {
-            return { allowed: false, reason: 'Task is marked as “Locked” — why would you like to move it?' };
-          }
           return { allowed: true };
         }
         const today = new Date().toISOString().split('T')[0];
@@ -879,9 +875,10 @@ export const useTaskStore = create<TaskState>()(
       reorderTask: (id, newTime) => {
         const task = get().tasks.find((t) => t.id === id);
         if (!task) return;
-        // LOCK same-day reorder → route through Reflection prompt instead of silent no-op.
-        if (task.priority >= 3) {
-          // Lazy import to avoid a circular dependency at module load.
+        const mobilityMode = useTimezoneStore.getState().mobilityMode;
+        // LOCK same-day reorder → route through Reflection prompt
+        // (only when mobility mode enforces constraints; Disabled mode skips the prompt).
+        if (task.priority >= 3 && mobilityMode !== 'disabled') {
           import('@/store/reflectionStore').then(({ requestPendingMove }) => {
             requestPendingMove({
               taskId: id,

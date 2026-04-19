@@ -298,7 +298,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               <span className="text-[11px] font-mono tracking-[0.12em] text-muted-foreground">TASK MOBILITY</span>
             </div>
             <div className="text-[10px] font-mono text-muted-foreground/50 mb-2">
-              Auto-escalate priority based on due dates
+              Controls how tasks resist being moved
             </div>
             <div className="flex gap-1 bg-muted/30 border border-border/50 rounded-sm p-1">
               {([
@@ -320,9 +320,9 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               ))}
             </div>
             <div className="text-[9px] font-mono text-muted-foreground/40 mt-1.5 leading-relaxed">
-              {mobilityMode === 'disabled' && 'Due dates won\'t affect priority. Tasks won\'t escalate when moved between days.'}
-              {mobilityMode === 'normal' && 'Due this week → Semi · Due today → Fixed · Can still de-escalate manually'}
-              {mobilityMode === 'elite' && 'Same as normal, but priority can only be escalated — never lowered'}
+              {mobilityMode === 'disabled' && 'Move tasks freely. No prompts, no constraints, no priority escalation.'}
+              {mobilityMode === 'normal' && 'Semi/Fixed/Locked tasks prompt a brief reflection when moved against their constraint. Priority stays where you set it.'}
+              {mobilityMode === 'elite' && 'Same reflection prompts as Normal, plus due dates auto-escalate priority (this week → Semi · today → Fixed).'}
             </div>
           </div>
 
