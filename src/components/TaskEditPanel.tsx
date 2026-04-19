@@ -1062,11 +1062,13 @@ export function TaskEditPanel() {
                       e.preventDefault();
                       if (!task) return;
                       const taskTitle = task.title;
-                      useLibraryStore.getState().addFromSchedule({
-                        title: task.title,
-                        duration: task.duration || 30,
-                        category: task.category,
-                        note: task.description,
+                      import('@/components/LibraryDueDatePrompt').then(({ useLibraryDuePrompt }) => {
+                        useLibraryDuePrompt.getState().request({
+                          title: task.title,
+                          duration: task.duration || 30,
+                          category: task.category,
+                          note: task.description,
+                        });
                       });
                       deleteTask(task.id);
                       setEditingTask(null);

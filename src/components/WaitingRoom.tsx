@@ -72,11 +72,13 @@ function WaitingRoomItem({ task, isMobile, onClosePanel }: { task: Task; isMobil
 
   const handleMoveToLibrary = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    useLibraryStore.getState().addFromSchedule({
-      title: task.title,
-      duration: task.duration || 30,
-      category: task.category,
-      note: task.description,
+    import('@/components/LibraryDueDatePrompt').then(({ useLibraryDuePrompt }) => {
+      useLibraryDuePrompt.getState().request({
+        title: task.title,
+        duration: task.duration || 30,
+        category: task.category,
+        note: task.description,
+      });
     });
     deleteTask(task.id);
   }, [task, deleteTask]);

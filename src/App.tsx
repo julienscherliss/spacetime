@@ -20,6 +20,7 @@ import Landing from "./pages/Landing.tsx";
 import ResetPassword from "./pages/ResetPassword.tsx";
 import AuthCallback from "./pages/AuthCallback.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import { LibraryDueDatePrompt } from "@/components/LibraryDueDatePrompt";
 
 const queryClient = new QueryClient();
 
@@ -193,6 +194,7 @@ const App = () => {
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <LibraryDueDatePrompt />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<LandingRedirect />} />
