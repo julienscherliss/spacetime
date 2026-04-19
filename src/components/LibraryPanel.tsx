@@ -500,11 +500,15 @@ export function LibraryPanel() {
       <AnimatePresence>
         {panelOpen && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0, x: isDesktop && sidebarMode ? 40 : 0 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: isDesktop && sidebarMode ? 40 : 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-50 bg-background flex flex-col"
+            className={
+              isDesktop && sidebarMode
+                ? 'fixed top-0 right-0 bottom-0 z-50 bg-background flex flex-col border-l border-border/50 shadow-xl w-[480px] max-w-[90vw]'
+                : 'fixed inset-0 z-50 bg-background flex flex-col'
+            }
           >
             {isDesktop ? (
               /* ═══ DESKTOP: 3-panel layout ═══ */
@@ -516,6 +520,13 @@ export function LibraryPanel() {
                   </span>
                   <div className="flex items-center gap-3">
                     <span className="text-[11px] font-mono text-muted-foreground/50">{totalCount}</span>
+                    <button
+                      onClick={() => setSidebarMode((s) => !s)}
+                      className="p-1.5 text-muted-foreground/60 hover:text-foreground transition-colors"
+                      title={sidebarMode ? 'Expand to full screen' : 'Collapse to sidebar'}
+                    >
+                      {sidebarMode ? <PanelRightOpen size={16} strokeWidth={1.5} /> : <PanelRightClose size={16} strokeWidth={1.5} />}
+                    </button>
                     <button
                       onClick={() => setPanelOpen(false)}
                       className="p-1.5 text-muted-foreground/60 hover:text-foreground transition-colors"
