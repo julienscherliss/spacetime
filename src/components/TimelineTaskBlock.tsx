@@ -84,7 +84,7 @@ export function TimelineTaskBlock({
   // Visual lock styling — driven by priority, independent of drag-gating.
   // (`isLocked` prop only controls interaction behavior now.)
   const lockedVisuals = task.priority >= 3;
-  // FIXED (priority 2) gets the filled red/accent treatment (previously used for locked)
+  // FIXED (priority 2) gets the full active accent fill; LOCKED (3) gets black fill.
   const fixedVisuals = task.priority === 2;
   const timezone = useTimezoneStore((s) => s.timezone);
   const todayStr = getTodayInTz(timezone);
