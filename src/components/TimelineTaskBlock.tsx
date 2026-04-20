@@ -84,8 +84,7 @@ export function TimelineTaskBlock({
   // Visual lock styling — driven by priority, independent of drag-gating.
   // (`isLocked` prop only controls interaction behavior now.)
   const lockedVisuals = task.priority >= 3;
-  // FIXED (priority 2) gets a filled accent treatment, similar in form to LOCK
-  // but using the scheme accent at 50% rather than the locked-fill token.
+  // FIXED (priority 2) gets the filled red/accent treatment (previously used for locked)
   const fixedVisuals = task.priority === 2;
   const timezone = useTimezoneStore((s) => s.timezone);
   const todayStr = getTodayInTz(timezone);
@@ -482,12 +481,12 @@ export function TimelineTaskBlock({
           backgroundColor: lockedVisuals
             ? 'hsl(var(--locked-fill))'
             : fixedVisuals
-              ? 'hsl(var(--primary) / 0.25)'
+              ? 'hsl(var(--fixed-fill))'
               : undefined,
           border: lockedVisuals
             ? '1.5px solid hsl(var(--locked-fill))'
             : fixedVisuals
-              ? '1.5px solid hsl(var(--primary) / 0.25)'
+              ? '1.5px solid hsl(var(--fixed-fill))'
               : hasPriorityColor && !isActive && !hasRoutineConflict
                 ? `1.5px solid ${priorityBorderColor}`
                 : isActive
@@ -527,9 +526,9 @@ export function TimelineTaskBlock({
                   {canShowTitle && (
                       <div
                         className={`font-mono leading-tight truncate ${
-                          task.completed ? 'line-through text-muted-foreground/40' : lockedVisuals ? 'font-medium' : fixedVisuals ? 'font-medium text-foreground' : isOverdue ? 'text-destructive/70 font-medium' : isActive ? 'text-foreground font-medium' : 'text-foreground/75'
+                          task.completed ? 'line-through text-muted-foreground/40' : lockedVisuals ? 'font-medium' : fixedVisuals ? 'font-medium' : isOverdue ? 'text-destructive/70 font-medium' : isActive ? 'text-foreground font-medium' : 'text-foreground/75'
                         }`}
-                        style={{ fontSize: 'var(--ui-task-title)', lineHeight: 'var(--ui-leading-tight)', ...(lockedVisuals && !task.completed ? { color: 'hsl(var(--locked-text))' } : {}) }}
+                        style={{ fontSize: 'var(--ui-task-title)', lineHeight: 'var(--ui-leading-tight)', ...(lockedVisuals && !task.completed ? { color: 'hsl(var(--locked-text))' } : fixedVisuals && !task.completed ? { color: 'hsl(var(--fixed-text))' } : {}) }}
                       >
                       {task.title}
                     </div>
