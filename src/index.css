@@ -143,6 +143,13 @@
     /* Routine conflict — amber/orange, distinct from destructive red */
     --routine-conflict: 30 90% 50%;
     --routine-conflict-foreground: 30 90% 35%;
+
+    /* Locked styling — black fill for LOCKED priority */
+    --locked-fill: 0 0% 8%;
+    --locked-text: 0 0% 96%;
+    /* Fixed styling — inherits previous locked treatment (accent/red) */
+    --fixed-fill: 0 70% 50%;
+    --fixed-text: 0 0% 100%;
   }
 
   .dark {
@@ -201,6 +208,13 @@
 
     --routine-conflict: 30 90% 50%;
     --routine-conflict-foreground: 30 90% 65%;
+
+    /* Locked styling — black fill for LOCKED priority */
+    --locked-fill: 0 0% 5%;
+    --locked-text: 0 0% 90%;
+    /* Fixed styling — inherits previous locked treatment (accent/red) */
+    --fixed-fill: 0 70% 45%;
+    --fixed-text: 0 0% 100%;
   }
 }
 
