@@ -472,6 +472,41 @@ export function useDataSync(user: User | null) {
     };
   }, [user?.id]);
 
+  // ─── Realtime: live updates from other devices ───────
+  useEffect(() => {
+    if (!user) return;
+
+    let reloadTimeout: ReturnType<typeof setTimeout> | null = null;
+    const scheduleReload = () => {
+      if (!initialLoadDone.current || userIdRef.current !== user.id) return;
+      // If a local save is pending, wait for it to flush so we don't clobber in-flight edits
+      if (taskSaveTimeout || libSaveTimeout || catSaveTimeout) {
+        if (reloadTimeout) clearTimeout(reloadTimeout);
+        reloadTimeout = setTimeout(scheduleReload, 600);
+        return;
+      }
+      if (reloadTimeout) clearTimeout(reloadTimeout);
+      reloadTimeout = setTimeout(() => {
+        if (userIdRef.current === user.id) {
+          console.log('[Sync] Realtime change detected — refetching');
+          loadFromDB(user.id);
+        }
+      }, 400);
+    };
+
+    const channel = supabase
+      .channel(`user-data-${user.id}`)
+      .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'tasks', filter: `user_id=eq.${user.id}` }, scheduleReload)
+      .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'library_items', filter: `user_id=eq.${user.id}` }, scheduleReload)
+      .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'library_categories', filter: `user_id=eq.${user.id}` }, scheduleReload)
+      .subscribe();
+
+    return () => {
+      if (reloadTimeout) clearTimeout(reloadTimeout);
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
+
   // ─── Refetch on visibility change (tab/app foreground) ─
   useEffect(() => {
     if (!user) return;
