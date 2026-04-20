@@ -468,29 +468,37 @@ export function TimelineTaskBlock({
         className={`h-full rounded-[2px] transition-all duration-200 ${
           lockedVisuals
             ? 'shadow-sm'
-            : isActive
-              ? 'bg-card shadow-sm'
-              : hasRoutineConflict
+            : fixedVisuals
+              ? 'shadow-sm'
+              : isActive
                 ? 'bg-card shadow-sm'
-                : showUnlinkedOutline
-                  ? 'bg-card border-dashed hover:shadow-sm'
-                  : 'bg-card hover:shadow-sm'
+                : hasRoutineConflict
+                  ? 'bg-card shadow-sm'
+                  : showUnlinkedOutline
+                    ? 'bg-card border-dashed hover:shadow-sm'
+                    : 'bg-card hover:shadow-sm'
         } ${isOverdue && !hasRoutineConflict ? '' : ''}`}
         style={{
-          backgroundColor: lockedVisuals ? 'hsl(var(--locked-fill))' : undefined,
+          backgroundColor: lockedVisuals
+            ? 'hsl(var(--locked-fill))'
+            : fixedVisuals
+              ? 'hsl(var(--primary) / 0.5)'
+              : undefined,
           border: lockedVisuals
             ? '1.5px solid hsl(var(--locked-fill))'
-            : hasPriorityColor && !isActive && !hasRoutineConflict
-              ? `1.5px solid ${priorityBorderColor}`
-              : isActive
-                ? '1px solid hsl(var(--primary) / 0.2)'
-                : hasRoutineConflict
-                  ? '1px solid hsl(var(--routine-conflict) / 0.5)'
-                  : isOverdue
-                    ? '1px solid hsl(var(--destructive) / 0.3)'
-                    : showUnlinkedOutline
-                      ? '1px dashed hsl(var(--border) / 0.6)'
-                      : '1px solid hsl(var(--task-border))',
+            : fixedVisuals
+              ? '1.5px solid hsl(var(--primary) / 0.5)'
+              : hasPriorityColor && !isActive && !hasRoutineConflict
+                ? `1.5px solid ${priorityBorderColor}`
+                : isActive
+                  ? '1px solid hsl(var(--primary) / 0.2)'
+                  : hasRoutineConflict
+                    ? '1px solid hsl(var(--routine-conflict) / 0.5)'
+                    : isOverdue
+                      ? '1px solid hsl(var(--destructive) / 0.3)'
+                      : showUnlinkedOutline
+                        ? '1px dashed hsl(var(--border) / 0.6)'
+                        : '1px solid hsl(var(--task-border))',
           boxShadow: '0 1px 2px 0 hsl(var(--foreground) / 0.04)',
         }}
       >
