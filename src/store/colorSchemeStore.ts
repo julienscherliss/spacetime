@@ -384,10 +384,8 @@ export function applyScheme(scheme: ColorScheme) {
     root.style.setProperty(`--priority-${p}-fill`, scheme.priorities[p].fill);
   }
   root.style.setProperty('--scheme-accent', scheme.accent);
-  root.style.setProperty('--fixed-fill', scheme.accent);
-  root.style.setProperty('--fixed-text', '0 0% 100%');
-  root.style.setProperty('--locked-fill', document.documentElement.classList.contains('dark') ? '0 0% 5%' : '0 0% 8%');
-  root.style.setProperty('--locked-text', document.documentElement.classList.contains('dark') ? '0 0% 90%' : '0 0% 96%');
+  root.style.setProperty('--locked-fill', scheme.lockedFill);
+  root.style.setProperty('--locked-text', scheme.lockedText);
   // Override site highlight color (now line, date, routines, overdue, etc.)
   root.style.setProperty('--primary', scheme.accent);
   root.style.setProperty('--accent', scheme.accent);
