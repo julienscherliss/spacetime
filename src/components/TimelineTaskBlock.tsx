@@ -97,11 +97,14 @@ export function TimelineTaskBlock({
 
   const priorityBorderColor = {
     0: '',
-    1: 'hsl(var(--priority-1) / 0.5)',
+    // SEMI inherits the old FIXED border treatment — heavier, orange-ish.
+    1: 'hsl(var(--priority-2) / 0.6)',
     2: 'hsl(var(--priority-2) / 0.6)',
     3: 'hsl(var(--priority-3) / 0.7)',
   }[task.priority] || '';
-  const hasPriorityColor = task.priority >= 1;
+  // SEMI(1) is the only priority that still uses the bordered (non-filled) treatment.
+  // FIXED(2) and LOCK(3) get filled treatments below.
+  const hasPriorityColor = task.priority === 1;
 
   const snapTo15 = (mins: number) => Math.round(mins / 15) * 15;
 
