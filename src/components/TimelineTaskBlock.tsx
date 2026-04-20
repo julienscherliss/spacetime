@@ -482,12 +482,12 @@ export function TimelineTaskBlock({
           backgroundColor: lockedVisuals
             ? 'hsl(var(--locked-fill))'
             : fixedVisuals
-              ? 'hsl(var(--primary) / 0.5)'
+              ? 'hsl(var(--primary) / 0.25)'
               : undefined,
           border: lockedVisuals
             ? '1.5px solid hsl(var(--locked-fill))'
             : fixedVisuals
-              ? '1.5px solid hsl(var(--primary) / 0.5)'
+              ? '1.5px solid hsl(var(--primary) / 0.25)'
               : hasPriorityColor && !isActive && !hasRoutineConflict
                 ? `1.5px solid ${priorityBorderColor}`
                 : isActive
@@ -525,18 +525,18 @@ export function TimelineTaskBlock({
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                   {canShowTitle && (
-                    <div
-                      className={`font-mono leading-tight truncate ${
-                        task.completed ? 'line-through text-muted-foreground/40' : lockedVisuals ? 'font-medium' : fixedVisuals ? 'font-medium' : isOverdue ? 'text-destructive/70 font-medium' : isActive ? 'text-foreground font-medium' : 'text-foreground/75'
-                      }`}
-                      style={{ fontSize: 'var(--ui-task-title)', lineHeight: 'var(--ui-leading-tight)', ...(lockedVisuals && !task.completed ? { color: 'hsl(var(--locked-text))' } : fixedVisuals && !task.completed ? { color: 'hsl(var(--primary-foreground))' } : {}) }}
-                    >
+                      <div
+                        className={`font-mono leading-tight truncate ${
+                          task.completed ? 'line-through text-muted-foreground/40' : lockedVisuals ? 'font-medium' : fixedVisuals ? 'font-medium text-foreground' : isOverdue ? 'text-destructive/70 font-medium' : isActive ? 'text-foreground font-medium' : 'text-foreground/75'
+                        }`}
+                        style={{ fontSize: 'var(--ui-task-title)', lineHeight: 'var(--ui-leading-tight)', ...(lockedVisuals && !task.completed ? { color: 'hsl(var(--locked-text))' } : {}) }}
+                      >
                       {task.title}
                     </div>
                   )}
                   {canShowActiveMeta && isActive && (
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="font-mono text-primary/70" style={{ fontSize: 'var(--ui-task-meta)' }}>
+                      <span className="font-mono text-white" style={{ fontSize: 'var(--ui-task-meta)' }}>
                         {formatDuration(Math.max(0, taskMinutes + (task.duration || 30) - nowMinutes))} left
                       </span>
                     </div>
