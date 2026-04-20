@@ -84,6 +84,9 @@ export function TimelineTaskBlock({
   // Visual lock styling — driven by priority, independent of drag-gating.
   // (`isLocked` prop only controls interaction behavior now.)
   const lockedVisuals = task.priority >= 3;
+  // FIXED (priority 2) gets a filled accent treatment, similar in form to LOCK
+  // but using the scheme accent at 50% rather than the locked-fill token.
+  const fixedVisuals = task.priority === 2;
   const timezone = useTimezoneStore((s) => s.timezone);
   const todayStr = getTodayInTz(timezone);
   const isPastDate = task.date < todayStr;
@@ -94,11 +97,14 @@ export function TimelineTaskBlock({
 
   const priorityBorderColor = {
     0: '',
-    1: 'hsl(var(--priority-1) / 0.5)',
+    // SEMI inherits the old FIXED border treatment — heavier, orange-ish.
+    1: 'hsl(var(--priority-2) / 0.6)',
     2: 'hsl(var(--priority-2) / 0.6)',
     3: 'hsl(var(--priority-3) / 0.7)',
   }[task.priority] || '';
-  const hasPriorityColor = task.priority >= 1;
+  // SEMI(1) is the only priority that still uses the bordered (non-filled) treatment.
+  // FIXED(2) and LOCK(3) get filled treatments below.
+  const hasPriorityColor = task.priority === 1;
 
   const snapTo15 = (mins: number) => Math.round(mins / 15) * 15;
 
@@ -462,29 +468,37 @@ export function TimelineTaskBlock({
         className={`h-full rounded-[2px] transition-all duration-200 ${
           lockedVisuals
             ? 'shadow-sm'
-            : isActive
-              ? 'bg-card shadow-sm'
-              : hasRoutineConflict
+            : fixedVisuals
+              ? 'shadow-sm'
+              : isActive
                 ? 'bg-card shadow-sm'
-                : showUnlinkedOutline
-                  ? 'bg-card border-dashed hover:shadow-sm'
-                  : 'bg-card hover:shadow-sm'
+                : hasRoutineConflict
+                  ? 'bg-card shadow-sm'
+                  : showUnlinkedOutline
+                    ? 'bg-card border-dashed hover:shadow-sm'
+                    : 'bg-card hover:shadow-sm'
         } ${isOverdue && !hasRoutineConflict ? '' : ''}`}
         style={{
-          backgroundColor: lockedVisuals ? 'hsl(var(--locked-fill))' : undefined,
+          backgroundColor: lockedVisuals
+            ? 'hsl(var(--locked-fill))'
+            : fixedVisuals
+              ? 'hsl(var(--primary) / 0.5)'
+              : undefined,
           border: lockedVisuals
             ? '1.5px solid hsl(var(--locked-fill))'
-            : hasPriorityColor && !isActive && !hasRoutineConflict
-              ? `1.5px solid ${priorityBorderColor}`
-              : isActive
-                ? '1px solid hsl(var(--primary) / 0.2)'
-                : hasRoutineConflict
-                  ? '1px solid hsl(var(--routine-conflict) / 0.5)'
-                  : isOverdue
-                    ? '1px solid hsl(var(--destructive) / 0.3)'
-                    : showUnlinkedOutline
-                      ? '1px dashed hsl(var(--border) / 0.6)'
-                      : '1px solid hsl(var(--task-border))',
+            : fixedVisuals
+              ? '1.5px solid hsl(var(--primary) / 0.5)'
+              : hasPriorityColor && !isActive && !hasRoutineConflict
+                ? `1.5px solid ${priorityBorderColor}`
+                : isActive
+                  ? '1px solid hsl(var(--primary) / 0.2)'
+                  : hasRoutineConflict
+                    ? '1px solid hsl(var(--routine-conflict) / 0.5)'
+                    : isOverdue
+                      ? '1px solid hsl(var(--destructive) / 0.3)'
+                      : showUnlinkedOutline
+                        ? '1px dashed hsl(var(--border) / 0.6)'
+                        : '1px solid hsl(var(--task-border))',
           boxShadow: '0 1px 2px 0 hsl(var(--foreground) / 0.04)',
         }}
       >
@@ -513,9 +527,9 @@ export function TimelineTaskBlock({
                   {canShowTitle && (
                     <div
                       className={`font-mono leading-tight truncate ${
-                        task.completed ? 'line-through text-muted-foreground/40' : lockedVisuals ? 'font-medium' : isOverdue ? 'text-destructive/70 font-medium' : isActive ? 'text-foreground font-medium' : 'text-foreground/75'
+                        task.completed ? 'line-through text-muted-foreground/40' : lockedVisuals ? 'font-medium' : fixedVisuals ? 'font-medium' : isOverdue ? 'text-destructive/70 font-medium' : isActive ? 'text-foreground font-medium' : 'text-foreground/75'
                       }`}
-                      style={{ fontSize: 'var(--ui-task-title)', lineHeight: 'var(--ui-leading-tight)', ...(lockedVisuals && !task.completed ? { color: 'hsl(var(--locked-text))' } : {}) }}
+                      style={{ fontSize: 'var(--ui-task-title)', lineHeight: 'var(--ui-leading-tight)', ...(lockedVisuals && !task.completed ? { color: 'hsl(var(--locked-text))' } : fixedVisuals && !task.completed ? { color: 'hsl(var(--primary-foreground))' } : {}) }}
                     >
                       {task.title}
                     </div>
