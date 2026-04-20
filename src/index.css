@@ -212,8 +212,8 @@
     /* Locked styling — black fill for LOCKED priority */
     --locked-fill: 0 0% 5%;
     --locked-text: 0 0% 90%;
-    /* Fixed styling — inherits previous locked treatment (accent/red) */
-    --fixed-fill: 0 70% 45%;
+    /* Fixed styling — full primary accent fill */
+    --fixed-fill: 12 76% 50%;
     --fixed-text: 0 0% 100%;
   }
 }
