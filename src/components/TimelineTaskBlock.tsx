@@ -84,6 +84,9 @@ export function TimelineTaskBlock({
   // Visual lock styling — driven by priority, independent of drag-gating.
   // (`isLocked` prop only controls interaction behavior now.)
   const lockedVisuals = task.priority >= 3;
+  // FIXED (priority 2) gets a filled accent treatment, similar in form to LOCK
+  // but using the scheme accent at 50% rather than the locked-fill token.
+  const fixedVisuals = task.priority === 2;
   const timezone = useTimezoneStore((s) => s.timezone);
   const todayStr = getTodayInTz(timezone);
   const isPastDate = task.date < todayStr;
