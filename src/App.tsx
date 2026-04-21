@@ -39,6 +39,9 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
       setColorSchemeUser(null);
       return;
     }
+    // Set user ID synchronously so any local changes made during the
+    // remote-load round-trip still get queued for save.
+    setColorSchemeUser(user.id);
     loadColorSchemeFromRemote(user.id);
     const unsub = subscribeColorSchemeRealtime(user.id);
     return () => { unsub(); };
