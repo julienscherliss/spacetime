@@ -520,6 +520,34 @@ export const useLibraryStore = create<LibraryState>()(
           }),
         }));
       },
+
+      // ── Integrity sweep ──────────────────────────────────────────
+      // Detects categories where the leaf slug (in `value`) doesn't match
+      // the slugified leaf segment of `label`, and rewrites the value (with
+      // cascade to subtags + tasks). This self-heals any drift caused by
+      // legacy renames or external data edits.
+      repairCategoryDrift: () => {
+        const cats = get().categories;
+        // Sort by depth ascending so parents get fixed before children.
+        const sorted = [...cats].sort(
+          (a, b) => a.value.split('/').length - b.value.split('/').length
+        );
+        for (const cat of sorted) {
+          const leafLabel = (cat.label.split(' / ').pop() || '').trim();
+          if (!leafLabel) continue;
+          const expected = normalizeCategoryValue(leafLabel);
+          if (!expected) continue;
+          const actualLeaf = cat.value.split('/').pop() || '';
+          if (actualLeaf === expected) continue;
+          // Skip if a target with that slug already exists at this level.
+          const segments = cat.value.split('/');
+          segments[segments.length - 1] = expected;
+          const targetValue = segments.join('/');
+          if (get().categories.some(c => c.value === targetValue)) continue;
+          // Reuse renameCategory for the cascade — pass current leaf label.
+          get().renameCategory(cat.value, leafLabel);
+        }
+      },
     }),
     {
       name: 'do-library-store',
