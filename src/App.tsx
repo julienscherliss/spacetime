@@ -11,6 +11,7 @@ import { useTimezoneStore } from "@/store/timezoneStore";
 import { useDataSync } from "@/hooks/useDataSync";
 import { isNativePlatform, setupDeepLinkListener } from "@/utils/nativeAuth";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useLibraryStore } from "@/store/libraryStore";
 import { Paywall } from "@/components/Paywall";
 import { SetPasswordPrompt } from "@/components/SetPasswordPrompt";
 import { primeSoundEngine } from "@/utils/soundEngine";
@@ -41,6 +42,15 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     loadColorSchemeFromRemote(user.id);
     const unsub = subscribeColorSchemeRealtime(user.id);
     return () => { unsub(); };
+  }, [user?.id]);
+
+  // Self-heal any tag value/label drift after data loads.
+  useEffect(() => {
+    if (!user) return;
+    const t = setTimeout(() => {
+      useLibraryStore.getState().repairCategoryDrift();
+    }, 1500);
+    return () => clearTimeout(t);
   }, [user?.id]);
 
   // Check if user logged in via OTP and has no password — show password prompt once
