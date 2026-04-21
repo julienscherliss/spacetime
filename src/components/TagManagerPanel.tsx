@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLibraryStore, CategoryDef } from '@/store/libraryStore';
 import {
-  X, Plus, Trash2, Tag, ChevronRight, GripVertical,
+  X, Plus, Archive, Tag, ChevronRight, GripVertical,
 } from 'lucide-react';
 import {
   Dialog,
@@ -33,9 +33,10 @@ interface TagManagerPanelProps {
 }
 
 export function TagManagerPanel({ open, onClose }: TagManagerPanelProps) {
-  const categories = useLibraryStore((s) => s.categories);
+  const allCategories = useLibraryStore((s) => s.categories);
+  const categories = allCategories.filter(c => !c.archived);
   const allItems = useLibraryStore((s) => s.items);
-  const removeCategory = useLibraryStore((s) => s.removeCategory);
+  const archiveCategory = useLibraryStore((s) => s.archiveCategory);
   const renameCategory = useLibraryStore((s) => s.renameCategory);
   const addCategory = useLibraryStore((s) => s.addCategory);
   const moveCategory = useLibraryStore((s) => s.moveCategory);
@@ -46,7 +47,7 @@ export function TagManagerPanel({ open, onClose }: TagManagerPanelProps) {
   const [editingLabel, setEditingLabel] = useState('');
   const [newTagInput, setNewTagInput] = useState<{ columnParent: string | null } | null>(null);
   const [newTagValue, setNewTagValue] = useState('');
-  const [deletingTag, setDeletingTag] = useState<{ value: string; label: string; count: number } | null>(null);
+  const [archivingTag, setArchivingTag] = useState<{ value: string; label: string; count: number } | null>(null);
   const [dragTag, setDragTag] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [dropColumnParent, setDropColumnParent] = useState<string | null | undefined>(undefined);
@@ -81,21 +82,21 @@ export function TagManagerPanel({ open, onClose }: TagManagerPanelProps) {
     setColumnPath(prev => prev.slice(0, colIndex + 1));
   };
 
-  const handleDeleteTag = (catValue: string) => {
+  const handleArchiveTag = (catValue: string) => {
     const cat = categories.find(c => c.value === catValue);
     if (!cat) return;
     const count = getItemCount(catValue);
     if (count > 0) {
-      setDeletingTag({ value: catValue, label: cat.label, count });
+      setArchivingTag({ value: catValue, label: cat.label, count });
     } else {
-      removeCategory(catValue);
+      archiveCategory(catValue);
     }
   };
 
-  const confirmDeleteTag = () => {
-    if (!deletingTag) return;
-    removeCategory(deletingTag.value);
-    setDeletingTag(null);
+  const confirmArchiveTag = () => {
+    if (!archivingTag) return;
+    archiveCategory(archivingTag.value);
+    setArchivingTag(null);
   };
 
   const handleAddNew = (parentValue: string | null) => {
