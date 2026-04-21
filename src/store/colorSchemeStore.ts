@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface PriorityColors {
   /** HSL string for the priority indicator color (text, badges, borders) */
@@ -253,6 +254,7 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
         const custom = get().customSchemes.filter(c => !!c.darkMode === isDark);
         const all = [...presets, ...custom];
         applyScheme(all.find(s => s.id === id) || presets[0]);
+        scheduleRemoteSync();
       },
 
       setDarkMode: (dark) => {
@@ -274,6 +276,7 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
           ...(isDark ? { activeDarkSchemeId: id } : { activeLightSchemeId: id }),
         }));
         applyScheme(newScheme);
+        scheduleRemoteSync();
         return id;
       },
 
@@ -287,6 +290,7 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
         const activeId = s.isDark ? s.activeDarkSchemeId : s.activeLightSchemeId;
         const updated = s.customSchemes.find(c => c.id === id);
         if (updated && activeId === id) applyScheme(updated);
+        scheduleRemoteSync();
       },
 
       deleteCustomScheme: (id) => {
@@ -304,6 +308,7 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
           const presets = presetsForMode(isDark);
           applyScheme(presets[0]);
         }
+        scheduleRemoteSync();
       },
 
       duplicateScheme: (id) => {
