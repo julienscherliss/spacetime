@@ -371,13 +371,20 @@ export function TagManagerPanel({ open, onClose }: TagManagerPanelProps) {
                                 {count}
                               </span>
 
-                              {/* Delete - visible on hover */}
-                              <div className="flex items-center shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                              {/* Archive - prominent when count==0, hover-revealed otherwise */}
+                              <div className={`flex items-center shrink-0 transition-opacity ${
+                                count === 0 ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                              }`}>
                                 <button
-                                  onClick={(e) => { e.stopPropagation(); handleDeleteTag(cat.value); }}
-                                  className="p-1 text-muted-foreground/30 hover:text-destructive transition-colors"
+                                  onClick={(e) => { e.stopPropagation(); handleArchiveTag(cat.value); }}
+                                  className={`p-1 transition-colors ${
+                                    count === 0
+                                      ? 'text-muted-foreground/60 hover:text-foreground'
+                                      : 'text-muted-foreground/30 hover:text-foreground'
+                                  }`}
+                                  title={count === 0 ? 'Archive (unused tag)' : 'Archive tag'}
                                 >
-                                  <Trash2 size={12} />
+                                  <Archive size={12} />
                                 </button>
                               </div>
 
@@ -432,21 +439,21 @@ export function TagManagerPanel({ open, onClose }: TagManagerPanelProps) {
         </motion.div>
       </div>
 
-      {/* Delete confirmation */}
-      <Dialog open={!!deletingTag} onOpenChange={(o) => { if (!o) setDeletingTag(null); }}>
+      {/* Archive confirmation */}
+      <Dialog open={!!archivingTag} onOpenChange={(o) => { if (!o) setArchivingTag(null); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="font-mono text-[14px]">Delete "{deletingTag?.label}"?</DialogTitle>
+            <DialogTitle className="font-mono text-[14px]">Archive "{archivingTag?.label}"?</DialogTitle>
             <DialogDescription className="font-mono text-[12px]">
-              {deletingTag?.count} item{deletingTag?.count !== 1 ? 's' : ''} use{deletingTag?.count === 1 ? 's' : ''} this tag. They will be set to uncategorized.
+              {archivingTag?.count} item{archivingTag?.count !== 1 ? 's' : ''} use{archivingTag?.count === 1 ? 's' : ''} this tag. The tag stays attached to those tasks but will be hidden from the tag picker. You can restore it from the Archive panel.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
-            <Button variant="outline" size="sm" onClick={() => setDeletingTag(null)} className="font-mono text-[11px]">
+            <Button variant="outline" size="sm" onClick={() => setArchivingTag(null)} className="font-mono text-[11px]">
               Cancel
             </Button>
-            <Button variant="destructive" size="sm" onClick={confirmDeleteTag} className="font-mono text-[11px]">
-              Delete
+            <Button variant="default" size="sm" onClick={confirmArchiveTag} className="font-mono text-[11px]">
+              Archive
             </Button>
           </DialogFooter>
         </DialogContent>
