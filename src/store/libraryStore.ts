@@ -89,6 +89,7 @@ interface LibraryState {
   reparentTag: (tagValue: string, newParent: string | null) => void;
   archiveCategory: (value: string) => void;
   unarchiveCategory: (value: string) => void;
+  repairCategoryDrift: () => void;
 }
 
 const generateId = () => crypto.randomUUID();
