@@ -6,6 +6,7 @@ export type LibraryCategory = string;
 export interface CategoryDef {
   value: string;
   label: string;
+  archived?: boolean;
 }
 
 export type TaskUrgency = 'none' | 'urgent' | 'important';
@@ -86,6 +87,8 @@ interface LibraryState {
   reorderCategory: (value: string, direction: 'left' | 'right') => void;
   moveCategory: (fromValue: string, toValue: string) => void;
   reparentTag: (tagValue: string, newParent: string | null) => void;
+  archiveCategory: (value: string) => void;
+  unarchiveCategory: (value: string) => void;
 }
 
 const generateId = () => crypto.randomUUID();
