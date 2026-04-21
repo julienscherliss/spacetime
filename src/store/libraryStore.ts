@@ -417,6 +417,27 @@ export const useLibraryStore = create<LibraryState>()(
           };
         });
       },
+
+      archiveCategory: (value) => {
+        set((s) => ({
+          categories: s.categories.map(c =>
+            c.value === value || c.value.startsWith(value + '/')
+              ? { ...c, archived: true }
+              : c
+          ),
+        }));
+      },
+
+      unarchiveCategory: (value) => {
+        set((s) => ({
+          categories: s.categories.map(c => {
+            // Unarchive the tag itself + all ancestors so it's reachable in the tree
+            if (c.value === value) return { ...c, archived: false };
+            if (value.startsWith(c.value + '/')) return { ...c, archived: false };
+            return c;
+          }),
+        }));
+      },
     }),
     {
       name: 'do-library-store',
