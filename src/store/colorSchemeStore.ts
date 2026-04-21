@@ -105,11 +105,11 @@ const LIGHT_PRESETS: ColorScheme[] = [
       0: { stroke: '0 0% 62%',    fill: '0 0% 62%' },
       1: { stroke: '60 15% 55%',  fill: '60 12% 55%' },
       2: { stroke: '68 50% 52%',  fill: '68 45% 52%' },
-      3: { stroke: '72 75% 48%',  fill: '72 70% 48%' },
+      3: { stroke: '231 65% 62%', fill: '226 9% 25%' },
     },
     accent: '72 75% 48%',
-    lockedFill: '75 70% 45%',
-    lockedText: '0 0% 8%',
+    lockedFill: '226 9% 25%',
+    lockedText: '0 0% 96%',
   },
 ];
 
