@@ -307,7 +307,7 @@ export function ColorSchemePanel() {
                 <>
                   <button
                     onClick={() => {
-                      const fallback = isDark ? 'dark-industrial' : 'industrial';
+                      const fallback = isDark ? 'dark-industrial' : 'cobalt';
                       setActiveScheme(fallback);
                       deleteCustomScheme(active.id);
                       toast.success('Scheme deleted');
@@ -319,7 +319,7 @@ export function ColorSchemePanel() {
                   </button>
                   <button
                     onClick={() => {
-                      const fallback = isDark ? 'dark-industrial' : 'industrial';
+                      const fallback = isDark ? 'dark-industrial' : 'cobalt';
                       setActiveScheme(fallback);
                       toast.success('Reset to default');
                     }}
