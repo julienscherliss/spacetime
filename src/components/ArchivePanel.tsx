@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Task } from '@/store/taskStore';
+import { useLibraryStore } from '@/store/libraryStore';
 
-import { X, RotateCcw, CheckCircle2, Trash2, Filter, Clock, AlertTriangle } from 'lucide-react';
+import { X, RotateCcw, CheckCircle2, Trash2, Filter, Clock, AlertTriangle, Tag } from 'lucide-react';
 import { format, isToday, isYesterday, startOfWeek, isWithinInterval, subDays } from 'date-fns';
 
-type ArchiveFilter = 'all' | 'completed' | 'deleted';
+type ArchiveFilter = 'all' | 'completed' | 'deleted' | 'tags';
 
 interface ArchivePanelProps {
   open: boolean;
@@ -34,6 +35,22 @@ function formatDuration(mins?: number) {
 
 export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
   const { tasks, restoreTask, setEditingTask } = useTaskStore();
+  const allCategories = useLibraryStore((s) => s.categories);
+  const allLibItems = useLibraryStore((s) => s.items);
+  const unarchiveCategory = useLibraryStore((s) => s.unarchiveCategory);
+  const archivedTags = useMemo(
+    () => allCategories.filter((c) => c.archived),
+    [allCategories]
+  );
+  const tagUsageCount = (value: string) => {
+    const taskCount = tasks.filter((t) =>
+      t.category === value || (t.category && t.category.startsWith(value + '/'))
+    ).length;
+    const libCount = allLibItems.filter((i) =>
+      i.category === value || (i.category && i.category.startsWith(value + '/'))
+    ).length;
+    return taskCount + libCount;
+  };
   const [filter, setFilter] = useState<ArchiveFilter>('all');
 
   const archived = useMemo(() => {
@@ -70,6 +87,7 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
     { key: 'all', label: 'All' },
     { key: 'completed', label: 'Completed' },
     { key: 'deleted', label: 'Deleted' },
+    { key: 'tags', label: 'Tags' },
   ];
 
   return (
