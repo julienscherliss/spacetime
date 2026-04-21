@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useColorSchemeStore } from "@/store/colorSchemeStore";
+import { useColorSchemeStore, loadColorSchemeFromRemote, subscribeColorSchemeRealtime, setColorSchemeUser } from "@/store/colorSchemeStore";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -31,6 +31,17 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   const [checkoutPolling, setCheckoutPolling] = useState(false);
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
   useDataSync(user);
+
+  // Sync color schemes across devices/tabs
+  useEffect(() => {
+    if (!user) {
+      setColorSchemeUser(null);
+      return;
+    }
+    loadColorSchemeFromRemote(user.id);
+    const unsub = subscribeColorSchemeRealtime(user.id);
+    return () => { unsub(); };
+  }, [user?.id]);
 
   // Check if user logged in via OTP and has no password — show password prompt once
   useEffect(() => {

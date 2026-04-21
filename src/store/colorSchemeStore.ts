@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface PriorityColors {
   /** HSL string for the priority indicator color (text, badges, borders) */
@@ -253,6 +254,7 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
         const custom = get().customSchemes.filter(c => !!c.darkMode === isDark);
         const all = [...presets, ...custom];
         applyScheme(all.find(s => s.id === id) || presets[0]);
+        scheduleRemoteSync();
       },
 
       setDarkMode: (dark) => {
@@ -274,6 +276,7 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
           ...(isDark ? { activeDarkSchemeId: id } : { activeLightSchemeId: id }),
         }));
         applyScheme(newScheme);
+        scheduleRemoteSync();
         return id;
       },
 
@@ -287,6 +290,7 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
         const activeId = s.isDark ? s.activeDarkSchemeId : s.activeLightSchemeId;
         const updated = s.customSchemes.find(c => c.id === id);
         if (updated && activeId === id) applyScheme(updated);
+        scheduleRemoteSync();
       },
 
       deleteCustomScheme: (id) => {
@@ -304,6 +308,7 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
           const presets = presetsForMode(isDark);
           applyScheme(presets[0]);
         }
+        scheduleRemoteSync();
       },
 
       duplicateScheme: (id) => {
@@ -381,4 +386,84 @@ export function initColorScheme() {
   }
   const scheme = useColorSchemeStore.getState().getActiveScheme();
   applyScheme(scheme);
+}
+
+// ── Remote sync (Supabase) ────────────────────────────────────────
+
+let currentUserId: string | null = null;
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+let suppressSync = false;
+
+export function setColorSchemeUser(userId: string | null) {
+  currentUserId = userId;
+}
+
+export function scheduleRemoteSync() {
+  if (suppressSync || !currentUserId) return;
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveRemote, 400);
+}
+
+async function saveRemote() {
+  if (!currentUserId) return;
+  const s = useColorSchemeStore.getState();
+  try {
+    await supabase.from('user_color_schemes' as any).upsert({
+      user_id: currentUserId,
+      active_light_scheme_id: s.activeLightSchemeId,
+      active_dark_scheme_id: s.activeDarkSchemeId,
+      custom_schemes: s.customSchemes as any,
+      updated_at: new Date().toISOString(),
+    });
+  } catch (e) {
+    console.error('[ColorScheme] Save failed:', e);
+  }
+}
+
+export async function loadColorSchemeFromRemote(userId: string) {
+  currentUserId = userId;
+  try {
+    const { data, error } = await supabase
+      .from('user_color_schemes' as any)
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (error) {
+      console.error('[ColorScheme] Load failed:', error);
+      return;
+    }
+    if (!data) {
+      // No remote yet — push current local state up
+      saveRemote();
+      return;
+    }
+    suppressSync = true;
+    const row = data as any;
+    useColorSchemeStore.setState({
+      activeLightSchemeId: row.active_light_scheme_id || 'cobalt',
+      activeDarkSchemeId: row.active_dark_scheme_id || 'dark-citrus',
+      customSchemes: Array.isArray(row.custom_schemes) ? row.custom_schemes : [],
+    });
+    suppressSync = false;
+    const scheme = useColorSchemeStore.getState().getActiveScheme();
+    applyScheme(scheme);
+  } catch (e) {
+    console.error('[ColorScheme] Load error:', e);
+  }
+}
+
+export function subscribeColorSchemeRealtime(userId: string) {
+  const channel = supabase
+    .channel(`color-scheme-${userId}`)
+    .on(
+      'postgres_changes' as any,
+      { event: '*', schema: 'public', table: 'user_color_schemes', filter: `user_id=eq.${userId}` },
+      () => {
+        loadColorSchemeFromRemote(userId);
+      }
+    )
+    .subscribe();
+  return () => {
+    supabase.removeChannel(channel);
+  };
 }
