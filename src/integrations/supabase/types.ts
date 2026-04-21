@@ -600,6 +600,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_color_schemes: {
+        Row: {
+          active_dark_scheme_id: string
+          active_light_scheme_id: string
+          custom_schemes: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active_dark_scheme_id?: string
+          active_light_scheme_id?: string
+          custom_schemes?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active_dark_scheme_id?: string
+          active_light_scheme_id?: string
+          custom_schemes?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
