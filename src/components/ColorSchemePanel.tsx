@@ -224,16 +224,23 @@ export function ColorSchemePanel() {
                 <div className="h-px flex-1 bg-border/30" />
               </div>
               <div className="flex gap-1">
-                {/* FLEX (P0) — plain card, no priority styling */}
+                {/* FLEX (P0) — faint tint + subtle P0 stroke */}
                 <div
-                  className="flex-1 h-6 rounded-[2px] flex items-center justify-center bg-card border border-border"
+                  className="flex-1 h-6 rounded-[2px] flex items-center justify-center"
+                  style={{
+                    backgroundColor: `hsl(${active.priorities[0].fill} / 0.06)`,
+                    border: `1px solid hsl(${active.priorities[0].stroke} / 0.5)`,
+                  }}
                 >
                   <span className="text-[7px] font-mono font-medium text-foreground/75">FLEX</span>
                 </div>
-                {/* SEMI (P1) — bordered card, P2 stroke */}
+                {/* SEMI (P1) — soft tint + P1 stroke */}
                 <div
-                  className="flex-1 h-6 rounded-[2px] flex items-center justify-center bg-card"
-                  style={{ border: `1.5px solid hsl(${active.priorities[2].stroke} / 0.6)` }}
+                  className="flex-1 h-6 rounded-[2px] flex items-center justify-center"
+                  style={{
+                    backgroundColor: `hsl(${active.priorities[1].fill} / 0.12)`,
+                    border: `1.5px solid hsl(${active.priorities[1].stroke} / 0.7)`,
+                  }}
                 >
                   <span className="text-[7px] font-mono font-medium text-foreground/75">SEMI</span>
                 </div>
