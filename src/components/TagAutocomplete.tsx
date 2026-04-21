@@ -10,7 +10,8 @@ interface TagAutocompleteProps {
 }
 
 export function TagAutocomplete({ inputValue, onSelectTag, onSubmitAfterSelect, inputRef }: TagAutocompleteProps) {
-  const categories = useLibraryStore((s) => s.categories);
+  const allCategories = useLibraryStore((s) => s.categories);
+  const categories = allCategories.filter(c => !c.archived);
   const [suggestions, setSuggestions] = useState<CategoryDef[]>([]);
   const [selectedIdx, setSelectedIdx] = useState(0);
 

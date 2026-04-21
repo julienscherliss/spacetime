@@ -28,7 +28,8 @@ interface TagPickerMenuProps {
 }
 
 export function TagPickerMenu({ value, onChange, onClose, showNewOption = true }: TagPickerMenuProps) {
-  const categories = useLibraryStore((s) => s.categories);
+  const allCategories = useLibraryStore((s) => s.categories);
+  const categories = allCategories.filter(c => !c.archived);
   const addCategory = useLibraryStore((s) => s.addCategory);
   // Breadcrumb trail for drilling into subtags
   const [drillPath, setDrillPath] = useState<string[]>([]);
