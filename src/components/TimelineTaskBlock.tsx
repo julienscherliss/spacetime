@@ -478,13 +478,19 @@ export function TimelineTaskBlock({
             ? 'hsl(var(--locked-fill))'
             : fixedVisuals
               ? 'hsl(var(--fixed-fill))'
-              : undefined,
+              : semiVisuals
+                ? `hsl(var(--priority-1-fill) / 0.12)`
+                : flexVisuals
+                  ? `hsl(var(--priority-0-fill) / 0.06)`
+                  : undefined,
           border: lockedVisuals
             ? '1.5px solid hsl(var(--locked-stroke))'
             : fixedVisuals
               ? '1.5px solid hsl(var(--fixed-stroke))'
-              : hasPriorityColor && !isActive && !hasRoutineConflict
-                ? `1.5px solid ${priorityBorderColor}`
+              : semiVisuals && !isActive && !hasRoutineConflict
+                ? `1.5px solid hsl(var(--priority-1) / 0.7)`
+                : flexVisuals && !isActive && !hasRoutineConflict
+                  ? `1px solid hsl(var(--priority-0) / 0.5)`
                 : isActive
                   ? '1px solid hsl(var(--primary) / 0.2)'
                   : hasRoutineConflict
