@@ -94,16 +94,12 @@ export function TimelineTaskBlock({
   const isDraggingThis = useScheduledDragStore((s) => s.active && s.taskId === task.id);
   const isCarried = useCarryStore((s) => s.carried?.taskId === task.id);
 
-  const priorityBorderColor = {
-    0: '',
-    // SEMI inherits the old FIXED border treatment — heavier, orange-ish.
-    1: 'hsl(var(--priority-2) / 0.6)',
-    2: 'hsl(var(--priority-2) / 0.6)',
-    3: 'hsl(var(--priority-3) / 0.7)',
-  }[task.priority] || '';
-  // SEMI(1) is the only priority that still uses the bordered (non-filled) treatment.
-  // FIXED(2) and LOCK(3) get filled treatments below.
-  const hasPriorityColor = task.priority === 1;
+  // Each priority renders directly from its scheme stroke + fill so editing
+  // the scheme has a 1:1 visible effect on tasks.
+  // FLEX(0) + SEMI(1): subtle stroke + soft fill tint, light text.
+  // FIXED(2) + LOCK(3): full filled treatment, white/light text.
+  const flexVisuals = task.priority === 0;
+  const semiVisuals = task.priority === 1;
 
   const snapTo15 = (mins: number) => Math.round(mins / 15) * 15;
 
