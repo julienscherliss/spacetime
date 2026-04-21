@@ -433,7 +433,7 @@ export function TagManagerPanel({ open, onClose }: TagManagerPanelProps) {
           {/* Hint */}
           <div className="px-5 py-2.5 border-t border-border/20">
             <p className="text-[10px] font-mono text-muted-foreground/30 text-center">
-              Click to drill in · Drag onto a tag to nest · Drag to a column to move level
+              Click to drill in · Drag to nest · Archive icon hides unused tags
             </p>
           </div>
         </motion.div>
