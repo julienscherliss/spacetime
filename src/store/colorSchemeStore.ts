@@ -28,20 +28,6 @@ export interface ColorScheme {
 
 const LIGHT_PRESETS: ColorScheme[] = [
   {
-    id: 'industrial',
-    name: 'INDUSTRIAL',
-    preset: true,
-    priorities: {
-      0: { stroke: '0 0% 85%',   fill: '0 0% 100%' },
-      1: { stroke: '22 80% 50%', fill: '0 0% 100%' },
-      2: { stroke: '22 80% 50%', fill: '22 80% 50%' },
-      3: { stroke: '0 70% 30%',  fill: '0 70% 30%' },
-    },
-    accent: '12 76% 50%',
-    lockedFill: '0 70% 30%',
-    lockedText: '0 0% 96%',
-  },
-  {
     id: 'clay',
     name: 'CLAY',
     preset: true,
