@@ -6,6 +6,7 @@ export type LibraryCategory = string;
 export interface CategoryDef {
   value: string;
   label: string;
+  archived?: boolean;
 }
 
 export type TaskUrgency = 'none' | 'urgent' | 'important';
@@ -86,6 +87,8 @@ interface LibraryState {
   reorderCategory: (value: string, direction: 'left' | 'right') => void;
   moveCategory: (fromValue: string, toValue: string) => void;
   reparentTag: (tagValue: string, newParent: string | null) => void;
+  archiveCategory: (value: string) => void;
+  unarchiveCategory: (value: string) => void;
 }
 
 const generateId = () => crypto.randomUUID();
@@ -111,6 +114,7 @@ const mergeCategories = (items: LibraryTask[], categories: CategoryDef[]) => {
     map.set(value, {
       value,
       label: category.label?.trim() || humanizeCategoryValue(value),
+      archived: category.archived ?? false,
     });
   });
 
@@ -412,6 +416,27 @@ export const useLibraryStore = create<LibraryState>()(
             items: updatedItems,
           };
         });
+      },
+
+      archiveCategory: (value) => {
+        set((s) => ({
+          categories: s.categories.map(c =>
+            c.value === value || c.value.startsWith(value + '/')
+              ? { ...c, archived: true }
+              : c
+          ),
+        }));
+      },
+
+      unarchiveCategory: (value) => {
+        set((s) => ({
+          categories: s.categories.map(c => {
+            // Unarchive the tag itself + all ancestors so it's reachable in the tree
+            if (c.value === value) return { ...c, archived: false };
+            if (value.startsWith(c.value + '/')) return { ...c, archived: false };
+            return c;
+          }),
+        }));
       },
     }),
     {

@@ -589,7 +589,7 @@ export function LibraryPanel() {
 
                       {tagEditMode ? (
                         <>
-                          {categories.map((cat) => (
+                          {categories.filter(c => !c.archived).map((cat) => (
                             <JiggleChip
                               key={cat.value}
                               label={cat.label}
@@ -614,7 +614,7 @@ export function LibraryPanel() {
                                 label={categories.find(c => c.value === drilldownParent)?.label || drilldownParent}
                                 onClick={() => setFilter({ category: filters.category === drilldownParent ? 'all' : drilldownParent })}
                               />
-                              {categories.filter(c => isSubtagOf(c.value, drilldownParent)).map((cat) => {
+                              {categories.filter(c => isSubtagOf(c.value, drilldownParent) && !c.archived).map((cat) => {
                                 const subLabel = cat.label.includes(' / ') ? cat.label.split(' / ').slice(1).join(' / ') : cat.label;
                                 return (
                                   <VerticalTagChip
@@ -639,7 +639,7 @@ export function LibraryPanel() {
                                 onClick={() => setFilter({ category: filters.category === 'none' ? 'all' : 'none' })}
                               />
                               {categories
-                                .filter(c => !c.value.includes('/'))
+                                .filter(c => !c.value.includes('/') && !c.archived)
                                 .map((cat) => {
                                   const catHasChildren = categories.some(c => isSubtagOf(c.value, cat.value));
                                   return (
@@ -975,7 +975,7 @@ export function LibraryPanel() {
                     >
                       {tagEditMode ? (
                         <>
-                          {categories.map((cat) => (
+                          {categories.filter(c => !c.archived).map((cat) => (
                             <JiggleChip
                               key={cat.value}
                               label={cat.label}
@@ -995,7 +995,7 @@ export function LibraryPanel() {
                                 label={categories.find(c => c.value === drilldownParent)?.label || drilldownParent}
                                 onClick={() => setFilter({ category: filters.category === drilldownParent ? 'all' : drilldownParent })}
                               />
-                              {categories.filter(c => isSubtagOf(c.value, drilldownParent)).map((cat) => {
+                              {categories.filter(c => isSubtagOf(c.value, drilldownParent) && !c.archived).map((cat) => {
                                 const subLabel = cat.label.includes(' / ') ? cat.label.split(' / ').slice(1).join(' / ') : cat.label;
                                 return (
                                   <Chip
@@ -1059,7 +1059,7 @@ export function LibraryPanel() {
                                 onClick={() => setFilter({ category: filters.category === 'none' ? 'all' : 'none' })}
                               />
                               {categories
-                                .filter(c => !c.value.includes('/'))
+                                .filter(c => !c.value.includes('/') && !c.archived)
                                 .map((cat) => (
                                   <Chip
                                     key={cat.value}

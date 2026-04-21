@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLibraryStore, CategoryDef } from '@/store/libraryStore';
 import {
-  X, Plus, Trash2, Tag, ChevronRight, GripVertical,
+  X, Plus, Archive, Tag, ChevronRight, GripVertical,
 } from 'lucide-react';
 import {
   Dialog,
@@ -33,9 +33,10 @@ interface TagManagerPanelProps {
 }
 
 export function TagManagerPanel({ open, onClose }: TagManagerPanelProps) {
-  const categories = useLibraryStore((s) => s.categories);
+  const allCategories = useLibraryStore((s) => s.categories);
+  const categories = allCategories.filter(c => !c.archived);
   const allItems = useLibraryStore((s) => s.items);
-  const removeCategory = useLibraryStore((s) => s.removeCategory);
+  const archiveCategory = useLibraryStore((s) => s.archiveCategory);
   const renameCategory = useLibraryStore((s) => s.renameCategory);
   const addCategory = useLibraryStore((s) => s.addCategory);
   const moveCategory = useLibraryStore((s) => s.moveCategory);
@@ -46,7 +47,7 @@ export function TagManagerPanel({ open, onClose }: TagManagerPanelProps) {
   const [editingLabel, setEditingLabel] = useState('');
   const [newTagInput, setNewTagInput] = useState<{ columnParent: string | null } | null>(null);
   const [newTagValue, setNewTagValue] = useState('');
-  const [deletingTag, setDeletingTag] = useState<{ value: string; label: string; count: number } | null>(null);
+  const [archivingTag, setArchivingTag] = useState<{ value: string; label: string; count: number } | null>(null);
   const [dragTag, setDragTag] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [dropColumnParent, setDropColumnParent] = useState<string | null | undefined>(undefined);
@@ -81,21 +82,21 @@ export function TagManagerPanel({ open, onClose }: TagManagerPanelProps) {
     setColumnPath(prev => prev.slice(0, colIndex + 1));
   };
 
-  const handleDeleteTag = (catValue: string) => {
+  const handleArchiveTag = (catValue: string) => {
     const cat = categories.find(c => c.value === catValue);
     if (!cat) return;
     const count = getItemCount(catValue);
     if (count > 0) {
-      setDeletingTag({ value: catValue, label: cat.label, count });
+      setArchivingTag({ value: catValue, label: cat.label, count });
     } else {
-      removeCategory(catValue);
+      archiveCategory(catValue);
     }
   };
 
-  const confirmDeleteTag = () => {
-    if (!deletingTag) return;
-    removeCategory(deletingTag.value);
-    setDeletingTag(null);
+  const confirmArchiveTag = () => {
+    if (!archivingTag) return;
+    archiveCategory(archivingTag.value);
+    setArchivingTag(null);
   };
 
   const handleAddNew = (parentValue: string | null) => {
@@ -370,13 +371,20 @@ export function TagManagerPanel({ open, onClose }: TagManagerPanelProps) {
                                 {count}
                               </span>
 
-                              {/* Delete - visible on hover */}
-                              <div className="flex items-center shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                              {/* Archive - prominent when count==0, hover-revealed otherwise */}
+                              <div className={`flex items-center shrink-0 transition-opacity ${
+                                count === 0 ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                              }`}>
                                 <button
-                                  onClick={(e) => { e.stopPropagation(); handleDeleteTag(cat.value); }}
-                                  className="p-1 text-muted-foreground/30 hover:text-destructive transition-colors"
+                                  onClick={(e) => { e.stopPropagation(); handleArchiveTag(cat.value); }}
+                                  className={`p-1 transition-colors ${
+                                    count === 0
+                                      ? 'text-muted-foreground/60 hover:text-foreground'
+                                      : 'text-muted-foreground/30 hover:text-foreground'
+                                  }`}
+                                  title={count === 0 ? 'Archive (unused tag)' : 'Archive tag'}
                                 >
-                                  <Trash2 size={12} />
+                                  <Archive size={12} />
                                 </button>
                               </div>
 
@@ -425,27 +433,27 @@ export function TagManagerPanel({ open, onClose }: TagManagerPanelProps) {
           {/* Hint */}
           <div className="px-5 py-2.5 border-t border-border/20">
             <p className="text-[10px] font-mono text-muted-foreground/30 text-center">
-              Click to drill in · Drag onto a tag to nest · Drag to a column to move level
+              Click to drill in · Drag to nest · Archive icon hides unused tags
             </p>
           </div>
         </motion.div>
       </div>
 
-      {/* Delete confirmation */}
-      <Dialog open={!!deletingTag} onOpenChange={(o) => { if (!o) setDeletingTag(null); }}>
+      {/* Archive confirmation */}
+      <Dialog open={!!archivingTag} onOpenChange={(o) => { if (!o) setArchivingTag(null); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="font-mono text-[14px]">Delete "{deletingTag?.label}"?</DialogTitle>
+            <DialogTitle className="font-mono text-[14px]">Archive "{archivingTag?.label}"?</DialogTitle>
             <DialogDescription className="font-mono text-[12px]">
-              {deletingTag?.count} item{deletingTag?.count !== 1 ? 's' : ''} use{deletingTag?.count === 1 ? 's' : ''} this tag. They will be set to uncategorized.
+              {archivingTag?.count} item{archivingTag?.count !== 1 ? 's' : ''} use{archivingTag?.count === 1 ? 's' : ''} this tag. The tag stays attached to those tasks but will be hidden from the tag picker. You can restore it from the Archive panel.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
-            <Button variant="outline" size="sm" onClick={() => setDeletingTag(null)} className="font-mono text-[11px]">
+            <Button variant="outline" size="sm" onClick={() => setArchivingTag(null)} className="font-mono text-[11px]">
               Cancel
             </Button>
-            <Button variant="destructive" size="sm" onClick={confirmDeleteTag} className="font-mono text-[11px]">
-              Delete
+            <Button variant="default" size="sm" onClick={confirmArchiveTag} className="font-mono text-[11px]">
+              Archive
             </Button>
           </DialogFooter>
         </DialogContent>
