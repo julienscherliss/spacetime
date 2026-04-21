@@ -141,7 +141,49 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
 
           {/* Content */}
           <div className="overflow-y-auto" style={{ height: 'calc(100vh - 100px)' }}>
-            {archived.length === 0 ? (
+            {filter === 'tags' ? (
+              archivedTags.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-64 text-center px-6">
+                  <div className="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center mb-3">
+                    <Tag size={16} className="text-muted-foreground/40" />
+                  </div>
+                  <p className="text-xs font-mono text-muted-foreground/60 tracking-wide">
+                    No archived tags
+                  </p>
+                  <p className="text-[10px] font-mono text-muted-foreground/30 mt-1">
+                    Archived tags stay attached to tasks but hide from the picker
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y divide-border/20 pb-8">
+                  {archivedTags.map((cat) => {
+                    const count = tagUsageCount(cat.value);
+                    return (
+                      <div key={cat.value} className="flex items-center gap-3 px-4 py-3 group">
+                        <div className="shrink-0 text-muted-foreground/40">
+                          <Tag size={14} strokeWidth={1.5} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-mono text-foreground/70 truncate">
+                            {cat.label}
+                          </div>
+                          <div className="text-[9px] font-mono text-muted-foreground/40 mt-0.5">
+                            {count} task{count === 1 ? '' : 's'} still tagged
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => unarchiveCategory(cat.value)}
+                          className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-md text-[9px] font-mono tracking-wide text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors sm:opacity-0 sm:group-hover:opacity-100"
+                        >
+                          <RotateCcw size={11} strokeWidth={1.5} />
+                          <span>Restore</span>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )
+            ) : archived.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-64 text-center px-6">
                 <div className="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center mb-3">
                   <Filter size={16} className="text-muted-foreground/40" />
