@@ -484,9 +484,9 @@ export function TimelineTaskBlock({
               ? 'hsl(var(--fixed-fill))'
               : undefined,
           border: lockedVisuals
-            ? '1.5px solid hsl(var(--locked-fill))'
+            ? '1.5px solid hsl(var(--locked-stroke))'
             : fixedVisuals
-              ? '1.5px solid hsl(var(--fixed-fill))'
+              ? '1.5px solid hsl(var(--fixed-stroke))'
               : hasPriorityColor && !isActive && !hasRoutineConflict
                 ? `1.5px solid ${priorityBorderColor}`
                 : isActive
