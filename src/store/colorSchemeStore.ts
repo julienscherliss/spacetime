@@ -384,9 +384,13 @@ export function applyScheme(scheme: ColorScheme) {
     root.style.setProperty(`--priority-${p}-fill`, scheme.priorities[p].fill);
   }
   root.style.setProperty('--scheme-accent', scheme.accent);
-  root.style.setProperty('--fixed-fill', scheme.accent);
+  // FIXED (P2) and LOCKED (P3) render directly from their priority fill/stroke,
+  // so editing those colors in the scheme panel has a direct, visible effect.
+  root.style.setProperty('--fixed-fill', scheme.priorities[2].fill);
+  root.style.setProperty('--fixed-stroke', scheme.priorities[2].stroke);
   root.style.setProperty('--fixed-text', '0 0% 100%');
-  root.style.setProperty('--locked-fill', scheme.lockedFill);
+  root.style.setProperty('--locked-fill', scheme.priorities[3].fill);
+  root.style.setProperty('--locked-stroke', scheme.priorities[3].stroke);
   root.style.setProperty('--locked-text', scheme.lockedText);
   // Override site highlight color (now line, date, routines, overdue, etc.)
   root.style.setProperty('--primary', scheme.accent);

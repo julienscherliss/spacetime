@@ -123,17 +123,13 @@ export function ColorSchemePanel() {
             >
               {/* Mini priority swatch row */}
               <div className="flex gap-[2px]">
-                {([0, 1, 2] as const).map(p => (
+              {([0, 1, 2, 3] as const).map(p => (
                   <div
                     key={p}
                     className="w-[6px] h-[6px] rounded-[1px]"
-                    style={{ backgroundColor: `hsl(${scheme.priorities[p].stroke})` }}
+                  style={{ backgroundColor: `hsl(${scheme.priorities[p].fill})` }}
                   />
                 ))}
-                <div
-                  className="w-[6px] h-[6px] rounded-[1px]"
-                  style={{ backgroundColor: `hsl(${scheme.lockedFill})` }}
-                />
               </div>
               <span className="text-[7px] font-mono tracking-[0.15em] text-muted-foreground/60 whitespace-nowrap">
                 {scheme.name}
@@ -152,10 +148,9 @@ export function ColorSchemePanel() {
         >
           <div className="flex items-center gap-2">
             <div className="flex gap-[3px]">
-              {([0, 1, 2] as const).map(p => (
-                <ColorSwatch key={p} hsl={active.priorities[p].stroke} size={12} />
+              {([0, 1, 2, 3] as const).map(p => (
+                <ColorSwatch key={p} hsl={active.priorities[p].fill} size={12} />
               ))}
-              <ColorSwatch hsl={active.lockedFill} size={12} />
             </div>
             <span className="text-[10px] font-mono tracking-[0.1em] text-foreground/70">{active.name}</span>
             {isCustom && (
@@ -201,8 +196,8 @@ export function ColorSchemePanel() {
               <div className="h-px flex-1 bg-border/30" />
             </div>
 
-            {/* Priority rows P0–P2 */}
-            {([0, 1, 2] as const).map(p => (
+            {/* Priority rows P0–P3 — direct stroke + fill editing */}
+            {([0, 1, 2, 3] as const).map(p => (
               <div key={p} className="space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="text-[8px] font-mono tracking-[0.12em] w-8 shrink-0" style={{ color: `hsl(${active.priorities[p].stroke})` }}>
@@ -221,24 +216,6 @@ export function ColorSchemePanel() {
               </div>
             ))}
 
-            {/* P3 / LOCK row — uses locked fill/text */}
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="text-[8px] font-mono tracking-[0.12em] w-8 shrink-0" style={{ color: `hsl(${active.priorities[3].stroke})` }}>
-                  P3
-                </span>
-                <span className="text-[8px] font-mono text-muted-foreground/40 tracking-widest flex-1">LOCK</span>
-                <ColorSwatch hsl={active.lockedFill} size={10} />
-                <ColorSwatch hsl={active.lockedText} size={10} />
-              </div>
-              {isCustom && (
-                <div className="flex gap-4 pl-10">
-                  <ColorInput label="FILL" value={active.lockedFill} onChange={(v) => updateCustomScheme(active.id, { lockedFill: v })} />
-                  <ColorInput label="TEXT" value={active.lockedText} onChange={(v) => updateCustomScheme(active.id, { lockedText: v })} />
-                </div>
-              )}
-            </div>
-
             {/* Preview bar */}
             <div className="pt-2">
               <div className="flex items-center gap-2 mb-1">
@@ -247,31 +224,38 @@ export function ColorSchemePanel() {
                 <div className="h-px flex-1 bg-border/30" />
               </div>
               <div className="flex gap-1">
-                {([0, 1, 2] as const).map(p => (
-                  <div
-                    key={p}
-                    className="flex-1 h-6 rounded-[2px] flex items-center justify-center"
-                    style={{
-                      backgroundColor: `hsl(${active.priorities[p].fill} / 0.15)`,
-                      border: `1.5px solid hsl(${active.priorities[p].stroke} / 0.5)`,
-                    }}
-                  >
-                    <span className="text-[7px] font-mono font-medium" style={{ color: `hsl(${active.priorities[p].stroke})` }}>
-                      {PRIORITY_LABELS[p]}
-                    </span>
-                  </div>
-                ))}
-                {/* P3 / LOCK — single block using locked fill + text */}
+                {/* FLEX (P0) — plain card, no priority styling */}
+                <div
+                  className="flex-1 h-6 rounded-[2px] flex items-center justify-center bg-card border border-border"
+                >
+                  <span className="text-[7px] font-mono font-medium text-foreground/75">FLEX</span>
+                </div>
+                {/* SEMI (P1) — bordered card, P2 stroke */}
+                <div
+                  className="flex-1 h-6 rounded-[2px] flex items-center justify-center bg-card"
+                  style={{ border: `1.5px solid hsl(${active.priorities[2].stroke} / 0.6)` }}
+                >
+                  <span className="text-[7px] font-mono font-medium text-foreground/75">SEMI</span>
+                </div>
+                {/* FIXED (P2) — filled with P2 fill */}
                 <div
                   className="flex-1 h-6 rounded-[2px] flex items-center justify-center"
                   style={{
-                    backgroundColor: `hsl(${active.lockedFill})`,
-                    border: `1.5px solid hsl(${active.priorities[3].stroke} / 0.5)`,
+                    backgroundColor: `hsl(${active.priorities[2].fill})`,
+                    border: `1.5px solid hsl(${active.priorities[2].stroke})`,
                   }}
                 >
-                  <span className="text-[7px] font-mono font-medium" style={{ color: `hsl(${active.lockedText})` }}>
-                    LOCK
-                  </span>
+                  <span className="text-[7px] font-mono font-medium" style={{ color: 'hsl(0 0% 100%)' }}>FIXED</span>
+                </div>
+                {/* LOCK (P3) — filled with P3 fill */}
+                <div
+                  className="flex-1 h-6 rounded-[2px] flex items-center justify-center"
+                  style={{
+                    backgroundColor: `hsl(${active.priorities[3].fill})`,
+                    border: `1.5px solid hsl(${active.priorities[3].stroke})`,
+                  }}
+                >
+                  <span className="text-[7px] font-mono font-medium" style={{ color: `hsl(${active.lockedText})` }}>LOCK</span>
                 </div>
               </div>
             </div>
