@@ -326,12 +326,93 @@ export const useLibraryStore = create<LibraryState>()(
       },
 
       renameCategory: (value, newLabel) => {
-        set((s) => ({
-          categories: mergeCategories(
-            s.items,
-            s.categories.map(c => c.value === value ? { ...c, label: newLabel.trim() || c.label } : c)
-          ),
-        }));
+        set((s) => {
+          const trimmed = newLabel.trim();
+          if (!trimmed) return s;
+          const cat = s.categories.find(c => c.value === value);
+          if (!cat) return s;
+
+          // Compute new value: replace only the leaf slug, keep parent path.
+          const segments = value.split('/');
+          const newLeafSlug = normalizeCategoryValue(trimmed);
+          if (!newLeafSlug) return s;
+          segments[segments.length - 1] = newLeafSlug;
+          const newValue = segments.join('/');
+
+          // Compute new full label: replace the leaf label segment only.
+          const labelParts = cat.label.split(' / ');
+          labelParts[labelParts.length - 1] = trimmed;
+          const computedNewLabel = labelParts.join(' / ');
+
+          // If value isn't changing, just update the label.
+          if (newValue === value) {
+            return {
+              categories: mergeCategories(
+                s.items,
+                s.categories.map(c => c.value === value ? { ...c, label: computedNewLabel } : c)
+              ),
+            };
+          }
+
+          // Conflict guard — refuse if new value already exists.
+          if (s.categories.some(c => c.value === newValue)) return s;
+
+          // Rename this category + cascade to subtag values + their labels' parent prefix.
+          const updatedCats = s.categories.map(c => {
+            if (c.value === value) {
+              return { ...c, value: newValue, label: computedNewLabel };
+            }
+            if (c.value.startsWith(value + '/')) {
+              const childNewValue = newValue + c.value.slice(value.length);
+              const childLabelParts = c.label.split(' / ');
+              // Replace the segment at the same depth as the renamed parent.
+              const depth = value.split('/').length - 1;
+              if (childLabelParts[depth]) {
+                childLabelParts[depth] = trimmed;
+              }
+              return { ...c, value: childNewValue, label: childLabelParts.join(' / ') };
+            }
+            return c;
+          });
+
+          // Update items that reference the old value or its children.
+          const updatedItems = s.items.map(i => {
+            if (i.category === value) return { ...i, category: newValue };
+            if (i.category && i.category.startsWith(value + '/')) {
+              return { ...i, category: newValue + i.category.slice(value.length) };
+            }
+            return i;
+          });
+
+          return {
+            categories: mergeCategories(updatedItems, updatedCats),
+            items: updatedItems,
+          };
+        });
+
+        // Also cascade-rename in the task store (scheduled tasks).
+        try {
+          const cat = useLibraryStore.getState().categories.find(c => c.value === value);
+          // After the set above, the old `value` no longer exists; recompute newValue here.
+          const segments = value.split('/');
+          const newLeafSlug = normalizeCategoryValue(newLabel.trim());
+          if (!newLeafSlug) return;
+          segments[segments.length - 1] = newLeafSlug;
+          const newValue = segments.join('/');
+          if (newValue === value) return;
+
+          import('@/store/taskStore').then(({ useTaskStore }) => {
+            useTaskStore.setState(ts => ({
+              tasks: ts.tasks.map(t => {
+                if (t.category === value) return { ...t, category: newValue };
+                if (t.category && t.category.startsWith(value + '/')) {
+                  return { ...t, category: newValue + t.category.slice(value.length) };
+                }
+                return t;
+              }),
+            }));
+          });
+        } catch (_) {}
       },
 
       reorderCategory: (value, direction) => {
