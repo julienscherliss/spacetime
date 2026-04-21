@@ -342,14 +342,14 @@ export const useLibraryStore = create<LibraryState>()(
           // Compute new full label: replace the leaf label segment only.
           const labelParts = cat.label.split(' / ');
           labelParts[labelParts.length - 1] = trimmed;
-          const newLabel = labelParts.join(' / ');
+          const computedNewLabel = labelParts.join(' / ');
 
           // If value isn't changing, just update the label.
           if (newValue === value) {
             return {
               categories: mergeCategories(
                 s.items,
-                s.categories.map(c => c.value === value ? { ...c, label: newLabel } : c)
+                s.categories.map(c => c.value === value ? { ...c, label: computedNewLabel } : c)
               ),
             };
           }
@@ -360,7 +360,7 @@ export const useLibraryStore = create<LibraryState>()(
           // Rename this category + cascade to subtag values + their labels' parent prefix.
           const updatedCats = s.categories.map(c => {
             if (c.value === value) {
-              return { ...c, value: newValue, label: newLabel };
+              return { ...c, value: newValue, label: computedNewLabel };
             }
             if (c.value.startsWith(value + '/')) {
               const childNewValue = newValue + c.value.slice(value.length);
