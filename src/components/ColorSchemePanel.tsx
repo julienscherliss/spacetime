@@ -228,8 +228,8 @@ export function ColorSchemePanel() {
                 <div
                   className="flex-1 h-6 rounded-[2px] flex items-center justify-center"
                   style={{
-                    backgroundColor: `hsl(${active.priorities[0].fill} / 0.06)`,
-                    border: `1px solid hsl(${active.priorities[0].stroke} / 0.5)`,
+                    backgroundColor: `hsl(${active.priorities[0].fill})`,
+                    border: `1px solid hsl(${active.priorities[0].stroke})`,
                   }}
                 >
                   <span className="text-[7px] font-mono font-medium text-foreground/75">FLEX</span>
@@ -238,8 +238,8 @@ export function ColorSchemePanel() {
                 <div
                   className="flex-1 h-6 rounded-[2px] flex items-center justify-center"
                   style={{
-                    backgroundColor: `hsl(${active.priorities[1].fill} / 0.12)`,
-                    border: `1.5px solid hsl(${active.priorities[1].stroke} / 0.7)`,
+                    backgroundColor: `hsl(${active.priorities[1].fill})`,
+                    border: `1.5px solid hsl(${active.priorities[1].stroke})`,
                   }}
                 >
                   <span className="text-[7px] font-mono font-medium text-foreground/75">SEMI</span>
