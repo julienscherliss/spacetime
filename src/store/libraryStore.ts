@@ -114,6 +114,7 @@ const mergeCategories = (items: LibraryTask[], categories: CategoryDef[]) => {
     map.set(value, {
       value,
       label: category.label?.trim() || humanizeCategoryValue(value),
+      archived: category.archived ?? false,
     });
   });
 
