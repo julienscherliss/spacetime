@@ -400,7 +400,7 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
       isDark: false,
       customSchemes: [],
       lastLocalChangeAt: '',
-      dotMode: false,
+      dotMode: readDotModeFromStorage(),
 
       get activeSchemeId() {
         const s = get();
@@ -449,6 +449,7 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
 
       setDotMode: (dot) => {
         set({ dotMode: dot });
+        writeDotModeToStorage(dot);
       },
 
       addCustomScheme: (scheme) => {
