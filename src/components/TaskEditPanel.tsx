@@ -153,13 +153,15 @@ export function TaskEditPanel() {
   const [subtasks, setSubtasks] = useState<Subtask[]>(task?.subtasks || []);
   const [priority, setPriority] = useState<Priority>(task?.priority || 0);
   const activeScheme = useColorSchemeStore((s) => s.getActiveScheme());
-  // Per-priority chip color: use FILL for all priorities (matches the timeline
-  // dot indicator). FLEX fills are typically white/near-white which would be
-  // unreadable as text, so for FLEX we fall back to the scheme accent.
+  // Per-priority chip color: always use the scheme's FILL color so the chip
+  // matches what the user picked in the theme editor. If the fill is too
+  // light to read as text (e.g. FLEX = near-white), fall back to the stroke
+  // color which is the same hue but darker.
   const getPriorityColor = (p: Priority): string => {
-    const fill = activeScheme.priorities[p].fill;
-    if (p === 0) return activeScheme.accent;
-    return fill;
+    const { fill, stroke } = activeScheme.priorities[p];
+    const m = fill.match(/(\d+(?:\.\d+)?)%\s*$/);
+    const lightness = m ? parseFloat(m[1]) : 50;
+    return lightness >= 80 ? stroke : fill;
   };
   const [recurrenceType, setRecurrenceType] = useState(recurrenceToType(task?.recurrence));
   const [weeklyDays, setWeeklyDays] = useState<number[]>(() => {
