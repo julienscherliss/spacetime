@@ -503,6 +503,7 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
         activeDarkSchemeId: s.activeDarkSchemeId,
         customSchemes: s.customSchemes,
         lastLocalChangeAt: s.lastLocalChangeAt,
+        dotMode: s.dotMode,
       }),
       // Migrate old single activeSchemeId
       migrate: (persisted: any) => {
