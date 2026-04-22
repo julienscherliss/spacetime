@@ -508,6 +508,11 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
         }
         return next;
       },
+      onRehydrateStorage: () => {
+        return () => {
+          markColorSchemeHydrated();
+        };
+      },
       version: 2,
     }
   )
@@ -558,6 +563,11 @@ let suppressSync = false;
 
 export function setColorSchemeUser(userId: string | null) {
   currentUserId = userId;
+  if (!userId) return;
+  const currentState = normalizePersistedThemeState(useColorSchemeStore.getState());
+  if (hasMeaningfulThemeState(currentState)) {
+    writeColorSchemeBackup(userId, currentState);
+  }
 }
 
 export function scheduleRemoteSync() {
@@ -569,6 +579,7 @@ export function scheduleRemoteSync() {
 async function saveRemote() {
   if (!currentUserId) return;
   const s = normalizePersistedThemeState(useColorSchemeStore.getState());
+  writeColorSchemeBackup(currentUserId, s);
   try {
     const { error } = await supabase.from('user_color_schemes' as any).upsert({
       user_id: currentUserId,
