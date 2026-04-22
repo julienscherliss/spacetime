@@ -17,6 +17,7 @@ import { DurationPicker } from '@/components/ScrollWheelPicker';
 import { format } from 'date-fns';
 import { DescriptionWithLinks } from '@/components/DescriptionWithLinks';
 import { toast } from 'sonner';
+import { useColorSchemeStore } from '@/store/colorSchemeStore';
 
 const PRIORITY_LABELS = ['Flex', 'Semi', 'Fixed', 'Lock'] as const;
 
@@ -151,6 +152,15 @@ export function TaskEditPanel() {
   const [description, setDescription] = useState(task?.description || '');
   const [subtasks, setSubtasks] = useState<Subtask[]>(task?.subtasks || []);
   const [priority, setPriority] = useState<Priority>(task?.priority || 0);
+  const activeScheme = useColorSchemeStore((s) => s.getActiveScheme());
+  // Per-priority chip color: use FILL for all priorities (matches the timeline
+  // dot indicator). FLEX fills are typically white/near-white which would be
+  // unreadable as text, so for FLEX we fall back to the scheme accent.
+  const getPriorityColor = (p: Priority): string => {
+    const fill = activeScheme.priorities[p].fill;
+    if (p === 0) return activeScheme.accent;
+    return fill;
+  };
   const [recurrenceType, setRecurrenceType] = useState(recurrenceToType(task?.recurrence));
   const [weeklyDays, setWeeklyDays] = useState<number[]>(() => {
     if (task?.recurrence?.type === 'weekly') return task.recurrence.days;
