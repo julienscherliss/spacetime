@@ -230,6 +230,25 @@ function nowIso() {
 export type PersistedThemeState = Pick<ColorSchemeState, 'activeLightSchemeId' | 'activeDarkSchemeId' | 'customSchemes' | 'lastLocalChangeAt'>;
 
 const COLOR_SCHEME_BACKUP_KEY_PREFIX = 'do-color-scheme-backup:';
+const DOT_MODE_KEY = 'do-color-scheme-dot-mode';
+
+function readDotModeFromStorage(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem(DOT_MODE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function writeDotModeToStorage(value: boolean) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(DOT_MODE_KEY, value ? '1' : '0');
+  } catch {
+    // ignore quota / private mode
+  }
+}
 let hasColorSchemeHydrated = false;
 let resolveColorSchemeHydration: (() => void) | null = null;
 const colorSchemeHydrationPromise = new Promise<void>((resolve) => {
@@ -381,7 +400,7 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
       isDark: false,
       customSchemes: [],
       lastLocalChangeAt: '',
-      dotMode: false,
+      dotMode: readDotModeFromStorage(),
 
       get activeSchemeId() {
         const s = get();
@@ -430,6 +449,7 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
 
       setDotMode: (dot) => {
         set({ dotMode: dot });
+        writeDotModeToStorage(dot);
       },
 
       addCustomScheme: (scheme) => {
