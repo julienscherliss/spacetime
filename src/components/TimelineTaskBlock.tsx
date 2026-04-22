@@ -565,44 +565,6 @@ export function TimelineTaskBlock({
           </div>
         )}
 
-        {/* Priority identification overlay — SEMI: top/bottom bars, FIXED: left/right bars, LOCKED: corner brackets */}
-        {!task.completed && (semiVisuals || fixedVisuals || lockedVisuals) && (
-          <div className="absolute inset-0 pointer-events-none rounded-[2px] overflow-hidden z-[16]">
-            {semiVisuals && (
-              <>
-                <div className="absolute top-0 left-0 right-0 bg-foreground" style={{ height: 1.5 }} />
-                <div className="absolute bottom-0 left-0 right-0 bg-foreground" style={{ height: 1.5 }} />
-              </>
-            )}
-            {fixedVisuals && (
-              <>
-                <div className="absolute top-0 bottom-0 left-0 bg-foreground" style={{ width: 1.5 }} />
-                <div className="absolute top-0 bottom-0 right-0 bg-foreground" style={{ width: 1.5 }} />
-              </>
-            )}
-            {lockedVisuals && (() => {
-              const L = Math.min(10, Math.max(5, height * 0.18));
-              const T = 1.5;
-              return (
-                <>
-                  {/* top-left */}
-                  <div className="absolute bg-foreground" style={{ top: 0, left: 0, width: L, height: T }} />
-                  <div className="absolute bg-foreground" style={{ top: 0, left: 0, width: T, height: L }} />
-                  {/* top-right */}
-                  <div className="absolute bg-foreground" style={{ top: 0, right: 0, width: L, height: T }} />
-                  <div className="absolute bg-foreground" style={{ top: 0, right: 0, width: T, height: L }} />
-                  {/* bottom-left */}
-                  <div className="absolute bg-foreground" style={{ bottom: 0, left: 0, width: L, height: T }} />
-                  <div className="absolute bg-foreground" style={{ bottom: 0, left: 0, width: T, height: L }} />
-                  {/* bottom-right */}
-                  <div className="absolute bg-foreground" style={{ bottom: 0, right: 0, width: L, height: T }} />
-                  <div className="absolute bg-foreground" style={{ bottom: 0, right: 0, width: T, height: L }} />
-                </>
-              );
-            })()}
-          </div>
-        )}
-
         {isActive && task.time && (
           <div
             className="absolute bottom-0 left-0 right-0 bg-primary/[0.04] pointer-events-none rounded-b-[2px]"
