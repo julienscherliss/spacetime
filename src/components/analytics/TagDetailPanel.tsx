@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { X, Clock, CheckCircle, Calendar, TrendingUp } from 'lucide-react';
 import { useTaskStore } from '@/store/taskStore';
@@ -24,13 +24,25 @@ export function TagDetailPanel({ tag, onClose }: Props) {
   const setEditingTask = useTaskStore(s => s.setEditingTask);
   const categories = useLibraryStore(s => s.categories);
   const isUntagged = tag === 'untagged';
-  const label = isUntagged ? 'UNTAGGED' : (categories.find(c => c.value === tag)?.label || tag);
+  const uncategorizedMatch = tag.match(/^(.+)\u0000uncategorized$/);
+  const isUncategorizedDirect = !!uncategorizedMatch;
+  const parentTag = uncategorizedMatch?.[1];
+  const label = isUntagged
+    ? 'UNTAGGED'
+    : isUncategorizedDirect
+      ? `${(categories.find(c => c.value === parentTag)?.label || parentTag)!.toUpperCase()} / UNCATEGORIZED`
+      : (categories.find(c => c.value === tag)?.label || tag);
+
+  const PAGE_SIZE = 20;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const stats = useMemo(() => {
     const tagTasks = tasks.filter(t => {
       if (t.archiveReason === 'deleted') return false;
       const cat = t.category || '';
-      return isUntagged ? !cat : cat === tag;
+      if (isUntagged) return !cat;
+      if (isUncategorizedDirect) return cat === parentTag;
+      return cat === tag;
     });
     const today = format(new Date(), 'yyyy-MM-dd');
     const week7 = format(subDays(new Date(), 7), 'yyyy-MM-dd');
@@ -58,10 +70,8 @@ export function TagDetailPanel({ tag, onClose }: Props) {
       ? Math.round(last30.reduce((s, t) => s + (t.duration || 30), 0) / 4)
       : 0;
 
-    // Recent tasks
-    const recentTasks = tagTasks
-      .sort((a, b) => b.date.localeCompare(a.date))
-      .slice(0, 8);
+    // Recent tasks (all, sorted newest first; UI paginates)
+    const recentTasks = [...tagTasks].sort((a, b) => b.date.localeCompare(a.date));
 
     return {
       totalTasks: tagTasks.length,
@@ -74,7 +84,7 @@ export function TagDetailPanel({ tag, onClose }: Props) {
       weeklyAvg,
       recentTasks,
     };
-  }, [tasks, tag]);
+  }, [tasks, tag, isUntagged, isUncategorizedDirect, parentTag]);
 
   return (
     <motion.div
@@ -131,14 +141,16 @@ export function TagDetailPanel({ tag, onClose }: Props) {
 
         {/* Recent tasks */}
         <div>
-          <h3 className="text-[9px] font-mono text-muted-foreground/40 tracking-[0.15em] mb-2">RECENT TASKS</h3>
-          {isUntagged && stats.recentTasks.length > 0 && (
+          <h3 className="text-[9px] font-mono text-muted-foreground/40 tracking-[0.15em] mb-2">
+            RECENT TASKS <span className="text-muted-foreground/30">({stats.recentTasks.length})</span>
+          </h3>
+          {(isUntagged || isUncategorizedDirect) && stats.recentTasks.length > 0 && (
             <p className="text-[9px] font-mono text-muted-foreground/50 mb-2 leading-relaxed">
               Click any task to open it and assign a tag.
             </p>
           )}
           <div className="space-y-1">
-            {stats.recentTasks.map(t => (
+            {stats.recentTasks.slice(0, visibleCount).map(t => (
               <button
                 key={t.id}
                 onClick={() => setEditingTask(t.id)}
@@ -156,6 +168,14 @@ export function TagDetailPanel({ tag, onClose }: Props) {
               <p className="text-[10px] font-mono text-muted-foreground/40 text-center py-4">NO TASKS</p>
             )}
           </div>
+          {visibleCount < stats.recentTasks.length && (
+            <button
+              onClick={() => setVisibleCount(c => c + PAGE_SIZE)}
+              className="w-full mt-3 py-2 text-[9px] font-mono text-muted-foreground/60 hover:text-foreground tracking-[0.15em] border border-border/30 rounded hover:bg-muted/40 transition-colors"
+            >
+              LOAD MORE ({stats.recentTasks.length - visibleCount} REMAINING)
+            </button>
+          )}
         </div>
       </div>
     </motion.div>
