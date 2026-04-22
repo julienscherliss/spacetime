@@ -113,16 +113,17 @@ export function TimelineTaskBlock({
     ?? activeScheme.priorities[0].fill;
   const dotStrokeRaw = activeScheme.priorities[task.priority as 0 | 1 | 2 | 3]?.stroke
     ?? activeScheme.priorities[0].stroke;
-  // FLEX (P0) and SEMI (P1) typically have light/white fills that would be
-  // invisible against the neutral card background. Use the scheme accent for
-  // FLEX (its truest theme color) and the stroke for SEMI; FIXED/LOCK use
-  // their saturated fill directly.
-  const dotColor =
-    task.priority === 0
-      ? activeScheme.accent
-      : task.priority === 1
-        ? dotStrokeRaw
-        : dotFillRaw;
+  // Always use the scheme's FILL color for the dot so the indicator matches
+  // what the user picked in the theme editor. FLEX fills are often pure white
+  // which would be invisible on the neutral card background — fall back to
+  // the scheme accent for FLEX only when the fill lightness is >= 90%.
+  const isVeryLightFill = (() => {
+    const m = dotFillRaw.match(/(\d+(?:\.\d+)?)%\s*$/);
+    return m ? parseFloat(m[1]) >= 90 : false;
+  })();
+  const dotColor = task.priority === 0 && isVeryLightFill
+    ? activeScheme.accent
+    : dotFillRaw;
 
   const snapTo15 = (mins: number) => Math.round(mins / 15) * 15;
 
