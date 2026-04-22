@@ -113,10 +113,16 @@ export function TimelineTaskBlock({
     ?? activeScheme.priorities[0].fill;
   const dotStrokeRaw = activeScheme.priorities[task.priority as 0 | 1 | 2 | 3]?.stroke
     ?? activeScheme.priorities[0].stroke;
-  // For FLEX (P0) the fill is usually white/near-white — the dot would be
-  // invisible against the neutral block. Fall back to the stroke color so
-  // the indicator is always readable.
-  const dotColor = task.priority === 0 ? dotStrokeRaw : dotFillRaw;
+  // FLEX (P0) and SEMI (P1) typically have light/white fills that would be
+  // invisible against the neutral card background. Use the scheme accent for
+  // FLEX (its truest theme color) and the stroke for SEMI; FIXED/LOCK use
+  // their saturated fill directly.
+  const dotColor =
+    task.priority === 0
+      ? activeScheme.accent
+      : task.priority === 1
+        ? dotStrokeRaw
+        : dotFillRaw;
 
   const snapTo15 = (mins: number) => Math.round(mins / 15) * 15;
 
@@ -583,7 +589,6 @@ export function TimelineTaskBlock({
                             width: 8,
                             height: 8,
                             backgroundColor: `hsl(${dotColor})`,
-                            border: task.priority === 0 ? `1px solid hsl(${dotStrokeRaw})` : undefined,
                           }}
                           title={`Priority ${task.priority}`}
                         />
