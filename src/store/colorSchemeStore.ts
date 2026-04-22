@@ -572,6 +572,7 @@ export function setColorSchemeUser(userId: string | null) {
 
 export function scheduleRemoteSync() {
   if (suppressSync || !currentUserId) return;
+  writeColorSchemeBackup(currentUserId, normalizePersistedThemeState(useColorSchemeStore.getState()));
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(saveRemote, 400);
 }
@@ -601,6 +602,12 @@ async function saveRemote() {
 export async function loadColorSchemeFromRemote(userId: string) {
   currentUserId = userId;
   try {
+    await waitForColorSchemeHydration();
+    const local = resolveBestLocalThemeState(userId);
+    if (!statesMatch(local, normalizePersistedThemeState(useColorSchemeStore.getState()))) {
+      applyPersistedThemeState(local);
+    }
+
     const { data, error } = await supabase
       .from('user_color_schemes' as any)
       .select('*')
@@ -610,9 +617,9 @@ export async function loadColorSchemeFromRemote(userId: string) {
       console.error('[ColorScheme] Load failed:', error);
       return;
     }
-    const local = normalizePersistedThemeState(useColorSchemeStore.getState());
 
     if (!data) {
+      writeColorSchemeBackup(userId, local);
       if (hasMeaningfulThemeState(local)) {
         await saveRemote();
       }
@@ -629,6 +636,7 @@ export async function loadColorSchemeFromRemote(userId: string) {
     const authoritative = chooseAuthoritativeThemeState(local, remote);
 
     if (authoritative.source === 'local') {
+      writeColorSchemeBackup(userId, authoritative.state);
       if (
         local.activeLightSchemeId !== remote.activeLightSchemeId ||
         local.activeDarkSchemeId !== remote.activeDarkSchemeId ||
@@ -642,17 +650,8 @@ export async function loadColorSchemeFromRemote(userId: string) {
       return;
     }
 
-    suppressSync = true;
-    useColorSchemeStore.setState({
-      activeLightSchemeId: authoritative.state.activeLightSchemeId,
-      activeDarkSchemeId: authoritative.state.activeDarkSchemeId,
-      customSchemes: authoritative.state.customSchemes,
-      lastLocalChangeAt: authoritative.state.lastLocalChangeAt,
-    });
-    suppressSync = false;
-
-    const scheme = useColorSchemeStore.getState().getActiveScheme();
-    applyScheme(scheme);
+    writeColorSchemeBackup(userId, authoritative.state);
+    applyPersistedThemeState(authoritative.state);
   } catch (e) {
     console.error('[ColorScheme] Load error:', e);
   }
