@@ -220,7 +220,7 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-type PersistedThemeState = Pick<ColorSchemeState, 'activeLightSchemeId' | 'activeDarkSchemeId' | 'customSchemes' | 'lastLocalChangeAt'>;
+export type PersistedThemeState = Pick<ColorSchemeState, 'activeLightSchemeId' | 'activeDarkSchemeId' | 'customSchemes' | 'lastLocalChangeAt'>;
 
 function isCustomSchemeForMode(scheme: ColorScheme, dark: boolean) {
   return !!scheme.darkMode === dark;
@@ -263,6 +263,34 @@ export function shouldPreferLocalThemeState(localChangedAt: string | null | unde
 
 export function normalizePersistedThemeState(state: Pick<ColorSchemeState, 'activeLightSchemeId' | 'activeDarkSchemeId' | 'customSchemes' | 'lastLocalChangeAt'>) {
   return buildPersistedThemeState(state);
+}
+
+export function chooseAuthoritativeThemeState(local: PersistedThemeState, remote: PersistedThemeState | null) {
+  const normalizedLocal = normalizePersistedThemeState(local);
+  if (!remote) {
+    return { source: 'local' as const, state: normalizedLocal };
+  }
+
+  const normalizedRemote = normalizePersistedThemeState(remote);
+  const localTs = getTimestampValue(normalizedLocal.lastLocalChangeAt);
+  const remoteTs = getTimestampValue(normalizedRemote.lastLocalChangeAt);
+
+  if (localTs !== remoteTs) {
+    return localTs > remoteTs
+      ? { source: 'local' as const, state: normalizedLocal }
+      : { source: 'remote' as const, state: normalizedRemote };
+  }
+
+  const localMeaningful = hasMeaningfulThemeState(normalizedLocal);
+  const remoteMeaningful = hasMeaningfulThemeState(normalizedRemote);
+
+  if (localMeaningful !== remoteMeaningful) {
+    return localMeaningful
+      ? { source: 'local' as const, state: normalizedLocal }
+      : { source: 'remote' as const, state: normalizedRemote };
+  }
+
+  return { source: 'remote' as const, state: normalizedRemote };
 }
 
 export const useColorSchemeStore = create<ColorSchemeState>()(
