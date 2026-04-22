@@ -154,15 +154,8 @@ export function TaskEditPanel() {
   const [priority, setPriority] = useState<Priority>(task?.priority || 0);
   const activeScheme = useColorSchemeStore((s) => s.getActiveScheme());
   // Per-priority chip color: always use the scheme's FILL color so the chip
-  // matches what the user picked in the theme editor. If the fill is too
-  // light to read as text (e.g. FLEX = near-white), fall back to the stroke
-  // color which is the same hue but darker.
-  const getPriorityColor = (p: Priority): string => {
-    const { fill, stroke } = activeScheme.priorities[p];
-    const m = fill.match(/(\d+(?:\.\d+)?)%\s*$/);
-    const lightness = m ? parseFloat(m[1]) : 50;
-    return lightness >= 80 ? stroke : fill;
-  };
+  // matches exactly what the user picked in the theme editor.
+  const getPriorityColor = (p: Priority): string => activeScheme.priorities[p].fill;
   const [recurrenceType, setRecurrenceType] = useState(recurrenceToType(task?.recurrence));
   const [weeklyDays, setWeeklyDays] = useState<number[]>(() => {
     if (task?.recurrence?.type === 'weekly') return task.recurrence.days;
