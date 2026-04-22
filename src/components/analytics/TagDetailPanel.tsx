@@ -23,10 +23,15 @@ export function TagDetailPanel({ tag, onClose }: Props) {
   const tasks = useTaskStore(s => s.tasks);
   const setEditingTask = useTaskStore(s => s.setEditingTask);
   const categories = useLibraryStore(s => s.categories);
-  const label = categories.find(c => c.value === tag)?.label || tag;
+  const isUntagged = tag === 'untagged';
+  const label = isUntagged ? 'UNTAGGED' : (categories.find(c => c.value === tag)?.label || tag);
 
   const stats = useMemo(() => {
-    const tagTasks = tasks.filter(t => (t.category || '') === tag && t.archiveReason !== 'deleted');
+    const tagTasks = tasks.filter(t => {
+      if (t.archiveReason === 'deleted') return false;
+      const cat = t.category || '';
+      return isUntagged ? !cat : cat === tag;
+    });
     const today = format(new Date(), 'yyyy-MM-dd');
     const week7 = format(subDays(new Date(), 7), 'yyyy-MM-dd');
     const week30 = format(subDays(new Date(), 30), 'yyyy-MM-dd');
