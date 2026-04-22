@@ -127,6 +127,7 @@ function BarRow({ item, dataType, maxValue, index, hasSubs, expanded, onToggle, 
   const value = getValue(item, dataType);
   const displayValue = formatValue(value, dataType);
   const pct = (value / maxValue) * 100;
+  const isDirect = item.tag.includes('\u0000direct');
 
   return (
     <div className="w-full text-left group">
@@ -140,12 +141,18 @@ function BarRow({ item, dataType, maxValue, index, hasSubs, expanded, onToggle, 
               {expanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
             </button>
           )}
-          <button
-            onClick={() => onTagClick?.(item.tag)}
-            className="text-[10px] font-mono text-foreground/80 tracking-wide truncate hover:text-primary transition-colors"
-          >
-            {item.label.toUpperCase()}
-          </button>
+          {isDirect ? (
+            <span className="text-[10px] font-mono text-muted-foreground/60 tracking-wide truncate">
+              {item.label.toUpperCase()}
+            </span>
+          ) : (
+            <button
+              onClick={() => onTagClick?.(item.tag)}
+              className="text-[10px] font-mono text-foreground/80 tracking-wide truncate hover:text-primary transition-colors"
+            >
+              {item.label.toUpperCase()}
+            </button>
+          )}
         </div>
         <span className="text-[10px] font-mono text-muted-foreground/60 tabular-nums ml-2 shrink-0">
           {displayValue}
