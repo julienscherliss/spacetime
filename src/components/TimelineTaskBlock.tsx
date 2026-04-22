@@ -102,6 +102,22 @@ export function TimelineTaskBlock({
   const flexVisuals = task.priority === 0;
   const semiVisuals = task.priority === 1;
 
+  // Minimal dot rendering mode (set in Visual Themes panel). When on, every
+  // task block uses the same neutral surface and shows the priority color as
+  // a small filled circle next to the title instead of a full color fill.
+  const dotMode = useColorSchemeStore((s) => s.dotMode);
+  // Pull the active scheme so the dot gets the user's chosen fill colors
+  // even when we bypass the per-priority CSS variables for the block fill.
+  const activeScheme = useColorSchemeStore((s) => s.getActiveScheme());
+  const dotFillRaw = activeScheme.priorities[task.priority as 0 | 1 | 2 | 3]?.fill
+    ?? activeScheme.priorities[0].fill;
+  const dotStrokeRaw = activeScheme.priorities[task.priority as 0 | 1 | 2 | 3]?.stroke
+    ?? activeScheme.priorities[0].stroke;
+  // For FLEX (P0) the fill is usually white/near-white — the dot would be
+  // invisible against the neutral block. Fall back to the stroke color so
+  // the indicator is always readable.
+  const dotColor = task.priority === 0 ? dotStrokeRaw : dotFillRaw;
+
   const snapTo15 = (mins: number) => Math.round(mins / 15) * 15;
 
   const pointerStartRef = useRef<{ x: number; y: number; pointerId: number; time: number } | null>(null);
