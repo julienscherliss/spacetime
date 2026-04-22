@@ -494,7 +494,7 @@ export function TimelineTaskBlock({
         } ${isOverdue && !hasRoutineConflict ? '' : ''}`}
         style={{
           backgroundColor: dotMode
-            ? 'hsl(var(--muted) / 0.55)'
+            ? 'hsl(var(--card))'
             : lockedVisuals
             ? 'hsl(var(--locked-fill))'
             : fixedVisuals
@@ -505,7 +505,7 @@ export function TimelineTaskBlock({
                   ? `hsl(var(--priority-0-fill))`
                   : undefined,
           border: dotMode
-            ? '1px solid hsl(var(--background))'
+            ? '1.5px solid hsl(var(--border))'
             : lockedVisuals
             ? '1.5px solid hsl(var(--locked-stroke))'
             : fixedVisuals
