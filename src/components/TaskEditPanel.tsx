@@ -24,10 +24,10 @@ const PRIORITY_LABELS = ['Flex', 'Semi', 'Fixed', 'Lock'] as const;
 // stroke is intentionally near-invisible), the others use their stroke color
 // which is the most saturated themed color for that priority.
 const PRIORITY_COLORS = [
-  'border-[hsl(var(--scheme-accent)/0.35)] text-[hsl(var(--scheme-accent))]',
-  'border-[hsl(var(--priority-1)/0.5)] text-[hsl(var(--priority-1))]',
-  'border-[hsl(var(--priority-2)/0.5)] text-[hsl(var(--priority-2))]',
-  'border-[hsl(var(--priority-3)/0.5)] text-[hsl(var(--priority-3))]',
+  'border-[hsl(var(--scheme-accent,var(--primary))/0.4)] text-[hsl(var(--scheme-accent,var(--primary)))]',
+  'border-[hsl(var(--priority-1)/0.6)] text-[hsl(var(--priority-1))]',
+  'border-[hsl(var(--priority-2)/0.6)] text-[hsl(var(--priority-2))]',
+  'border-[hsl(var(--priority-3)/0.6)] text-[hsl(var(--priority-3))]',
 ];
 
 const RECURRENCE_OPTIONS = [
