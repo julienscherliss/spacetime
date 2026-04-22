@@ -411,15 +411,6 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
     }
   )
 );
-            activeDarkSchemeId: 'dark-citrus',
-          };
-        }
-        return persisted;
-      },
-      version: 1,
-    }
-  )
-);
 
 // ── Apply CSS variables ───────────────────────────────────────────
 
