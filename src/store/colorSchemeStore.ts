@@ -192,6 +192,8 @@ interface ColorSchemeState {
   /** Which mode is currently active (to know which id to use) */
   isDark: boolean;
   customSchemes: ColorScheme[];
+  /** Timestamp of the last local user edit affecting persisted theme state */
+  lastLocalChangeAt: string;
 
   // Legacy compat — always returns the id for current mode
   activeSchemeId: string;
@@ -214,6 +216,83 @@ function defaultIdForMode(dark: boolean) {
   return dark ? 'dark-citrus' : 'cobalt';
 }
 
+function nowIso() {
+  return new Date().toISOString();
+}
+
+export type PersistedThemeState = Pick<ColorSchemeState, 'activeLightSchemeId' | 'activeDarkSchemeId' | 'customSchemes' | 'lastLocalChangeAt'>;
+
+function isCustomSchemeForMode(scheme: ColorScheme, dark: boolean) {
+  return !!scheme.darkMode === dark;
+}
+
+function resolveStoredSchemeId(dark: boolean, id: string | null | undefined, customSchemes: ColorScheme[]) {
+  const fallback = defaultIdForMode(dark);
+  if (!id) return fallback;
+  if (presetsForMode(dark).some((scheme) => scheme.id === id)) return id;
+  if (customSchemes.some((scheme) => isCustomSchemeForMode(scheme, dark) && scheme.id === id)) return id;
+  return fallback;
+}
+
+function hasMeaningfulThemeState(state: Pick<ColorSchemeState, 'activeLightSchemeId' | 'activeDarkSchemeId' | 'customSchemes'>) {
+  return (
+    state.customSchemes.length > 0 ||
+    state.activeLightSchemeId !== defaultIdForMode(false) ||
+    state.activeDarkSchemeId !== defaultIdForMode(true)
+  );
+}
+
+function getTimestampValue(timestamp: string | null | undefined) {
+  if (!timestamp) return 0;
+  const parsed = Date.parse(timestamp);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function buildPersistedThemeState(state: Pick<ColorSchemeState, 'activeLightSchemeId' | 'activeDarkSchemeId' | 'customSchemes' | 'lastLocalChangeAt'>): PersistedThemeState {
+  return {
+    activeLightSchemeId: resolveStoredSchemeId(false, state.activeLightSchemeId, state.customSchemes),
+    activeDarkSchemeId: resolveStoredSchemeId(true, state.activeDarkSchemeId, state.customSchemes),
+    customSchemes: state.customSchemes,
+    lastLocalChangeAt: state.lastLocalChangeAt,
+  };
+}
+
+export function shouldPreferLocalThemeState(localChangedAt: string | null | undefined, remoteUpdatedAt: string | null | undefined) {
+  return getTimestampValue(localChangedAt) > getTimestampValue(remoteUpdatedAt);
+}
+
+export function normalizePersistedThemeState(state: Pick<ColorSchemeState, 'activeLightSchemeId' | 'activeDarkSchemeId' | 'customSchemes' | 'lastLocalChangeAt'>) {
+  return buildPersistedThemeState(state);
+}
+
+export function chooseAuthoritativeThemeState(local: PersistedThemeState, remote: PersistedThemeState | null) {
+  const normalizedLocal = normalizePersistedThemeState(local);
+  if (!remote) {
+    return { source: 'local' as const, state: normalizedLocal };
+  }
+
+  const normalizedRemote = normalizePersistedThemeState(remote);
+  const localTs = getTimestampValue(normalizedLocal.lastLocalChangeAt);
+  const remoteTs = getTimestampValue(normalizedRemote.lastLocalChangeAt);
+
+  if (localTs !== remoteTs) {
+    return localTs > remoteTs
+      ? { source: 'local' as const, state: normalizedLocal }
+      : { source: 'remote' as const, state: normalizedRemote };
+  }
+
+  const localMeaningful = hasMeaningfulThemeState(normalizedLocal);
+  const remoteMeaningful = hasMeaningfulThemeState(normalizedRemote);
+
+  if (localMeaningful !== remoteMeaningful) {
+    return localMeaningful
+      ? { source: 'local' as const, state: normalizedLocal }
+      : { source: 'remote' as const, state: normalizedRemote };
+  }
+
+  return { source: 'remote' as const, state: normalizedRemote };
+}
+
 export const useColorSchemeStore = create<ColorSchemeState>()(
   persist(
     (set, get) => ({
@@ -221,6 +300,7 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
       activeDarkSchemeId: 'dark-citrus',
       isDark: false,
       customSchemes: [],
+      lastLocalChangeAt: '',
 
       get activeSchemeId() {
         const s = get();
@@ -246,9 +326,9 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
       setActiveScheme: (id) => {
         const { isDark } = get();
         if (isDark) {
-          set({ activeDarkSchemeId: id });
+          set({ activeDarkSchemeId: id, lastLocalChangeAt: nowIso() });
         } else {
-          set({ activeLightSchemeId: id });
+          set({ activeLightSchemeId: id, lastLocalChangeAt: nowIso() });
         }
         const presets = presetsForMode(isDark);
         const custom = get().customSchemes.filter(c => !!c.darkMode === isDark);
@@ -273,6 +353,7 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
         const newScheme: ColorScheme = { ...scheme, id, preset: false, darkMode: isDark };
         set(s => ({
           customSchemes: [...s.customSchemes, newScheme],
+          lastLocalChangeAt: nowIso(),
           ...(isDark ? { activeDarkSchemeId: id } : { activeLightSchemeId: id }),
         }));
         applyScheme(newScheme);
@@ -282,6 +363,7 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
 
       updateCustomScheme: (id, updates) => {
         set(s => ({
+          lastLocalChangeAt: nowIso(),
           customSchemes: s.customSchemes.map(c =>
             c.id === id ? { ...c, ...updates } : c
           ),
@@ -297,6 +379,7 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
         const { isDark } = get();
         const fallback = defaultIdForMode(isDark);
         set(s => ({
+          lastLocalChangeAt: nowIso(),
           customSchemes: s.customSchemes.filter(c => c.id !== id),
           ...(isDark
             ? { activeDarkSchemeId: s.activeDarkSchemeId === id ? fallback : s.activeDarkSchemeId }
@@ -334,19 +417,25 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
         activeLightSchemeId: s.activeLightSchemeId,
         activeDarkSchemeId: s.activeDarkSchemeId,
         customSchemes: s.customSchemes,
+        lastLocalChangeAt: s.lastLocalChangeAt,
       }),
       // Migrate old single activeSchemeId
       migrate: (persisted: any) => {
+        const next = { ...(persisted || {}) };
         if (persisted && persisted.activeSchemeId && !persisted.activeLightSchemeId) {
-          return {
-            ...persisted,
-            activeLightSchemeId: persisted.activeSchemeId,
-            activeDarkSchemeId: 'dark-citrus',
-          };
+          next.activeLightSchemeId = persisted.activeSchemeId;
+          next.activeDarkSchemeId = 'dark-citrus';
         }
-        return persisted;
+        if (!next.lastLocalChangeAt && hasMeaningfulThemeState({
+          activeLightSchemeId: next.activeLightSchemeId || defaultIdForMode(false),
+          activeDarkSchemeId: next.activeDarkSchemeId || defaultIdForMode(true),
+          customSchemes: Array.isArray(next.customSchemes) ? next.customSchemes : [],
+        })) {
+          next.lastLocalChangeAt = nowIso();
+        }
+        return next;
       },
-      version: 1,
+      version: 2,
     }
   )
 );
@@ -406,15 +495,20 @@ export function scheduleRemoteSync() {
 
 async function saveRemote() {
   if (!currentUserId) return;
-  const s = useColorSchemeStore.getState();
+  const s = normalizePersistedThemeState(useColorSchemeStore.getState());
   try {
-    await supabase.from('user_color_schemes' as any).upsert({
+    const { error } = await supabase.from('user_color_schemes' as any).upsert({
       user_id: currentUserId,
       active_light_scheme_id: s.activeLightSchemeId,
       active_dark_scheme_id: s.activeDarkSchemeId,
       custom_schemes: s.customSchemes as any,
-      updated_at: new Date().toISOString(),
+      updated_at: s.lastLocalChangeAt || new Date().toISOString(),
+    }, {
+      onConflict: 'user_id',
     });
+    if (error) {
+      console.error('[ColorScheme] Save failed:', error);
+    }
   } catch (e) {
     console.error('[ColorScheme] Save failed:', e);
   }
@@ -432,47 +526,49 @@ export async function loadColorSchemeFromRemote(userId: string) {
       console.error('[ColorScheme] Load failed:', error);
       return;
     }
-    const local = useColorSchemeStore.getState();
-    const localHasCustom = local.customSchemes.length > 0;
+    const local = normalizePersistedThemeState(useColorSchemeStore.getState());
 
     if (!data) {
-      // No remote row yet — push current local state up so it propagates.
-      console.log('[ColorScheme] No remote row, pushing local state up');
-      await saveRemote();
+      if (hasMeaningfulThemeState(local)) {
+        await saveRemote();
+      }
       return;
     }
 
     const row = data as any;
-    const remoteCustoms: ColorScheme[] = Array.isArray(row.custom_schemes) ? row.custom_schemes : [];
-    const remoteHasCustom = remoteCustoms.length > 0;
+    const remote = normalizePersistedThemeState({
+      activeLightSchemeId: row.active_light_scheme_id,
+      activeDarkSchemeId: row.active_dark_scheme_id,
+      customSchemes: Array.isArray(row.custom_schemes) ? row.custom_schemes : [],
+      lastLocalChangeAt: row.updated_at || '',
+    });
+    const authoritative = chooseAuthoritativeThemeState(local, remote);
 
-    // Merge custom schemes by id (union). Prefer remote on conflict (most recent write wins).
-    const mergedById = new Map<string, ColorScheme>();
-    for (const c of local.customSchemes) mergedById.set(c.id, c);
-    for (const c of remoteCustoms) mergedById.set(c.id, c);
-    const mergedCustoms = Array.from(mergedById.values());
-
-    // For active IDs: if remote has a non-default value use it, otherwise keep local.
-    const remoteLight = row.active_light_scheme_id;
-    const remoteDark = row.active_dark_scheme_id;
+    if (authoritative.source === 'local') {
+      if (
+        local.activeLightSchemeId !== remote.activeLightSchemeId ||
+        local.activeDarkSchemeId !== remote.activeDarkSchemeId ||
+        JSON.stringify(local.customSchemes) !== JSON.stringify(remote.customSchemes) ||
+        local.lastLocalChangeAt !== remote.lastLocalChangeAt
+      ) {
+        await saveRemote();
+      }
+      const scheme = useColorSchemeStore.getState().getActiveScheme();
+      applyScheme(scheme);
+      return;
+    }
 
     suppressSync = true;
     useColorSchemeStore.setState({
-      activeLightSchemeId: remoteLight || local.activeLightSchemeId || 'cobalt',
-      activeDarkSchemeId: remoteDark || local.activeDarkSchemeId || 'dark-citrus',
-      customSchemes: mergedCustoms,
+      activeLightSchemeId: authoritative.state.activeLightSchemeId,
+      activeDarkSchemeId: authoritative.state.activeDarkSchemeId,
+      customSchemes: authoritative.state.customSchemes,
+      lastLocalChangeAt: authoritative.state.lastLocalChangeAt,
     });
     suppressSync = false;
 
     const scheme = useColorSchemeStore.getState().getActiveScheme();
     applyScheme(scheme);
-
-    // If we merged in any local-only customs that weren't on remote, push the union back up.
-    const localOnlyCount = local.customSchemes.filter(c => !remoteCustoms.some(r => r.id === c.id)).length;
-    if (localOnlyCount > 0 || (localHasCustom && !remoteHasCustom)) {
-      console.log('[ColorScheme] Pushing merged customs back to remote', { localOnlyCount });
-      await saveRemote();
-    }
   } catch (e) {
     console.error('[ColorScheme] Load error:', e);
   }
