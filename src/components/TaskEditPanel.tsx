@@ -545,7 +545,13 @@ export function TaskEditPanel() {
               {/* Priority dropdown chip */}
               <Popover>
                 <PopoverTrigger asChild>
-                  <button className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors border ${PRIORITY_COLORS[priority]} bg-muted/40 hover:bg-muted/60`}>
+                  <button
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors border bg-muted/40 hover:bg-muted/60"
+                    style={{
+                      color: `hsl(${getPriorityColor(priority)})`,
+                      borderColor: `hsl(${getPriorityColor(priority)} / 0.45)`,
+                    }}
+                  >
                     {PRIORITY_LABELS[priority]}
                     <ChevronDown size={10} strokeWidth={1.5} />
                   </button>
@@ -562,11 +568,16 @@ export function TaskEditPanel() {
                       disabled={isDisabled}
                       className={`w-full text-left px-3 py-2 text-[11px] font-mono rounded-sm transition-colors ${
                         isDisabled
-                          ? 'text-muted-foreground/20 cursor-not-allowed'
-                        : priority === p
-                          ? `${PRIORITY_COLORS[p]} bg-muted/50`
-                          : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30'
+                          ? 'cursor-not-allowed opacity-30'
+                          : priority === p
+                            ? 'bg-muted/50'
+                            : 'hover:bg-muted/30'
                       }`}
+                      style={
+                        isDisabled
+                          ? undefined
+                          : { color: `hsl(${getPriorityColor(p)})` }
+                      }
                     >
                       {PRIORITY_LABELS[p]}
                       {isDisabled && <span className="text-[8px] ml-1 opacity-50">▼</span>}
