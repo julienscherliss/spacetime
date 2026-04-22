@@ -194,6 +194,12 @@ interface ColorSchemeState {
   customSchemes: ColorScheme[];
   /** Timestamp of the last local user edit affecting persisted theme state */
   lastLocalChangeAt: string;
+  /**
+   * Minimal dot rendering mode. When true, scheduled task blocks are rendered
+   * with a uniform neutral background and a small filled circle indicator
+   * (using the priority fill color) instead of full priority-colored fills.
+   */
+  dotMode: boolean;
 
   // Legacy compat — always returns the id for current mode
   activeSchemeId: string;
@@ -201,6 +207,7 @@ interface ColorSchemeState {
   getActiveScheme: () => ColorScheme;
   setActiveScheme: (id: string) => void;
   setDarkMode: (dark: boolean) => void;
+  setDotMode: (dot: boolean) => void;
   addCustomScheme: (scheme: Omit<ColorScheme, 'id' | 'preset'>) => string;
   updateCustomScheme: (id: string, updates: Partial<Omit<ColorScheme, 'id' | 'preset'>>) => void;
   deleteCustomScheme: (id: string) => void;
@@ -374,6 +381,7 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
       isDark: false,
       customSchemes: [],
       lastLocalChangeAt: '',
+      dotMode: false,
 
       get activeSchemeId() {
         const s = get();
@@ -418,6 +426,10 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
         const custom = s.customSchemes.filter(c => !!c.darkMode === dark);
         const all = [...presets, ...custom];
         applyScheme(all.find(sc => sc.id === id) || presets[0]);
+      },
+
+      setDotMode: (dot) => {
+        set({ dotMode: dot });
       },
 
       addCustomScheme: (scheme) => {
@@ -491,6 +503,7 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
         activeDarkSchemeId: s.activeDarkSchemeId,
         customSchemes: s.customSchemes,
         lastLocalChangeAt: s.lastLocalChangeAt,
+        dotMode: s.dotMode,
       }),
       // Migrate old single activeSchemeId
       migrate: (persisted: any) => {

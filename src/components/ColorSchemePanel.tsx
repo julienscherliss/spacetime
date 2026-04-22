@@ -77,6 +77,8 @@ export function ColorSchemePanel() {
   const deleteCustomScheme = useColorSchemeStore(s => s.deleteCustomScheme);
   const duplicateScheme = useColorSchemeStore(s => s.duplicateScheme);
   const allSchemes = useColorSchemeStore(s => s.allSchemes);
+  const dotMode = useColorSchemeStore(s => s.dotMode);
+  const setDotMode = useColorSchemeStore(s => s.setDotMode);
 
   const activeSchemeId = isDark ? activeDarkSchemeId : activeLightSchemeId;
   const schemes = allSchemes();
@@ -107,6 +109,45 @@ export function ColorSchemePanel() {
 
   return (
     <div className="space-y-3">
+      {/* Render mode toggle: full fills vs minimal dot indicator */}
+      <div className="bg-muted/20 border border-border/40 rounded-[2px] px-3 py-2 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          {/* Mini preview swatches */}
+          <div className="flex items-center gap-1">
+            <div
+              className="w-3.5 h-3.5 rounded-[2px] border border-border/40"
+              style={{ backgroundColor: dotMode ? 'hsl(var(--muted))' : `hsl(${active.priorities[2].fill})` }}
+            />
+            {dotMode && (
+              <div
+                className="w-2 h-2 rounded-full -ml-1.5 ring-1 ring-background"
+                style={{ backgroundColor: `hsl(${active.priorities[2].fill})` }}
+              />
+            )}
+          </div>
+          <span className="text-[9px] font-mono tracking-[0.15em] text-foreground/70 truncate">
+            {dotMode ? 'MINIMAL · DOT INDICATOR' : 'FULL · COLOR FILL'}
+          </span>
+        </div>
+        <button
+          onClick={() => setDotMode(!dotMode)}
+          role="switch"
+          aria-checked={dotMode}
+          className={`relative shrink-0 h-4 w-8 rounded-full transition-colors border ${
+            dotMode
+              ? 'bg-primary/80 border-primary/60'
+              : 'bg-muted border-border/60'
+          }`}
+          aria-label="Toggle minimal dot rendering mode"
+        >
+          <span
+            className={`absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-background shadow-sm transition-transform ${
+              dotMode ? 'translate-x-[1.125rem]' : 'translate-x-[2px]'
+            }`}
+          />
+        </button>
+      </div>
+
       {/* Scheme selector — cassette-style strip */}
       <div className="bg-muted/20 border border-border/40 rounded-[2px] overflow-hidden">
         {/* Preset strip */}

@@ -7,6 +7,7 @@ import { HoldToConfirmRing } from '@/components/HoldToConfirmRing';
 import { formatTime12h } from '@/hooks/useCurrentTime';
 import { useScheduledDragStore } from '@/store/scheduledDragStore';
 import { useCarryStore } from '@/store/carryStore';
+import { useColorSchemeStore } from '@/store/colorSchemeStore';
 import { START_HOUR } from '@/components/TimelineColumn';
 import { getOccupiedSlots, findValidPosition } from '@/utils/collisionDetection';
 import { TASK_TEXT_FIT_PX, TASK_TEXT_FIT_PX_COMFORT } from '@/utils/taskClustering';
@@ -100,6 +101,22 @@ export function TimelineTaskBlock({
   // FIXED(2) + LOCK(3): full filled treatment, white/light text.
   const flexVisuals = task.priority === 0;
   const semiVisuals = task.priority === 1;
+
+  // Minimal dot rendering mode (set in Visual Themes panel). When on, every
+  // task block uses the same neutral surface and shows the priority color as
+  // a small filled circle next to the title instead of a full color fill.
+  const dotMode = useColorSchemeStore((s) => s.dotMode);
+  // Pull the active scheme so the dot gets the user's chosen fill colors
+  // even when we bypass the per-priority CSS variables for the block fill.
+  const activeScheme = useColorSchemeStore((s) => s.getActiveScheme());
+  const dotFillRaw = activeScheme.priorities[task.priority as 0 | 1 | 2 | 3]?.fill
+    ?? activeScheme.priorities[0].fill;
+  const dotStrokeRaw = activeScheme.priorities[task.priority as 0 | 1 | 2 | 3]?.stroke
+    ?? activeScheme.priorities[0].stroke;
+  // For FLEX (P0) the fill is usually white/near-white — the dot would be
+  // invisible against the neutral block. Fall back to the stroke color so
+  // the indicator is always readable.
+  const dotColor = task.priority === 0 ? dotStrokeRaw : dotFillRaw;
 
   const snapTo15 = (mins: number) => Math.round(mins / 15) * 15;
 
@@ -461,7 +478,9 @@ export function TimelineTaskBlock({
     >
       <div
         className={`h-full rounded-[2px] transition-all duration-200 ${
-          lockedVisuals
+          dotMode
+            ? 'bg-card hover:shadow-sm'
+            : lockedVisuals
             ? 'shadow-sm'
             : fixedVisuals
               ? 'shadow-sm'
@@ -474,7 +493,9 @@ export function TimelineTaskBlock({
                     : 'bg-card hover:shadow-sm'
         } ${isOverdue && !hasRoutineConflict ? '' : ''}`}
         style={{
-          backgroundColor: lockedVisuals
+          backgroundColor: dotMode
+            ? 'hsl(var(--muted) / 0.55)'
+            : lockedVisuals
             ? 'hsl(var(--locked-fill))'
             : fixedVisuals
               ? 'hsl(var(--fixed-fill))'
@@ -483,7 +504,9 @@ export function TimelineTaskBlock({
                 : flexVisuals
                   ? `hsl(var(--priority-0-fill))`
                   : undefined,
-          border: lockedVisuals
+          border: dotMode
+            ? '1px solid hsl(var(--background))'
+            : lockedVisuals
             ? '1.5px solid hsl(var(--locked-stroke))'
             : fixedVisuals
               ? '1.5px solid hsl(var(--fixed-stroke))'
@@ -524,24 +547,63 @@ export function TimelineTaskBlock({
           ) : (
             <>
               <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 flex items-start gap-1.5">
+                  {dotMode && canShowTitle && (
+                    <span
+                      aria-hidden
+                      className="shrink-0 rounded-full mt-[5px]"
+                      style={{
+                        width: 8,
+                        height: 8,
+                        backgroundColor: `hsl(${dotColor})`,
+                        border: task.priority === 0 ? `1px solid hsl(${dotStrokeRaw})` : undefined,
+                        boxShadow: task.priority >= 2 ? '0 0 0 1px hsl(var(--background))' : undefined,
+                      }}
+                      title={`Priority ${task.priority}`}
+                    />
+                  )}
+                  <div className="flex-1 min-w-0">
                   {canShowTitle && (
                       <div
                         className={`font-mono leading-tight truncate ${
-                          task.completed ? 'line-through text-muted-foreground/40' : lockedVisuals ? 'font-medium' : fixedVisuals ? 'font-medium' : isOverdue ? 'text-destructive/70 font-medium' : isActive ? 'text-foreground font-medium' : 'text-foreground/75'
+                          task.completed
+                            ? 'line-through text-muted-foreground/40'
+                            : dotMode
+                              ? (isOverdue ? 'text-destructive/70 font-medium' : 'text-foreground/80')
+                              : lockedVisuals
+                                ? 'font-medium'
+                                : fixedVisuals
+                                  ? 'font-medium'
+                                  : isOverdue
+                                    ? 'text-destructive/70 font-medium'
+                                    : isActive
+                                      ? 'text-foreground font-medium'
+                                      : 'text-foreground/75'
                         }`}
-                        style={{ fontSize: 'var(--ui-task-title)', lineHeight: 'var(--ui-leading-tight)', ...(lockedVisuals && !task.completed ? { color: 'hsl(var(--locked-text))' } : fixedVisuals && !task.completed ? { color: 'hsl(var(--fixed-text))' } : {}) }}
+                        style={{
+                          fontSize: 'var(--ui-task-title)',
+                          lineHeight: 'var(--ui-leading-tight)',
+                          ...(!dotMode && lockedVisuals && !task.completed
+                            ? { color: 'hsl(var(--locked-text))' }
+                            : !dotMode && fixedVisuals && !task.completed
+                              ? { color: 'hsl(var(--fixed-text))' }
+                              : {}),
+                        }}
                       >
                       {task.title}
                     </div>
                   )}
                   {canShowActiveMeta && isActive && (
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="font-mono text-white" style={{ fontSize: 'var(--ui-task-meta)' }}>
+                      <span
+                        className={`font-mono ${dotMode ? 'text-foreground/70' : 'text-white'}`}
+                        style={{ fontSize: 'var(--ui-task-meta)' }}
+                      >
                         {formatDuration(Math.max(0, taskMinutes + (task.duration || 30) - nowMinutes))} left
                       </span>
                     </div>
                   )}
+                  </div>
                 </div>
               </div>
               {canShowFooter && (
