@@ -17,18 +17,9 @@ import { DurationPicker } from '@/components/ScrollWheelPicker';
 import { format } from 'date-fns';
 import { DescriptionWithLinks } from '@/components/DescriptionWithLinks';
 import { toast } from 'sonner';
+import { useColorSchemeStore } from '@/store/colorSchemeStore';
 
 const PRIORITY_LABELS = ['Flex', 'Semi', 'Fixed', 'Lock'] as const;
-// Priority chip colors — driven directly by the active scheme so editing the
-// theme is reflected in the edit panel. FLEX uses the scheme accent (its
-// stroke is intentionally near-invisible), the others use their stroke color
-// which is the most saturated themed color for that priority.
-const PRIORITY_COLORS = [
-  'border-[hsl(var(--scheme-accent,var(--primary))/0.4)] text-[hsl(var(--scheme-accent,var(--primary)))]',
-  'border-[hsl(var(--priority-1)/0.6)] text-[hsl(var(--priority-1))]',
-  'border-[hsl(var(--priority-2)/0.6)] text-[hsl(var(--priority-2))]',
-  'border-[hsl(var(--priority-3)/0.6)] text-[hsl(var(--priority-3))]',
-];
 
 const RECURRENCE_OPTIONS = [
   { label: 'No repeat', value: 'none' },
@@ -161,6 +152,15 @@ export function TaskEditPanel() {
   const [description, setDescription] = useState(task?.description || '');
   const [subtasks, setSubtasks] = useState<Subtask[]>(task?.subtasks || []);
   const [priority, setPriority] = useState<Priority>(task?.priority || 0);
+  const activeScheme = useColorSchemeStore((s) => s.getActiveScheme());
+  // Per-priority chip color: use FILL for all priorities (matches the timeline
+  // dot indicator). FLEX fills are typically white/near-white which would be
+  // unreadable as text, so for FLEX we fall back to the scheme accent.
+  const getPriorityColor = (p: Priority): string => {
+    const fill = activeScheme.priorities[p].fill;
+    if (p === 0) return activeScheme.accent;
+    return fill;
+  };
   const [recurrenceType, setRecurrenceType] = useState(recurrenceToType(task?.recurrence));
   const [weeklyDays, setWeeklyDays] = useState<number[]>(() => {
     if (task?.recurrence?.type === 'weekly') return task.recurrence.days;
@@ -545,7 +545,13 @@ export function TaskEditPanel() {
               {/* Priority dropdown chip */}
               <Popover>
                 <PopoverTrigger asChild>
-                  <button className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors border ${PRIORITY_COLORS[priority]} bg-muted/40 hover:bg-muted/60`}>
+                  <button
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors border bg-muted/40 hover:bg-muted/60"
+                    style={{
+                      color: `hsl(${getPriorityColor(priority)})`,
+                      borderColor: `hsl(${getPriorityColor(priority)} / 0.45)`,
+                    }}
+                  >
                     {PRIORITY_LABELS[priority]}
                     <ChevronDown size={10} strokeWidth={1.5} />
                   </button>
@@ -562,11 +568,16 @@ export function TaskEditPanel() {
                       disabled={isDisabled}
                       className={`w-full text-left px-3 py-2 text-[11px] font-mono rounded-sm transition-colors ${
                         isDisabled
-                          ? 'text-muted-foreground/20 cursor-not-allowed'
-                        : priority === p
-                          ? `${PRIORITY_COLORS[p]} bg-muted/50`
-                          : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30'
+                          ? 'cursor-not-allowed opacity-30'
+                          : priority === p
+                            ? 'bg-muted/50'
+                            : 'hover:bg-muted/30'
                       }`}
+                      style={
+                        isDisabled
+                          ? undefined
+                          : { color: `hsl(${getPriorityColor(p)})` }
+                      }
                     >
                       {PRIORITY_LABELS[p]}
                       {isDisabled && <span className="text-[8px] ml-1 opacity-50">▼</span>}
