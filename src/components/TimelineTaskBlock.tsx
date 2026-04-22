@@ -114,16 +114,8 @@ export function TimelineTaskBlock({
   const dotStrokeRaw = activeScheme.priorities[task.priority as 0 | 1 | 2 | 3]?.stroke
     ?? activeScheme.priorities[0].stroke;
   // Always use the scheme's FILL color for the dot so the indicator matches
-  // what the user picked in the theme editor. FLEX fills are often pure white
-  // which would be invisible on the neutral card background — fall back to
-  // the scheme accent for FLEX only when the fill lightness is >= 90%.
-  const isVeryLightFill = (() => {
-    const m = dotFillRaw.match(/(\d+(?:\.\d+)?)%\s*$/);
-    return m ? parseFloat(m[1]) >= 90 : false;
-  })();
-  const dotColor = task.priority === 0 && isVeryLightFill
-    ? activeScheme.accent
-    : dotFillRaw;
+  // exactly what the user picked in the theme editor.
+  const dotColor = dotFillRaw;
 
   const snapTo15 = (mins: number) => Math.round(mins / 15) * 15;
 
