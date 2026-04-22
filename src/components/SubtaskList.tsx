@@ -218,7 +218,7 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
               }
             }}
             placeholder="Add subtask..."
-            className="block flex-1 min-w-0 w-full bg-transparent text-[12px] font-mono leading-[1.4] whitespace-pre-wrap [overflow-wrap:anywhere] text-foreground/50 placeholder:text-muted-foreground/20 focus:outline-none resize-none overflow-hidden py-2"
+            className="block flex-1 min-w-0 w-full bg-transparent text-[12px] font-mono leading-[1.4] whitespace-pre-wrap [overflow-wrap:anywhere] text-foreground/50 placeholder:text-muted-foreground/60 focus:outline-none resize-none overflow-hidden py-2"
           />
         </div>
       </div>
