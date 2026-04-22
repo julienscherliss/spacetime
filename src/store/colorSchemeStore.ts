@@ -267,7 +267,7 @@ function buildPersistedThemeState(state: Pick<ColorSchemeState, 'activeLightSche
 function markColorSchemeHydrated() {
   if (hasColorSchemeHydrated) return;
   hasColorSchemeHydrated = true;
-  resolveColorSchemeHydation?.();
+  resolveColorSchemeHydration?.();
   resolveColorSchemeHydration = null;
 }
 
