@@ -1016,7 +1016,7 @@ export function TaskEditPanel() {
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
-                className="flex items-center gap-1.5 text-[9px] font-mono tracking-wider text-muted-foreground/30 hover:text-foreground transition-colors mb-3 disabled:opacity-50"
+                className="flex items-center gap-1.5 text-[9px] font-mono tracking-wider text-muted-foreground/70 hover:text-foreground transition-colors mb-3 disabled:opacity-50"
               >
                 {isUploading ? (
                   <>
