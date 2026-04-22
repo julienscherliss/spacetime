@@ -7,6 +7,7 @@ import { HoldToConfirmRing } from '@/components/HoldToConfirmRing';
 import { formatTime12h } from '@/hooks/useCurrentTime';
 import { useScheduledDragStore } from '@/store/scheduledDragStore';
 import { useCarryStore } from '@/store/carryStore';
+import { useColorSchemeStore } from '@/store/colorSchemeStore';
 import { START_HOUR } from '@/components/TimelineColumn';
 import { getOccupiedSlots, findValidPosition } from '@/utils/collisionDetection';
 import { TASK_TEXT_FIT_PX, TASK_TEXT_FIT_PX_COMFORT } from '@/utils/taskClustering';
