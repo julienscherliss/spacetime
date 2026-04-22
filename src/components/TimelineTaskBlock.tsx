@@ -494,7 +494,7 @@ export function TimelineTaskBlock({
         } ${isOverdue && !hasRoutineConflict ? '' : ''}`}
         style={{
           backgroundColor: dotMode
-            ? 'hsl(var(--muted) / 0.55)'
+            ? 'hsl(var(--card))'
             : lockedVisuals
             ? 'hsl(var(--locked-fill))'
             : fixedVisuals
@@ -505,7 +505,7 @@ export function TimelineTaskBlock({
                   ? `hsl(var(--priority-0-fill))`
                   : undefined,
           border: dotMode
-            ? '1px solid hsl(var(--background))'
+            ? '1.5px solid hsl(var(--border))'
             : lockedVisuals
             ? '1.5px solid hsl(var(--locked-stroke))'
             : fixedVisuals
@@ -547,25 +547,10 @@ export function TimelineTaskBlock({
           ) : (
             <>
               <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0 flex items-start gap-1.5">
-                  {dotMode && canShowTitle && (
-                    <span
-                      aria-hidden
-                      className="shrink-0 rounded-full mt-[5px]"
-                      style={{
-                        width: 8,
-                        height: 8,
-                        backgroundColor: `hsl(${dotColor})`,
-                        border: task.priority === 0 ? `1px solid hsl(${dotStrokeRaw})` : undefined,
-                        boxShadow: task.priority >= 2 ? '0 0 0 1px hsl(var(--background))' : undefined,
-                      }}
-                      title={`Priority ${task.priority}`}
-                    />
-                  )}
-                  <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0">
                   {canShowTitle && (
                       <div
-                        className={`font-mono leading-tight truncate ${
+                        className={`font-mono leading-tight truncate flex items-center gap-1.5 ${
                           task.completed
                             ? 'line-through text-muted-foreground/40'
                             : dotMode
@@ -590,7 +575,20 @@ export function TimelineTaskBlock({
                               : {}),
                         }}
                       >
-                      {task.title}
+                      {dotMode && (
+                        <span
+                          aria-hidden
+                          className="shrink-0 rounded-full"
+                          style={{
+                            width: 8,
+                            height: 8,
+                            backgroundColor: `hsl(${dotColor})`,
+                            border: task.priority === 0 ? `1px solid hsl(${dotStrokeRaw})` : undefined,
+                          }}
+                          title={`Priority ${task.priority}`}
+                        />
+                      )}
+                      <span className="truncate">{task.title}</span>
                     </div>
                   )}
                   {canShowActiveMeta && isActive && (
@@ -603,7 +601,6 @@ export function TimelineTaskBlock({
                       </span>
                     </div>
                   )}
-                  </div>
                 </div>
               </div>
               {canShowFooter && (
