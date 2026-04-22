@@ -493,7 +493,7 @@ export function TimelineTaskBlock({
         } ${isOverdue && !hasRoutineConflict ? '' : ''}`}
         style={{
           backgroundColor: dotMode
-            ? 'hsl(var(--card))'
+            ? 'hsl(var(--muted))'
             : lockedVisuals
             ? 'hsl(var(--locked-fill))'
             : fixedVisuals
@@ -504,7 +504,7 @@ export function TimelineTaskBlock({
                   ? `hsl(var(--priority-0-fill))`
                   : undefined,
           border: dotMode
-            ? '1.5px solid hsl(var(--border))'
+            ? '1.5px solid hsl(var(--background))'
             : lockedVisuals
             ? '1.5px solid hsl(var(--locked-stroke))'
             : fixedVisuals
@@ -522,7 +522,9 @@ export function TimelineTaskBlock({
                       : showUnlinkedOutline
                         ? '1px dashed hsl(var(--border) / 0.6)'
                         : '1px solid hsl(var(--task-border))',
-          boxShadow: '0 1px 2px 0 hsl(var(--foreground) / 0.04)',
+          boxShadow: task.completed
+            ? 'inset 0 2px 4px 0 hsl(var(--foreground) / 0.12), inset 0 1px 2px 0 hsl(var(--foreground) / 0.08)'
+            : '0 1px 2px 0 hsl(var(--foreground) / 0.04)',
         }}
       >
         {!isLocked && canShowResizeHandles && (
