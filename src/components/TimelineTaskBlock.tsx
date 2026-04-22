@@ -478,7 +478,9 @@ export function TimelineTaskBlock({
     >
       <div
         className={`h-full rounded-[2px] transition-all duration-200 ${
-          lockedVisuals
+          dotMode
+            ? 'bg-card hover:shadow-sm'
+            : lockedVisuals
             ? 'shadow-sm'
             : fixedVisuals
               ? 'shadow-sm'
@@ -491,7 +493,9 @@ export function TimelineTaskBlock({
                     : 'bg-card hover:shadow-sm'
         } ${isOverdue && !hasRoutineConflict ? '' : ''}`}
         style={{
-          backgroundColor: lockedVisuals
+          backgroundColor: dotMode
+            ? 'hsl(var(--muted) / 0.55)'
+            : lockedVisuals
             ? 'hsl(var(--locked-fill))'
             : fixedVisuals
               ? 'hsl(var(--fixed-fill))'
@@ -500,7 +504,9 @@ export function TimelineTaskBlock({
                 : flexVisuals
                   ? `hsl(var(--priority-0-fill))`
                   : undefined,
-          border: lockedVisuals
+          border: dotMode
+            ? '1px solid hsl(var(--background))'
+            : lockedVisuals
             ? '1.5px solid hsl(var(--locked-stroke))'
             : fixedVisuals
               ? '1.5px solid hsl(var(--fixed-stroke))'
