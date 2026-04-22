@@ -49,7 +49,7 @@ function getSubtags(data: TagBreakdown[], parent: string): TagBreakdown[] {
     if (!item.tag.startsWith(prefix) && item.tag !== parent) return;
     if (item.tag === parent) {
       // Tasks tagged directly on parent (not subtag)
-      const key = parent;
+      const key = parent + '\u0000direct';
       const existing = childMap.get(key);
       if (existing) {
         existing.scheduledMinutes += item.scheduledMinutes;
@@ -57,7 +57,7 @@ function getSubtags(data: TagBreakdown[], parent: string): TagBreakdown[] {
         existing.taskCount += item.taskCount;
         existing.completedCount += item.completedCount;
       } else {
-        childMap.set(key, { ...item, label: '(direct)' });
+        childMap.set(key, { ...item, tag: key, label: '(direct)' });
       }
       return;
     }
