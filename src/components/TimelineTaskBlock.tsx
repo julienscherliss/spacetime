@@ -523,7 +523,7 @@ export function TimelineTaskBlock({
                         ? '1px dashed hsl(var(--border) / 0.6)'
                         : '1px solid hsl(var(--task-border))',
           boxShadow: task.completed
-            ? 'inset 0 2px 4px 0 hsl(var(--foreground) / 0.12), inset 0 1px 2px 0 hsl(var(--foreground) / 0.08)'
+            ? 'inset 0 2px 5px 0 hsl(var(--foreground) / 0.22), inset 0 1px 2px 0 hsl(var(--foreground) / 0.14)'
             : '0 1px 2px 0 hsl(var(--foreground) / 0.04)',
         }}
       >
