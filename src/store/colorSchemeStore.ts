@@ -381,6 +381,7 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
       isDark: false,
       customSchemes: [],
       lastLocalChangeAt: '',
+      dotMode: false,
 
       get activeSchemeId() {
         const s = get();
@@ -425,6 +426,10 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
         const custom = s.customSchemes.filter(c => !!c.darkMode === dark);
         const all = [...presets, ...custom];
         applyScheme(all.find(sc => sc.id === id) || presets[0]);
+      },
+
+      setDotMode: (dot) => {
+        set({ dotMode: dot });
       },
 
       addCustomScheme: (scheme) => {
