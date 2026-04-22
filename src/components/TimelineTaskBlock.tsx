@@ -589,7 +589,6 @@ export function TimelineTaskBlock({
                             width: 8,
                             height: 8,
                             backgroundColor: `hsl(${dotColor})`,
-                            border: task.priority === 0 ? `1px solid hsl(${dotStrokeRaw})` : undefined,
                           }}
                           title={`Priority ${task.priority}`}
                         />

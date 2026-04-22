@@ -19,11 +19,15 @@ import { DescriptionWithLinks } from '@/components/DescriptionWithLinks';
 import { toast } from 'sonner';
 
 const PRIORITY_LABELS = ['Flex', 'Semi', 'Fixed', 'Lock'] as const;
+// Priority chip colors — driven directly by the active scheme so editing the
+// theme is reflected in the edit panel. FLEX uses the scheme accent (its
+// stroke is intentionally near-invisible), the others use their stroke color
+// which is the most saturated themed color for that priority.
 const PRIORITY_COLORS = [
-  'border-[hsl(var(--priority-0)/0.3)] text-[hsl(var(--priority-0))]',
-  'border-[hsl(var(--priority-1)/0.3)] text-[hsl(var(--priority-1))]',
-  'border-[hsl(var(--priority-2)/0.3)] text-[hsl(var(--priority-2))]',
-  'border-[hsl(var(--priority-3)/0.3)] text-[hsl(var(--priority-3))]',
+  'border-[hsl(var(--scheme-accent)/0.35)] text-[hsl(var(--scheme-accent))]',
+  'border-[hsl(var(--priority-1)/0.5)] text-[hsl(var(--priority-1))]',
+  'border-[hsl(var(--priority-2)/0.5)] text-[hsl(var(--priority-2))]',
+  'border-[hsl(var(--priority-3)/0.5)] text-[hsl(var(--priority-3))]',
 ];
 
 const RECURRENCE_OPTIONS = [
