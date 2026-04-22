@@ -495,15 +495,20 @@ export function scheduleRemoteSync() {
 
 async function saveRemote() {
   if (!currentUserId) return;
-  const s = useColorSchemeStore.getState();
+  const s = normalizePersistedThemeState(useColorSchemeStore.getState());
   try {
-    await supabase.from('user_color_schemes' as any).upsert({
+    const { error } = await supabase.from('user_color_schemes' as any).upsert({
       user_id: currentUserId,
       active_light_scheme_id: s.activeLightSchemeId,
       active_dark_scheme_id: s.activeDarkSchemeId,
       custom_schemes: s.customSchemes as any,
-      updated_at: new Date().toISOString(),
+      updated_at: s.lastLocalChangeAt || new Date().toISOString(),
+    }, {
+      onConflict: 'user_id',
     });
+    if (error) {
+      console.error('[ColorScheme] Save failed:', error);
+    }
   } catch (e) {
     console.error('[ColorScheme] Save failed:', e);
   }
@@ -521,47 +526,49 @@ export async function loadColorSchemeFromRemote(userId: string) {
       console.error('[ColorScheme] Load failed:', error);
       return;
     }
-    const local = useColorSchemeStore.getState();
-    const localHasCustom = local.customSchemes.length > 0;
+    const local = normalizePersistedThemeState(useColorSchemeStore.getState());
 
     if (!data) {
-      // No remote row yet — push current local state up so it propagates.
-      console.log('[ColorScheme] No remote row, pushing local state up');
-      await saveRemote();
+      if (hasMeaningfulThemeState(local)) {
+        await saveRemote();
+      }
       return;
     }
 
     const row = data as any;
-    const remoteCustoms: ColorScheme[] = Array.isArray(row.custom_schemes) ? row.custom_schemes : [];
-    const remoteHasCustom = remoteCustoms.length > 0;
+    const remote = normalizePersistedThemeState({
+      activeLightSchemeId: row.active_light_scheme_id,
+      activeDarkSchemeId: row.active_dark_scheme_id,
+      customSchemes: Array.isArray(row.custom_schemes) ? row.custom_schemes : [],
+      lastLocalChangeAt: row.updated_at || '',
+    });
+    const authoritative = chooseAuthoritativeThemeState(local, remote);
 
-    // Merge custom schemes by id (union). Prefer remote on conflict (most recent write wins).
-    const mergedById = new Map<string, ColorScheme>();
-    for (const c of local.customSchemes) mergedById.set(c.id, c);
-    for (const c of remoteCustoms) mergedById.set(c.id, c);
-    const mergedCustoms = Array.from(mergedById.values());
-
-    // For active IDs: if remote has a non-default value use it, otherwise keep local.
-    const remoteLight = row.active_light_scheme_id;
-    const remoteDark = row.active_dark_scheme_id;
+    if (authoritative.source === 'local') {
+      if (
+        local.activeLightSchemeId !== remote.activeLightSchemeId ||
+        local.activeDarkSchemeId !== remote.activeDarkSchemeId ||
+        JSON.stringify(local.customSchemes) !== JSON.stringify(remote.customSchemes) ||
+        local.lastLocalChangeAt !== remote.lastLocalChangeAt
+      ) {
+        await saveRemote();
+      }
+      const scheme = useColorSchemeStore.getState().getActiveScheme();
+      applyScheme(scheme);
+      return;
+    }
 
     suppressSync = true;
     useColorSchemeStore.setState({
-      activeLightSchemeId: remoteLight || local.activeLightSchemeId || 'cobalt',
-      activeDarkSchemeId: remoteDark || local.activeDarkSchemeId || 'dark-citrus',
-      customSchemes: mergedCustoms,
+      activeLightSchemeId: authoritative.state.activeLightSchemeId,
+      activeDarkSchemeId: authoritative.state.activeDarkSchemeId,
+      customSchemes: authoritative.state.customSchemes,
+      lastLocalChangeAt: authoritative.state.lastLocalChangeAt,
     });
     suppressSync = false;
 
     const scheme = useColorSchemeStore.getState().getActiveScheme();
     applyScheme(scheme);
-
-    // If we merged in any local-only customs that weren't on remote, push the union back up.
-    const localOnlyCount = local.customSchemes.filter(c => !remoteCustoms.some(r => r.id === c.id)).length;
-    if (localOnlyCount > 0 || (localHasCustom && !remoteHasCustom)) {
-      console.log('[ColorScheme] Pushing merged customs back to remote', { localOnlyCount });
-      await saveRemote();
-    }
   } catch (e) {
     console.error('[ColorScheme] Load error:', e);
   }
