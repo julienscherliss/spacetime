@@ -547,24 +547,63 @@ export function TimelineTaskBlock({
           ) : (
             <>
               <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 flex items-start gap-1.5">
+                  {dotMode && canShowTitle && (
+                    <span
+                      aria-hidden
+                      className="shrink-0 rounded-full mt-[5px]"
+                      style={{
+                        width: 8,
+                        height: 8,
+                        backgroundColor: `hsl(${dotColor})`,
+                        border: task.priority === 0 ? `1px solid hsl(${dotStrokeRaw})` : undefined,
+                        boxShadow: task.priority >= 2 ? '0 0 0 1px hsl(var(--background))' : undefined,
+                      }}
+                      title={`Priority ${task.priority}`}
+                    />
+                  )}
+                  <div className="flex-1 min-w-0">
                   {canShowTitle && (
                       <div
                         className={`font-mono leading-tight truncate ${
-                          task.completed ? 'line-through text-muted-foreground/40' : lockedVisuals ? 'font-medium' : fixedVisuals ? 'font-medium' : isOverdue ? 'text-destructive/70 font-medium' : isActive ? 'text-foreground font-medium' : 'text-foreground/75'
+                          task.completed
+                            ? 'line-through text-muted-foreground/40'
+                            : dotMode
+                              ? (isOverdue ? 'text-destructive/70 font-medium' : 'text-foreground/80')
+                              : lockedVisuals
+                                ? 'font-medium'
+                                : fixedVisuals
+                                  ? 'font-medium'
+                                  : isOverdue
+                                    ? 'text-destructive/70 font-medium'
+                                    : isActive
+                                      ? 'text-foreground font-medium'
+                                      : 'text-foreground/75'
                         }`}
-                        style={{ fontSize: 'var(--ui-task-title)', lineHeight: 'var(--ui-leading-tight)', ...(lockedVisuals && !task.completed ? { color: 'hsl(var(--locked-text))' } : fixedVisuals && !task.completed ? { color: 'hsl(var(--fixed-text))' } : {}) }}
+                        style={{
+                          fontSize: 'var(--ui-task-title)',
+                          lineHeight: 'var(--ui-leading-tight)',
+                          ...(!dotMode && lockedVisuals && !task.completed
+                            ? { color: 'hsl(var(--locked-text))' }
+                            : !dotMode && fixedVisuals && !task.completed
+                              ? { color: 'hsl(var(--fixed-text))' }
+                              : {}),
+                        }}
                       >
                       {task.title}
                     </div>
                   )}
                   {canShowActiveMeta && isActive && (
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="font-mono text-white" style={{ fontSize: 'var(--ui-task-meta)' }}>
+                      <span
+                        className={`font-mono ${dotMode ? 'text-foreground/70' : 'text-white'}`}
+                        style={{ fontSize: 'var(--ui-task-meta)' }}
+                      >
                         {formatDuration(Math.max(0, taskMinutes + (task.duration || 30) - nowMinutes))} left
                       </span>
                     </div>
                   )}
+                  </div>
                 </div>
               </div>
               {canShowFooter && (
