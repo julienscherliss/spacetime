@@ -88,6 +88,7 @@ function getSubtags(data: TagBreakdown[], parent: string): TagBreakdown[] {
 }
 
 function hasSubtags(data: TagBreakdown[], parent: string): boolean {
+  if (parent.includes('\u0000')) return false;
   const prefix = parent + '/';
   return data.some(item => item.tag.startsWith(prefix));
 }
