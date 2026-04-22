@@ -49,7 +49,7 @@ function getSubtags(data: TagBreakdown[], parent: string): TagBreakdown[] {
     if (!item.tag.startsWith(prefix) && item.tag !== parent) return;
     if (item.tag === parent) {
       // Tasks tagged directly on parent (not subtag)
-      const key = parent + '\u0000direct';
+      const key = parent + '\u0000uncategorized';
       const existing = childMap.get(key);
       if (existing) {
         existing.scheduledMinutes += item.scheduledMinutes;
@@ -57,7 +57,7 @@ function getSubtags(data: TagBreakdown[], parent: string): TagBreakdown[] {
         existing.taskCount += item.taskCount;
         existing.completedCount += item.completedCount;
       } else {
-        childMap.set(key, { ...item, tag: key, label: '(direct)' });
+        childMap.set(key, { ...item, tag: key, label: 'uncategorized' });
       }
       return;
     }
@@ -127,7 +127,7 @@ function BarRow({ item, dataType, maxValue, index, hasSubs, expanded, onToggle, 
   const value = getValue(item, dataType);
   const displayValue = formatValue(value, dataType);
   const pct = (value / maxValue) * 100;
-  const isDirect = item.tag.includes('\u0000direct');
+  const isDirect = item.tag.includes('\u0000uncategorized');
 
   return (
     <div className="w-full text-left group">
@@ -141,18 +141,12 @@ function BarRow({ item, dataType, maxValue, index, hasSubs, expanded, onToggle, 
               {expanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
             </button>
           )}
-          {isDirect ? (
-            <span className="text-[10px] font-mono text-muted-foreground/60 tracking-wide truncate">
-              {item.label.toUpperCase()}
-            </span>
-          ) : (
-            <button
-              onClick={() => onTagClick?.(item.tag)}
-              className="text-[10px] font-mono text-foreground/80 tracking-wide truncate hover:text-primary transition-colors"
-            >
-              {item.label.toUpperCase()}
-            </button>
-          )}
+          <button
+            onClick={() => onTagClick?.(item.tag)}
+            className={`text-[10px] font-mono tracking-wide truncate hover:text-primary transition-colors ${isDirect ? 'text-muted-foreground/70 italic' : 'text-foreground/80'}`}
+          >
+            {item.label.toUpperCase()}
+          </button>
         </div>
         <span className="text-[10px] font-mono text-muted-foreground/60 tabular-nums ml-2 shrink-0">
           {displayValue}
