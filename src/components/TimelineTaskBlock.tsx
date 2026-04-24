@@ -492,38 +492,42 @@ export function TimelineTaskBlock({
                     : 'bg-card hover:shadow-sm'
         } ${isOverdue && !hasRoutineConflict ? '' : ''}`}
         style={{
-          backgroundColor: dotMode
-            ? 'hsl(var(--muted))'
-            : lockedVisuals
-            ? 'hsl(var(--locked-fill))'
-            : fixedVisuals
-              ? 'hsl(var(--fixed-fill))'
-              : semiVisuals
-                ? `hsl(var(--priority-1-fill))`
-                : flexVisuals
-                  ? `hsl(var(--priority-0-fill))`
-                  : undefined,
-          border: dotMode
-            ? '1.5px solid hsl(var(--background))'
-            : lockedVisuals
-            ? '1.5px solid hsl(var(--locked-stroke))'
-            : fixedVisuals
-              ? '1.5px solid hsl(var(--fixed-stroke))'
-              : semiVisuals && !isActive && !hasRoutineConflict
-                ? `1.5px solid hsl(var(--priority-1))`
-                : flexVisuals && !isActive && !hasRoutineConflict
-                  ? `1px solid hsl(var(--priority-0))`
-                : isActive
-                  ? '1px solid hsl(var(--primary) / 0.2)'
-                  : hasRoutineConflict
-                    ? '1px solid hsl(var(--routine-conflict) / 0.5)'
-                    : isOverdue
-                      ? '1px solid hsl(var(--destructive) / 0.3)'
-                      : showUnlinkedOutline
-                        ? '1px dashed hsl(var(--border) / 0.6)'
-                        : '1px solid hsl(var(--task-border))',
+          backgroundColor: task.completed
+            ? 'hsl(var(--background))'
+            : dotMode
+              ? 'hsl(var(--muted))'
+              : lockedVisuals
+                ? 'hsl(var(--locked-fill))'
+                : fixedVisuals
+                  ? 'hsl(var(--fixed-fill))'
+                  : semiVisuals
+                    ? `hsl(var(--priority-1-fill))`
+                    : flexVisuals
+                      ? `hsl(var(--priority-0-fill))`
+                      : undefined,
+          border: task.completed
+            ? '1px solid hsl(var(--border) / 0.9)'
+            : dotMode
+              ? '1.5px solid hsl(var(--background))'
+              : lockedVisuals
+                ? '1.5px solid hsl(var(--locked-stroke))'
+                : fixedVisuals
+                  ? '1.5px solid hsl(var(--fixed-stroke))'
+                  : semiVisuals && !isActive && !hasRoutineConflict
+                    ? `1.5px solid hsl(var(--priority-1))`
+                    : flexVisuals && !isActive && !hasRoutineConflict
+                      ? `1px solid hsl(var(--priority-0))`
+                      : isActive
+                        ? '1px solid hsl(var(--primary) / 0.2)'
+                        : hasRoutineConflict
+                          ? '1px solid hsl(var(--routine-conflict) / 0.5)'
+                          : isOverdue
+                            ? '1px solid hsl(var(--destructive) / 0.3)'
+                            : showUnlinkedOutline
+                              ? '1px dashed hsl(var(--border) / 0.6)'
+                              : '1px solid hsl(var(--task-border))',
           boxShadow: task.completed
-            ? 'inset 0 3px 6px 0 hsl(0 0% 0% / 0.35), inset 0 2px 3px 0 hsl(0 0% 0% / 0.25), inset 0 -1px 0 0 hsl(0 0% 100% / 0.5)'
+            ? 'inset 0 1px 0 hsl(var(--background)), inset 0 2px 4px hsl(var(--foreground) / 0.16), inset 0 6px 10px hsl(var(--foreground) / 0.08), inset 0 -1px 0 hsl(var(--foreground) / 0.06)'
             : '0 1px 2px 0 hsl(var(--foreground) / 0.04)',
         }}
       >
@@ -553,7 +557,7 @@ export function TimelineTaskBlock({
                       <div
                         className={`font-mono leading-tight truncate flex items-center gap-1.5 ${
                           task.completed
-                            ? 'line-through text-muted-foreground/40'
+                            ? 'line-through text-muted-foreground/70'
                             : dotMode
                               ? (isOverdue ? 'text-destructive/70 font-medium' : 'text-foreground/80')
                               : lockedVisuals
