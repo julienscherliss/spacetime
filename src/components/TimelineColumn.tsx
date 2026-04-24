@@ -509,15 +509,12 @@ export function TimelineColumn({
     setDragOverTime(null);
   }, [date, getMinutesFromY, canMoveTask, moveTask, reorderTask, addTask]);
 
-  // Resize — completely silent, no dialogs
+  // Resize — completely silent, no dialogs.
+  // LOCKED tasks are allowed to resize via the timing handles (duration only);
+  // this never triggers the Reflection prompt because resizeTask bypasses it.
   const handleResizeStart = useCallback((e: React.MouseEvent | React.TouchEvent, task: Task, edge: 'top' | 'bottom') => {
     e.preventDefault();
     e.stopPropagation();
-    if (task.priority >= 3) {
-      setDragMsg('Task is locked');
-      setTimeout(() => setDragMsg(''), 1500);
-      return;
-    }
     didDragRef.current = true;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     setResizing({
