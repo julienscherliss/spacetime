@@ -361,6 +361,7 @@ function resolveStoredSchemeId(dark: boolean, id: string | null | undefined, cus
   const fallback = defaultIdForMode(dark);
   if (!id) return fallback;
   if (presetsForMode(dark).some((scheme) => scheme.id === id)) return id;
+  if (MINIMAL_PRESETS.some((scheme) => scheme.id === id)) return id;
   if (customSchemes.some((scheme) => isCustomSchemeForMode(scheme, dark) && scheme.id === id)) return id;
   return fallback;
 }
