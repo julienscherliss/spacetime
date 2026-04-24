@@ -502,11 +502,21 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
 
       get activeSchemeId() {
         const s = get();
+        if (s.dotMode) {
+          const id = s.isDark ? s.activeDarkSchemeId : s.activeLightSchemeId;
+          if (MINIMAL_PRESETS.some(p => p.id === id)) return id;
+          return 'minimal-candy';
+        }
         return s.isDark ? s.activeDarkSchemeId : s.activeLightSchemeId;
       },
 
       allSchemes: () => {
-        const { isDark, customSchemes } = get();
+        const { isDark, customSchemes, dotMode } = get();
+        if (dotMode) {
+          // Minimal mode: only show curated minimal presets (no custom schemes,
+          // no per-mode split — same list works in both light & dark).
+          return MINIMAL_PRESETS;
+        }
         const presets = presetsForMode(isDark);
         const custom = customSchemes.filter(c => !!c.darkMode === isDark);
         return [...presets, ...custom];
@@ -514,6 +524,10 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
 
       getActiveScheme: () => {
         const s = get();
+        if (s.dotMode) {
+          const id = s.isDark ? s.activeDarkSchemeId : s.activeLightSchemeId;
+          return MINIMAL_PRESETS.find(p => p.id === id) || MINIMAL_PRESETS[0];
+        }
         const id = s.isDark ? s.activeDarkSchemeId : s.activeLightSchemeId;
         const presets = presetsForMode(s.isDark);
         const custom = s.customSchemes.filter(c => !!c.darkMode === s.isDark);
@@ -522,15 +536,16 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
       },
 
       setActiveScheme: (id) => {
-        const { isDark } = get();
+        const { isDark, dotMode } = get();
         if (isDark) {
           set({ activeDarkSchemeId: id, lastLocalChangeAt: nowIso() });
         } else {
           set({ activeLightSchemeId: id, lastLocalChangeAt: nowIso() });
         }
-        const presets = presetsForMode(isDark);
-        const custom = get().customSchemes.filter(c => !!c.darkMode === isDark);
-        const all = [...presets, ...custom];
+        const all = dotMode
+          ? MINIMAL_PRESETS
+          : [...presetsForMode(isDark), ...get().customSchemes.filter(c => !!c.darkMode === isDark)];
+        const presets = dotMode ? MINIMAL_PRESETS : presetsForMode(isDark);
         applyScheme(all.find(s => s.id === id) || presets[0]);
         scheduleRemoteSync();
       },
@@ -539,8 +554,8 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
         set({ isDark: dark });
         const s = get();
         const id = dark ? s.activeDarkSchemeId : s.activeLightSchemeId;
-        const presets = presetsForMode(dark);
-        const custom = s.customSchemes.filter(c => !!c.darkMode === dark);
+        const presets = s.dotMode ? MINIMAL_PRESETS : presetsForMode(dark);
+        const custom = s.dotMode ? [] : s.customSchemes.filter(c => !!c.darkMode === dark);
         const all = [...presets, ...custom];
         applyScheme(all.find(sc => sc.id === id) || presets[0]);
       },
@@ -548,6 +563,34 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
       setDotMode: (dot) => {
         set({ dotMode: dot });
         writeDotModeToStorage(dot);
+        // Re-apply scheme since the active list changed
+        const s = get();
+        const id = s.isDark ? s.activeDarkSchemeId : s.activeLightSchemeId;
+        if (dot) {
+          const found = MINIMAL_PRESETS.find(p => p.id === id);
+          if (!found) {
+            const fallback = MINIMAL_PRESETS[0];
+            if (s.isDark) set({ activeDarkSchemeId: fallback.id });
+            else set({ activeLightSchemeId: fallback.id });
+            applyScheme(fallback);
+          } else {
+            applyScheme(found);
+          }
+        } else {
+          // Switching back to full color — restore default if current id is a minimal one
+          const presets = presetsForMode(s.isDark);
+          const custom = s.customSchemes.filter(c => !!c.darkMode === s.isDark);
+          const all = [...presets, ...custom];
+          let found = all.find(sc => sc.id === id);
+          if (!found) {
+            const fallback = presets[0];
+            if (s.isDark) set({ activeDarkSchemeId: fallback.id });
+            else set({ activeLightSchemeId: fallback.id });
+            found = fallback;
+          }
+          applyScheme(found);
+        }
+        scheduleRemoteSync();
       },
 
       addCustomScheme: (scheme) => {
