@@ -542,17 +542,20 @@ export function TimelineTaskBlock({
                               : '1px solid hsl(var(--task-border))',
           // Z-hierarchy by priority: FLEX floats highest, LOCK sits flat.
           // Soft, diffuse drop shadows mimic the reference's elevated tile look.
+          // Use a fixed black for drop shadows so they read on both light and
+          // dark surfaces (foreground inverts to white in dark mode, which
+          // would create an unwanted glow rather than a shadow).
           boxShadow: task.completed
             ? 'inset 0 1px 2px hsl(var(--foreground) / 0.10), inset 0 2px 6px hsl(var(--foreground) / 0.08), inset 0 8px 14px -4px hsl(var(--foreground) / 0.06), inset 0 -1px 1px hsl(0 0% 100% / 0.7)'
             : lockedVisuals
               ? '0 0 0 0 transparent' // LOCK — flat, sits on the surface
               : fixedVisuals
-                ? '0 1px 2px hsl(var(--foreground) / 0.06), 0 1px 1px hsl(var(--foreground) / 0.04)'
+                ? '0 1px 2px hsl(0 0% 0% / 0.10), 0 1px 1px hsl(0 0% 0% / 0.06)'
                 : semiVisuals
-                  ? '0 4px 8px -2px hsl(var(--foreground) / 0.10), 0 2px 4px -2px hsl(var(--foreground) / 0.06), 0 1px 1px hsl(var(--foreground) / 0.04)'
+                  ? '0 4px 8px -2px hsl(0 0% 0% / 0.18), 0 2px 4px -2px hsl(0 0% 0% / 0.12), 0 1px 1px hsl(0 0% 0% / 0.08)'
                   : flexVisuals
-                    ? '0 10px 18px -6px hsl(var(--foreground) / 0.16), 0 6px 10px -4px hsl(var(--foreground) / 0.10), 0 2px 3px hsl(var(--foreground) / 0.06)'
-                    : '0 1px 2px 0 hsl(var(--foreground) / 0.04)',
+                    ? '0 10px 18px -6px hsl(0 0% 0% / 0.28), 0 6px 10px -4px hsl(0 0% 0% / 0.18), 0 2px 3px hsl(0 0% 0% / 0.10)'
+                    : '0 1px 2px 0 hsl(0 0% 0% / 0.08)',
         }}
       >
         {!isLocked && canShowResizeHandles && (
