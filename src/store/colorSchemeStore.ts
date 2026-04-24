@@ -321,7 +321,7 @@ function presetsForMode(dark: boolean) {
 }
 
 function defaultIdForMode(dark: boolean, dot?: boolean) {
-  if (dot) return 'minimal-candy';
+  if (dot) return 'minimal-archive';
   return dark ? 'dark-citrus' : 'cobalt';
 }
 
@@ -512,7 +512,7 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
         if (s.dotMode) {
           const id = s.isDark ? s.activeDarkSchemeId : s.activeLightSchemeId;
           if (MINIMAL_PRESETS.some(p => p.id === id)) return id;
-          return 'minimal-candy';
+          return 'minimal-archive';
         }
         return s.isDark ? s.activeDarkSchemeId : s.activeLightSchemeId;
       },
@@ -535,7 +535,9 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
         const s = get();
         if (s.dotMode) {
           const id = s.isDark ? s.activeDarkSchemeId : s.activeLightSchemeId;
-          return MINIMAL_PRESETS.find(p => p.id === id) || MINIMAL_PRESETS[0];
+          return MINIMAL_PRESETS.find(p => p.id === id)
+            || MINIMAL_PRESETS.find(p => p.id === 'minimal-archive')
+            || MINIMAL_PRESETS[0];
         }
         const id = s.isDark ? s.activeDarkSchemeId : s.activeLightSchemeId;
         const presets = presetsForMode(s.isDark);
@@ -578,7 +580,7 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
         if (dot) {
           const found = MINIMAL_PRESETS.find(p => p.id === id);
           if (!found) {
-            const fallback = MINIMAL_PRESETS[0];
+            const fallback = MINIMAL_PRESETS.find(p => p.id === 'minimal-archive') || MINIMAL_PRESETS[0];
             if (s.isDark) set({ activeDarkSchemeId: fallback.id });
             else set({ activeLightSchemeId: fallback.id });
             applyScheme(fallback);
