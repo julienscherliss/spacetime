@@ -491,7 +491,9 @@ export function TimelineTaskBlock({
     >
       <div
         className={`h-full rounded-[2px] transition-all duration-200 ${
-          dotMode
+          task.completed
+            ? ''
+            : dotMode
             ? 'bg-card hover:shadow-sm'
             : lockedVisuals
             ? 'shadow-sm'
@@ -507,7 +509,7 @@ export function TimelineTaskBlock({
         } ${isOverdue && !hasRoutineConflict ? '' : ''}`}
         style={{
           backgroundColor: task.completed
-            ? 'hsl(var(--background))'
+            ? 'hsl(var(--surface-inset))'
             : dotMode
               ? 'hsl(var(--muted))'
               : lockedVisuals
@@ -520,7 +522,7 @@ export function TimelineTaskBlock({
                       ? `hsl(var(--priority-0-fill))`
                       : undefined,
           border: task.completed
-            ? '1px solid hsl(0 0% 0% / 0.18)'
+            ? '1px solid hsl(0 0% 0% / 0.14)'
             : dotMode
               ? '1.5px solid hsl(var(--background))'
               : lockedVisuals
@@ -546,7 +548,7 @@ export function TimelineTaskBlock({
           // dark surfaces (foreground inverts to white in dark mode, which
           // would create an unwanted glow rather than a shadow).
           boxShadow: task.completed
-            ? 'inset 0 1px 2px hsl(0 0% 0% / 0.18), inset 0 2px 6px hsl(0 0% 0% / 0.12), inset 0 8px 14px -4px hsl(0 0% 0% / 0.08), inset 0 -1px 1px hsl(0 0% 100% / 0.05)'
+            ? 'inset 0 1px 2px hsl(0 0% 0% / 0.14), inset 0 3px 8px hsl(0 0% 0% / 0.10)'
             : lockedVisuals
               ? '0 0 0 0 transparent' // LOCK — flat, sits on the surface
               : fixedVisuals
