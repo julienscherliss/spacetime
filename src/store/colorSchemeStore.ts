@@ -273,6 +273,12 @@ const MINIMAL_PRESETS: ColorScheme[] = [
   },
 ];
 
+const MINIMAL_PRESET_NAMES = new Set(['CANDY', 'KOII', 'ARCHIVE', 'PASTELS', 'PRIMARY', 'GREYSCALE']);
+
+function isMinimalDuplicateCustom(scheme: ColorScheme) {
+  return MINIMAL_PRESET_NAMES.has((scheme.name || '').trim().toUpperCase());
+}
+
 export function getMinimalPresets() {
   return MINIMAL_PRESETS;
 }
@@ -519,7 +525,9 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
           return MINIMAL_PRESETS;
         }
         const presets = presetsForMode(isDark);
-        const custom = customSchemes.filter(c => !!c.darkMode === isDark);
+        const custom = customSchemes.filter(
+          c => !!c.darkMode === isDark && !isMinimalDuplicateCustom(c),
+        );
         return [...presets, ...custom];
       },
 
