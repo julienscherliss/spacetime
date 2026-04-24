@@ -180,7 +180,8 @@ export function TaskEditPanel() {
     }
     return [{ week: 1, day: new Date().getDay() }];
   });
-  const [isRoutine, setIsRoutine] = useState(task?.isRoutine !== false && task?.type === 'recurring');
+  // Routine is OFF by default for new recurring tasks — user must opt in via the chip.
+  const [isRoutine, setIsRoutine] = useState(task?.isRoutine === true && task?.type === 'recurring');
   const [isLinked, setIsLinked] = useState(task?.recurrence ? true : (task?.linked || false));
   const [showRecurrence, setShowRecurrence] = useState(false);
   const [showCatPicker, setShowCatPicker] = useState(false);
@@ -210,7 +211,7 @@ export function TaskEditPanel() {
       setDescription(task.description || '');
       setSubtasks(task.subtasks || []);
       setPriority(task.priority);
-      setIsRoutine(task.isRoutine !== false && task.type === 'recurring');
+      setIsRoutine(task.isRoutine === true && task.type === 'recurring');
       setIsLinked(task.recurrence ? true : (task.linked || false));
       setRecurrenceType(recurrenceToType(task.recurrence));
       const taskDay = task.date ? new Date(task.date + 'T12:00:00').getDay() : new Date().getDay();
@@ -761,8 +762,9 @@ export function TaskEditPanel() {
                           key={opt.value}
                           onClick={() => {
                             setRecurrenceType(opt.value);
-                            if (opt.value === 'none') { setIsRoutine(false); setIsLinked(false); }
-                            else if (recurrenceType === 'none') setIsRoutine(true);
+                             if (opt.value === 'none') { setIsRoutine(false); setIsLinked(false); }
+                             // Switching from none → recurring no longer auto-enables routine.
+                             // User must explicitly toggle the ROUTINE chip.
                             if (opt.value === 'weekly' && task?.date) {
                               const taskDay = new Date(task.date + 'T12:00:00').getDay();
                               if (!weeklyDays.includes(taskDay)) setWeeklyDays([taskDay]);
