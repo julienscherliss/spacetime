@@ -520,7 +520,7 @@ export function TimelineTaskBlock({
                       ? `hsl(var(--priority-0-fill))`
                       : undefined,
           border: task.completed
-            ? '1px solid hsl(var(--border) / 0.9)'
+            ? '1px solid hsl(0 0% 0% / 0.18)'
             : dotMode
               ? '1.5px solid hsl(var(--background))'
               : lockedVisuals
@@ -550,11 +550,11 @@ export function TimelineTaskBlock({
             : lockedVisuals
               ? '0 0 0 0 transparent' // LOCK — flat, sits on the surface
               : fixedVisuals
-                ? '0 1px 2px hsl(0 0% 0% / 0.10), 0 1px 1px hsl(0 0% 0% / 0.06)'
+                ? '0 1px 2px hsl(0 0% 0% / 0.08), 0 1px 1px hsl(0 0% 0% / 0.05)'
                 : semiVisuals
-                  ? '0 4px 8px -2px hsl(0 0% 0% / 0.18), 0 2px 4px -2px hsl(0 0% 0% / 0.12), 0 1px 1px hsl(0 0% 0% / 0.08)'
+                  ? '0 3px 6px -2px hsl(0 0% 0% / 0.14), 0 2px 3px -2px hsl(0 0% 0% / 0.09), 0 1px 1px hsl(0 0% 0% / 0.06)'
                   : flexVisuals
-                    ? '0 10px 18px -6px hsl(0 0% 0% / 0.28), 0 6px 10px -4px hsl(0 0% 0% / 0.18), 0 2px 3px hsl(0 0% 0% / 0.10)'
+                    ? '0 7px 14px -5px hsl(0 0% 0% / 0.21), 0 4px 8px -3px hsl(0 0% 0% / 0.14), 0 2px 2px hsl(0 0% 0% / 0.08)'
                     : '0 1px 2px 0 hsl(0 0% 0% / 0.08)',
         }}
       >
