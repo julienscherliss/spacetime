@@ -202,25 +202,25 @@ function CompletedTaskBlock({ task, top, height, showTimeLabels }: {
         top,
         height,
         left: showTimeLabels ? '3.25rem' : '2px',
-        opacity: 0.6,
       }}
       onClick={handleClick}
     >
       <div
-        className="h-full rounded-[3px] border border-border/30 bg-muted/20 px-2 py-1 overflow-hidden relative"
+        className="h-full rounded-[3px] border px-2 py-1 overflow-hidden relative"
         style={{
-          borderLeftWidth: '2px',
-          borderLeftColor: `hsl(var(--priority-${task.priority}) / 0.3)`,
+          backgroundColor: 'hsl(var(--background))',
+          border: '1px solid hsl(var(--border) / 0.9)',
+          boxShadow: 'inset 0 1px 0 hsl(var(--background)), inset 0 2px 4px hsl(var(--foreground) / 0.16), inset 0 6px 10px hsl(var(--foreground) / 0.08), inset 0 -1px 0 hsl(var(--foreground) / 0.06)',
         }}
       >
         <div className="flex items-center gap-1.5">
-          <Check size={10} className="text-muted-foreground/50 shrink-0" />
-          <span className="font-mono text-muted-foreground line-through truncate" style={{ fontSize: 'var(--ui-task-meta)' }}>
+          <Check size={10} className="text-muted-foreground/70 shrink-0" />
+          <span className="font-mono text-muted-foreground/80 line-through truncate" style={{ fontSize: 'var(--ui-task-meta)' }}>
             {task.title}
           </span>
         </div>
         {height > 28 && task.time && (
-          <div className="font-mono text-muted-foreground/30 mt-0.5 line-through" style={{ fontSize: 'var(--ui-text-xs)' }}>
+          <div className="font-mono text-muted-foreground/60 mt-0.5 line-through" style={{ fontSize: 'var(--ui-text-xs)' }}>
             {formatTime12h(task.time)} · {formatDuration(task.duration || 30)}
           </div>
         )}
