@@ -980,9 +980,20 @@ export const useTaskStore = create<TaskState>()(
           tasks: s.tasks.map((t) => {
             if (t.completed || t.inWaitingRoom || t.archivedAt) return t;
 
+            // Routine tasks (recurring + flagged routine) never go to limbo.
+            // They auto-delete (archive as deleted) 24h after their end time.
+            const isRoutineTask = t.type === 'recurring' && t.isRoutine === true;
+
             // Past-day tasks without a time — sweep immediately
             if (!t.time) {
               if (t.date < todayStr) {
+                if (isRoutineTask) {
+                  return {
+                    ...t,
+                    archivedAt: new Date().toISOString(),
+                    archiveReason: 'deleted' as const,
+                  };
+                }
                 return {
                   ...t,
                   inWaitingRoom: true,
@@ -999,9 +1010,18 @@ export const useTaskStore = create<TaskState>()(
             const start = new Date(`${t.date}T00:00:00`);
             start.setHours(h, m, 0, 0);
             const end = start.getTime() + (t.duration || 30) * 60_000;
-            const gracePeriodMs = 12 * 60 * 60 * 1000; // 12 hours after end time
+            const gracePeriodMs = isRoutineTask
+              ? 24 * 60 * 60 * 1000 // routines: 24h then auto-delete
+              : 12 * 60 * 60 * 1000; // others: 12h then limbo
 
             if (nowMs > end + gracePeriodMs) {
+              if (isRoutineTask) {
+                return {
+                  ...t,
+                  archivedAt: new Date().toISOString(),
+                  archiveReason: 'deleted' as const,
+                };
+              }
               return {
                 ...t,
                 inWaitingRoom: true,
