@@ -461,7 +461,21 @@ export function TimelineTaskBlock({
           : isResizingThis
             ? 'cursor-ns-resize'
             : 'cursor-grab active:cursor-grabbing'
-      } ${isActive ? 'z-[15]' : hasRoutineConflict ? 'z-[12]' : 'z-10'} ${(isDraggingThis || isCarried) ? 'opacity-0' : 'opacity-100'}`}
+      } ${
+        isActive
+          ? 'z-[20]'
+          : hasRoutineConflict
+            ? 'z-[16]'
+            : flexVisuals
+              ? 'z-[14]' // FLEX floats highest — its shadow lands on neighbors below
+              : semiVisuals
+                ? 'z-[13]'
+                : fixedVisuals
+                  ? 'z-[12]'
+                  : lockedVisuals
+                    ? 'z-[11]' // LOCK sits flat at the bottom of the stack
+                    : 'z-10'
+      } ${(isDraggingThis || isCarried) ? 'opacity-0' : 'opacity-100'}`}
       style={{
         top,
         height,
