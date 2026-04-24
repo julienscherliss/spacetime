@@ -245,12 +245,14 @@ export function ColorSchemePanel() {
                     P{p}
                   </span>
                   <span className="text-[8px] font-mono text-muted-foreground/40 tracking-widest flex-1">{PRIORITY_LABELS[p]}</span>
-                  <ColorSwatch hsl={active.priorities[p].stroke} size={10} />
+                  {!dotMode && <ColorSwatch hsl={active.priorities[p].stroke} size={10} />}
                   <ColorSwatch hsl={active.priorities[p].fill} size={10} />
                 </div>
                 {isCustom && (
                   <div className="flex gap-4 pl-10">
-                    <ColorInput label="STROKE" value={active.priorities[p].stroke} onChange={(v) => handlePriorityChange(p, 'stroke', v)} />
+                    {!dotMode && (
+                      <ColorInput label="STROKE" value={active.priorities[p].stroke} onChange={(v) => handlePriorityChange(p, 'stroke', v)} />
+                    )}
                     <ColorInput label="FILL" value={active.priorities[p].fill} onChange={(v) => handlePriorityChange(p, 'fill', v)} />
                   </div>
                 )}

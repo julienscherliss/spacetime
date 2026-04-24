@@ -182,6 +182,101 @@ const DARK_PRESETS: ColorScheme[] = [
 
 export const ALL_PRESETS = [...LIGHT_PRESETS, ...DARK_PRESETS];
 
+// ── Minimal-mode presets (julienscherliss curated) ───────────────
+// Used when dotMode is enabled. Same list applies in both light & dark
+// (the dot indicator reads from the priority fill regardless of mode).
+
+const MINIMAL_PRESETS: ColorScheme[] = [
+  {
+    id: 'minimal-candy',
+    name: 'CANDY',
+    preset: true,
+    accent: '43 91% 59%',
+    lockedFill: '260 44% 22%',
+    lockedText: '0 0% 96%',
+    priorities: {
+      0: { fill: '0 0% 100%',    stroke: '270 15% 88%' },
+      1: { fill: '139 36% 75%',  stroke: '0 0% 100%' },
+      2: { fill: '298 100% 89%', stroke: '140 36% 75%' },
+      3: { fill: '43 92% 59%',   stroke: '298 100% 89%' },
+    },
+  },
+  {
+    id: 'minimal-koii',
+    name: 'KOII',
+    preset: true,
+    accent: '11 87% 42%',
+    lockedFill: '67 45% 28%',
+    lockedText: '0 0% 100%',
+    priorities: {
+      0: { fill: '0 0% 100%',    stroke: '0 0% 98%' },
+      1: { fill: '197 54% 65%',  stroke: '0 0% 98%' },
+      2: { fill: '18 97% 52%',   stroke: '0 0% 98%' },
+      3: { fill: '0 0% 13%',     stroke: '0 0% 98%' },
+    },
+  },
+  {
+    id: 'minimal-archive',
+    name: 'ARCHIVE',
+    preset: true,
+    accent: '213 60% 51%',
+    lockedFill: '226 52% 12%',
+    lockedText: '0 0% 96%',
+    priorities: {
+      0: { fill: '0 0% 100%',    stroke: '0 0% 82%' },
+      1: { fill: '8 100% 89%',   stroke: '42 45% 96%' },
+      2: { fill: '213 60% 51%',  stroke: '0 0% 99%' },
+      3: { fill: '0 0% 20%',     stroke: '0 0% 99%' },
+    },
+  },
+  {
+    id: 'minimal-pastels',
+    name: 'PASTELS',
+    preset: true,
+    accent: '206 67% 47%',
+    lockedFill: '67 45% 28%',
+    lockedText: '0 0% 100%',
+    priorities: {
+      0: { fill: '329 65% 81%',  stroke: '0 0% 98%' },
+      1: { fill: '206 67% 47%',  stroke: '0 0% 98%' },
+      2: { fill: '41 89% 52%',   stroke: '0 0% 98%' },
+      3: { fill: '12 84% 52%',   stroke: '0 0% 98%' },
+    },
+  },
+  {
+    id: 'minimal-primary',
+    name: 'PRIMARY',
+    preset: true,
+    accent: '206 67% 47%',
+    lockedFill: '67 45% 28%',
+    lockedText: '0 0% 100%',
+    priorities: {
+      0: { fill: '198 98% 52%',  stroke: '0 0% 98%' },
+      1: { fill: '142 80% 38%',  stroke: '0 0% 98%' },
+      2: { fill: '35 100% 52%',  stroke: '0 0% 98%' },
+      3: { fill: '5 99% 58%',    stroke: '0 0% 98%' },
+    },
+  },
+  {
+    id: 'minimal-greyscale',
+    name: 'GREYSCALE',
+    preset: true,
+    accent: '210 81% 50%',
+    lockedFill: '0 0% 12%',
+    lockedText: '0 0% 96%',
+    priorities: {
+      0: { fill: '0 0% 91%',     stroke: '0 0% 98%' },
+      1: { fill: '220 9% 73%',   stroke: '0 0% 98%' },
+      2: { fill: '212 8% 42%',   stroke: '0 0% 98%' },
+      3: { fill: '210 3% 13%',   stroke: '0 0% 98%' },
+    },
+  },
+];
+
+export function getMinimalPresets() {
+  return MINIMAL_PRESETS;
+}
+
 // ── Store ─────────────────────────────────────────────────────────
 
 interface ColorSchemeState {
@@ -219,7 +314,8 @@ function presetsForMode(dark: boolean) {
   return dark ? DARK_PRESETS : LIGHT_PRESETS;
 }
 
-function defaultIdForMode(dark: boolean) {
+function defaultIdForMode(dark: boolean, dot?: boolean) {
+  if (dot) return 'minimal-candy';
   return dark ? 'dark-citrus' : 'cobalt';
 }
 
@@ -233,11 +329,13 @@ const COLOR_SCHEME_BACKUP_KEY_PREFIX = 'do-color-scheme-backup:';
 const DOT_MODE_KEY = 'do-color-scheme-dot-mode';
 
 function readDotModeFromStorage(): boolean {
-  if (typeof window === 'undefined') return false;
+  if (typeof window === 'undefined') return true;
   try {
-    return window.localStorage.getItem(DOT_MODE_KEY) === '1';
+    const v = window.localStorage.getItem(DOT_MODE_KEY);
+    if (v === null) return true; // default to minimal mode
+    return v === '1';
   } catch {
-    return false;
+    return true;
   }
 }
 
@@ -263,6 +361,7 @@ function resolveStoredSchemeId(dark: boolean, id: string | null | undefined, cus
   const fallback = defaultIdForMode(dark);
   if (!id) return fallback;
   if (presetsForMode(dark).some((scheme) => scheme.id === id)) return id;
+  if (MINIMAL_PRESETS.some((scheme) => scheme.id === id)) return id;
   if (customSchemes.some((scheme) => isCustomSchemeForMode(scheme, dark) && scheme.id === id)) return id;
   return fallback;
 }
@@ -404,11 +503,21 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
 
       get activeSchemeId() {
         const s = get();
+        if (s.dotMode) {
+          const id = s.isDark ? s.activeDarkSchemeId : s.activeLightSchemeId;
+          if (MINIMAL_PRESETS.some(p => p.id === id)) return id;
+          return 'minimal-candy';
+        }
         return s.isDark ? s.activeDarkSchemeId : s.activeLightSchemeId;
       },
 
       allSchemes: () => {
-        const { isDark, customSchemes } = get();
+        const { isDark, customSchemes, dotMode } = get();
+        if (dotMode) {
+          // Minimal mode: only show curated minimal presets (no custom schemes,
+          // no per-mode split — same list works in both light & dark).
+          return MINIMAL_PRESETS;
+        }
         const presets = presetsForMode(isDark);
         const custom = customSchemes.filter(c => !!c.darkMode === isDark);
         return [...presets, ...custom];
@@ -416,6 +525,10 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
 
       getActiveScheme: () => {
         const s = get();
+        if (s.dotMode) {
+          const id = s.isDark ? s.activeDarkSchemeId : s.activeLightSchemeId;
+          return MINIMAL_PRESETS.find(p => p.id === id) || MINIMAL_PRESETS[0];
+        }
         const id = s.isDark ? s.activeDarkSchemeId : s.activeLightSchemeId;
         const presets = presetsForMode(s.isDark);
         const custom = s.customSchemes.filter(c => !!c.darkMode === s.isDark);
@@ -424,15 +537,16 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
       },
 
       setActiveScheme: (id) => {
-        const { isDark } = get();
+        const { isDark, dotMode } = get();
         if (isDark) {
           set({ activeDarkSchemeId: id, lastLocalChangeAt: nowIso() });
         } else {
           set({ activeLightSchemeId: id, lastLocalChangeAt: nowIso() });
         }
-        const presets = presetsForMode(isDark);
-        const custom = get().customSchemes.filter(c => !!c.darkMode === isDark);
-        const all = [...presets, ...custom];
+        const all = dotMode
+          ? MINIMAL_PRESETS
+          : [...presetsForMode(isDark), ...get().customSchemes.filter(c => !!c.darkMode === isDark)];
+        const presets = dotMode ? MINIMAL_PRESETS : presetsForMode(isDark);
         applyScheme(all.find(s => s.id === id) || presets[0]);
         scheduleRemoteSync();
       },
@@ -441,8 +555,8 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
         set({ isDark: dark });
         const s = get();
         const id = dark ? s.activeDarkSchemeId : s.activeLightSchemeId;
-        const presets = presetsForMode(dark);
-        const custom = s.customSchemes.filter(c => !!c.darkMode === dark);
+        const presets = s.dotMode ? MINIMAL_PRESETS : presetsForMode(dark);
+        const custom = s.dotMode ? [] : s.customSchemes.filter(c => !!c.darkMode === dark);
         const all = [...presets, ...custom];
         applyScheme(all.find(sc => sc.id === id) || presets[0]);
       },
@@ -450,6 +564,34 @@ export const useColorSchemeStore = create<ColorSchemeState>()(
       setDotMode: (dot) => {
         set({ dotMode: dot });
         writeDotModeToStorage(dot);
+        // Re-apply scheme since the active list changed
+        const s = get();
+        const id = s.isDark ? s.activeDarkSchemeId : s.activeLightSchemeId;
+        if (dot) {
+          const found = MINIMAL_PRESETS.find(p => p.id === id);
+          if (!found) {
+            const fallback = MINIMAL_PRESETS[0];
+            if (s.isDark) set({ activeDarkSchemeId: fallback.id });
+            else set({ activeLightSchemeId: fallback.id });
+            applyScheme(fallback);
+          } else {
+            applyScheme(found);
+          }
+        } else {
+          // Switching back to full color — restore default if current id is a minimal one
+          const presets = presetsForMode(s.isDark);
+          const custom = s.customSchemes.filter(c => !!c.darkMode === s.isDark);
+          const all = [...presets, ...custom];
+          let found = all.find(sc => sc.id === id);
+          if (!found) {
+            const fallback = presets[0];
+            if (s.isDark) set({ activeDarkSchemeId: fallback.id });
+            else set({ activeLightSchemeId: fallback.id });
+            found = fallback;
+          }
+          applyScheme(found);
+        }
+        scheduleRemoteSync();
       },
 
       addCustomScheme: (scheme) => {
