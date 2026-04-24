@@ -546,7 +546,7 @@ export function TimelineTaskBlock({
           // dark surfaces (foreground inverts to white in dark mode, which
           // would create an unwanted glow rather than a shadow).
           boxShadow: task.completed
-            ? 'inset 0 1px 2px hsl(var(--foreground) / 0.10), inset 0 2px 6px hsl(var(--foreground) / 0.08), inset 0 8px 14px -4px hsl(var(--foreground) / 0.06), inset 0 -1px 1px hsl(0 0% 100% / 0.7)'
+            ? 'inset 0 1px 2px hsl(0 0% 0% / 0.18), inset 0 2px 6px hsl(0 0% 0% / 0.12), inset 0 8px 14px -4px hsl(0 0% 0% / 0.08), inset 0 -1px 1px hsl(0 0% 100% / 0.05)'
             : lockedVisuals
               ? '0 0 0 0 transparent' // LOCK — flat, sits on the surface
               : fixedVisuals
