@@ -210,7 +210,7 @@ function CompletedTaskBlock({ task, top, height, showTimeLabels }: {
         style={{
           backgroundColor: 'hsl(var(--background))',
           border: '1px solid hsl(var(--border) / 0.9)',
-          boxShadow: 'inset 0 1px 0 hsl(var(--background)), inset 0 2px 4px hsl(var(--foreground) / 0.16), inset 0 6px 10px hsl(var(--foreground) / 0.08), inset 0 -1px 0 hsl(var(--foreground) / 0.06)',
+          boxShadow: 'inset 0 1px 2px hsl(var(--foreground) / 0.10), inset 0 2px 6px hsl(var(--foreground) / 0.08), inset 0 8px 14px -4px hsl(var(--foreground) / 0.06), inset 0 -1px 1px hsl(0 0% 100% / 0.7)',
         }}
       >
         <div className="flex items-center gap-1.5">
