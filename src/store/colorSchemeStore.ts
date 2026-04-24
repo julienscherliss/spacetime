@@ -182,6 +182,101 @@ const DARK_PRESETS: ColorScheme[] = [
 
 export const ALL_PRESETS = [...LIGHT_PRESETS, ...DARK_PRESETS];
 
+// ── Minimal-mode presets (julienscherliss curated) ───────────────
+// Used when dotMode is enabled. Same list applies in both light & dark
+// (the dot indicator reads from the priority fill regardless of mode).
+
+const MINIMAL_PRESETS: ColorScheme[] = [
+  {
+    id: 'minimal-candy',
+    name: 'CANDY',
+    preset: true,
+    accent: '43 91% 59%',
+    lockedFill: '260 44% 22%',
+    lockedText: '0 0% 96%',
+    priorities: {
+      0: { fill: '0 0% 100%',    stroke: '270 15% 88%' },
+      1: { fill: '139 36% 75%',  stroke: '0 0% 100%' },
+      2: { fill: '298 100% 89%', stroke: '140 36% 75%' },
+      3: { fill: '43 92% 59%',   stroke: '298 100% 89%' },
+    },
+  },
+  {
+    id: 'minimal-koii',
+    name: 'KOII',
+    preset: true,
+    accent: '11 87% 42%',
+    lockedFill: '67 45% 28%',
+    lockedText: '0 0% 100%',
+    priorities: {
+      0: { fill: '0 0% 100%',    stroke: '0 0% 98%' },
+      1: { fill: '197 54% 65%',  stroke: '0 0% 98%' },
+      2: { fill: '18 97% 52%',   stroke: '0 0% 98%' },
+      3: { fill: '0 0% 13%',     stroke: '0 0% 98%' },
+    },
+  },
+  {
+    id: 'minimal-archive',
+    name: 'ARCHIVE',
+    preset: true,
+    accent: '213 60% 51%',
+    lockedFill: '226 52% 12%',
+    lockedText: '0 0% 96%',
+    priorities: {
+      0: { fill: '0 0% 100%',    stroke: '0 0% 82%' },
+      1: { fill: '8 100% 89%',   stroke: '42 45% 96%' },
+      2: { fill: '213 60% 51%',  stroke: '0 0% 99%' },
+      3: { fill: '0 0% 20%',     stroke: '0 0% 99%' },
+    },
+  },
+  {
+    id: 'minimal-pastels',
+    name: 'PASTELS',
+    preset: true,
+    accent: '206 67% 47%',
+    lockedFill: '67 45% 28%',
+    lockedText: '0 0% 100%',
+    priorities: {
+      0: { fill: '329 65% 81%',  stroke: '0 0% 98%' },
+      1: { fill: '206 67% 47%',  stroke: '0 0% 98%' },
+      2: { fill: '41 89% 52%',   stroke: '0 0% 98%' },
+      3: { fill: '12 84% 52%',   stroke: '0 0% 98%' },
+    },
+  },
+  {
+    id: 'minimal-primary',
+    name: 'PRIMARY',
+    preset: true,
+    accent: '206 67% 47%',
+    lockedFill: '67 45% 28%',
+    lockedText: '0 0% 100%',
+    priorities: {
+      0: { fill: '198 98% 52%',  stroke: '0 0% 98%' },
+      1: { fill: '142 80% 38%',  stroke: '0 0% 98%' },
+      2: { fill: '35 100% 52%',  stroke: '0 0% 98%' },
+      3: { fill: '5 99% 58%',    stroke: '0 0% 98%' },
+    },
+  },
+  {
+    id: 'minimal-greyscale',
+    name: 'GREYSCALE',
+    preset: true,
+    accent: '210 81% 50%',
+    lockedFill: '0 0% 12%',
+    lockedText: '0 0% 96%',
+    priorities: {
+      0: { fill: '0 0% 91%',     stroke: '0 0% 98%' },
+      1: { fill: '220 9% 73%',   stroke: '0 0% 98%' },
+      2: { fill: '212 8% 42%',   stroke: '0 0% 98%' },
+      3: { fill: '210 3% 13%',   stroke: '0 0% 98%' },
+    },
+  },
+];
+
+export function getMinimalPresets() {
+  return MINIMAL_PRESETS;
+}
+
 // ── Store ─────────────────────────────────────────────────────────
 
 interface ColorSchemeState {
@@ -219,7 +314,8 @@ function presetsForMode(dark: boolean) {
   return dark ? DARK_PRESETS : LIGHT_PRESETS;
 }
 
-function defaultIdForMode(dark: boolean) {
+function defaultIdForMode(dark: boolean, dot?: boolean) {
+  if (dot) return 'minimal-candy';
   return dark ? 'dark-citrus' : 'cobalt';
 }
 
@@ -233,11 +329,13 @@ const COLOR_SCHEME_BACKUP_KEY_PREFIX = 'do-color-scheme-backup:';
 const DOT_MODE_KEY = 'do-color-scheme-dot-mode';
 
 function readDotModeFromStorage(): boolean {
-  if (typeof window === 'undefined') return false;
+  if (typeof window === 'undefined') return true;
   try {
-    return window.localStorage.getItem(DOT_MODE_KEY) === '1';
+    const v = window.localStorage.getItem(DOT_MODE_KEY);
+    if (v === null) return true; // default to minimal mode
+    return v === '1';
   } catch {
-    return false;
+    return true;
   }
 }
 
