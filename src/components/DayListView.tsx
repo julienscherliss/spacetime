@@ -407,12 +407,13 @@ export function DayListView() {
         }}
       >
         <div className="flex items-center gap-3">
-          {/* Priority dot — leftmost, vertically centered */}
+          {/* Priority dot — leftmost, vertically centered. Pulls fill from the
+              active color scheme so it matches the timeline blocks exactly. */}
           <div
-            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+            className="w-2 h-2 rounded-full flex-shrink-0"
             style={{
-              backgroundColor: `hsl(var(--priority-${task.priority}))`,
-              opacity: 0.6,
+              backgroundColor: activeScheme.priorities[task.priority as 0 | 1 | 2 | 3]?.fill
+                ?? activeScheme.priorities[0].fill,
             }}
           />
 
