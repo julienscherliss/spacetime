@@ -221,54 +221,65 @@ export function WeekListView() {
         </div>
       </div>
 
-      {/* Day sections */}
+      {/* Day sections — quiet headers aligned to the same column grid as task
+          rows so day numbers sit where task times do. Empty days collapse to a
+          single slim line. Today's section gets a subtle accent. */}
       <div className="py-2">
         {weekDays.map((date, dayIdx) => {
           const dayTasks = tasksFor(date);
           const isToday = date === today;
+          const isPast = date < today;
           const dayDate = new Date(date + 'T12:00:00');
           const completed = dayTasks.filter(t => t.completed).length;
+          const isEmpty = dayTasks.length === 0;
+
+          // Header — aligned to task-row grid: [w-2 dot slot] · [w-20 time slot] · [body]
+          const header = (
+            <button
+              onClick={() => jumpToDay(date)}
+              className={`w-full flex items-center gap-3 px-3 py-2 hover:bg-muted/30 transition-colors ${
+                isToday ? 'bg-muted/30' : ''
+              }`}
+            >
+              {/* Dot slot — accent for today, muted otherwise */}
+              <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                isToday ? 'bg-primary' : isPast ? 'bg-muted-foreground/15' : 'bg-muted-foreground/30'
+              }`} />
+              {/* Time slot replaced by day-number block */}
+              <div className="w-20 flex-shrink-0 flex items-baseline gap-1.5">
+                <span className={`text-sm font-display font-bold tabular-nums leading-none ${
+                  isToday ? 'text-primary' : isPast ? 'text-muted-foreground/40' : 'text-foreground'
+                }`}>
+                  {dayDate.getDate()}
+                </span>
+                <span className={`text-[9px] font-mono tracking-[0.18em] leading-none ${
+                  isToday ? 'text-primary/70' : 'text-muted-foreground/40'
+                }`}>
+                  {dayDate.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}
+                </span>
+              </div>
+              {/* Body — count */}
+              <div className="flex-1 min-w-0 flex items-center justify-end">
+                <span className={`text-[10px] font-mono tabular-nums tracking-wider ${
+                  isEmpty ? 'text-muted-foreground/25' : isToday ? 'text-primary/70' : 'text-muted-foreground/40'
+                }`}>
+                  {isEmpty ? '—' : `${completed}/${dayTasks.length}`}
+                </span>
+              </div>
+            </button>
+          );
+
           return (
             <motion.section
               key={date}
-              initial={{ opacity: 0, y: 6 }}
+              initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: dayIdx * 0.02 }}
-              className="mb-4"
+              transition={{ delay: dayIdx * 0.015 }}
+              className={`border-b ${isToday ? 'border-primary/30' : 'border-border/15'}`}
             >
-              <button
-                onClick={() => jumpToDay(date)}
-                className={`w-full flex items-baseline justify-between px-3 py-1.5 border-b ${
-                  isToday ? 'border-primary/40' : 'border-border/40'
-                } hover:bg-muted/30 transition-colors`}
-              >
-                <div className="flex items-baseline gap-2">
-                  <span className={`text-[10px] font-mono tracking-[0.2em] ${
-                    isToday ? 'text-primary' : 'text-muted-foreground/60'
-                  }`}>
-                    {dayDate.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}
-                  </span>
-                  <span className={`text-base font-display font-bold ${
-                    isToday ? 'text-primary' : 'text-foreground'
-                  }`}>
-                    {dayDate.getDate()}
-                  </span>
-                  <span className="text-[10px] font-mono text-muted-foreground/40 tracking-widest">
-                    {dayDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}
-                  </span>
-                </div>
-                <span className="text-[10px] font-mono text-muted-foreground/40 tracking-widest">
-                  {dayTasks.length === 0
-                    ? 'NONE'
-                    : `${completed}/${dayTasks.length}`}
-                </span>
-              </button>
-              {dayTasks.length === 0 ? (
-                <div className="px-3 py-3">
-                  <p className="text-[11px] font-mono text-muted-foreground/30 tracking-wider">— EMPTY —</p>
-                </div>
-              ) : (
-                <div className="flex flex-col">
+              {header}
+              {!isEmpty && (
+                <div className="flex flex-col pb-1">
                   {dayTasks.map((task) => renderRow(task, date))}
                 </div>
               )}
