@@ -488,7 +488,7 @@ export function DayListView() {
       <div
         className={`relative w-full text-left px-3 py-${isChild ? '2' : '4'} ${isChild ? 'border-b border-border/10' : 'border-b border-border/20'} transition-colors ${
           task.completed ? 'opacity-40' : ''
-        } ${isCurrentTask ? 'bg-primary/[0.04]' : ''}`}
+        } ${isCurrentTask ? 'bg-muted/40' : ''}`}
         onPointerDown={(e) => {
           if (e.pointerType === 'mouse' && e.button !== 0) return;
           if (useCarryStore.getState().carried) return;
@@ -572,14 +572,9 @@ export function DayListView() {
             className={`${isChild ? 'w-16' : 'w-20'} flex-shrink-0 text-left active:bg-muted/40 rounded-sm -mx-1 px-1 py-1 transition-colors`}
           >
             {task.time ? (
-              <div className="flex items-center gap-1.5">
-                <p className={`${isChild ? 'text-xs' : 'text-sm'} font-mono font-medium ${isCurrentTask ? 'text-primary' : 'text-foreground'} leading-snug tabular-nums`}>
-                  {formatTime12h(task.time)}
-                </p>
-                {isCurrentTask && (
-                  <span className="text-[8px] font-mono font-bold text-primary tracking-[0.2em] leading-none">NOW</span>
-                )}
-              </div>
+              <p className={`${isChild ? 'text-xs' : 'text-sm'} font-mono font-medium ${isCurrentTask ? 'text-primary' : 'text-foreground'} leading-snug tabular-nums`}>
+                {formatTime12h(task.time)}
+              </p>
             ) : (
               <p className={`${isChild ? 'text-xs' : 'text-sm'} font-mono font-medium text-muted-foreground/40 leading-snug tracking-wider`}>
                 ANYTIME
