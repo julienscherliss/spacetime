@@ -45,7 +45,6 @@ function NowMarker({ nowMinutes }: { nowMinutes: number }) {
             {label}
           </p>
         </div>
-        <span className="text-[9px] font-mono font-bold text-primary tracking-[0.2em]">NOW</span>
       </div>
     </div>
   );
