@@ -434,6 +434,10 @@ export function DayListView() {
               // When NowMarker appears AFTER the last row (nothing left today)
               const showNowMarkerAtEnd = i === dayTasks.length - 1 && nowIndex === dayTasks.length;
               const endNowStart = task.time && task.duration ? timeStrToMinutes(task.time) + task.duration : null;
+              // The next sibling will render the NowMarker → suppress the gap "+" here.
+              const nextRowShowsNowMarker = i + 1 === nowIndex;
+              // The current row is the last one and the marker comes after → suppress trailing "+".
+              const trailingShowsNowMarker = showNowMarkerAtEnd;
               if (task.type === 'group') {
                 return (
                   <div key={task.id}>
@@ -458,13 +462,13 @@ export function DayListView() {
                         renderChild={(child) => renderTaskRow(child, true)}
                       />
                     </motion.div>
-                    {gapMinutes > 0 && next && (
+                    {gapMinutes > 0 && next && !nextRowShowsNowMarker && (
                       <InsertGapButton
                         gapMinutes={gapMinutes}
                         onInsert={() => handleInsertBetween(task, next)}
                       />
                     )}
-                    {isLastScheduled && task.time && task.duration && (
+                    {isLastScheduled && task.time && task.duration && !trailingShowsNowMarker && (
                       <InsertGapButton
                         gapMinutes={Math.min(60, 24 * 60 - timeStrToMinutes(getEndTime(task.time, task.duration)))}
                         onInsert={() => handleInsertAfter(task)}
@@ -496,13 +500,13 @@ export function DayListView() {
                   >
                     {renderTaskRow(task, false)}
                   </motion.div>
-                  {gapMinutes > 0 && next && (
+                  {gapMinutes > 0 && next && !nextRowShowsNowMarker && (
                     <InsertGapButton
                       gapMinutes={gapMinutes}
                       onInsert={() => handleInsertBetween(task, next)}
                     />
                   )}
-                  {isLastScheduled && task.time && task.duration && (
+                  {isLastScheduled && task.time && task.duration && !trailingShowsNowMarker && (
                     <InsertGapButton
                       gapMinutes={Math.min(60, 24 * 60 - timeStrToMinutes(getEndTime(task.time, task.duration)))}
                       onInsert={() => handleInsertAfter(task)}
