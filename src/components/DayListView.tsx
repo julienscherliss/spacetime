@@ -364,20 +364,26 @@ export function DayListView() {
         ) : (
           <div className="flex flex-col">
             {(() => {
-              // Compute insertion index for the NOW marker (only on today).
-              // Rules: place before the first task that hasn't ended yet; if all
-              // scheduled tasks are in the past, append after the last row.
+              // Compute insertion index for the standalone NOW marker (only on today).
+              // If we're currently inside a task, don't render a standalone marker;
+              // that task gets an inline playhead instead.
               let nowIndex = -1;
               if (isToday) {
                 const scheduled = dayTasks
                   .map((t, idx) => ({ t, idx }))
                   .filter((x) => !!x.t.time);
+
                 if (scheduled.length > 0) {
-                  const firstUpcoming = scheduled.find(({ t }) => {
-                    const end = timeStrToMinutes(getEndTime(t.time!, t.duration || 0));
-                    return end > nowMinutes;
+                  const currentScheduledTask = scheduled.find(({ t }) => {
+                    const start = timeStrToMinutes(t.time!);
+                    const end = start + (t.duration || 0);
+                    return nowMinutes >= start && nowMinutes < end;
                   });
-                  nowIndex = firstUpcoming ? firstUpcoming.idx : dayTasks.length;
+
+                  if (!currentScheduledTask) {
+                    const firstUpcoming = scheduled.find(({ t }) => timeStrToMinutes(t.time!) > nowMinutes);
+                    nowIndex = firstUpcoming ? firstUpcoming.idx : dayTasks.length;
+                  }
                 } else {
                   nowIndex = 0;
                 }
@@ -481,6 +487,12 @@ export function DayListView() {
 
   function renderTaskRow(task: Task, isChild: boolean) {
     const endTime = task.time && task.duration ? getEndTime(task.time, task.duration) : null;
+    const startMinutes = task.time ? timeStrToMinutes(task.time) : null;
+    const endMinutes = task.time && task.duration ? startMinutes! + task.duration : null;
+    const isCurrentTask = isToday && !!task.time && !!task.duration && nowMinutes >= startMinutes! && nowMinutes < endMinutes!;
+    const currentProgress = isCurrentTask && startMinutes !== null && endMinutes !== null && endMinutes > startMinutes
+      ? Math.max(0, Math.min(100, ((nowMinutes - startMinutes) / (endMinutes - startMinutes)) * 100))
+      : 0;
     return (
       <div
         className={`w-full text-left px-3 py-${isChild ? '2' : '4'} ${isChild ? 'border-b border-border/10' : 'border-b border-border/20'} transition-colors ${
@@ -544,7 +556,7 @@ export function DayListView() {
           {/* Priority dot — leftmost, vertically centered. Pulls fill from the
               active color scheme so it matches the timeline blocks exactly. */}
           <div
-            className="w-2 h-2 rounded-full flex-shrink-0"
+            className={`w-2 h-2 rounded-full flex-shrink-0 ${isCurrentTask ? 'ring-2 ring-primary/20 ring-offset-2 ring-offset-background' : ''}`}
             style={{
               backgroundColor: `hsl(${activeScheme.priorities[task.priority as 0 | 1 | 2 | 3]?.fill
                 ?? activeScheme.priorities[0].fill})`,
@@ -580,6 +592,15 @@ export function DayListView() {
             }`}>
               {task.title}
             </p>
+            {isCurrentTask && !isChild && (
+              <div className="mt-1.5 flex items-center gap-2">
+                <div className="relative h-px flex-1 bg-border/40 overflow-hidden">
+                  <div className="absolute inset-y-0 left-0 bg-primary/35" style={{ width: `${currentProgress}%` }} />
+                  <div className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-primary shadow-sm" style={{ left: `calc(${currentProgress}% - 4px)` }} />
+                </div>
+                <span className="text-[9px] font-mono font-bold text-primary tracking-[0.2em]">NOW</span>
+              </div>
+            )}
             {task.description && !isChild && (
               <p className="text-[11px] text-muted-foreground/50 mt-0.5 line-clamp-1">
                 {task.description}
