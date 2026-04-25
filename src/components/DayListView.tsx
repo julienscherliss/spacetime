@@ -486,9 +486,9 @@ export function DayListView() {
       : 0;
     return (
       <div
-        className={`w-full text-left px-3 py-${isChild ? '2' : '4'} ${isChild ? 'border-b border-border/10' : 'border-b border-border/20'} transition-colors ${
+        className={`relative w-full text-left px-3 py-${isChild ? '2' : '4'} ${isChild ? 'border-b border-border/10' : 'border-b border-border/20'} transition-colors ${
           task.completed ? 'opacity-40' : ''
-        }`}
+        } ${isCurrentTask ? 'bg-primary/[0.04]' : ''}`}
         onPointerDown={(e) => {
           if (e.pointerType === 'mouse' && e.button !== 0) return;
           if (useCarryStore.getState().carried) return;
@@ -543,11 +543,20 @@ export function DayListView() {
           window.addEventListener('pointercancel', onUp);
         }}
       >
+        {/* Active-task playhead: thin accent left bar with vertical progress fill */}
+        {isCurrentTask && (
+          <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-primary/15 overflow-hidden">
+            <div
+              className="absolute inset-x-0 top-0 bg-primary"
+              style={{ height: `${currentProgress}%` }}
+            />
+          </div>
+        )}
         <div className="flex items-center gap-3">
           {/* Priority dot — leftmost, vertically centered. Pulls fill from the
               active color scheme so it matches the timeline blocks exactly. */}
           <div
-            className={`w-2 h-2 rounded-full flex-shrink-0 ${isCurrentTask ? 'ring-2 ring-primary/20 ring-offset-2 ring-offset-background' : ''}`}
+            className="w-2 h-2 rounded-full flex-shrink-0"
             style={{
               backgroundColor: `hsl(${activeScheme.priorities[task.priority as 0 | 1 | 2 | 3]?.fill
                 ?? activeScheme.priorities[0].fill})`,
@@ -563,9 +572,14 @@ export function DayListView() {
             className={`${isChild ? 'w-16' : 'w-20'} flex-shrink-0 text-left active:bg-muted/40 rounded-sm -mx-1 px-1 py-1 transition-colors`}
           >
             {task.time ? (
-              <p className={`${isChild ? 'text-xs' : 'text-sm'} font-mono font-medium text-foreground leading-snug tabular-nums`}>
-                {formatTime12h(task.time)}
-              </p>
+              <div className="flex items-center gap-1.5">
+                <p className={`${isChild ? 'text-xs' : 'text-sm'} font-mono font-medium ${isCurrentTask ? 'text-primary' : 'text-foreground'} leading-snug tabular-nums`}>
+                  {formatTime12h(task.time)}
+                </p>
+                {isCurrentTask && (
+                  <span className="text-[8px] font-mono font-bold text-primary tracking-[0.2em] leading-none">NOW</span>
+                )}
+              </div>
             ) : (
               <p className={`${isChild ? 'text-xs' : 'text-sm'} font-mono font-medium text-muted-foreground/40 leading-snug tracking-wider`}>
                 ANYTIME
@@ -583,15 +597,6 @@ export function DayListView() {
             }`}>
               {task.title}
             </p>
-            {isCurrentTask && !isChild && (
-              <div className="mt-1.5 flex items-center gap-2">
-                <div className="relative h-px flex-1 bg-border/40 overflow-hidden">
-                  <div className="absolute inset-y-0 left-0 bg-primary/35" style={{ width: `${currentProgress}%` }} />
-                  <div className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-primary shadow-sm" style={{ left: `calc(${currentProgress}% - 4px)` }} />
-                </div>
-                <span className="text-[9px] font-mono font-bold text-primary tracking-[0.2em]">NOW</span>
-              </div>
-            )}
             {task.description && !isChild && (
               <p className="text-[11px] text-muted-foreground/50 mt-0.5 line-clamp-1">
                 {task.description}
