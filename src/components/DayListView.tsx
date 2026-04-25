@@ -501,11 +501,13 @@ export function DayListView() {
             className={`${isChild ? 'w-16' : 'w-20'} flex-shrink-0 text-left active:bg-muted/40 rounded-sm -mx-1 px-1 py-1 transition-colors`}
           >
             {task.time ? (
-              <p className={`${isChild ? 'text-xs' : 'text-sm'} font-mono font-medium text-foreground leading-none tabular-nums`}>
+              <p className={`${isChild ? 'text-xs' : 'text-sm'} font-mono font-medium text-foreground leading-snug tabular-nums`}>
                 {formatTime12h(task.time)}
               </p>
             ) : (
-              <p className="text-[10px] font-mono text-muted-foreground/40 tracking-wider">ANYTIME</p>
+              <p className={`${isChild ? 'text-xs' : 'text-sm'} font-mono font-medium text-muted-foreground/40 leading-snug tracking-wider`}>
+                ANYTIME
+              </p>
             )}
           </button>
 
