@@ -5,6 +5,7 @@ import { useTouchDragStore } from '@/store/touchDragStore';
 import { useCalendarStore } from '@/store/calendarStore';
 import { useCarryStore } from '@/store/carryStore';
 import { useDragHandoffStore } from '@/store/dragHandoffStore';
+import { useColorSchemeStore } from '@/store/colorSchemeStore';
 import { useCurrentTime, formatTime12h } from '@/hooks/useCurrentTime';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { GroupListRow } from '@/components/GroupListRow';
