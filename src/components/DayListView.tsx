@@ -363,7 +363,26 @@ export function DayListView() {
           </div>
         ) : (
           <div className="flex flex-col">
-            {dayTasks.map((task, i) => {
+            {(() => {
+              // Compute insertion index for the NOW marker (only on today).
+              // Rules: place before the first task that hasn't ended yet; if all
+              // scheduled tasks are in the past, append after the last row.
+              let nowIndex = -1;
+              if (isToday) {
+                const scheduled = dayTasks
+                  .map((t, idx) => ({ t, idx }))
+                  .filter((x) => !!x.t.time);
+                if (scheduled.length > 0) {
+                  const firstUpcoming = scheduled.find(({ t }) => {
+                    const end = timeStrToMinutes(getEndTime(t.time!, t.duration || 0));
+                    return end > nowMinutes;
+                  });
+                  nowIndex = firstUpcoming ? firstUpcoming.idx : dayTasks.length;
+                } else {
+                  nowIndex = 0;
+                }
+              }
+              return dayTasks.map((task, i) => {
               const next = dayTasks[i + 1];
               const gapMinutes = computeGapMinutes(task, next);
               const isFirstScheduled = !!task.time && dayTasks.slice(0, i).every((t) => !t.time);
@@ -371,6 +390,7 @@ export function DayListView() {
               if (task.type === 'group') {
                 return (
                   <div key={task.id}>
+                    {i === nowIndex && <NowMarker nowMinutes={nowMinutes} />}
                     {isFirstScheduled && (
                       <InsertGapButton
                         gapMinutes={Math.min(60, timeStrToMinutes(task.time!))}
@@ -402,11 +422,15 @@ export function DayListView() {
                         showLabel={false}
                       />
                     )}
+                    {i === dayTasks.length - 1 && nowIndex === dayTasks.length && (
+                      <NowMarker nowMinutes={nowMinutes} />
+                    )}
                   </div>
                 );
               }
               return (
                 <div key={task.id}>
+                  {i === nowIndex && <NowMarker nowMinutes={nowMinutes} />}
                   {isFirstScheduled && (
                     <InsertGapButton
                       gapMinutes={Math.min(60, timeStrToMinutes(task.time!))}
