@@ -332,12 +332,29 @@ export function DayListView() {
           </div>
         ) : (
           <div className="flex flex-col">
+            {(() => {
+              const firstScheduledIdx = dayTasks.findIndex((t) => !!t.time);
+              let lastScheduledIdx = -1;
+              for (let i = dayTasks.length - 1; i >= 0; i--) {
+                if (dayTasks[i].time) { lastScheduledIdx = i; break; }
+              }
+              return null;
+            })()}
+            {(() => null)()}
             {dayTasks.map((task, i) => {
               const next = dayTasks[i + 1];
               const gapMinutes = computeGapMinutes(task, next);
+              const isFirstScheduled = !!task.time && dayTasks.slice(0, i).every((t) => !t.time);
+              const isLastScheduled = !!task.time && dayTasks.slice(i + 1).every((t) => !t.time);
               if (task.type === 'group') {
                 return (
                   <div key={task.id}>
+                    {isFirstScheduled && (
+                      <InsertGapButton
+                        gapMinutes={Math.min(60, timeStrToMinutes(task.time!))}
+                        onInsert={() => handleInsertBefore(task)}
+                      />
+                    )}
                     <motion.div
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -355,11 +372,23 @@ export function DayListView() {
                         onInsert={() => handleInsertBetween(task, next)}
                       />
                     )}
+                    {isLastScheduled && task.time && task.duration && (
+                      <InsertGapButton
+                        gapMinutes={Math.min(60, 24 * 60 - timeStrToMinutes(getEndTime(task.time, task.duration)))}
+                        onInsert={() => handleInsertAfter(task)}
+                      />
+                    )}
                   </div>
                 );
               }
               return (
                 <div key={task.id}>
+                  {isFirstScheduled && (
+                    <InsertGapButton
+                      gapMinutes={Math.min(60, timeStrToMinutes(task.time!))}
+                      onInsert={() => handleInsertBefore(task)}
+                    />
+                  )}
                   <motion.div
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -371,6 +400,12 @@ export function DayListView() {
                     <InsertGapButton
                       gapMinutes={gapMinutes}
                       onInsert={() => handleInsertBetween(task, next)}
+                    />
+                  )}
+                  {isLastScheduled && task.time && task.duration && (
+                    <InsertGapButton
+                      gapMinutes={Math.min(60, 24 * 60 - timeStrToMinutes(getEndTime(task.time, task.duration)))}
+                      onInsert={() => handleInsertAfter(task)}
                     />
                   )}
                 </div>
