@@ -458,9 +458,13 @@ export function DayListView() {
                       showLabel={false}
                     />
                   )}
+                  {i === dayTasks.length - 1 && nowIndex === dayTasks.length && (
+                    <NowMarker nowMinutes={nowMinutes} />
+                  )}
                 </div>
               );
-            })}
+              });
+            })()}
           </div>
         )}
       </div>
