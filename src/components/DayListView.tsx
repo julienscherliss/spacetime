@@ -353,10 +353,6 @@ export function DayListView() {
         }`}
         onPointerDown={(e) => {
           if (e.pointerType === 'mouse' && e.button !== 0) return;
-          // Don't hijack taps on the inner Time/Content buttons — they handle
-          // their own click semantics (zoom timeline, open edit panel).
-          const target = e.target as HTMLElement;
-          if (target.closest('button')) return;
           if (useCarryStore.getState().carried) return;
 
           const startX = e.clientX;
