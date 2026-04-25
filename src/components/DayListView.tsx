@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import { useTaskStore, Task } from '@/store/taskStore';
 import { useTouchDragStore } from '@/store/touchDragStore';
 import { useCalendarStore } from '@/store/calendarStore';
+import { useCarryStore } from '@/store/carryStore';
+import { useDragHandoffStore } from '@/store/dragHandoffStore';
 import { useCurrentTime, formatTime12h } from '@/hooks/useCurrentTime';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { GroupListRow } from '@/components/GroupListRow';
@@ -157,15 +159,29 @@ export function DayListView() {
     setTimeout(() => setEditingTask(newId), 50);
   };
 
-  /** Long-press / drag-start on a row → portal into schedule view so the
-   *  existing timeline drag system can take over. The list-return pill arms
-   *  automatically so the user can hop back when they're done re-arranging. */
+  /** Portal into schedule view so the existing timeline drag system can take
+   *  over. The list-return pill arms automatically so the user can hop back
+   *  when they're done re-arranging. */
   const enterScheduleForDrag = (task: Task) => {
     if (task.time) {
       setListReturnZoom({ taskTime: task.time, taskDuration: task.duration || 30 });
     }
     setShowListReturn(true);
     setDaySubMode('timeline');
+  };
+
+  /** Long-press (still) → pick the task up into carry mode so the user can
+   *  navigate dates while holding it. Mirrors the timeline carry behaviour. */
+  const carryPickup = (task: Task) => {
+    if (navigator.vibrate) navigator.vibrate(30);
+    useCarryStore.getState().pickup({
+      taskId: task.id,
+      title: task.title,
+      duration: task.duration || 30,
+      fromDate: task.date,
+      fromTime: task.time,
+      pickedUpAt: Date.now(),
+    });
   };
 
   // Swipe handlers
