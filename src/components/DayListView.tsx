@@ -161,6 +161,51 @@ export function DayListView() {
     setTimeout(() => setEditingTask(newId), 50);
   };
 
+  /** Insert a 60-minute task ending exactly when the first scheduled task
+   *  begins. If the first task starts before 01:00 we clamp to 00:00. */
+  const handleInsertBefore = (first: Task) => {
+    if (!first.time) return;
+    const firstStart = timeStrToMinutes(first.time);
+    const duration = Math.min(60, firstStart);
+    if (duration <= 0) return;
+    const time = minutesToTimeStr(firstStart - duration);
+    const newId = addTask({
+      title: '',
+      date: selectedDate,
+      time,
+      duration,
+      priority: 0,
+      type: 'one-time',
+    });
+    setListReturnZoom({ taskTime: time, taskDuration: duration });
+    setShowListReturn(true);
+    setDaySubMode('timeline');
+    setTimeout(() => setEditingTask(newId), 50);
+  };
+
+  /** Insert a 60-minute task starting exactly when the last scheduled task
+   *  ends. Clamped so it never spills past midnight. */
+  const handleInsertAfter = (last: Task) => {
+    if (!last.time || !last.duration) return;
+    const lastEnd = timeStrToMinutes(getEndTime(last.time, last.duration));
+    const remaining = 24 * 60 - lastEnd;
+    const duration = Math.min(60, remaining);
+    if (duration <= 0) return;
+    const time = minutesToTimeStr(lastEnd);
+    const newId = addTask({
+      title: '',
+      date: selectedDate,
+      time,
+      duration,
+      priority: 0,
+      type: 'one-time',
+    });
+    setListReturnZoom({ taskTime: time, taskDuration: duration });
+    setShowListReturn(true);
+    setDaySubMode('timeline');
+    setTimeout(() => setEditingTask(newId), 50);
+  };
+
   /** Portal into schedule view so the existing timeline drag system can take
    *  over. The list-return pill arms automatically so the user can hop back
    *  when they're done re-arranging. */
@@ -290,9 +335,17 @@ export function DayListView() {
             {dayTasks.map((task, i) => {
               const next = dayTasks[i + 1];
               const gapMinutes = computeGapMinutes(task, next);
+              const isFirstScheduled = !!task.time && dayTasks.slice(0, i).every((t) => !t.time);
+              const isLastScheduled = !!task.time && dayTasks.slice(i + 1).every((t) => !t.time);
               if (task.type === 'group') {
                 return (
                   <div key={task.id}>
+                    {isFirstScheduled && (
+                      <InsertGapButton
+                        gapMinutes={Math.min(60, timeStrToMinutes(task.time!))}
+                        onInsert={() => handleInsertBefore(task)}
+                      />
+                    )}
                     <motion.div
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -310,11 +363,23 @@ export function DayListView() {
                         onInsert={() => handleInsertBetween(task, next)}
                       />
                     )}
+                    {isLastScheduled && task.time && task.duration && (
+                      <InsertGapButton
+                        gapMinutes={Math.min(60, 24 * 60 - timeStrToMinutes(getEndTime(task.time, task.duration)))}
+                        onInsert={() => handleInsertAfter(task)}
+                      />
+                    )}
                   </div>
                 );
               }
               return (
                 <div key={task.id}>
+                  {isFirstScheduled && (
+                    <InsertGapButton
+                      gapMinutes={Math.min(60, timeStrToMinutes(task.time!))}
+                      onInsert={() => handleInsertBefore(task)}
+                    />
+                  )}
                   <motion.div
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -326,6 +391,12 @@ export function DayListView() {
                     <InsertGapButton
                       gapMinutes={gapMinutes}
                       onInsert={() => handleInsertBetween(task, next)}
+                    />
+                  )}
+                  {isLastScheduled && task.time && task.duration && (
+                    <InsertGapButton
+                      gapMinutes={Math.min(60, 24 * 60 - timeStrToMinutes(getEndTime(task.time, task.duration)))}
+                      onInsert={() => handleInsertAfter(task)}
                     />
                   )}
                 </div>
