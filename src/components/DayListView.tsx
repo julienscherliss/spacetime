@@ -387,7 +387,7 @@ export function DayListView() {
               clientY: ev.clientY,
               startedAt: Date.now(),
             });
-            enterScheduleForDrag(task, { zoomToTask: false });
+            enterScheduleForDrag(task, { zoomToTask: true });
           };
           const onUp = () => {
             if (holdTimer != null) {
