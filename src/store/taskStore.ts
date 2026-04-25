@@ -176,6 +176,28 @@ function deriveType(recurrence?: RecurrencePattern): TaskType {
   return recurrence ? 'recurring' : 'one-time';
 }
 
+function isRoutineArchiveCandidate(task: Task, tasksById: Map<string, Task>): boolean {
+  const selfIsRoutineSeries = task.isRoutine === true && (
+    task.type === 'recurring' ||
+    !!task.recurrence ||
+    task.isRecurrenceInstance === true ||
+    !!task.recurrenceParentId
+  );
+
+  if (selfIsRoutineSeries) return true;
+
+  if (!task.groupId) return false;
+
+  const parentGroup = tasksById.get(task.groupId);
+  if (!parentGroup) return false;
+
+  return parentGroup.isRoutine === true && (
+    !!parentGroup.recurrence ||
+    parentGroup.isRecurrenceInstance === true ||
+    !!parentGroup.recurrenceParentId
+  );
+}
+
 function getLinkedScheduleTargetIds(tasks: Task[], activeTask: Task): Set<string> {
   const targetIds = new Set<string>([activeTask.id]);
 
@@ -976,13 +998,16 @@ export const useTaskStore = create<TaskState>()(
         const nowMs = now.getTime();
         const todayStr = now.toISOString().split('T')[0];
 
-        set((s) => ({
-          tasks: s.tasks.map((t) => {
+        set((s) => {
+          const tasksById = new Map(s.tasks.map((task) => [task.id, task]));
+
+          return {
+            tasks: s.tasks.map((t) => {
             if (t.completed || t.inWaitingRoom || t.archivedAt) return t;
 
-            // Routine tasks (recurring + flagged routine) never go to limbo.
-            // They auto-delete (archive as deleted) 24h after their end time.
-            const isRoutineTask = t.type === 'recurring' && t.isRoutine === true;
+            // Routine tasks — including recurring groups and their child tasks —
+            // never go to limbo. They auto-archive as deleted after 24h.
+            const isRoutineTask = isRoutineArchiveCandidate(t, tasksById);
 
             // Past-day tasks without a time — sweep immediately
             if (!t.time) {
@@ -1030,8 +1055,9 @@ export const useTaskStore = create<TaskState>()(
             }
 
             return t;
-          }),
-        }));
+            }),
+          };
+        });
       },
 
       generateRecurringInstances: (startDate, endDate) =>
