@@ -17,6 +17,7 @@ export type Priority = 0 | 1 | 2 | 3;
 export type TaskType = 'one-time' | 'recurring' | 'group';
 export type ViewMode = 'focus' | 'day' | 'week' | 'calendar';
 export type DaySubMode = 'timeline' | 'list';
+export type WeekSubMode = 'timeline' | 'list';
 
 export type CustomUnit = 'days' | 'weeks' | 'months' | 'years';
 
@@ -93,6 +94,7 @@ interface TaskState {
   tasks: Task[];
   viewMode: ViewMode;
   daySubMode: DaySubMode;
+  weekSubMode: WeekSubMode;
   routinesEnabled: boolean;
   focusTaskId: string | null;
   editingTaskId: string | null;
@@ -105,6 +107,7 @@ interface TaskState {
 
   setViewMode: (mode: ViewMode) => void;
   setDaySubMode: (mode: DaySubMode) => void;
+  setWeekSubMode: (mode: WeekSubMode) => void;
   setNavigateToDate: (date: string | null) => void;
   setCurrentDate: (date: string | null) => void;
   setListReturnZoom: (zoom: ListReturnZoom | null) => void;
@@ -507,7 +510,8 @@ export const useTaskStore = create<TaskState>()(
     (set, get) => ({
       tasks: [],
       viewMode: 'day',
-      daySubMode: 'timeline',
+      daySubMode: 'list',
+      weekSubMode: 'list',
       routinesEnabled: true,
       focusTaskId: null,
       editingTaskId: null,
@@ -524,6 +528,7 @@ export const useTaskStore = create<TaskState>()(
         set({ viewMode: mode });
       },
       setDaySubMode: (mode) => set({ daySubMode: mode }),
+      setWeekSubMode: (mode) => set({ weekSubMode: mode }),
       setNavigateToDate: (date) => set({ navigateToDate: date }),
       setCurrentDate: (date) => set({ currentDate: date }),
       setListReturnZoom: (zoom) => set({ listReturnZoom: zoom }),
