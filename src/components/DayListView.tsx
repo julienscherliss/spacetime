@@ -30,21 +30,61 @@ function getEndTime(time: string, duration: number): string {
   return `${Math.floor(total / 60).toString().padStart(2, '0')}:${(total % 60).toString().padStart(2, '0')}`;
 }
 
-/** Standalone "between tasks" NOW marker. Same column grid as task rows so it
- *  reads as a quiet placeholder rather than a divider. */
-function NowMarker({ nowMinutes }: { nowMinutes: number }) {
-  const label = formatTime12h(nowMinutes);
+/** "Free time" pseudo-task shown when the current moment falls between two
+ *  scheduled tasks. Matches the active-task row styling (left accent bar +
+ *  muted background) so it reads as the current block on the schedule. */
+function NowMarker({
+  nowMinutes,
+  startMinutes,
+  endMinutes,
+}: {
+  nowMinutes: number;
+  startMinutes: number | null;
+  endMinutes: number | null;
+}) {
+  // Visible start = where the gap starts (or now, if before day's first task)
+  const start = startMinutes ?? nowMinutes;
+  const end = endMinutes;
+  const totalDuration = end !== null ? end - start : null;
+  const progress =
+    end !== null && end > start
+      ? Math.max(0, Math.min(100, ((nowMinutes - start) / (end - start)) * 100))
+      : 0;
+  const startLabel = formatTime12h(start);
+
   return (
-    <div className="relative w-full px-3 py-2 select-none" aria-label="Current time">
-      {/* Accent left bar — same visual language as the active-task row */}
-      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary rounded-r-sm" />
+    <div className="relative w-full text-left px-3 py-4 border-b border-border/20 bg-muted/40" aria-label="Free time">
+      {/* Active playhead: vertical accent bar with progress fill (only when bounded) */}
+      <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-primary/15 overflow-hidden">
+        <div
+          className="absolute inset-x-0 top-0 bg-primary"
+          style={{ height: `${end !== null ? progress : 100}%` }}
+        />
+      </div>
       <div className="flex items-center gap-3">
-        <div className="w-2 flex-shrink-0" />
+        {/* Priority dot slot — muted to match "no priority" */}
+        <div className="w-2 h-2 rounded-full bg-muted-foreground/30 flex-shrink-0" />
+
+        {/* Time slot */}
         <div className="w-20 flex-shrink-0">
           <p className="text-sm font-mono font-medium text-primary leading-snug tabular-nums">
-            {label}
+            {startLabel}
           </p>
         </div>
+
+        {/* Title slot */}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-display font-medium text-muted-foreground italic leading-snug truncate">
+            Free time
+          </p>
+        </div>
+
+        {/* Duration pill */}
+        {totalDuration !== null && totalDuration > 0 && (
+          <span className="flex-shrink-0 text-[11px] font-mono font-medium text-muted-foreground/80 tabular-nums px-2 py-0.5 rounded-sm bg-background/60">
+            {formatDuration(totalDuration)}
+          </span>
+        )}
       </div>
     </div>
   );
