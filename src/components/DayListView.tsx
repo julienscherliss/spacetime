@@ -412,8 +412,8 @@ export function DayListView() {
           <div
             className="w-2 h-2 rounded-full flex-shrink-0"
             style={{
-              backgroundColor: activeScheme.priorities[task.priority as 0 | 1 | 2 | 3]?.fill
-                ?? activeScheme.priorities[0].fill,
+              backgroundColor: `hsl(${activeScheme.priorities[task.priority as 0 | 1 | 2 | 3]?.fill
+                ?? activeScheme.priorities[0].fill})`,
             }}
           />
 
