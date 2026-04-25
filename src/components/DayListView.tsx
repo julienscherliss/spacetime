@@ -5,6 +5,7 @@ import { useTouchDragStore } from '@/store/touchDragStore';
 import { useCalendarStore } from '@/store/calendarStore';
 import { useCarryStore } from '@/store/carryStore';
 import { useDragHandoffStore } from '@/store/dragHandoffStore';
+import { useColorSchemeStore } from '@/store/colorSchemeStore';
 import { useCurrentTime, formatTime12h } from '@/hooks/useCurrentTime';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { GroupListRow } from '@/components/GroupListRow';
@@ -37,6 +38,7 @@ export function DayListView() {
     setListReturnZoom, setShowListReturn, completeTask,
   } = useTaskStore();
   const { dateStr: today } = useCurrentTime(15000);
+  const activeScheme = useColorSchemeStore((s) => s.getActiveScheme());
   const [selectedDate, _setSelectedDate] = useState(navigateToDate || currentDate || today);
 
   const setSelectedDate = useCallback((dateOrFn: string | ((prev: string) => string)) => {
@@ -405,12 +407,13 @@ export function DayListView() {
         }}
       >
         <div className="flex items-center gap-3">
-          {/* Priority dot — leftmost, vertically centered */}
+          {/* Priority dot — leftmost, vertically centered. Pulls fill from the
+              active color scheme so it matches the timeline blocks exactly. */}
           <div
-            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+            className="w-2 h-2 rounded-full flex-shrink-0"
             style={{
-              backgroundColor: `hsl(var(--priority-${task.priority}))`,
-              opacity: 0.6,
+              backgroundColor: activeScheme.priorities[task.priority as 0 | 1 | 2 | 3]?.fill
+                ?? activeScheme.priorities[0].fill,
             }}
           />
 
