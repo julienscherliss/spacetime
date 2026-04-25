@@ -142,8 +142,11 @@ export function DayView() {
     const [h, m] = taskTime.split(':').map(Number);
     const taskStartMin = h * 60 + m;
     const taskEndMin = taskStartMin + taskDuration;
-    const windowStartMin = Math.max(0, taskStartMin - 120);
-    const windowEndMin = Math.min(24 * 60, taskEndMin + 120);
+    // Pad proportionally: short tasks get a tight ~2-3hr window for precision,
+    // long tasks expand context so the user sees most of their day.
+    const padMin = Math.min(240, Math.max(75, taskDuration * 1.5));
+    const windowStartMin = Math.max(0, taskStartMin - padMin);
+    const windowEndMin = Math.min(24 * 60, taskEndMin + padMin);
     const windowHours = (windowEndMin - windowStartMin) / 60;
     const stickyOffset = 96;
     const viewportH = window.innerHeight - stickyOffset;
