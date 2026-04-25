@@ -156,6 +156,63 @@ describe('Group store actions', () => {
     expect(useTaskStore.getState().tasks.find((t) => t.id === groupId)!.completed).toBe(true);
   });
 
+  it('archives overdue routine groups and their children instead of sending them to limbo', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-03T10:00:00.000Z'));
+
+    const pastDate = '2026-04-02';
+    const groupId = 'routine-group';
+    const childId = 'routine-child';
+
+    useTaskStore.setState({
+      tasks: [
+        {
+          id: groupId,
+          title: 'Routine block',
+          type: 'group',
+          priority: 0,
+          originalPriority: 0,
+          date: pastDate,
+          time: '08:00',
+          duration: 30,
+          completed: false,
+          createdAt: '2026-04-01T00:00:00.000Z',
+          moveCount: 0,
+          recurrence: { type: 'daily' },
+          isRoutine: true,
+          isRecurrenceInstance: true,
+        },
+        {
+          id: childId,
+          title: 'Routine child',
+          type: 'one-time',
+          priority: 0,
+          originalPriority: 0,
+          date: pastDate,
+          time: '08:00',
+          duration: 30,
+          completed: false,
+          createdAt: '2026-04-01T00:00:00.000Z',
+          moveCount: 0,
+          groupId,
+        },
+      ],
+      editingTaskId: null,
+    });
+
+    useTaskStore.getState().moveOverdueToWaitingRoom();
+
+    const group = useTaskStore.getState().tasks.find((t) => t.id === groupId)!;
+    const child = useTaskStore.getState().tasks.find((t) => t.id === childId)!;
+
+    expect(group.archiveReason).toBe('deleted');
+    expect(group.inWaitingRoom).not.toBe(true);
+    expect(child.archiveReason).toBe('deleted');
+    expect(child.inWaitingRoom).not.toBe(true);
+
+    vi.useRealTimers();
+  });
+
   it('getTasksForDate hides Group children but shows the Group itself', () => {
     const store = useTaskStore.getState();
     const groupId = store.createEmptyGroup({ name: 'B', date: '2099-01-01', time: '09:00', duration: 30 });
