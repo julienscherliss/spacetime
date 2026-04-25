@@ -29,7 +29,7 @@ function getEndTime(time: string, duration: number): string {
 
 export function DayListView() {
   const {
-    tasks, routinesEnabled, generateRecurringInstances,
+    tasks, routinesEnabled, generateRecurringInstances, addTask,
     navigateToDate, setNavigateToDate, currentDate, setCurrentDate,
     setEditingTask, setDaySubMode,
     setListReturnZoom, setShowListReturn, completeTask,
@@ -123,6 +123,48 @@ export function DayListView() {
   };
 
   const handleAddTask = () => {
+    setDaySubMode('timeline');
+  };
+
+  /** Insert a new task in the gap between two scheduled tasks, then jump to
+   *  schedule view with the edit panel open and the "return to list" pill armed. */
+  const handleInsertBetween = (prev: Task, next: Task) => {
+    if (!prev.time || !next.time || !prev.duration) return;
+    const prevEnd = timeStrToMinutes(getEndTime(prev.time, prev.duration));
+    const nextStart = timeStrToMinutes(next.time);
+    const gap = nextStart - prevEnd;
+    if (gap <= 0) return;
+
+    const duration = gap >= 60 ? 60 : gap;
+    // Place flush against the second task so the new block ends exactly when
+    // `next` begins — mirrors the user's "right before the second task" spec.
+    const startMin = nextStart - duration;
+    const time = minutesToTimeStr(startMin);
+
+    const newId = addTask({
+      title: '',
+      date: selectedDate,
+      time,
+      duration,
+      priority: 0,
+      type: 'one-time',
+    });
+
+    setListReturnZoom({ taskTime: time, taskDuration: duration });
+    setShowListReturn(true);
+    setDaySubMode('timeline');
+    // Open the edit panel after the view swap settles so the panel mounts on top.
+    setTimeout(() => setEditingTask(newId), 50);
+  };
+
+  /** Long-press / drag-start on a row → portal into schedule view so the
+   *  existing timeline drag system can take over. The list-return pill arms
+   *  automatically so the user can hop back when they're done re-arranging. */
+  const enterScheduleForDrag = (task: Task) => {
+    if (task.time) {
+      setListReturnZoom({ taskTime: task.time, taskDuration: task.duration || 30 });
+    }
+    setShowListReturn(true);
     setDaySubMode('timeline');
   };
 
@@ -229,31 +271,47 @@ export function DayListView() {
         ) : (
           <div className="flex flex-col">
             {dayTasks.map((task, i) => {
+              const next = dayTasks[i + 1];
+              const gapMinutes = computeGapMinutes(task, next);
               if (task.type === 'group') {
                 return (
+                  <div key={task.id}>
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.03 }}
+                    >
+                      <GroupListRow
+                        group={task}
+                        onGroupTap={(id) => setEditingTask(id)}
+                        renderChild={(child) => renderTaskRow(child, true)}
+                      />
+                    </motion.div>
+                    {gapMinutes > 0 && next && (
+                      <InsertGapButton
+                        gapMinutes={gapMinutes}
+                        onInsert={() => handleInsertBetween(task, next)}
+                      />
+                    )}
+                  </div>
+                );
+              }
+              return (
+                <div key={task.id}>
                   <motion.div
-                    key={task.id}
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.03 }}
                   >
-                    <GroupListRow
-                      group={task}
-                      onGroupTap={(id) => setEditingTask(id)}
-                      renderChild={(child) => renderTaskRow(child, true)}
-                    />
+                    {renderTaskRow(task, false)}
                   </motion.div>
-                );
-              }
-              return (
-                <motion.div
-                  key={task.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.03 }}
-                >
-                  {renderTaskRow(task, false)}
-                </motion.div>
+                  {gapMinutes > 0 && next && (
+                    <InsertGapButton
+                      gapMinutes={gapMinutes}
+                      onInsert={() => handleInsertBetween(task, next)}
+                    />
+                  )}
+                </div>
               );
             })}
           </div>
@@ -271,11 +329,41 @@ export function DayListView() {
   );
 
   function renderTaskRow(task: Task, isChild: boolean) {
+    const endTime = task.time && task.duration ? getEndTime(task.time, task.duration) : null;
     return (
       <div
         className={`w-full text-left px-3 py-${isChild ? '2' : '4'} ${isChild ? 'border-b border-border/10' : 'border-b border-border/20'} transition-colors ${
           task.completed ? 'opacity-40' : ''
         }`}
+        onPointerDown={(e) => {
+          // Long-press → portal into schedule view so the user can drag the task
+          // around using the timeline's existing drag system.
+          if (e.pointerType === 'mouse' && e.button !== 0) return;
+          const startX = e.clientX;
+          const startY = e.clientY;
+          let timer: number | null = window.setTimeout(() => {
+            timer = null;
+            enterScheduleForDrag(task);
+          }, 350);
+          const cancel = (ev: PointerEvent) => {
+            if (timer != null) {
+              const dx = Math.abs(ev.clientX - startX);
+              const dy = Math.abs(ev.clientY - startY);
+              if (dx > 8 || dy > 8 || ev.type !== 'pointermove') {
+                window.clearTimeout(timer);
+                timer = null;
+              } else {
+                return;
+              }
+            }
+            window.removeEventListener('pointerup', cancel);
+            window.removeEventListener('pointercancel', cancel);
+            window.removeEventListener('pointermove', cancel);
+          };
+          window.addEventListener('pointerup', cancel);
+          window.addEventListener('pointercancel', cancel);
+          window.addEventListener('pointermove', cancel);
+        }}
       >
         <div className="flex items-start gap-3">
           {/* Time column — tappable to zoom timeline */}
@@ -284,15 +372,20 @@ export function DayListView() {
               e.stopPropagation();
               handleTimeTap(task);
             }}
-            className={`${isChild ? 'w-12' : 'w-16'} flex-shrink-0 pt-0.5 text-left active:bg-muted/40 rounded-sm -m-1 p-1 transition-colors`}
+            className={`${isChild ? 'w-14' : 'w-20'} flex-shrink-0 pt-0.5 text-left active:bg-muted/40 rounded-sm -m-1 p-1 transition-colors`}
           >
             {task.time ? (
               <div>
                 <p className="text-[11px] font-mono text-foreground/80 leading-tight">
                   {formatTime12h(task.time)}
                 </p>
+                {endTime && (
+                  <p className="text-[10px] font-mono text-muted-foreground/50 leading-tight">
+                    {formatTime12h(endTime)}
+                  </p>
+                )}
                 {task.duration && !isChild && (
-                  <p className="text-[9px] font-mono text-muted-foreground/40 mt-0.5">
+                  <p className="text-[9px] font-mono text-muted-foreground/30 mt-0.5">
                     {formatDuration(task.duration)}
                   </p>
                 )}
@@ -336,5 +429,46 @@ export function DayListView() {
       </div>
     );
   }
+}
+
+// ─── Helpers ───────────────────────────────────────────
+
+function timeStrToMinutes(time: string): number {
+  const [h, m] = time.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function minutesToTimeStr(mins: number): string {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+}
+
+function computeGapMinutes(prev: Task, next: Task | undefined): number {
+  if (!next || !prev.time || !next.time || !prev.duration) return 0;
+  const prevEnd = timeStrToMinutes(getEndTime(prev.time, prev.duration));
+  const nextStart = timeStrToMinutes(next.time);
+  return nextStart - prevEnd;
+}
+
+function InsertGapButton({ gapMinutes, onInsert }: { gapMinutes: number; onInsert: () => void }) {
+  return (
+    <button
+      onClick={onInsert}
+      aria-label={`Insert task in ${formatDuration(gapMinutes)} gap`}
+      className="group w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-muted/30 transition-colors"
+    >
+      <div className="flex-1 h-px bg-border/30 group-hover:bg-primary/40 transition-colors" />
+      <div className="flex items-center gap-1.5">
+        <span className="text-[9px] font-mono text-muted-foreground/40 group-hover:text-primary/60 tracking-wider transition-colors">
+          {formatDuration(gapMinutes)}
+        </span>
+        <div className="w-4 h-4 rounded-full border border-border/40 group-hover:border-primary/60 group-hover:bg-primary/10 flex items-center justify-center transition-colors">
+          <Plus size={9} strokeWidth={2} className="text-muted-foreground/50 group-hover:text-primary transition-colors" />
+        </div>
+      </div>
+      <div className="flex-1 h-px bg-border/30 group-hover:bg-primary/40 transition-colors" />
+    </button>
+  );
 }
 
