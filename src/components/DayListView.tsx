@@ -38,6 +38,7 @@ export function DayListView() {
     setListReturnZoom, setShowListReturn, completeTask,
   } = useTaskStore();
   const { dateStr: today } = useCurrentTime(15000);
+  const activeScheme = useColorSchemeStore((s) => s.getActiveScheme());
   const [selectedDate, _setSelectedDate] = useState(navigateToDate || currentDate || today);
 
   const setSelectedDate = useCallback((dateOrFn: string | ((prev: string) => string)) => {
