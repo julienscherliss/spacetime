@@ -344,6 +344,7 @@ export function DayListView() {
                       <InsertGapButton
                         gapMinutes={Math.min(60, timeStrToMinutes(task.time!))}
                         onInsert={() => handleInsertBefore(task)}
+                        showLabel={false}
                       />
                     )}
                     <motion.div
@@ -367,6 +368,7 @@ export function DayListView() {
                       <InsertGapButton
                         gapMinutes={Math.min(60, 24 * 60 - timeStrToMinutes(getEndTime(task.time, task.duration)))}
                         onInsert={() => handleInsertAfter(task)}
+                        showLabel={false}
                       />
                     )}
                   </div>
@@ -378,6 +380,7 @@ export function DayListView() {
                     <InsertGapButton
                       gapMinutes={Math.min(60, timeStrToMinutes(task.time!))}
                       onInsert={() => handleInsertBefore(task)}
+                      showLabel={false}
                     />
                   )}
                   <motion.div
@@ -397,6 +400,7 @@ export function DayListView() {
                     <InsertGapButton
                       gapMinutes={Math.min(60, 24 * 60 - timeStrToMinutes(getEndTime(task.time, task.duration)))}
                       onInsert={() => handleInsertAfter(task)}
+                      showLabel={false}
                     />
                   )}
                 </div>
