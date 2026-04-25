@@ -407,36 +407,33 @@ export function DayListView() {
         }}
       >
         <div className="flex items-start gap-3">
-          {/* Time column — tappable to zoom timeline */}
+          {/* Priority dot — leftmost */}
+          <div
+            className="w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0"
+            style={{
+              backgroundColor: `hsl(var(--priority-${task.priority}))`,
+              opacity: 0.6,
+            }}
+          />
+
+          {/* Start time — tappable to zoom timeline */}
           <button
             onClick={(e) => {
               e.stopPropagation();
               handleTimeTap(task);
             }}
-            className={`${isChild ? 'w-14' : 'w-20'} flex-shrink-0 pt-0.5 text-left active:bg-muted/40 rounded-sm -m-1 p-1 transition-colors`}
+            className={`${isChild ? 'w-14' : 'w-16'} flex-shrink-0 pt-0.5 text-left active:bg-muted/40 rounded-sm -m-1 p-1 transition-colors`}
           >
             {task.time ? (
-              <div>
-                <p className="text-[11px] font-mono text-foreground/80 leading-tight">
-                  {formatTime12h(task.time)}
-                </p>
-                {endTime && (
-                  <p className="text-[10px] font-mono text-muted-foreground/50 leading-tight">
-                    {formatTime12h(endTime)}
-                  </p>
-                )}
-                {task.duration && !isChild && (
-                  <p className="text-[9px] font-mono text-muted-foreground/30 mt-0.5">
-                    {formatDuration(task.duration)}
-                  </p>
-                )}
-              </div>
+              <p className="text-[11px] font-mono text-foreground/80 leading-tight">
+                {formatTime12h(task.time)}
+              </p>
             ) : (
               <p className="text-[9px] font-mono text-muted-foreground/30 tracking-wider">ANYTIME</p>
             )}
           </button>
 
-          {/* Content — tappable to edit */}
+          {/* Title + duration — tappable to edit */}
           <button
             onClick={() => handleTaskTap(task.id)}
             className="flex-1 min-w-0 text-left active:bg-muted/40 rounded-sm -m-1 p-1 transition-colors"
@@ -446,6 +443,11 @@ export function DayListView() {
             }`}>
               {task.title}
             </p>
+            {task.duration && !isChild && (
+              <p className="text-[9px] font-mono text-muted-foreground/40 mt-0.5 tracking-wider">
+                {formatDuration(task.duration)}
+              </p>
+            )}
             {task.description && !isChild && (
               <p className="text-[11px] text-muted-foreground/50 mt-0.5 line-clamp-1">
                 {task.description}
@@ -458,14 +460,12 @@ export function DayListView() {
             )}
           </button>
 
-          {/* Priority dot */}
-          <div
-            className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
-            style={{
-              backgroundColor: `hsl(var(--priority-${task.priority}))`,
-              opacity: 0.6,
-            }}
-          />
+          {/* End time — far right */}
+          {endTime && (
+            <p className="text-[11px] font-mono text-muted-foreground/60 leading-tight pt-1.5 flex-shrink-0">
+              {formatTime12h(endTime)}
+            </p>
+          )}
         </div>
       </div>
     );
