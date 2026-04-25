@@ -1,7 +1,7 @@
 /* nav v2 */
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useTaskStore, ViewMode, DaySubMode } from '@/store/taskStore';
+import { useTaskStore, ViewMode, DaySubMode, WeekSubMode } from '@/store/taskStore';
 import { useLibraryStore } from '@/store/libraryStore';
 import { useTimezoneStore, getTzAbbr } from '@/store/timezoneStore';
 import { useAuth } from '@/hooks/useAuth';
@@ -21,7 +21,7 @@ const views: { mode: ViewMode; icon: typeof Focus; label: string }[] = [
 ];
 
 export function AppNav() {
-  const { viewMode, setViewMode, daySubMode, setDaySubMode, routinesEnabled, toggleRoutines, tasks } = useTaskStore();
+  const { viewMode, setViewMode, daySubMode, setDaySubMode, weekSubMode, setWeekSubMode, routinesEnabled, toggleRoutines, tasks } = useTaskStore();
   const { panelOpen: libPanelOpen, setPanelOpen: setLibPanelOpen } = useLibraryStore();
   const libCount = useLibraryStore((s) => s.items.length);
   const libUrgentCount = useLibraryStore((s) => {
@@ -182,6 +182,10 @@ export function AppNav() {
                       setDaySubMode(daySubMode === 'timeline' ? 'list' : 'timeline');
                       return;
                     }
+                    if (mode === 'week' && viewMode === 'week') {
+                      setWeekSubMode(weekSubMode === 'timeline' ? 'list' : 'timeline');
+                      return;
+                    }
                     setViewMode(mode);
                   }}
                   className={`relative flex flex-col items-center justify-center min-w-[48px] h-[44px] rounded-md transition-colors ${
@@ -244,6 +248,10 @@ export function AppNav() {
               onClick={() => {
                 if (mode === 'day' && viewMode === 'day') {
                   setDaySubMode(daySubMode === 'timeline' ? 'list' : 'timeline');
+                  return;
+                }
+                if (mode === 'week' && viewMode === 'week') {
+                  setWeekSubMode(weekSubMode === 'timeline' ? 'list' : 'timeline');
                   return;
                 }
                 setViewMode(mode);

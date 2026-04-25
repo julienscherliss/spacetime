@@ -8,6 +8,7 @@ import { FocusView } from '@/components/FocusView';
 import { DayView } from '@/components/DayView';
 import { DayListView } from '@/components/DayListView';
 import { WeekView } from '@/components/WeekView';
+import { WeekListView } from '@/components/WeekListView';
 import { CalendarView } from '@/components/CalendarView';
 import { TaskEditPanel } from '@/components/TaskEditPanel';
 import { GroupEditPanel } from '@/components/GroupEditPanel';
@@ -33,7 +34,7 @@ import { InteractiveTutorial } from '@/components/InteractiveTutorial';
 import { FeedbackModal } from '@/components/FeedbackModal';
 
 const Index = () => {
-  const { viewMode, daySubMode, routinesEnabled, moveOverdueToWaitingRoom } = useTaskStore();
+  const { viewMode, daySubMode, weekSubMode, routinesEnabled, moveOverdueToWaitingRoom } = useTaskStore();
   useNativeNotifications();
   useForegroundReminders();
   const [waitingOpen, setWaitingOpen] = useState(false);
@@ -164,7 +165,7 @@ const Index = () => {
         >
           {viewMode === 'focus' && <FocusView />}
           {viewMode === 'day' && (daySubMode === 'list' ? <DayListView /> : <DayView />)}
-          {viewMode === 'week' && <WeekView />}
+          {viewMode === 'week' && (weekSubMode === 'list' ? <WeekListView /> : <WeekView />)}
           {viewMode === 'calendar' && <CalendarView />}
         </motion.div>
       </AnimatePresence>
