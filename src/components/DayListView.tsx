@@ -268,9 +268,7 @@ export function DayListView() {
             </button>
           </div>
 
-          <div className="text-[9px] font-mono text-muted-foreground/40 tracking-widest">
-            LIST
-          </div>
+          <div />
         </div>
       </div>
 
