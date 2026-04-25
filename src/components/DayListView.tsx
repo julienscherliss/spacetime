@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import { useTaskStore, Task } from '@/store/taskStore';
 import { useTouchDragStore } from '@/store/touchDragStore';
 import { useCalendarStore } from '@/store/calendarStore';
+import { useCarryStore } from '@/store/carryStore';
+import { useDragHandoffStore } from '@/store/dragHandoffStore';
 import { useCurrentTime, formatTime12h } from '@/hooks/useCurrentTime';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { GroupListRow } from '@/components/GroupListRow';
@@ -157,15 +159,29 @@ export function DayListView() {
     setTimeout(() => setEditingTask(newId), 50);
   };
 
-  /** Long-press / drag-start on a row → portal into schedule view so the
-   *  existing timeline drag system can take over. The list-return pill arms
-   *  automatically so the user can hop back when they're done re-arranging. */
+  /** Portal into schedule view so the existing timeline drag system can take
+   *  over. The list-return pill arms automatically so the user can hop back
+   *  when they're done re-arranging. */
   const enterScheduleForDrag = (task: Task) => {
     if (task.time) {
       setListReturnZoom({ taskTime: task.time, taskDuration: task.duration || 30 });
     }
     setShowListReturn(true);
     setDaySubMode('timeline');
+  };
+
+  /** Long-press (still) → pick the task up into carry mode so the user can
+   *  navigate dates while holding it. Mirrors the timeline carry behaviour. */
+  const carryPickup = (task: Task) => {
+    if (navigator.vibrate) navigator.vibrate(30);
+    useCarryStore.getState().pickup({
+      taskId: task.id,
+      title: task.title,
+      duration: task.duration || 30,
+      fromDate: task.date,
+      fromTime: task.time,
+      pickedUpAt: Date.now(),
+    });
   };
 
   // Swipe handlers
@@ -336,33 +352,61 @@ export function DayListView() {
           task.completed ? 'opacity-40' : ''
         }`}
         onPointerDown={(e) => {
-          // Long-press → portal into schedule view so the user can drag the task
-          // around using the timeline's existing drag system.
           if (e.pointerType === 'mouse' && e.button !== 0) return;
+          // Don't hijack taps on the inner Time/Content buttons — they handle
+          // their own click semantics (zoom timeline, open edit panel).
+          const target = e.target as HTMLElement;
+          if (target.closest('button')) return;
+          if (useCarryStore.getState().carried) return;
+
           const startX = e.clientX;
           const startY = e.clientY;
-          let timer: number | null = window.setTimeout(() => {
-            timer = null;
-            enterScheduleForDrag(task);
-          }, 350);
-          const cancel = (ev: PointerEvent) => {
-            if (timer != null) {
-              const dx = Math.abs(ev.clientX - startX);
-              const dy = Math.abs(ev.clientY - startY);
-              if (dx > 8 || dy > 8 || ev.type !== 'pointermove') {
-                window.clearTimeout(timer);
-                timer = null;
-              } else {
-                return;
-              }
+          const pointerId = e.pointerId;
+          // Long-press still = carry pickup (~500ms matches timeline behaviour).
+          let holdTimer: number | null = window.setTimeout(() => {
+            holdTimer = null;
+            cleanup();
+            carryPickup(task);
+          }, 500);
+          // Only scheduled tasks can be portaled into the timeline drag system.
+          const canPortal = !!task.time && task.type !== 'group';
+
+          const onMove = (ev: PointerEvent) => {
+            const dx = Math.abs(ev.clientX - startX);
+            const dy = Math.abs(ev.clientY - startY);
+            if (dx <= 8 && dy <= 8) return;
+            // Movement before hold completes → portal into schedule view and
+            // hand off the in-flight drag to the matching TimelineTaskBlock.
+            if (holdTimer != null) {
+              window.clearTimeout(holdTimer);
+              holdTimer = null;
             }
-            window.removeEventListener('pointerup', cancel);
-            window.removeEventListener('pointercancel', cancel);
-            window.removeEventListener('pointermove', cancel);
+            cleanup();
+            if (!canPortal) return;
+            useDragHandoffStore.getState().setHandoff({
+              taskId: task.id,
+              pointerId,
+              clientX: ev.clientX,
+              clientY: ev.clientY,
+              startedAt: Date.now(),
+            });
+            enterScheduleForDrag(task);
           };
-          window.addEventListener('pointerup', cancel);
-          window.addEventListener('pointercancel', cancel);
-          window.addEventListener('pointermove', cancel);
+          const onUp = () => {
+            if (holdTimer != null) {
+              window.clearTimeout(holdTimer);
+              holdTimer = null;
+            }
+            cleanup();
+          };
+          const cleanup = () => {
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', onUp);
+            window.removeEventListener('pointercancel', onUp);
+          };
+          window.addEventListener('pointermove', onMove);
+          window.addEventListener('pointerup', onUp);
+          window.addEventListener('pointercancel', onUp);
         }}
       >
         <div className="flex items-start gap-3">
