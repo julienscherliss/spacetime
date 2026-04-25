@@ -255,6 +255,35 @@ export function TimelineTaskBlock({
     startPickupTimer();
   }, [isLocked, isResizingThis, task.id, task.date, task.time, task.duration, task.title, task.linked, task.linkedGroupId, dragOffsetRef, handleTaskClick, startPickupTimer]);
 
+  // Consume a drag handoff from DayListView: when the user starts dragging a
+  // task in list view, we portal them into the timeline and replay a
+  // synthetic pointerdown on this block so the existing drag pipeline picks
+  // up where the user's finger/cursor already is — no second tap required.
+  useEffect(() => {
+    const handoff = useDragHandoffStore.getState().handoff;
+    if (!handoff || handoff.taskId !== task.id) return;
+    if (Date.now() - handoff.startedAt > 1500) return;
+    const el = elRef.current;
+    if (!el) return;
+    // Mark consumed immediately to avoid re-firing on re-renders.
+    useDragHandoffStore.getState().setHandoff(null);
+    // Defer one frame so layout is committed and getBoundingClientRect is real.
+    const raf = requestAnimationFrame(() => {
+      const synthetic = new PointerEvent('pointerdown', {
+        bubbles: true,
+        cancelable: true,
+        pointerId: handoff.pointerId,
+        pointerType: 'touch',
+        clientX: handoff.clientX,
+        clientY: handoff.clientY,
+        button: 0,
+        buttons: 1,
+      });
+      el.dispatchEvent(synthetic);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [task.id]);
+
   // Global pointermove/pointerup when drag is pending or active
   useEffect(() => {
     if (!pointerStartRef.current) return;
