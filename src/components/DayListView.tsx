@@ -559,7 +559,7 @@ function computeGapMinutes(prev: Task, next: Task | undefined): number {
   return nextStart - prevEnd;
 }
 
-function InsertGapButton({ gapMinutes, onInsert }: { gapMinutes: number; onInsert: () => void }) {
+function InsertGapButton({ gapMinutes, onInsert, showLabel = true }: { gapMinutes: number; onInsert: () => void; showLabel?: boolean }) {
   return (
     <button
       onClick={onInsert}
@@ -568,9 +568,11 @@ function InsertGapButton({ gapMinutes, onInsert }: { gapMinutes: number; onInser
     >
       <div className="flex-1 h-px bg-border/30 group-hover:bg-primary/40 transition-colors" />
       <div className="flex items-center gap-1.5">
-        <span className="text-[9px] font-mono text-muted-foreground/40 group-hover:text-primary/60 tracking-wider transition-colors">
-          {formatDuration(gapMinutes)}
-        </span>
+        {showLabel && (
+          <span className="text-[9px] font-mono text-muted-foreground/40 group-hover:text-primary/60 tracking-wider transition-colors">
+            {formatDuration(gapMinutes)}
+          </span>
+        )}
         <div className="w-4 h-4 rounded-full border border-border/40 group-hover:border-primary/60 group-hover:bg-primary/10 flex items-center justify-center transition-colors">
           <Plus size={9} strokeWidth={2} className="text-muted-foreground/50 group-hover:text-primary transition-colors" />
         </div>
