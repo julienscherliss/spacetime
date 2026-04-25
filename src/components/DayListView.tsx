@@ -423,11 +423,24 @@ export function DayListView() {
               const gapMinutes = computeGapMinutes(task, next);
               const isFirstScheduled = !!task.time && dayTasks.slice(0, i).every((t) => !t.time);
               const isLastScheduled = !!task.time && dayTasks.slice(i + 1).every((t) => !t.time);
+              // When the NowMarker appears here, hide the gap button between this row's
+              // previous sibling and this row (the marker replaces it visually).
+              const showNowMarkerHere = i === nowIndex;
+              const prevTask = i > 0 ? dayTasks[i - 1] : undefined;
+              const nowStart = prevTask?.time && prevTask?.duration
+                ? timeStrToMinutes(prevTask.time) + prevTask.duration
+                : null;
+              const nowEnd = task.time ? timeStrToMinutes(task.time) : null;
+              // When NowMarker appears AFTER the last row (nothing left today)
+              const showNowMarkerAtEnd = i === dayTasks.length - 1 && nowIndex === dayTasks.length;
+              const endNowStart = task.time && task.duration ? timeStrToMinutes(task.time) + task.duration : null;
               if (task.type === 'group') {
                 return (
                   <div key={task.id}>
-                    {i === nowIndex && <NowMarker nowMinutes={nowMinutes} />}
-                    {isFirstScheduled && (
+                    {showNowMarkerHere && (
+                      <NowMarker nowMinutes={nowMinutes} startMinutes={nowStart} endMinutes={nowEnd} />
+                    )}
+                    {isFirstScheduled && !showNowMarkerHere && (
                       <InsertGapButton
                         gapMinutes={Math.min(60, timeStrToMinutes(task.time!))}
                         onInsert={() => handleInsertBefore(task)}
@@ -458,16 +471,18 @@ export function DayListView() {
                         showLabel={false}
                       />
                     )}
-                    {i === dayTasks.length - 1 && nowIndex === dayTasks.length && (
-                      <NowMarker nowMinutes={nowMinutes} />
+                    {showNowMarkerAtEnd && (
+                      <NowMarker nowMinutes={nowMinutes} startMinutes={endNowStart} endMinutes={null} />
                     )}
                   </div>
                 );
               }
               return (
                 <div key={task.id}>
-                  {i === nowIndex && <NowMarker nowMinutes={nowMinutes} />}
-                  {isFirstScheduled && (
+                  {showNowMarkerHere && (
+                    <NowMarker nowMinutes={nowMinutes} startMinutes={nowStart} endMinutes={nowEnd} />
+                  )}
+                  {isFirstScheduled && !showNowMarkerHere && (
                     <InsertGapButton
                       gapMinutes={Math.min(60, timeStrToMinutes(task.time!))}
                       onInsert={() => handleInsertBefore(task)}
@@ -494,8 +509,8 @@ export function DayListView() {
                       showLabel={false}
                     />
                   )}
-                  {i === dayTasks.length - 1 && nowIndex === dayTasks.length && (
-                    <NowMarker nowMinutes={nowMinutes} />
+                  {showNowMarkerAtEnd && (
+                    <NowMarker nowMinutes={nowMinutes} startMinutes={endNowStart} endMinutes={null} />
                   )}
                 </div>
               );
