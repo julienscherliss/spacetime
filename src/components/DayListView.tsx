@@ -364,20 +364,26 @@ export function DayListView() {
         ) : (
           <div className="flex flex-col">
             {(() => {
-              // Compute insertion index for the NOW marker (only on today).
-              // Rules: place before the first task that hasn't ended yet; if all
-              // scheduled tasks are in the past, append after the last row.
+              // Compute insertion index for the standalone NOW marker (only on today).
+              // If we're currently inside a task, don't render a standalone marker;
+              // that task gets an inline playhead instead.
               let nowIndex = -1;
               if (isToday) {
                 const scheduled = dayTasks
                   .map((t, idx) => ({ t, idx }))
                   .filter((x) => !!x.t.time);
+
                 if (scheduled.length > 0) {
-                  const firstUpcoming = scheduled.find(({ t }) => {
-                    const end = timeStrToMinutes(getEndTime(t.time!, t.duration || 0));
-                    return end > nowMinutes;
+                  const currentScheduledTask = scheduled.find(({ t }) => {
+                    const start = timeStrToMinutes(t.time!);
+                    const end = start + (t.duration || 0);
+                    return nowMinutes >= start && nowMinutes < end;
                   });
-                  nowIndex = firstUpcoming ? firstUpcoming.idx : dayTasks.length;
+
+                  if (!currentScheduledTask) {
+                    const firstUpcoming = scheduled.find(({ t }) => timeStrToMinutes(t.time!) > nowMinutes);
+                    nowIndex = firstUpcoming ? firstUpcoming.idx : dayTasks.length;
+                  }
                 } else {
                   nowIndex = 0;
                 }
