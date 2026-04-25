@@ -404,48 +404,43 @@ export function DayListView() {
           window.addEventListener('pointercancel', onUp);
         }}
       >
-        <div className="flex items-start gap-3">
-          {/* Priority dot — leftmost */}
+        <div className="flex items-center gap-3">
+          {/* Priority dot — leftmost, vertically centered */}
           <div
-            className="w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0"
+            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
             style={{
               backgroundColor: `hsl(var(--priority-${task.priority}))`,
               opacity: 0.6,
             }}
           />
 
-          {/* Start time — tappable to zoom timeline */}
+          {/* Start time — prominent, fixed-width for clean alignment */}
           <button
             onClick={(e) => {
               e.stopPropagation();
               handleTimeTap(task);
             }}
-            className={`${isChild ? 'w-14' : 'w-16'} flex-shrink-0 pt-0.5 text-left active:bg-muted/40 rounded-sm -m-1 p-1 transition-colors`}
+            className={`${isChild ? 'w-16' : 'w-20'} flex-shrink-0 text-left active:bg-muted/40 rounded-sm -mx-1 px-1 py-1 transition-colors`}
           >
             {task.time ? (
-              <p className="text-[11px] font-mono text-foreground/80 leading-tight">
+              <p className={`${isChild ? 'text-xs' : 'text-sm'} font-mono font-medium text-foreground leading-none tabular-nums`}>
                 {formatTime12h(task.time)}
               </p>
             ) : (
-              <p className="text-[9px] font-mono text-muted-foreground/30 tracking-wider">ANYTIME</p>
+              <p className="text-[10px] font-mono text-muted-foreground/40 tracking-wider">ANYTIME</p>
             )}
           </button>
 
-          {/* Title + duration — tappable to edit */}
+          {/* Title — tappable to edit */}
           <button
             onClick={() => handleTaskTap(task.id)}
-            className="flex-1 min-w-0 text-left active:bg-muted/40 rounded-sm -m-1 p-1 transition-colors"
+            className="flex-1 min-w-0 text-left active:bg-muted/40 rounded-sm -mx-1 px-1 py-1 transition-colors"
           >
-            <p className={`${isChild ? 'text-xs' : 'text-sm'} font-display font-medium text-foreground leading-snug ${
+            <p className={`${isChild ? 'text-xs' : 'text-sm'} font-display font-medium text-foreground leading-snug truncate ${
               task.completed ? 'line-through' : ''
             }`}>
               {task.title}
             </p>
-            {task.duration && !isChild && (
-              <p className="text-[9px] font-mono text-muted-foreground/40 mt-0.5 tracking-wider">
-                {formatDuration(task.duration)}
-              </p>
-            )}
             {task.description && !isChild && (
               <p className="text-[11px] text-muted-foreground/50 mt-0.5 line-clamp-1">
                 {task.description}
@@ -458,11 +453,11 @@ export function DayListView() {
             )}
           </button>
 
-          {/* End time — far right */}
-          {endTime && (
-            <p className="text-[11px] font-mono text-muted-foreground/60 leading-tight pt-1.5 flex-shrink-0">
-              {formatTime12h(endTime)}
-            </p>
+          {/* Duration pill — far right, prominent */}
+          {task.duration && task.time && (
+            <span className="flex-shrink-0 text-[11px] font-mono font-medium text-muted-foreground/80 tabular-nums px-2 py-0.5 rounded-sm bg-muted/40">
+              {formatDuration(task.duration)}
+            </span>
           )}
         </div>
       </div>
