@@ -30,31 +30,22 @@ function getEndTime(time: string, duration: number): string {
   return `${Math.floor(total / 60).toString().padStart(2, '0')}:${(total % 60).toString().padStart(2, '0')}`;
 }
 
-/** Cassette-futurism "NOW" marker. Mirrors the task-row grid (dot · time · body)
- *  so it slots into the list without overpowering it. The accent bar reads as
- *  a tape-head playhead rather than a full-width divider. */
+/** Standalone "between tasks" NOW marker. Same column grid as task rows so it
+ *  reads as a quiet placeholder rather than a divider. */
 function NowMarker({ nowMinutes }: { nowMinutes: number }) {
   const label = formatTime12h(nowMinutes);
   return (
-    <div className="w-full px-3 py-1.5 select-none" aria-label="Current time">
+    <div className="relative w-full px-3 py-2 select-none" aria-label="Current time">
+      {/* Accent left bar — same visual language as the active-task row */}
+      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-primary rounded-r-sm" />
       <div className="flex items-center gap-3">
-        {/* Dot slot — matches task-row priority-dot column (w-2) */}
-        <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0 animate-pulse" />
-
-        {/* Time slot — matches task-row time column (w-20) */}
+        <div className="w-2 flex-shrink-0" />
         <div className="w-20 flex-shrink-0">
           <p className="text-sm font-mono font-medium text-primary leading-snug tabular-nums">
             {label}
           </p>
         </div>
-
-        {/* Playhead bar + NOW tag — fills the title column space */}
-        <div className="flex-1 min-w-0 flex items-center gap-2">
-          <div className="h-px flex-1 bg-primary/60" />
-          <span className="text-[9px] font-mono font-bold text-primary-foreground bg-primary px-1.5 py-0.5 rounded-sm tracking-[0.2em]">
-            NOW
-          </span>
-        </div>
+        <span className="text-[9px] font-mono font-bold text-primary tracking-[0.2em]">NOW</span>
       </div>
     </div>
   );
