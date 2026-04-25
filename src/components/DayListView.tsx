@@ -162,8 +162,9 @@ export function DayListView() {
   /** Portal into schedule view so the existing timeline drag system can take
    *  over. The list-return pill arms automatically so the user can hop back
    *  when they're done re-arranging. */
-  const enterScheduleForDrag = (task: Task) => {
-    if (task.time) {
+  const enterScheduleForDrag = (task: Task, options?: { zoomToTask?: boolean }) => {
+    const zoomToTask = options?.zoomToTask ?? true;
+    if (zoomToTask && task.time) {
       setListReturnZoom({ taskTime: task.time, taskDuration: task.duration || 30 });
     }
     setShowListReturn(true);
@@ -386,7 +387,7 @@ export function DayListView() {
               clientY: ev.clientY,
               startedAt: Date.now(),
             });
-            enterScheduleForDrag(task);
+            enterScheduleForDrag(task, { zoomToTask: false });
           };
           const onUp = () => {
             if (holdTimer != null) {

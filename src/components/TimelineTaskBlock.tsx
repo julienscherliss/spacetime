@@ -257,8 +257,8 @@ export function TimelineTaskBlock({
 
   // Consume a drag handoff from DayListView: when the user starts dragging a
   // task in list view, we portal them into the timeline and replay a
-  // synthetic pointerdown on this block so the existing drag pipeline picks
-  // up where the user's finger/cursor already is — no second tap required.
+  // synthetic pointerdown on this block itself. Starting from the actual block
+  // rect avoids using stale list-view coordinates after the view swap.
   useEffect(() => {
     const handoff = useDragHandoffStore.getState().handoff;
     if (!handoff || handoff.taskId !== task.id) return;
@@ -269,13 +269,16 @@ export function TimelineTaskBlock({
     useDragHandoffStore.getState().setHandoff(null);
     // Defer one frame so layout is committed and getBoundingClientRect is real.
     const raf = requestAnimationFrame(() => {
+      const rect = el.getBoundingClientRect();
+      const clientX = rect.left + rect.width / 2;
+      const clientY = rect.top + Math.min(rect.height / 2, 24);
       const synthetic = new PointerEvent('pointerdown', {
         bubbles: true,
         cancelable: true,
         pointerId: handoff.pointerId,
         pointerType: 'touch',
-        clientX: handoff.clientX,
-        clientY: handoff.clientY,
+        clientX,
+        clientY,
         button: 0,
         buttons: 1,
       });
