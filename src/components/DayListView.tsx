@@ -332,15 +332,6 @@ export function DayListView() {
           </div>
         ) : (
           <div className="flex flex-col">
-            {(() => {
-              const firstScheduledIdx = dayTasks.findIndex((t) => !!t.time);
-              let lastScheduledIdx = -1;
-              for (let i = dayTasks.length - 1; i >= 0; i--) {
-                if (dayTasks[i].time) { lastScheduledIdx = i; break; }
-              }
-              return null;
-            })()}
-            {(() => null)()}
             {dayTasks.map((task, i) => {
               const next = dayTasks[i + 1];
               const gapMinutes = computeGapMinutes(task, next);
