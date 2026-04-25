@@ -30,6 +30,36 @@ function getEndTime(time: string, duration: number): string {
   return `${Math.floor(total / 60).toString().padStart(2, '0')}:${(total % 60).toString().padStart(2, '0')}`;
 }
 
+/** Cassette-futurism "NOW" marker: tape-reel dot, segmented line, mono label.
+ *  Inserted between task rows in the day list to show where we are in the day. */
+function NowMarker({ nowMinutes }: { nowMinutes: number }) {
+  const label = formatTime12h(nowMinutes);
+  return (
+    <div className="relative flex items-center gap-2 py-1 px-3 select-none" aria-label="Current time">
+      {/* Tape-reel dot with concentric ring */}
+      <div className="relative flex-shrink-0 flex items-center justify-center w-3 h-3">
+        <div className="absolute inset-0 rounded-full border border-primary/40" />
+        <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+      </div>
+      {/* Segmented dashed line */}
+      <div
+        className="flex-1 h-px"
+        style={{
+          backgroundImage:
+            'repeating-linear-gradient(to right, hsl(var(--primary)) 0 6px, transparent 6px 10px)',
+        }}
+      />
+      {/* Time + NOW chip */}
+      <span className="text-[10px] font-mono font-medium text-primary tabular-nums tracking-widest">
+        {label}
+      </span>
+      <span className="text-[9px] font-mono font-bold text-primary-foreground bg-primary px-1.5 py-0.5 rounded-sm tracking-[0.2em]">
+        NOW
+      </span>
+    </div>
+  );
+}
+
 export function DayListView() {
   const {
     tasks, routinesEnabled, generateRecurringInstances, addTask,
