@@ -182,6 +182,10 @@ export function AppNav() {
                       setDaySubMode(daySubMode === 'timeline' ? 'list' : 'timeline');
                       return;
                     }
+                    if (mode === 'week' && viewMode === 'week') {
+                      setWeekSubMode(weekSubMode === 'timeline' ? 'list' : 'timeline');
+                      return;
+                    }
                     setViewMode(mode);
                   }}
                   className={`relative flex flex-col items-center justify-center min-w-[48px] h-[44px] rounded-md transition-colors ${
