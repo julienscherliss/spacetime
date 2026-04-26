@@ -13,8 +13,7 @@ import { useCarryStore } from '@/store/carryStore';
 import { useDragHandoffStore } from '@/store/dragHandoffStore';
 import { useCalendarStore } from '@/store/calendarStore';
 import { useCurrentTime, formatTime12h, getWeekBounds } from '@/hooks/useCurrentTime';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { ChevronsRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsRight } from 'lucide-react';
 
 function addDaysToDate(dateStr: string, days: number): string {
   const d = new Date(dateStr + 'T12:00:00');
