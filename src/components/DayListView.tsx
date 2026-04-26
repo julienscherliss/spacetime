@@ -71,28 +71,28 @@ function NowMarker({
           style={{ height: `${end !== null ? progress : 100}%` }}
         />
       </div>
-      <div className="flex items-start gap-3">
+      <div className="flex items-baseline gap-3">
         {/* Time column — matches focus row layout */}
-        <div className="w-16 flex-shrink-0 pt-0.5">
-          <p className="text-[11px] font-mono leading-tight text-primary tabular-nums">
+        <div className="w-16 flex-shrink-0">
+          <p className="text-[11px] font-mono leading-tight text-primary tabular-nums whitespace-nowrap">
             {startLabel}
           </p>
-          {totalDuration !== null && totalDuration > 0 && (
-            <p className="text-[9px] font-mono mt-0.5 text-muted-foreground/60">
-              {formatDuration(totalDuration)}
-            </p>
-          )}
         </div>
 
         {/* Title */}
-        <div className="flex-1 min-w-0 pt-0.5">
+        <div className="flex-1 min-w-0">
           <p className="text-sm font-display font-medium text-muted-foreground italic leading-snug truncate">
             Free time
+            {totalDuration !== null && totalDuration > 0 && (
+              <span className="ml-1.5 text-[11px] font-mono text-muted-foreground/50 not-italic">
+                {formatDurationBracket(totalDuration)}
+              </span>
+            )}
           </p>
         </div>
 
         {/* Priority dot slot — muted to match "no priority" */}
-        <div className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 bg-muted-foreground/30" />
+        <div className="w-1.5 h-1.5 rounded-full self-center flex-shrink-0 bg-muted-foreground/30" />
       </div>
     </div>
   );
