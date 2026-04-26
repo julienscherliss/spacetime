@@ -9,6 +9,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useTaskStore, Task } from '@/store/taskStore';
+import { useCarryStore } from '@/store/carryStore';
+import { useDragHandoffStore } from '@/store/dragHandoffStore';
 import { useCalendarStore } from '@/store/calendarStore';
 import { useCurrentTime, formatTime12h, getWeekBounds } from '@/hooks/useCurrentTime';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -45,7 +47,8 @@ function timeStrToMinutes(time: string): number {
 export function WeekListView() {
   const {
     tasks, routinesEnabled, generateRecurringInstances,
-    setEditingTask, setDaySubMode, setNavigateToDate, setViewMode,
+    setEditingTask, setDaySubMode, setWeekSubMode, setNavigateToDate, setViewMode,
+    setListReturnZoom, setShowListReturn,
   } = useTaskStore();
   const { dateStr: today, minutes: nowMinutes } = useCurrentTime(30000);
 
@@ -97,6 +100,30 @@ export function WeekListView() {
     setNavigateToDate(date);
     setDaySubMode('timeline');
     setViewMode('day');
+  };
+
+  /** Tapping the time chip or dragging a row portals into the week schedule
+   *  view. Mirrors DayListView's behavior, swapped for week. */
+  const enterWeekScheduleForTask = (task: Task) => {
+    setNavigateToDate(task.date);
+    if (task.time) {
+      setListReturnZoom({ taskTime: task.time, taskDuration: task.duration || 30 });
+    }
+    setShowListReturn(true);
+    setWeekSubMode('timeline');
+    setViewMode('week');
+  };
+
+  const carryPickup = (task: Task) => {
+    if (navigator.vibrate) navigator.vibrate(30);
+    useCarryStore.getState().pickup({
+      taskId: task.id,
+      title: task.title,
+      duration: task.duration || 30,
+      fromDate: task.date,
+      fromTime: task.time,
+      pickedUpAt: Date.now(),
+    });
   };
 
   const tasksFor = (date: string) =>
@@ -159,23 +186,80 @@ export function WeekListView() {
         : 'text-foreground';
 
     return (
-      <button
+      <div
         key={task.id}
-        onClick={() => handleTaskTap(task.id)}
-        className="w-full text-left flex items-baseline gap-4 px-1 py-1.5 hover:bg-muted/20 rounded-sm transition-colors"
+        className="w-full flex items-baseline gap-4 px-1 py-1.5 hover:bg-muted/20 rounded-sm transition-colors select-none"
+        onPointerDown={(e) => {
+          if (e.pointerType === 'mouse' && e.button !== 0) return;
+          if (useCarryStore.getState().carried) return;
+          const startX = e.clientX;
+          const startY = e.clientY;
+          const pointerId = e.pointerId;
+          let holdTimer: number | null = window.setTimeout(() => {
+            holdTimer = null;
+            cleanup();
+            carryPickup(task);
+          }, 500);
+          const canPortal = !!task.time && task.type !== 'group';
+          const onMove = (ev: PointerEvent) => {
+            const dx = Math.abs(ev.clientX - startX);
+            const dy = Math.abs(ev.clientY - startY);
+            if (dx <= 8 && dy <= 8) return;
+            if (holdTimer != null) {
+              window.clearTimeout(holdTimer);
+              holdTimer = null;
+            }
+            cleanup();
+            if (!canPortal) return;
+            useDragHandoffStore.getState().setHandoff({
+              taskId: task.id,
+              pointerId,
+              clientX: ev.clientX,
+              clientY: ev.clientY,
+              startedAt: Date.now(),
+            });
+            enterWeekScheduleForTask(task);
+          };
+          const onUp = () => {
+            if (holdTimer != null) {
+              window.clearTimeout(holdTimer);
+              holdTimer = null;
+            }
+            cleanup();
+          };
+          const cleanup = () => {
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', onUp);
+            window.removeEventListener('pointercancel', onUp);
+          };
+          window.addEventListener('pointermove', onMove);
+          window.addEventListener('pointerup', onUp);
+          window.addEventListener('pointercancel', onUp);
+        }}
       >
-        <span className={`w-14 flex-shrink-0 text-[10px] font-mono font-medium tracking-[0.15em] tabular-nums ${statusColor}`}>
+        {/* Time / status chip — tappable to portal into week schedule */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (task.time) enterWeekScheduleForTask(task);
+          }}
+          className={`w-14 flex-shrink-0 text-left text-[10px] font-mono font-medium tracking-[0.15em] tabular-nums active:bg-muted/40 rounded-sm -mx-1 px-1 py-0.5 transition-colors ${statusColor}`}
+        >
           {statusLabel}
-        </span>
-        <span className={`flex-1 min-w-0 text-[15px] font-display leading-snug truncate ${titleColor}`}>
+        </button>
+        {/* Title — tap to edit, double-tap to complete */}
+        <button
+          onClick={() => handleTaskTap(task.id)}
+          className={`flex-1 min-w-0 text-left text-[15px] font-display leading-snug truncate active:bg-muted/40 rounded-sm -mx-1 px-1 py-0.5 transition-colors ${titleColor}`}
+        >
           {task.title}
           {task.duration ? (
             <span className="ml-1.5 text-[11px] font-mono text-muted-foreground/50 tabular-nums">
               {formatDurationBracket(task.duration)}
             </span>
           ) : null}
-        </span>
-      </button>
+        </button>
+      </div>
     );
   };
 
