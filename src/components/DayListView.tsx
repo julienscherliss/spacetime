@@ -72,6 +72,8 @@ function NowMarker({
         />
       </div>
       <div className="flex items-baseline gap-3">
+        {/* Priority dot slot — muted to match "no priority" */}
+        <div className="w-2 h-2 rounded-full self-center flex-shrink-0 bg-muted-foreground/30" />
         {/* Time column — matches focus row layout */}
         <div className="w-16 flex-shrink-0">
           <p className="text-[11px] font-mono leading-tight text-primary tabular-nums whitespace-nowrap">
@@ -90,9 +92,6 @@ function NowMarker({
             )}
           </p>
         </div>
-
-        {/* Priority dot slot — muted to match "no priority" */}
-        <div className="w-1.5 h-1.5 rounded-full self-center flex-shrink-0 bg-muted-foreground/30" />
       </div>
     </div>
   );
