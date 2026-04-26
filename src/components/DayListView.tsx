@@ -690,26 +690,27 @@ function computeGapMinutes(prev: Task, next: Task | undefined): number {
   return nextStart - prevEnd;
 }
 
+/** Subtle inline insert affordance — sits flush on the divider between two
+ *  rows so it doesn't add vertical rhythm. A small "+" on the left, no label
+ *  by default; on hover it reveals the gap duration. */
 function InsertGapButton({ gapMinutes, onInsert, showLabel = true }: { gapMinutes: number; onInsert: () => void; showLabel?: boolean }) {
   return (
-    <button
-      onClick={onInsert}
-      aria-label={`Insert task in ${formatDuration(gapMinutes)} gap`}
-      className="group w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-muted/30 transition-colors"
-    >
-      <div className="flex-1 h-px bg-border/30 group-hover:bg-primary/40 transition-colors" />
-      <div className="flex items-center gap-1.5">
+    <div className="relative h-0">
+      <button
+        onClick={onInsert}
+        aria-label={`Insert task in ${formatDuration(gapMinutes)} gap`}
+        className="group absolute left-0 -top-2 z-10 flex items-center gap-1.5 pl-2 pr-2 h-4 text-left"
+      >
+        <div className="w-3.5 h-3.5 rounded-full bg-background border border-border/50 group-hover:border-primary/60 group-hover:bg-primary/10 flex items-center justify-center transition-colors">
+          <Plus size={8} strokeWidth={2} className="text-muted-foreground/50 group-hover:text-primary transition-colors" />
+        </div>
         {showLabel && (
-          <span className="text-[9px] font-mono text-muted-foreground/40 group-hover:text-primary/60 tracking-wider transition-colors">
+          <span className="text-[9px] font-mono text-muted-foreground/0 group-hover:text-muted-foreground/60 tracking-wider transition-colors">
             {formatDuration(gapMinutes)}
           </span>
         )}
-        <div className="w-4 h-4 rounded-full border border-border/40 group-hover:border-primary/60 group-hover:bg-primary/10 flex items-center justify-center transition-colors">
-          <Plus size={9} strokeWidth={2} className="text-muted-foreground/50 group-hover:text-primary transition-colors" />
-        </div>
-      </div>
-      <div className="flex-1 h-px bg-border/30 group-hover:bg-primary/40 transition-colors" />
-    </button>
+      </button>
+    </div>
   );
 }
 
