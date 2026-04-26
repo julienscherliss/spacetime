@@ -178,21 +178,20 @@ export function WeekListView() {
     else if (task.time) statusLabel = formatTime12h(task.time).replace(/\s?(AM|PM)/i, (m) => ` ${m.trim().charAt(0)}`);
     else statusLabel = 'TODO';
 
+    // Time stays a uniform dark grey regardless of state (except current/completed cues)
     const statusColor = task.completed
       ? 'text-muted-foreground/40'
       : isCurrentTask
         ? 'text-primary'
-        : isPast
-          ? 'text-muted-foreground/40'
-          : isTodayDate
-            ? 'text-primary/80'
-            : 'text-muted-foreground/60';
+        : 'text-foreground/70';
 
-    const titleColor = task.completed
+    // Title color reflects the task's mobility (priority) tag
+    const priorityVar = `hsl(var(--priority-${task.priority ?? 0}))`;
+    const titleClass = task.completed
       ? 'text-muted-foreground/50 line-through'
       : isPast
-        ? 'text-foreground/50'
-        : 'text-foreground';
+        ? 'opacity-60'
+        : '';
 
     return (
       <div
@@ -259,7 +258,8 @@ export function WeekListView() {
         {/* Title — tap to edit, double-tap to complete */}
         <button
           onClick={() => handleTaskTap(task.id)}
-          className={`flex-1 min-w-0 text-left text-[15px] font-display leading-snug truncate active:bg-muted/40 rounded-sm -mx-1 px-1 py-0.5 transition-colors ${titleColor}`}
+          style={task.completed ? undefined : { color: priorityVar }}
+          className={`flex-1 min-w-0 text-left text-[15px] font-display leading-snug truncate active:bg-muted/40 rounded-sm -mx-1 px-1 py-0.5 transition-colors ${titleClass}`}
         >
           {task.title}
           {task.duration ? (
