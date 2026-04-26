@@ -61,30 +61,28 @@ function NowMarker({
           style={{ height: `${end !== null ? progress : 100}%` }}
         />
       </div>
-      <div className="flex items-center gap-3">
-        {/* Priority dot slot — muted to match "no priority" */}
-        <div className="w-2 h-2 rounded-full bg-muted-foreground/30 flex-shrink-0" />
-
-        {/* Time slot */}
-        <div className="w-20 flex-shrink-0">
-          <p className="text-sm font-mono font-medium text-primary leading-snug tabular-nums">
+      <div className="flex items-start gap-3">
+        {/* Time column — matches focus row layout */}
+        <div className="w-16 flex-shrink-0 pt-0.5">
+          <p className="text-[11px] font-mono leading-tight text-primary tabular-nums">
             {startLabel}
           </p>
+          {totalDuration !== null && totalDuration > 0 && (
+            <p className="text-[9px] font-mono mt-0.5 text-muted-foreground/60">
+              {formatDuration(totalDuration)}
+            </p>
+          )}
         </div>
 
-        {/* Title slot */}
-        <div className="flex-1 min-w-0">
+        {/* Title */}
+        <div className="flex-1 min-w-0 pt-0.5">
           <p className="text-sm font-display font-medium text-muted-foreground italic leading-snug truncate">
             Free time
           </p>
         </div>
 
-        {/* Duration pill */}
-        {totalDuration !== null && totalDuration > 0 && (
-          <span className="flex-shrink-0 text-[11px] font-mono font-medium text-muted-foreground/80 tabular-nums px-2 py-0.5 rounded-sm bg-background/60">
-            {formatDuration(totalDuration)}
-          </span>
-        )}
+        {/* Priority dot slot — muted to match "no priority" */}
+        <div className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 bg-muted-foreground/30" />
       </div>
     </div>
   );
@@ -610,43 +608,38 @@ export function DayListView() {
             />
           </div>
         )}
-        <div className="flex items-center gap-3">
-          {/* Priority dot — leftmost, vertically centered. Pulls fill from the
-              active color scheme so it matches the timeline blocks exactly. */}
-          <div
-            className="w-2 h-2 rounded-full flex-shrink-0"
-            style={{
-              backgroundColor: `hsl(${activeScheme.priorities[task.priority as 0 | 1 | 2 | 3]?.fill
-                ?? activeScheme.priorities[0].fill})`,
-            }}
-          />
-
-          {/* Start time — prominent, fixed-width for clean alignment */}
+        <div className="flex items-start gap-3">
+          {/* Time column — start time + duration stacked, matches focus list */}
           <button
             onClick={(e) => {
               e.stopPropagation();
               handleTimeTap(task);
             }}
-            className={`${isChild ? 'w-16' : 'w-20'} flex-shrink-0 text-left active:bg-muted/40 rounded-sm -mx-1 px-1 py-1 transition-colors`}
+            className={`${isChild ? 'w-12' : 'w-16'} flex-shrink-0 pt-0.5 text-left active:bg-muted/40 rounded-sm -m-1 p-1 transition-colors`}
           >
             {task.time ? (
-              <p className={`${isChild ? 'text-xs' : 'text-sm'} font-mono font-medium ${isCurrentTask ? 'text-primary' : 'text-foreground'} leading-snug tabular-nums`}>
-                {formatTime12h(task.time)}
-              </p>
+              <div>
+                <p className={`text-[11px] font-mono leading-tight ${isCurrentTask ? 'text-primary' : 'text-foreground/80'} tabular-nums`}>
+                  {formatTime12h(task.time)}
+                </p>
+                {task.duration && !isChild && (
+                  <p className="text-[9px] font-mono mt-0.5 text-muted-foreground/40">
+                    {formatDuration(task.duration)}
+                  </p>
+                )}
+              </div>
             ) : (
-              <p className={`${isChild ? 'text-xs' : 'text-sm'} font-mono font-medium text-muted-foreground/40 leading-snug tracking-wider`}>
-                ANYTIME
-              </p>
+              <p className="text-[9px] font-mono text-muted-foreground/30 tracking-wider">ANYTIME</p>
             )}
           </button>
 
           {/* Title — tappable to edit */}
           <button
             onClick={() => handleTaskTap(task.id)}
-            className="flex-1 min-w-0 text-left active:bg-muted/40 rounded-sm -mx-1 px-1 py-1 transition-colors"
+            className="flex-1 min-w-0 text-left active:bg-muted/40 rounded-sm -m-1 p-1 transition-colors"
           >
-            <p className={`${isChild ? 'text-xs' : 'text-sm'} font-display font-medium text-foreground leading-snug truncate ${
-              task.completed ? 'line-through' : ''
+            <p className={`${isChild ? 'text-xs' : 'text-sm'} font-display font-medium text-foreground leading-snug ${
+              task.completed ? 'line-through text-muted-foreground/50' : ''
             }`}>
               {task.title}
             </p>
@@ -662,12 +655,15 @@ export function DayListView() {
             )}
           </button>
 
-          {/* Duration pill — far right, prominent */}
-          {task.duration && task.time && (
-            <span className="flex-shrink-0 text-[11px] font-mono font-medium text-muted-foreground/80 tabular-nums px-2 py-0.5 rounded-sm bg-muted/40">
-              {formatDuration(task.duration)}
-            </span>
-          )}
+          {/* Priority dot — small, right side, matches focus list */}
+          <div
+            className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
+            style={{
+              backgroundColor: `hsl(${activeScheme.priorities[task.priority as 0 | 1 | 2 | 3]?.fill
+                ?? activeScheme.priorities[0].fill})`,
+              opacity: 0.6,
+            }}
+          />
         </div>
       </div>
     );
@@ -694,26 +690,27 @@ function computeGapMinutes(prev: Task, next: Task | undefined): number {
   return nextStart - prevEnd;
 }
 
+/** Subtle inline insert affordance — sits flush on the divider between two
+ *  rows so it doesn't add vertical rhythm. A small "+" on the left, no label
+ *  by default; on hover it reveals the gap duration. */
 function InsertGapButton({ gapMinutes, onInsert, showLabel = true }: { gapMinutes: number; onInsert: () => void; showLabel?: boolean }) {
   return (
-    <button
-      onClick={onInsert}
-      aria-label={`Insert task in ${formatDuration(gapMinutes)} gap`}
-      className="group w-full flex items-center gap-2 px-3 py-1.5 text-left hover:bg-muted/30 transition-colors"
-    >
-      <div className="flex-1 h-px bg-border/30 group-hover:bg-primary/40 transition-colors" />
-      <div className="flex items-center gap-1.5">
+    <div className="relative h-0">
+      <button
+        onClick={onInsert}
+        aria-label={`Insert task in ${formatDuration(gapMinutes)} gap`}
+        className="group absolute left-0 -top-2 z-10 flex items-center gap-1.5 pl-2 pr-2 h-4 text-left"
+      >
+        <div className="w-3.5 h-3.5 rounded-full bg-background border border-border/50 group-hover:border-primary/60 group-hover:bg-primary/10 flex items-center justify-center transition-colors">
+          <Plus size={8} strokeWidth={2} className="text-muted-foreground/50 group-hover:text-primary transition-colors" />
+        </div>
         {showLabel && (
-          <span className="text-[9px] font-mono text-muted-foreground/40 group-hover:text-primary/60 tracking-wider transition-colors">
+          <span className="text-[9px] font-mono text-muted-foreground/0 group-hover:text-muted-foreground/60 tracking-wider transition-colors">
             {formatDuration(gapMinutes)}
           </span>
         )}
-        <div className="w-4 h-4 rounded-full border border-border/40 group-hover:border-primary/60 group-hover:bg-primary/10 flex items-center justify-center transition-colors">
-          <Plus size={9} strokeWidth={2} className="text-muted-foreground/50 group-hover:text-primary transition-colors" />
-        </div>
-      </div>
-      <div className="flex-1 h-px bg-border/30 group-hover:bg-primary/40 transition-colors" />
-    </button>
+      </button>
+    </div>
   );
 }
 
