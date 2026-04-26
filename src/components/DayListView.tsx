@@ -628,16 +628,9 @@ export function DayListView() {
             className={`${isChild ? 'w-12' : 'w-16'} flex-shrink-0 pt-0.5 text-left active:bg-muted/40 rounded-sm -m-1 p-1 transition-colors`}
           >
             {task.time ? (
-              <div>
-                <p className={`text-[11px] font-mono leading-tight ${isCurrentTask ? 'text-primary' : 'text-foreground/80'} tabular-nums`}>
-                  {formatTime12h(task.time)}
-                </p>
-                {task.duration && !isChild && (
-                  <p className="text-[9px] font-mono mt-0.5 text-muted-foreground/40">
-                    {formatDuration(task.duration)}
-                  </p>
-                )}
-              </div>
+              <p className={`text-[11px] font-mono leading-tight ${isCurrentTask ? 'text-primary' : 'text-foreground/80'} tabular-nums`}>
+                {formatTime12h(task.time)}
+              </p>
             ) : (
               <p className="text-[9px] font-mono text-muted-foreground/30 tracking-wider">ANYTIME</p>
             )}
