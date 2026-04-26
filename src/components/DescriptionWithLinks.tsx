@@ -49,7 +49,7 @@ export function DescriptionWithLinks({ value, onChange, placeholder }: Descripti
 
   // Build rendered segments: text + link chips
   const renderSegments = () => {
-    if (!hasLinks) return <span className="whitespace-pre-wrap">{value || <span className="text-muted-foreground/60">{placeholder}</span>}</span>;
+    if (!hasLinks) return <span className="whitespace-pre-wrap">{value || <span className="text-[#c2c2c2]">{placeholder}</span>}</span>;
 
     const parts: React.ReactNode[] = [];
     let remaining = value;
@@ -101,7 +101,7 @@ export function DescriptionWithLinks({ value, onChange, placeholder }: Descripti
           }}
           className="w-full text-[13px] font-mono text-foreground/60 leading-relaxed cursor-text min-h-[2.6em]"
         >
-          {value ? renderSegments() : <span className="text-muted-foreground/60">{placeholder}</span>}
+          {value ? renderSegments() : <span className="text-[#c2c2c2]">{placeholder}</span>}
         </div>
       )}
 
@@ -116,7 +116,7 @@ export function DescriptionWithLinks({ value, onChange, placeholder }: Descripti
         onBlur={() => setIsFocused(false)}
         placeholder={placeholder}
         rows={2}
-        className={`w-full bg-transparent text-[13px] font-mono text-foreground/60 placeholder:text-muted-foreground/60 focus:outline-none resize-none leading-relaxed ${
+        className={`w-full bg-transparent text-[13px] font-mono text-foreground/60 placeholder:text-[#c2c2c2] focus:outline-none resize-none leading-relaxed ${
           isFocused ? '' : 'absolute inset-0 opacity-0 pointer-events-none'
         }`}
       />
