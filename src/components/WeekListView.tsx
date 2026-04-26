@@ -204,6 +204,11 @@ export function WeekListView() {
           const startX = e.clientX;
           const startY = e.clientY;
           const pointerId = e.pointerId;
+          const startedAt = Date.now();
+          // Mirror timeline drag gating: 250ms lock window during which any
+          // movement is treated as a scroll and aborts the gesture.
+          const LOCK_MS = 250;
+          const MOVE_THRESHOLD = 10;
           let holdTimer: number | null = window.setTimeout(() => {
             holdTimer = null;
             cleanup();
@@ -213,7 +218,15 @@ export function WeekListView() {
           const onMove = (ev: PointerEvent) => {
             const dx = Math.abs(ev.clientX - startX);
             const dy = Math.abs(ev.clientY - startY);
-            if (dx <= 8 && dy <= 8) return;
+            if (dx <= MOVE_THRESHOLD && dy <= MOVE_THRESHOLD) return;
+            if (Date.now() - startedAt < LOCK_MS) {
+              if (holdTimer != null) {
+                window.clearTimeout(holdTimer);
+                holdTimer = null;
+              }
+              cleanup();
+              return;
+            }
             if (holdTimer != null) {
               window.clearTimeout(holdTimer);
               holdTimer = null;

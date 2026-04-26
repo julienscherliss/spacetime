@@ -561,6 +561,13 @@ export function DayListView() {
           const startX = e.clientX;
           const startY = e.clientY;
           const pointerId = e.pointerId;
+          const startedAt = Date.now();
+          // Mirror timeline drag gating: for the first 250ms ANY movement is
+          // treated as a scroll — the gesture is abandoned without picking
+          // up or portaling the task. Only after the lock window can drag
+          // activation fire.
+          const LOCK_MS = 250;
+          const MOVE_THRESHOLD = 10;
           // Long-press still = carry pickup (~500ms matches timeline behaviour).
           let holdTimer: number | null = window.setTimeout(() => {
             holdTimer = null;
@@ -573,7 +580,17 @@ export function DayListView() {
           const onMove = (ev: PointerEvent) => {
             const dx = Math.abs(ev.clientX - startX);
             const dy = Math.abs(ev.clientY - startY);
-            if (dx <= 8 && dy <= 8) return;
+            if (dx <= MOVE_THRESHOLD && dy <= MOVE_THRESHOLD) return;
+            // Within the lock window: any movement = user is scrolling.
+            // Bail out of the entire gesture so the page can scroll freely.
+            if (Date.now() - startedAt < LOCK_MS) {
+              if (holdTimer != null) {
+                window.clearTimeout(holdTimer);
+                holdTimer = null;
+              }
+              cleanup();
+              return;
+            }
             // Movement before hold completes → portal into schedule view and
             // hand off the in-flight drag to the matching TimelineTaskBlock.
             if (holdTimer != null) {
