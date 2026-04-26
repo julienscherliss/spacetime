@@ -200,7 +200,7 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
           </div>
         ))}
         <div className="flex items-start gap-2 min-h-[36px] min-w-0 w-full">
-          <Plus size={10} className="text-muted-foreground/20 ml-[10px] shrink-0 mt-2.5" />
+           <Plus size={10} className="ml-[10px] shrink-0 mt-2.5 text-accent" />
           <textarea
             ref={inputRef}
             value={input}
