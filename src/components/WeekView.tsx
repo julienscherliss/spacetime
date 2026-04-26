@@ -22,7 +22,13 @@ export function WeekView() {
   const { minutes: nowMinutes, dateStr: today } = useCurrentTime(15000);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [weekOffset, setWeekOffset] = useState(0);
-  const [dayShift, setDayShift] = useState(0);
+  // Default shift to "second half" view (Thu→Wed) when today is Thu/Fri/Sat/Sun,
+  // so the user lands on the most relevant slice of the week.
+  const [dayShift, setDayShift] = useState(() => {
+    const d = new Date(); // local today
+    const dow = d.getDay(); // 0=Sun .. 6=Sat
+    return dow === 0 || dow >= 4 ? 3 : 0;
+  });
   const isMobile = useIsMobile();
 
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
