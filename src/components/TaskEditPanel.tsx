@@ -651,6 +651,25 @@ export function TaskEditPanel() {
                 <Bell size={10} strokeWidth={1.5} />
                 {reminders.length > 0 ? `${reminders.length}` : ''}
               </button>
+
+              {/* Attachment chip — paperclip only */}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                title="Add attachment"
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors disabled:opacity-50 ${
+                  attachments.length > 0
+                    ? 'text-foreground/70 bg-muted/40 hover:bg-muted/60'
+                    : 'text-muted-foreground/40 bg-muted/30 hover:bg-muted/50'
+                }`}
+              >
+                {isUploading ? (
+                  <Upload size={10} strokeWidth={1.5} className="animate-pulse" />
+                ) : (
+                  <Paperclip size={10} strokeWidth={1.5} />
+                )}
+                {attachments.length > 0 ? `${attachments.length}` : ''}
+              </button>
             </div>
 
             {/* Reminder modal */}
@@ -743,7 +762,7 @@ export function TaskEditPanel() {
                 onChange={(val) => {
                   setDescription(val);
                 }}
-                placeholder="Add details, context, links…"
+                placeholder="Description"
               />
 
               {/* ─── Recurrence expanded ─── */}
@@ -1025,23 +1044,6 @@ export function TaskEditPanel() {
                 className="hidden"
                 onChange={handleFileUpload}
               />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-                className="flex items-center gap-1.5 text-[9px] font-mono tracking-wider text-muted-foreground/70 hover:text-foreground transition-colors mb-3 disabled:opacity-50"
-              >
-                {isUploading ? (
-                  <>
-                    <Upload size={10} strokeWidth={1.5} className="animate-pulse" />
-                    Uploading…
-                  </>
-                ) : (
-                  <>
-                    <Paperclip size={10} strokeWidth={1.5} />
-                    Add attachment
-                  </>
-                )}
-              </button>
 
               {/* Move info */}
               {task.moveCount > 0 && (
