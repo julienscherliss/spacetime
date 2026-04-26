@@ -762,7 +762,6 @@ export function TaskEditPanel() {
                 onChange={(val) => {
                   setDescription(val);
                 }}
-                placeholder="Add details, context, links…"
                 placeholder="Description"
               />
 
