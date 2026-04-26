@@ -150,8 +150,8 @@ export function WeekListView() {
 
   // Week label like "Apr 21 – Apr 27"
   const weekLabel = (() => {
-    const s = new Date(weekStart + 'T12:00:00');
-    const e = new Date(weekEnd + 'T12:00:00');
+    const s = new Date(rangeStart + 'T12:00:00');
+    const e = new Date(rangeEnd + 'T12:00:00');
     const sameMonth = s.getMonth() === e.getMonth();
     const sFmt = s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const eFmt = sameMonth
@@ -282,7 +282,7 @@ export function WeekListView() {
             {weekLabel}
           </h2>
           <p className="text-[10px] font-mono text-muted-foreground/50 mt-0.5 tracking-widest">
-            WEEK OF {new Date(weekStart + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase()}
+            WEEK OF {new Date(rangeStart + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase()}
           </p>
         </div>
         <div className="py-1.5 flex items-center justify-between border-t border-border/20">
@@ -296,7 +296,7 @@ export function WeekListView() {
             <button
               onClick={() => setAnchor(today)}
               className={`px-2.5 py-1 rounded-sm text-[10px] font-mono tracking-widest transition-colors ${
-                today >= weekStart && today <= weekEnd
+                today >= rangeStart && today <= rangeEnd
                   ? 'text-primary bg-primary/5'
                   : 'text-muted-foreground/50 hover:text-foreground hover:bg-muted/50'
               }`}
@@ -308,6 +308,18 @@ export function WeekListView() {
               className="p-1.5 rounded-sm text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors"
             >
               <ChevronRight size={16} strokeWidth={1.5} />
+            </button>
+            <button
+              onClick={() => setDayShift((s) => (s === 0 ? 3 : 0))}
+              title={dayShift === 0 ? 'Shift forward 3 days' : 'Shift back 3 days'}
+              aria-label={dayShift === 0 ? 'Shift forward 3 days' : 'Shift back 3 days'}
+              className={`ml-1 p-1.5 rounded-sm transition-colors ${
+                dayShift !== 0
+                  ? 'text-primary hover:text-primary/80'
+                  : 'text-muted-foreground/50 hover:text-foreground hover:bg-muted/50'
+              }`}
+            >
+              <ChevronsRight size={14} strokeWidth={1.5} />
             </button>
           </div>
           <div />
