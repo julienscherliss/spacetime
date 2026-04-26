@@ -1044,23 +1044,6 @@ export function TaskEditPanel() {
                 className="hidden"
                 onChange={handleFileUpload}
               />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-                className="flex items-center gap-1.5 text-[9px] font-mono tracking-wider text-muted-foreground/70 hover:text-foreground transition-colors mb-3 disabled:opacity-50"
-              >
-                {isUploading ? (
-                  <>
-                    <Upload size={10} strokeWidth={1.5} className="animate-pulse" />
-                    Uploading…
-                  </>
-                ) : (
-                  <>
-                    <Paperclip size={10} strokeWidth={1.5} />
-                    Add attachment
-                  </>
-                )}
-              </button>
 
               {/* Move info */}
               {task.moveCount > 0 && (
