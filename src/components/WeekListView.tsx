@@ -246,6 +246,12 @@ export function WeekListView() {
           window.addEventListener('pointercancel', onUp);
         }}
       >
+        {/* Priority dot — colored by task mobility */}
+        <span
+          aria-hidden
+          className="flex-shrink-0 self-center w-2 h-2 rounded-full"
+          style={{ backgroundColor: priorityVar }}
+        />
         {/* Time / status chip — tappable to portal into week schedule */}
         <button
           onClick={(e) => {
@@ -259,8 +265,7 @@ export function WeekListView() {
         {/* Title — tap to edit, double-tap to complete */}
         <button
           onClick={() => handleTaskTap(task.id)}
-          style={task.completed ? undefined : { color: priorityVar }}
-          className={`flex-1 min-w-0 text-left text-[15px] font-display leading-snug truncate active:bg-muted/40 rounded-sm -mx-1 px-1 py-0.5 transition-colors ${titleClass}`}
+          className={`flex-1 min-w-0 text-left text-[15px] font-display leading-snug truncate active:bg-muted/40 rounded-sm -mx-1 px-1 py-0.5 transition-colors ${task.completed ? 'text-muted-foreground/50 line-through' : isPast ? 'text-foreground/50' : 'text-foreground'}`}
         >
           {task.title}
           {task.duration ? (
