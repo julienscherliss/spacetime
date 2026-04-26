@@ -619,6 +619,15 @@ export function DayListView() {
           </div>
         )}
         <div className="flex items-baseline gap-3">
+          {/* Priority dot — colored by task mobility, left of time */}
+          <span
+            aria-hidden
+            className="flex-shrink-0 self-center w-2 h-2 rounded-full"
+            style={{
+              backgroundColor: `hsl(${activeScheme.priorities[task.priority as 0 | 1 | 2 | 3]?.fill
+                ?? activeScheme.priorities[0].fill})`,
+            }}
+          />
           {/* Time column — single line, baseline-aligned with title */}
           <button
             onClick={(e) => {
@@ -662,16 +671,6 @@ export function DayListView() {
               </p>
             )}
           </button>
-
-          {/* Priority dot — small, right side; nudge so it sits on the title baseline */}
-          <div
-            className="w-1.5 h-1.5 rounded-full self-center flex-shrink-0"
-            style={{
-              backgroundColor: `hsl(${activeScheme.priorities[task.priority as 0 | 1 | 2 | 3]?.fill
-                ?? activeScheme.priorities[0].fill})`,
-              opacity: 0.6,
-            }}
-          />
         </div>
       </div>
     );
