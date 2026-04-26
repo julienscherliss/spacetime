@@ -243,7 +243,7 @@ export function WeekListView() {
             e.stopPropagation();
             if (task.time) enterWeekScheduleForTask(task);
           }}
-          className={`w-14 flex-shrink-0 text-left text-[10px] font-mono font-medium tracking-[0.15em] tabular-nums active:bg-muted/40 rounded-sm -mx-1 px-1 py-0.5 transition-colors ${statusColor}`}
+          className={`w-16 flex-shrink-0 text-left text-[10px] font-mono font-medium tracking-[0.15em] tabular-nums whitespace-nowrap active:bg-muted/40 rounded-sm -mx-1 px-1 py-0.5 transition-colors ${statusColor}`}
         >
           {statusLabel}
         </button>
