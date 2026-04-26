@@ -9,7 +9,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useTaskStore, Task } from '@/store/taskStore';
-import { useColorSchemeStore } from '@/store/colorSchemeStore';
 import { useCalendarStore } from '@/store/calendarStore';
 import { useCurrentTime, formatTime12h, getWeekBounds } from '@/hooks/useCurrentTime';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -39,7 +38,6 @@ export function WeekListView() {
     setEditingTask, setDaySubMode, setNavigateToDate, setViewMode,
   } = useTaskStore();
   const { dateStr: today, minutes: nowMinutes } = useCurrentTime(30000);
-  const activeScheme = useColorSchemeStore((s) => s.getActiveScheme());
 
   // Week navigation: anchor on a date, derive the Mon→Sun bounds.
   const [anchor, setAnchor] = useState(today);
