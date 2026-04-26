@@ -763,6 +763,7 @@ export function TaskEditPanel() {
                   setDescription(val);
                 }}
                 placeholder="Add details, context, links…"
+                placeholder="Description"
               />
 
               {/* ─── Recurrence expanded ─── */}
