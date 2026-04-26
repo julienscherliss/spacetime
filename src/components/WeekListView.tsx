@@ -115,68 +115,54 @@ export function WeekListView() {
     return `${sFmt} – ${eFmt}`;
   })();
 
+  /** Compact task row: STATUS/TIME chip · title.
+   *  - Completed → DONE
+   *  - Has a time → "4:00 P"
+   *  - Untimed/incomplete → TODO
+   *  Past + uncompleted days fade their TODOs to muted; today's tasks pop. */
   const renderRow = (task: Task, dateStr: string) => {
+    const isPast = dateStr < today;
+    const isTodayDate = dateStr === today;
     const isCurrentTask =
-      dateStr === today && !!task.time && !!task.duration &&
+      isTodayDate && !!task.time && !!task.duration &&
       nowMinutes >= timeStrToMinutes(task.time!) &&
       nowMinutes < timeStrToMinutes(task.time!) + task.duration!;
-    const start = task.time ? timeStrToMinutes(task.time) : null;
-    const end = start !== null && task.duration ? start + task.duration : null;
-    const progress = isCurrentTask && start !== null && end !== null && end > start
-      ? Math.max(0, Math.min(100, ((nowMinutes - start) / (end - start)) * 100))
-      : 0;
+
+    // Status label
+    let statusLabel: string;
+    if (task.completed) statusLabel = 'DONE';
+    else if (task.time) statusLabel = formatTime12h(task.time).replace(/\s?(AM|PM)/i, (m) => ` ${m.trim().charAt(0)}`);
+    else statusLabel = 'TODO';
+
+    const statusColor = task.completed
+      ? 'text-muted-foreground/40'
+      : isCurrentTask
+        ? 'text-primary'
+        : isPast
+          ? 'text-muted-foreground/40'
+          : isTodayDate
+            ? 'text-primary/80'
+            : 'text-muted-foreground/60';
+
+    const titleColor = task.completed
+      ? 'text-muted-foreground/50 line-through'
+      : isPast
+        ? 'text-foreground/50'
+        : 'text-foreground';
+
     return (
-      <div
+      <button
         key={task.id}
-        className={`relative w-full text-left px-3 py-3 border-b border-border/20 transition-colors ${
-          task.completed ? 'opacity-40' : ''
-        } ${isCurrentTask ? 'bg-muted/40' : ''}`}
+        onClick={() => handleTaskTap(task.id)}
+        className="w-full text-left flex items-baseline gap-4 px-1 py-1.5 hover:bg-muted/20 rounded-sm transition-colors"
       >
-        {isCurrentTask && (
-          <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-primary/15 overflow-hidden">
-            <div className="absolute inset-x-0 top-0 bg-primary" style={{ height: `${progress}%` }} />
-          </div>
-        )}
-        <button onClick={() => handleTaskTap(task.id)} className="w-full text-left">
-          <div className="flex items-center gap-3">
-            <div
-              className="w-2 h-2 rounded-full flex-shrink-0"
-              style={{
-                backgroundColor: `hsl(${activeScheme.priorities[task.priority as 0 | 1 | 2 | 3]?.fill
-                  ?? activeScheme.priorities[0].fill})`,
-              }}
-            />
-            <div className="w-20 flex-shrink-0">
-              {task.time ? (
-                <p className={`text-sm font-mono font-medium ${isCurrentTask ? 'text-primary' : 'text-foreground'} leading-snug tabular-nums`}>
-                  {formatTime12h(task.time)}
-                </p>
-              ) : (
-                <p className="text-sm font-mono font-medium text-muted-foreground/40 leading-snug tracking-wider">
-                  ANYTIME
-                </p>
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className={`text-sm font-display font-medium text-foreground leading-snug truncate ${
-                task.completed ? 'line-through' : ''
-              }`}>
-                {task.title}
-              </p>
-              {task.description && (
-                <p className="text-[11px] text-muted-foreground/50 mt-0.5 line-clamp-1">
-                  {task.description}
-                </p>
-              )}
-            </div>
-            {task.duration && task.time && (
-              <span className="flex-shrink-0 text-[11px] font-mono font-medium text-muted-foreground/80 tabular-nums px-2 py-0.5 rounded-sm bg-muted/40">
-                {formatDuration(task.duration)}
-              </span>
-            )}
-          </div>
-        </button>
-      </div>
+        <span className={`w-14 flex-shrink-0 text-[10px] font-mono font-medium tracking-[0.15em] tabular-nums ${statusColor}`}>
+          {statusLabel}
+        </span>
+        <span className={`flex-1 min-w-0 text-[15px] font-display leading-snug truncate ${titleColor}`}>
+          {task.title}
+        </span>
+      </button>
     );
   };
 
@@ -221,65 +207,62 @@ export function WeekListView() {
         </div>
       </div>
 
-      {/* Day sections — quiet headers aligned to the same column grid as task
-          rows so day numbers sit where task times do. Empty days collapse to a
-          single slim line. Today's section gets a subtle accent. */}
-      <div className="py-2">
+      {/* Day sections — large day number anchors each block. Weekday/month sit
+          right-aligned at the top of the section. Tasks indent under the number
+          column so the date stays visually dominant. Empty days still appear
+          (faded) so the week's rhythm is preserved. */}
+      <div className="pt-6 pb-12 space-y-10">
         {weekDays.map((date, dayIdx) => {
           const dayTasks = tasksFor(date);
           const isToday = date === today;
           const isPast = date < today;
           const dayDate = new Date(date + 'T12:00:00');
-          const completed = dayTasks.filter(t => t.completed).length;
           const isEmpty = dayTasks.length === 0;
 
-          // Header — aligned to task-row grid: [w-2 dot slot] · [w-20 time slot] · [body]
-          const header = (
-            <button
-              onClick={() => jumpToDay(date)}
-              className={`w-full flex items-center gap-3 px-3 py-2 hover:bg-muted/30 transition-colors ${
-                isToday ? 'bg-muted/30' : ''
-              }`}
-            >
-              {/* Dot slot — accent for today, muted otherwise */}
-              <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                isToday ? 'bg-primary' : isPast ? 'bg-muted-foreground/15' : 'bg-muted-foreground/30'
-              }`} />
-              {/* Time slot replaced by day-number block */}
-              <div className="w-20 flex-shrink-0 flex items-baseline gap-1.5">
-                <span className={`text-sm font-display font-bold tabular-nums leading-none ${
-                  isToday ? 'text-primary' : isPast ? 'text-muted-foreground/40' : 'text-foreground'
-                }`}>
-                  {dayDate.getDate()}
-                </span>
-                <span className={`text-[9px] font-mono tracking-[0.18em] leading-none ${
-                  isToday ? 'text-primary/70' : 'text-muted-foreground/40'
-                }`}>
-                  {dayDate.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}
-                </span>
-              </div>
-              {/* Body — count */}
-              <div className="flex-1 min-w-0 flex items-center justify-end">
-                <span className={`text-[10px] font-mono tabular-nums tracking-wider ${
-                  isEmpty ? 'text-muted-foreground/25' : isToday ? 'text-primary/70' : 'text-muted-foreground/40'
-                }`}>
-                  {isEmpty ? '—' : `${completed}/${dayTasks.length}`}
-                </span>
-              </div>
-            </button>
-          );
+          const dayNumberColor = isToday
+            ? 'text-primary'
+            : isPast
+              ? 'text-muted-foreground/30'
+              : 'text-foreground';
+
+          const labelColor = isToday
+            ? 'text-foreground'
+            : isPast
+              ? 'text-muted-foreground/40'
+              : 'text-foreground';
 
           return (
             <motion.section
               key={date}
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: dayIdx * 0.015 }}
-              className={`border-b ${isToday ? 'border-primary/30' : 'border-border/15'}`}
+              transition={{ delay: dayIdx * 0.02 }}
             >
-              {header}
+              {/* Large date header — day number left, weekday/month right */}
+              <button
+                onClick={() => jumpToDay(date)}
+                className="w-full flex items-start justify-between gap-4 px-1 mb-3 group"
+              >
+                <span
+                  className={`text-5xl sm:text-6xl font-display font-bold tabular-nums leading-none tracking-tight ${dayNumberColor} group-hover:opacity-80 transition-opacity`}
+                >
+                  {dayDate.getDate()}
+                </span>
+                <div className="flex flex-col items-end leading-tight pt-1">
+                  <span className={`text-base sm:text-lg font-display font-bold ${labelColor}`}>
+                    {dayDate.toLocaleDateString('en-US', { weekday: 'long' })}
+                  </span>
+                  <span className={`text-sm font-display ${
+                    isPast ? 'text-muted-foreground/40' : 'text-muted-foreground'
+                  }`}>
+                    {dayDate.toLocaleDateString('en-US', { month: 'long' })}
+                  </span>
+                </div>
+              </button>
+
+              {/* Task rows — indented under the date number, kept compact */}
               {!isEmpty && (
-                <div className="flex flex-col pb-1">
+                <div className="flex flex-col gap-0.5 pl-1">
                   {dayTasks.map((task) => renderRow(task, date))}
                 </div>
               )}
