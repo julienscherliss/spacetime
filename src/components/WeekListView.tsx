@@ -13,7 +13,7 @@ import { useCarryStore } from '@/store/carryStore';
 import { useDragHandoffStore } from '@/store/dragHandoffStore';
 import { useCalendarStore } from '@/store/calendarStore';
 import { useCurrentTime, formatTime12h, getWeekBounds } from '@/hooks/useCurrentTime';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsRight } from 'lucide-react';
 
 function addDaysToDate(dateStr: string, days: number): string {
   const d = new Date(dateStr + 'T12:00:00');
@@ -55,25 +55,34 @@ export function WeekListView() {
   // Week navigation: anchor on a date, derive the Mon→Sun bounds.
   const [anchor, setAnchor] = useState(today);
   const { start: weekStart, end: weekEnd } = getWeekBounds(anchor);
+  // Shift the list by 3 days (Thu→Wed slice) when toggled. Defaults on
+  // for Thu/Fri/Sat/Sun so the user opens onto the relevant half of the week.
+  const [dayShift, setDayShift] = useState(() => {
+    const d = new Date();
+    const dow = d.getDay();
+    return dow === 0 || dow >= 4 ? 3 : 0;
+  });
 
-  // Build the array of 7 ISO date strings for this week.
+  // Build the array of 7 ISO date strings for this week, offset by dayShift.
   const weekDays: string[] = [];
   {
-    let cur = weekStart;
-    while (cur <= weekEnd) {
+    let cur = addDaysToDate(weekStart, dayShift);
+    for (let i = 0; i < 7; i++) {
       weekDays.push(cur);
       cur = addDaysToDate(cur, 1);
     }
   }
+  const rangeStart = weekDays[0];
+  const rangeEnd = weekDays[weekDays.length - 1];
 
   useEffect(() => {
-    generateRecurringInstances(weekStart, weekEnd);
-  }, [weekStart, weekEnd, generateRecurringInstances]);
+    generateRecurringInstances(rangeStart, rangeEnd);
+  }, [rangeStart, rangeEnd, generateRecurringInstances]);
 
   const { connected, calendars, fetchEvents } = useCalendarStore();
   useEffect(() => {
-    if (connected) fetchEvents(weekStart, weekEnd);
-  }, [weekStart, weekEnd, connected, calendars, fetchEvents]);
+    if (connected) fetchEvents(rangeStart, rangeEnd);
+  }, [rangeStart, rangeEnd, connected, calendars, fetchEvents]);
 
   // Double-tap to complete (per-row)
   const lastTapRef = useRef<{ id: string; time: number } | null>(null);
@@ -140,8 +149,8 @@ export function WeekListView() {
 
   // Week label like "Apr 21 – Apr 27"
   const weekLabel = (() => {
-    const s = new Date(weekStart + 'T12:00:00');
-    const e = new Date(weekEnd + 'T12:00:00');
+    const s = new Date(rangeStart + 'T12:00:00');
+    const e = new Date(rangeEnd + 'T12:00:00');
     const sameMonth = s.getMonth() === e.getMonth();
     const sFmt = s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const eFmt = sameMonth
@@ -272,7 +281,7 @@ export function WeekListView() {
             {weekLabel}
           </h2>
           <p className="text-[10px] font-mono text-muted-foreground/50 mt-0.5 tracking-widest">
-            WEEK OF {new Date(weekStart + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase()}
+            WEEK OF {new Date(rangeStart + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase()}
           </p>
         </div>
         <div className="py-1.5 flex items-center justify-between border-t border-border/20">
@@ -286,7 +295,7 @@ export function WeekListView() {
             <button
               onClick={() => setAnchor(today)}
               className={`px-2.5 py-1 rounded-sm text-[10px] font-mono tracking-widest transition-colors ${
-                today >= weekStart && today <= weekEnd
+                today >= rangeStart && today <= rangeEnd
                   ? 'text-primary bg-primary/5'
                   : 'text-muted-foreground/50 hover:text-foreground hover:bg-muted/50'
               }`}
@@ -298,6 +307,18 @@ export function WeekListView() {
               className="p-1.5 rounded-sm text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors"
             >
               <ChevronRight size={16} strokeWidth={1.5} />
+            </button>
+            <button
+              onClick={() => setDayShift((s) => (s === 0 ? 3 : 0))}
+              title={dayShift === 0 ? 'Shift forward 3 days' : 'Shift back 3 days'}
+              aria-label={dayShift === 0 ? 'Shift forward 3 days' : 'Shift back 3 days'}
+              className={`ml-1 p-1.5 rounded-sm transition-colors ${
+                dayShift !== 0
+                  ? 'text-primary hover:text-primary/80'
+                  : 'text-muted-foreground/50 hover:text-foreground hover:bg-muted/50'
+              }`}
+            >
+              <ChevronsRight size={14} strokeWidth={1.5} />
             </button>
           </div>
           <div />
