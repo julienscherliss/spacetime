@@ -61,30 +61,28 @@ function NowMarker({
           style={{ height: `${end !== null ? progress : 100}%` }}
         />
       </div>
-      <div className="flex items-center gap-3">
-        {/* Priority dot slot — muted to match "no priority" */}
-        <div className="w-2 h-2 rounded-full bg-muted-foreground/30 flex-shrink-0" />
-
-        {/* Time slot */}
-        <div className="w-20 flex-shrink-0">
-          <p className="text-sm font-mono font-medium text-primary leading-snug tabular-nums">
+      <div className="flex items-start gap-3">
+        {/* Time column — matches focus row layout */}
+        <div className="w-16 flex-shrink-0 pt-0.5">
+          <p className="text-[11px] font-mono leading-tight text-primary tabular-nums">
             {startLabel}
           </p>
+          {totalDuration !== null && totalDuration > 0 && (
+            <p className="text-[9px] font-mono mt-0.5 text-muted-foreground/60">
+              {formatDuration(totalDuration)}
+            </p>
+          )}
         </div>
 
-        {/* Title slot */}
-        <div className="flex-1 min-w-0">
+        {/* Title */}
+        <div className="flex-1 min-w-0 pt-0.5">
           <p className="text-sm font-display font-medium text-muted-foreground italic leading-snug truncate">
             Free time
           </p>
         </div>
 
-        {/* Duration pill */}
-        {totalDuration !== null && totalDuration > 0 && (
-          <span className="flex-shrink-0 text-[11px] font-mono font-medium text-muted-foreground/80 tabular-nums px-2 py-0.5 rounded-sm bg-background/60">
-            {formatDuration(totalDuration)}
-          </span>
-        )}
+        {/* Priority dot slot — muted to match "no priority" */}
+        <div className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 bg-muted-foreground/30" />
       </div>
     </div>
   );
