@@ -282,7 +282,7 @@ export function CalendarView() {
               }}
               className={`aspect-square flex flex-col items-center justify-center bg-card transition-all ${
                 !day.inMonth ? 'opacity-20' : ''
-              } ${isSelected ? 'ring-1 ring-inset ring-primary/30' : ''} hover:bg-muted/30 ${getHeatBg(count)}`}
+              } ${isSelected ? 'ring-1 ring-inset ring-primary/30' : ''} hover:bg-muted/30`}
             >
               <span className={`text-sm font-mono ${
                 isToday ? 'text-primary font-bold' : day.inMonth ? 'text-foreground/60' : 'text-muted-foreground'
