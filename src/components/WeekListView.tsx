@@ -185,8 +185,9 @@ export function WeekListView() {
         ? 'text-primary'
         : 'text-foreground/70';
 
-    // Title color reflects the task's mobility (priority) tag
-    const priorityVar = `hsl(var(--priority-${task.priority ?? 0}))`;
+    // Title color reflects the task's mobility (priority) tag.
+    // Use the fill variant so colors are saturated/visible (stroke can be very pale).
+    const priorityVar = `hsl(var(--priority-${task.priority ?? 0}-fill))`;
     const titleClass = task.completed
       ? 'text-muted-foreground/50 line-through'
       : isPast
