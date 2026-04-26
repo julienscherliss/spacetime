@@ -24,6 +24,16 @@ function formatDuration(mins: number): string {
   return `${m}m`;
 }
 
+/** Bracketed duration suffix shown next to task titles.
+ *  < 2h → "[45]" (minutes only)
+ *  ≥ 2h → "[2h 45]" or "[3h]" when no remainder. */
+function formatDurationBracket(mins: number): string {
+  if (mins < 120) return `[${mins}]`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m > 0 ? `[${h}h ${m}]` : `[${h}h]`;
+}
+
 function getEndTime(time: string, duration: number): string {
   const [h, m] = time.split(':').map(Number);
   const total = h * 60 + m + duration;
@@ -642,6 +652,11 @@ export function DayListView() {
               task.completed ? 'line-through text-muted-foreground/50' : ''
             }`}>
               {task.title}
+              {task.duration ? (
+                <span className="ml-1.5 text-[11px] font-mono text-muted-foreground/50 tabular-nums">
+                  {formatDurationBracket(task.duration)}
+                </span>
+              ) : null}
             </p>
             {task.description && !isChild && (
               <p className="text-[11px] text-muted-foreground/50 mt-0.5 line-clamp-1">
