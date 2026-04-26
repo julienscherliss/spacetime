@@ -139,7 +139,7 @@ export function DayListView() {
   }, [selectedDate, connected, calendars, fetchEvents]);
 
   const dayTasks = tasks
-    .filter((t) => t.date === selectedDate && !t.inWaitingRoom && !t.archivedAt &&
+    .filter((t) => t.date === selectedDate && !t.inWaitingRoom && t.archiveReason !== 'deleted' &&
       !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring'))
     // Hide children of Groups from the top-level list — they render inside the group expander.
     .filter((t) => !t.groupId)
@@ -153,7 +153,7 @@ export function DayListView() {
   // For the "completed" counter, count every visible task (groups + non-grouped) plus
   // their group children, so progress reflects real work done.
   const visibleWithChildren = tasks.filter(
-    (t) => t.date === selectedDate && !t.inWaitingRoom && !t.archivedAt &&
+    (t) => t.date === selectedDate && !t.inWaitingRoom && t.archiveReason !== 'deleted' &&
       !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring'),
   );
   const completedCount = visibleWithChildren.filter((t) => t.completed).length;
