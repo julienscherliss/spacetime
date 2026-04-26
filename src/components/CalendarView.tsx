@@ -1,14 +1,29 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useTaskStore } from '@/store/taskStore';
+import { useTaskStore, Task } from '@/store/taskStore';
+import { useCarryStore } from '@/store/carryStore';
+import { useDragHandoffStore } from '@/store/dragHandoffStore';
 
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { formatTime12h } from '@/hooks/useCurrentTime';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 
+/** Bracketed duration suffix shown next to task titles.
+ *  < 2h → "[45]"   ≥ 2h → "[2h 45]" or "[3h]" with no remainder. */
+function formatDurationBracket(mins: number): string {
+  if (mins < 120) return `[${mins}]`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m > 0 ? `[${h}h ${m}]` : `[${h}h]`;
+}
+
 export function CalendarView() {
-  const { tasks, routinesEnabled, setEditingTask, generateRecurringInstances, setViewMode, setNavigateToDate } = useTaskStore();
+  const {
+    tasks, routinesEnabled, setEditingTask, generateRecurringInstances,
+    setViewMode, setNavigateToDate, setDaySubMode,
+    setListReturnZoom, setShowListReturn, completeTask, uncompleteTask,
+  } = useTaskStore();
   const isMobile = useIsMobile();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -149,6 +164,53 @@ export function CalendarView() {
     ? filteredTasks.filter((t) => t.date === selectedDate).sort((a, b) => (a.time || '').localeCompare(b.time || ''))
     : [];
 
+  // ─── Interactions matching DayListView ───────────────────
+  // Single tap → edit, double tap → toggle complete, long-press → carry,
+  // drag → portal into the day timeline with a drag handoff.
+  const lastTapRef = useRef<{ id: string; time: number } | null>(null);
+  const handleTaskTap = useCallback((taskId: string) => {
+    const now = Date.now();
+    if (lastTapRef.current && lastTapRef.current.id === taskId && now - lastTapRef.current.time < 400) {
+      lastTapRef.current = null;
+      const task = tasks.find(t => t.id === taskId);
+      if (task?.completed) uncompleteTask(taskId);
+      else completeTask(taskId);
+      if (navigator.vibrate) navigator.vibrate(20);
+      return;
+    }
+    lastTapRef.current = { id: taskId, time: now };
+    setTimeout(() => {
+      if (lastTapRef.current && lastTapRef.current.id === taskId && Date.now() - lastTapRef.current.time >= 380) {
+        setEditingTask(taskId);
+        lastTapRef.current = null;
+      }
+    }, 400);
+  }, [tasks, setEditingTask, completeTask, uncompleteTask]);
+
+  const carryPickup = (task: Task) => {
+    if (navigator.vibrate) navigator.vibrate(30);
+    useCarryStore.getState().pickup({
+      taskId: task.id,
+      title: task.title,
+      duration: task.duration || 30,
+      fromDate: task.date,
+      fromTime: task.time,
+      pickedUpAt: Date.now(),
+    });
+  };
+
+  /** Portal to the day timeline (with optional zoom) so the existing drag
+   *  system can take over via the handoff store. */
+  const enterScheduleForDrag = (task: Task) => {
+    if (task.time) {
+      setListReturnZoom({ taskTime: task.time, taskDuration: task.duration || 30 });
+    }
+    setShowListReturn(true);
+    setNavigateToDate(task.date);
+    setDaySubMode('timeline');
+    setViewMode('day');
+  };
+
   const getHeatBg = (count: number): string => {
     if (count === 0) return '';
     const intensity = count / maxTasks;
@@ -266,8 +328,55 @@ export function CalendarView() {
                   {selectedTasks.map((task) => (
                     <div
                       key={task.id}
-                      onClick={() => !task.completed && setEditingTask(task.id)}
-                      className={`flex items-center gap-2 py-1.5 px-2 rounded-sm cursor-pointer transition-colors ${
+                      onPointerDown={(e) => {
+                        if (e.pointerType === 'mouse' && e.button !== 0) return;
+                        if (useCarryStore.getState().carried) return;
+                        const startX = e.clientX;
+                        const startY = e.clientY;
+                        const pointerId = e.pointerId;
+                        let holdTimer: number | null = window.setTimeout(() => {
+                          holdTimer = null;
+                          cleanup();
+                          carryPickup(task);
+                        }, 500);
+                        const canPortal = !!task.time && task.type !== 'group';
+                        const onMove = (ev: PointerEvent) => {
+                          const dx = Math.abs(ev.clientX - startX);
+                          const dy = Math.abs(ev.clientY - startY);
+                          if (dx <= 8 && dy <= 8) return;
+                          if (holdTimer != null) {
+                            window.clearTimeout(holdTimer);
+                            holdTimer = null;
+                          }
+                          cleanup();
+                          if (!canPortal) return;
+                          useDragHandoffStore.getState().setHandoff({
+                            taskId: task.id,
+                            pointerId,
+                            clientX: ev.clientX,
+                            clientY: ev.clientY,
+                            startedAt: Date.now(),
+                          });
+                          enterScheduleForDrag(task);
+                        };
+                        const onUp = () => {
+                          if (holdTimer != null) {
+                            window.clearTimeout(holdTimer);
+                            holdTimer = null;
+                          }
+                          cleanup();
+                        };
+                        const cleanup = () => {
+                          window.removeEventListener('pointermove', onMove);
+                          window.removeEventListener('pointerup', onUp);
+                          window.removeEventListener('pointercancel', onUp);
+                        };
+                        window.addEventListener('pointermove', onMove);
+                        window.addEventListener('pointerup', onUp);
+                        window.addEventListener('pointercancel', onUp);
+                      }}
+                      onClick={() => handleTaskTap(task.id)}
+                      className={`flex items-center gap-2 py-1.5 px-2 rounded-sm cursor-pointer transition-colors select-none touch-none ${
                         task.completed ? 'opacity-20' : 'hover:bg-muted/40'
                       }`}
                     >
@@ -276,6 +385,11 @@ export function CalendarView() {
                       )}
                       <span className={`flex-1 text-[12px] font-mono ${task.completed ? 'line-through text-muted-foreground' : 'text-foreground/70'}`}>
                         {task.title}
+                        {task.duration ? (
+                          <span className="ml-1.5 text-[10px] text-muted-foreground/50 tabular-nums">
+                            {formatDurationBracket(task.duration)}
+                          </span>
+                        ) : null}
                       </span>
                       <PriorityBadge priority={task.priority} />
                     </div>
