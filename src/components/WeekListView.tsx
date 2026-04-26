@@ -27,6 +27,16 @@ function formatDuration(mins: number): string {
   return `${m}m`;
 }
 
+/** Bracketed duration suffix shown next to task titles.
+ *  < 2h → "[45]" (minutes only)
+ *  ≥ 2h → "[2h 45]" or "[3h]" when no remainder. */
+function formatDurationBracket(mins: number): string {
+  if (mins < 120) return `[${mins}]`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m > 0 ? `[${h}h ${m}]` : `[${h}h]`;
+}
+
 function timeStrToMinutes(time: string): number {
   const [h, m] = time.split(':').map(Number);
   return h * 60 + m;
