@@ -618,28 +618,28 @@ export function DayListView() {
             />
           </div>
         )}
-        <div className="flex items-start gap-3">
-          {/* Time column — start time + duration stacked, matches focus list */}
+        <div className="flex items-baseline gap-3">
+          {/* Time column — single line, baseline-aligned with title */}
           <button
             onClick={(e) => {
               e.stopPropagation();
               handleTimeTap(task);
             }}
-            className={`${isChild ? 'w-12' : 'w-16'} flex-shrink-0 pt-0.5 text-left active:bg-muted/40 rounded-sm -m-1 p-1 transition-colors`}
+            className={`${isChild ? 'w-12' : 'w-16'} flex-shrink-0 text-left active:bg-muted/40 rounded-sm -mx-1 px-1 py-0.5 transition-colors`}
           >
             {task.time ? (
-              <p className={`text-[11px] font-mono leading-tight ${isCurrentTask ? 'text-primary' : 'text-foreground/80'} tabular-nums`}>
+              <span className={`text-[11px] font-mono ${isCurrentTask ? 'text-primary' : 'text-foreground/80'} tabular-nums`}>
                 {formatTime12h(task.time)}
-              </p>
+              </span>
             ) : (
-              <p className="text-[9px] font-mono text-muted-foreground/30 tracking-wider">ANYTIME</p>
+              <span className="text-[9px] font-mono text-muted-foreground/30 tracking-wider">ANYTIME</span>
             )}
           </button>
 
           {/* Title — tappable to edit */}
           <button
             onClick={() => handleTaskTap(task.id)}
-            className="flex-1 min-w-0 text-left active:bg-muted/40 rounded-sm -m-1 p-1 transition-colors"
+            className="flex-1 min-w-0 text-left active:bg-muted/40 rounded-sm -mx-1 px-1 py-0.5 transition-colors"
           >
             <p className={`${isChild ? 'text-xs' : 'text-sm'} font-display font-medium text-foreground leading-snug ${
               task.completed ? 'line-through text-muted-foreground/50' : ''
@@ -663,9 +663,9 @@ export function DayListView() {
             )}
           </button>
 
-          {/* Priority dot — small, right side, matches focus list */}
+          {/* Priority dot — small, right side; nudge so it sits on the title baseline */}
           <div
-            className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
+            className="w-1.5 h-1.5 rounded-full self-center flex-shrink-0"
             style={{
               backgroundColor: `hsl(${activeScheme.priorities[task.priority as 0 | 1 | 2 | 3]?.fill
                 ?? activeScheme.priorities[0].fill})`,
