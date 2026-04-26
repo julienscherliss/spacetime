@@ -169,6 +169,11 @@ export function WeekListView() {
         </span>
         <span className={`flex-1 min-w-0 text-[15px] font-display leading-snug truncate ${titleColor}`}>
           {task.title}
+          {task.duration ? (
+            <span className="ml-1.5 text-[11px] font-mono text-muted-foreground/50 tabular-nums">
+              {formatDurationBracket(task.duration)}
+            </span>
+          ) : null}
         </span>
       </button>
     );
