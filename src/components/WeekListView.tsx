@@ -14,6 +14,7 @@ import { useDragHandoffStore } from '@/store/dragHandoffStore';
 import { useCalendarStore } from '@/store/calendarStore';
 import { useCurrentTime, formatTime12h, getWeekBounds } from '@/hooks/useCurrentTime';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronsRight } from 'lucide-react';
 
 function addDaysToDate(dateStr: string, days: number): string {
   const d = new Date(dateStr + 'T12:00:00');
@@ -55,25 +56,34 @@ export function WeekListView() {
   // Week navigation: anchor on a date, derive the Mon→Sun bounds.
   const [anchor, setAnchor] = useState(today);
   const { start: weekStart, end: weekEnd } = getWeekBounds(anchor);
+  // Shift the list by 3 days (Thu→Wed slice) when toggled. Defaults on
+  // for Thu/Fri/Sat/Sun so the user opens onto the relevant half of the week.
+  const [dayShift, setDayShift] = useState(() => {
+    const d = new Date();
+    const dow = d.getDay();
+    return dow === 0 || dow >= 4 ? 3 : 0;
+  });
 
-  // Build the array of 7 ISO date strings for this week.
+  // Build the array of 7 ISO date strings for this week, offset by dayShift.
   const weekDays: string[] = [];
   {
-    let cur = weekStart;
-    while (cur <= weekEnd) {
+    let cur = addDaysToDate(weekStart, dayShift);
+    for (let i = 0; i < 7; i++) {
       weekDays.push(cur);
       cur = addDaysToDate(cur, 1);
     }
   }
+  const rangeStart = weekDays[0];
+  const rangeEnd = weekDays[weekDays.length - 1];
 
   useEffect(() => {
-    generateRecurringInstances(weekStart, weekEnd);
-  }, [weekStart, weekEnd, generateRecurringInstances]);
+    generateRecurringInstances(rangeStart, rangeEnd);
+  }, [rangeStart, rangeEnd, generateRecurringInstances]);
 
   const { connected, calendars, fetchEvents } = useCalendarStore();
   useEffect(() => {
-    if (connected) fetchEvents(weekStart, weekEnd);
-  }, [weekStart, weekEnd, connected, calendars, fetchEvents]);
+    if (connected) fetchEvents(rangeStart, rangeEnd);
+  }, [rangeStart, rangeEnd, connected, calendars, fetchEvents]);
 
   // Double-tap to complete (per-row)
   const lastTapRef = useRef<{ id: string; time: number } | null>(null);
