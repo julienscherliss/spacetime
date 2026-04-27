@@ -356,14 +356,14 @@ export function WeekListView() {
           const dayDate = new Date(date + 'T12:00:00');
           const isEmpty = dayTasks.length === 0;
 
-          const dayNumberColor = isToday
+          const weekdayColor = isToday
             ? 'text-primary'
             : isPast
               ? 'text-muted-foreground/30'
               : 'text-foreground';
 
-          const labelColor = isToday
-            ? 'text-foreground'
+          const dateNumColor = isToday
+            ? 'text-primary'
             : isPast
               ? 'text-muted-foreground/40'
               : 'text-foreground';
@@ -375,21 +375,21 @@ export function WeekListView() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: dayIdx * 0.02 }}
             >
-              {/* Large date header — day number left, weekday/month right */}
+              {/* Large weekday header — weekday name left, small date/month right */}
               <button
                 onClick={() => jumpToDay(date)}
                 className="w-full flex items-start justify-between gap-4 px-1 mb-3 group"
               >
                 <span
-                  className={`text-5xl sm:text-6xl font-display font-bold tabular-nums leading-none tracking-tight ${dayNumberColor} group-hover:opacity-80 transition-opacity`}
+                  className={`text-4xl sm:text-5xl font-display font-bold uppercase leading-none tracking-tight ${weekdayColor} group-hover:opacity-80 transition-opacity`}
                 >
-                  {dayDate.getDate()}
+                  {dayDate.toLocaleDateString('en-US', { weekday: 'long' })}
                 </span>
                 <div className="flex flex-col items-end leading-tight pt-1">
-                  <span className={`text-base sm:text-lg font-display font-bold ${labelColor}`}>
-                    {dayDate.toLocaleDateString('en-US', { weekday: 'long' })}
+                  <span className={`text-lg sm:text-xl font-display font-bold tabular-nums ${dateNumColor}`}>
+                    {dayDate.getDate()}
                   </span>
-                  <span className={`text-sm font-display ${
+                  <span className={`text-xs font-display ${
                     isPast ? 'text-muted-foreground/40' : 'text-muted-foreground'
                   }`}>
                     {dayDate.toLocaleDateString('en-US', { month: 'long' })}
