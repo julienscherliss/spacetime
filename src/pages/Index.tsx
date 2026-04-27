@@ -69,6 +69,16 @@ const Index = () => {
     }
   }, []);
 
+  // On app entry: always default sub-modes to LIST (never schedule/timeline),
+  // and bounce out of the transient focus view back to the last-used main view.
+  // The main viewMode (day/week/calendar) is preserved from last session.
+  useEffect(() => {
+    const s = useTaskStore.getState();
+    if (s.daySubMode !== 'list') s.setDaySubMode('list');
+    if (s.weekSubMode !== 'list') s.setWeekSubMode('list');
+    if (s.viewMode === 'focus') s.setViewMode('day');
+  }, []);
+
   // Check calendar connection status on mount
   useEffect(() => {
     useCalendarStore.getState().checkStatus();
