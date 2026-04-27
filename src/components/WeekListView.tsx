@@ -292,7 +292,7 @@ export function WeekListView() {
   };
 
   return (
-    <div className="max-w-3xl lg:max-w-[1600px] mx-auto px-3 sm:px-4">
+    <div className="max-w-3xl mx-auto px-3 sm:px-4">
       {/* Sticky week header */}
       <div className="sticky top-0 sm:top-12 z-30 bg-background border-b border-border/30">
         <div className="pt-3 pb-2">
@@ -348,7 +348,7 @@ export function WeekListView() {
           right-aligned at the top of the section. Tasks indent under the number
           column so the date stays visually dominant. Empty days still appear
           (faded) so the week's rhythm is preserved. */}
-      <div className="pt-6 pb-12 space-y-10 lg:space-y-0 lg:grid lg:grid-cols-7 lg:gap-4">
+      <div className="pt-6 pb-12 space-y-10">
         {weekDays.map((date, dayIdx) => {
           const dayTasks = tasksFor(date);
           const isToday = date === today;
@@ -375,25 +375,24 @@ export function WeekListView() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: dayIdx * 0.02 }}
             >
-              {/* Large weekday header — weekday name left, small date/month right.
-                  On lg+ (grid columns), the weekday shrinks so it fits the column width. */}
+              {/* Large weekday header — weekday name left, small date/month right */}
               <button
                 onClick={() => jumpToDay(date)}
-                className="w-full flex items-start justify-between gap-2 px-1 mb-3 group"
+                className="w-full flex items-start justify-between gap-4 px-1 mb-3 group"
               >
                 <span
-                  className={`text-4xl sm:text-5xl lg:text-2xl xl:text-3xl font-display font-bold uppercase leading-none tracking-tight truncate ${weekdayColor} group-hover:opacity-80 transition-opacity`}
+                  className={`text-4xl sm:text-5xl font-display font-bold uppercase leading-none tracking-tight ${weekdayColor} group-hover:opacity-80 transition-opacity`}
                 >
                   {dayDate.toLocaleDateString('en-US', { weekday: 'long' })}
                 </span>
-                <div className="flex flex-col items-end leading-tight pt-1 shrink-0">
-                  <span className={`text-lg sm:text-xl lg:text-base font-display font-bold tabular-nums ${dateNumColor}`}>
+                <div className="flex flex-col items-end leading-tight pt-1">
+                  <span className={`text-lg sm:text-xl font-display font-bold tabular-nums ${dateNumColor}`}>
                     {dayDate.getDate()}
                   </span>
-                  <span className={`text-xs lg:text-[10px] font-display ${
+                  <span className={`text-xs font-display ${
                     isPast ? 'text-muted-foreground/40' : 'text-muted-foreground'
                   }`}>
-                    {dayDate.toLocaleDateString('en-US', { month: 'short' })}
+                    {dayDate.toLocaleDateString('en-US', { month: 'long' })}
                   </span>
                 </div>
               </button>
