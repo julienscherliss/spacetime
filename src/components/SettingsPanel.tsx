@@ -604,8 +604,8 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               </div>
             </button>
 
-            {/* Color Scheme Editor */}
-            <ColorSchemePanel />
+            {/* Color Scheme Editor — advanced */}
+            {showAdvanced && <ColorSchemePanel />}
           </div>
 
           {/* Change Password */}
