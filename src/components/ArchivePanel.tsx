@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Task } from '@/store/taskStore';
 import { useLibraryStore } from '@/store/libraryStore';
 
-import { X, RotateCcw, CheckCircle2, Trash2, Filter, Clock, AlertTriangle, Tag } from 'lucide-react';
+import { X, RotateCcw, CheckCircle2, Trash2, Filter, Clock, AlertTriangle, Tag, ChevronDown, ChevronRight } from 'lucide-react';
 import { format, isToday, isYesterday, startOfWeek, isWithinInterval, subDays } from 'date-fns';
 
 type ArchiveFilter = 'all' | 'completed' | 'deleted' | 'tags';
@@ -52,6 +52,21 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
     return taskCount + libCount;
   };
   const [filter, setFilter] = useState<ArchiveFilter>('all');
+  const [tagFilter, setTagFilter] = useState<string>('all');
+
+  // Collect tags actually present on archived tasks
+  const archivedTaskTags = useMemo(() => {
+    const set = new Set<string>();
+    tasks.forEach((t) => {
+      if (t.archivedAt && t.category) set.add(t.category);
+    });
+    return Array.from(set).sort();
+  }, [tasks]);
+
+  const tagLabel = (value: string) => {
+    const cat = allCategories.find((c) => c.value === value);
+    return cat?.label ?? value;
+  };
 
   const archived = useMemo(() => {
     return tasks
@@ -61,8 +76,13 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
         if (filter === 'deleted') return t.archiveReason === 'deleted';
         return true;
       })
+      .filter((t) => {
+        if (tagFilter === 'all') return true;
+        if (tagFilter === '__none__') return !t.category;
+        return t.category === tagFilter || (t.category && t.category.startsWith(tagFilter + '/'));
+      })
       .sort((a, b) => new Date(b.archivedAt!).getTime() - new Date(a.archivedAt!).getTime());
-  }, [tasks, filter]);
+  }, [tasks, filter, tagFilter]);
 
   const grouped = useMemo(() => {
     const groups: { label: string; tasks: Task[] }[] = [];
@@ -137,6 +157,39 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
                 </button>
               ))}
             </div>
+
+            {/* Tag filter — only when not on the Tags management view */}
+            {filter !== 'tags' && archivedTaskTags.length > 0 && (
+              <div className="flex items-center gap-1 px-4 pb-3 overflow-x-auto">
+                <span className="text-[9px] font-mono text-muted-foreground/50 tracking-[0.15em] uppercase pr-1 shrink-0">
+                  Tag
+                </span>
+                <button
+                  onClick={() => setTagFilter('all')}
+                  className={`px-2 py-1 rounded-md text-[10px] font-mono tracking-wide transition-colors shrink-0 ${
+                    tagFilter === 'all'
+                      ? 'bg-foreground/8 text-foreground border border-border/50'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  All
+                </button>
+                {archivedTaskTags.map((value) => (
+                  <button
+                    key={value}
+                    onClick={() => setTagFilter(value)}
+                    className={`px-2 py-1 rounded-md text-[10px] font-mono tracking-wide transition-colors shrink-0 flex items-center gap-1 ${
+                      tagFilter === value
+                        ? 'bg-foreground/8 text-foreground border border-border/50'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Tag size={10} strokeWidth={1.5} />
+                    {tagLabel(value)}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Content */}
@@ -222,9 +275,24 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
 
 function ArchiveRow({ task, onRevive, onEdit }: { task: Task; onRevive: (id: string) => void; onEdit: (id: string) => void }) {
   const isCompleted = task.archiveReason === 'completed';
+  const [expanded, setExpanded] = useState(false);
+  const hasDetails = !!(task.description || (task.subtasks && task.subtasks.length > 0) || task.category || task.date || task.time);
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3 group">
+    <div className="px-4 py-3 group">
+      <div className="flex items-center gap-3">
+      {/* Expand toggle */}
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        disabled={!hasDetails}
+        className={`shrink-0 p-0.5 rounded transition-colors ${
+          hasDetails ? 'text-muted-foreground/50 hover:text-foreground hover:bg-muted/50' : 'text-muted-foreground/20 cursor-default'
+        }`}
+        aria-label={expanded ? 'Collapse details' : 'Expand details'}
+      >
+        {expanded ? <ChevronDown size={12} strokeWidth={1.5} /> : <ChevronRight size={12} strokeWidth={1.5} />}
+      </button>
+
       {/* Status icon */}
       <div className={`shrink-0 ${isCompleted ? 'text-muted-foreground/40' : 'text-destructive/40'}`}>
         {isCompleted ? (
@@ -253,6 +321,12 @@ function ArchiveRow({ task, onRevive, onEdit }: { task: Task; onRevive: (id: str
               {format(new Date(task.archivedAt), 'h:mm a')}
             </span>
           )}
+          {task.category && (
+            <span className="text-[9px] font-mono text-muted-foreground/40 flex items-center gap-1">
+              <Tag size={9} strokeWidth={1.5} />
+              {task.category}
+            </span>
+          )}
         </div>
       </div>
 
@@ -264,6 +338,46 @@ function ArchiveRow({ task, onRevive, onEdit }: { task: Task; onRevive: (id: str
         <RotateCcw size={11} strokeWidth={1.5} />
         <span>Revive</span>
       </button>
+      </div>
+
+      {/* Expanded details */}
+      <AnimatePresence initial={false}>
+        {expanded && hasDetails && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="overflow-hidden"
+          >
+            <div className="pl-10 pr-2 pt-2 space-y-1.5">
+              {(task.date || task.time) && (
+                <div className="text-[10px] font-mono text-muted-foreground/60">
+                  <span className="text-muted-foreground/40">When: </span>
+                  {task.date}{task.time ? ` · ${task.time}` : ''}
+                </div>
+              )}
+              {task.description && (
+                <div className="text-[10px] font-mono text-muted-foreground/70 whitespace-pre-wrap">
+                  {task.description}
+                </div>
+              )}
+              {task.subtasks && task.subtasks.length > 0 && (
+                <div className="space-y-0.5">
+                  {task.subtasks.map((s: any, i: number) => (
+                    <div key={i} className="text-[10px] font-mono text-muted-foreground/60 flex items-center gap-1.5">
+                      <span className={s.completed ? 'text-muted-foreground/40' : 'text-muted-foreground/60'}>
+                        {s.completed ? '✓' : '○'}
+                      </span>
+                      <span className={s.completed ? 'line-through' : ''}>{s.title}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
