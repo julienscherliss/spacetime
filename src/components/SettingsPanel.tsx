@@ -3,7 +3,7 @@ import { useTimezoneStore, getTzAbbr, TIMEZONES } from '@/store/timezoneStore';
 import type { MobilityMode } from '@/store/timezoneStore';
 import { useCalendarStore } from '@/store/calendarStore';
 import { supabase } from '@/integrations/supabase/client';
-import { X, Search, Globe, Repeat, MapPin, Calendar as CalIcon, RefreshCw, Unplug, HelpCircle, Moon, Shield, Lock, Bell, Type, Volume2, MessageSquarePlus } from 'lucide-react';
+import { X, Search, Globe, Repeat, MapPin, Calendar as CalIcon, RefreshCw, Unplug, HelpCircle, Moon, Shield, Lock, Bell, Type, Volume2, MessageSquarePlus, Sliders } from 'lucide-react';
 import { toast } from 'sonner';
 import { HelpPanel } from './HelpPanel';
 import { ColorSchemePanel } from './ColorSchemePanel';
@@ -44,6 +44,15 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const [pwLoading, setPwLoading] = useState(false);
   const [authProvider, setAuthProvider] = useState<'email' | 'google' | 'unknown'>('unknown');
   const [notificationLoading, setNotificationLoading] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('settings.showAdvanced') === '1';
+  });
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('settings.showAdvanced', showAdvanced ? '1' : '0');
+    }
+  }, [showAdvanced]);
 
   useEffect(() => {
     if (!open) return;
@@ -75,7 +84,26 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
       <div className="relative bg-card border border-border rounded-t-lg sm:rounded-lg shadow-lg w-full sm:max-w-sm max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
-          <h2 className="font-display font-bold text-foreground tracking-tight" style={{ fontSize: 'var(--ui-text-xl)' }}>SETTINGS</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="font-display font-bold text-foreground tracking-tight" style={{ fontSize: 'var(--ui-text-xl)' }}>SETTINGS</h2>
+            <button
+              onClick={() => setShowAdvanced(v => !v)}
+              title={showAdvanced ? 'Hide advanced settings' : 'Show advanced settings'}
+              className={`flex items-center gap-1.5 px-2 py-1 rounded-sm border text-[10px] font-mono tracking-wider transition-colors ${
+                showAdvanced
+                  ? 'bg-primary/10 border-primary/30 text-primary'
+                  : 'bg-muted/30 border-border/50 text-muted-foreground hover:text-foreground hover:bg-muted/50'
+              }`}
+            >
+              <Sliders size={11} strokeWidth={1.5} />
+              <span>ADVANCED</span>
+              <div className={`ml-0.5 w-6 h-3 rounded-full transition-colors flex items-center px-0.5 ${
+                showAdvanced ? 'bg-primary justify-end' : 'bg-border justify-start'
+              }`}>
+                <div className="w-2 h-2 rounded-full bg-white" />
+              </div>
+            </button>
+          </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
             <X size={16} strokeWidth={1.5} />
           </button>
@@ -147,7 +175,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               )}
             </div>
 
-            {!autoDetect && (
+            {!autoDetect && showAdvanced && (
               <>
                 <div className="relative mb-2">
                   <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/40" />
@@ -181,9 +209,15 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 </div>
               </>
             )}
+            {!autoDetect && !showAdvanced && (
+              <div className="text-[10px] font-mono text-muted-foreground/40 mt-1">
+                Enable Advanced (top of settings) to pick a timezone manually.
+              </div>
+            )}
           </div>
 
-          {/* Routines timezone behavior */}
+          {/* Routines timezone behavior — advanced */}
+          {showAdvanced && (
           <div className="border-t border-border/30 pt-4">
             <div className="flex items-center gap-1.5 mb-2">
               <Repeat size={12} strokeWidth={1.5} className="text-muted-foreground" />
@@ -206,8 +240,10 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               </div>
             </button>
           </div>
+          )}
 
-          {/* Google Calendar */}
+          {/* Google Calendar — advanced */}
+          {showAdvanced && (
           <div className="border-t border-border/30 pt-4">
             <div className="flex items-center gap-1.5 mb-2">
               <CalIcon size={12} strokeWidth={1.5} className="text-muted-foreground" />
@@ -288,10 +324,12 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               </div>
             )}
           </div>
+          )}
           {/* Appearance */}
           <div className="border-t border-border/30 pt-4">
 
-          {/* Task Mobility */}
+          {/* Task Mobility — advanced */}
+          {showAdvanced && (
           <div className="mb-4">
             <div className="flex items-center gap-1.5 mb-2">
               <Shield size={12} strokeWidth={1.5} className="text-muted-foreground" />
@@ -325,6 +363,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               {mobilityMode === 'elite' && 'Same reflection prompts as Normal, plus due dates auto-escalate priority (this week → Semi · today → Fixed).'}
             </div>
           </div>
+          )}
 
           {/* Notifications */}
           <div className="mb-4">
@@ -447,8 +486,8 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               {notificationLevel === 'all' && 'Notifications for all scheduled tasks (FLEX, SEMI, FIXED, LOCK).'}
             </div>
 
-            {/* Persistent Overdue toggle */}
-            {notificationLevel !== 'off' && (
+            {/* Persistent Overdue toggle — advanced */}
+            {notificationLevel !== 'off' && showAdvanced && (
               <button
                 onClick={async () => {
                   const next = !persistentOverdue;
@@ -475,7 +514,8 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             )}
           </div>
 
-          {/* Sound */}
+          {/* Sound — advanced */}
+          {showAdvanced && (
           <div className="border-t border-border/30 pt-4">
             <div className="flex items-center gap-1.5 mb-2">
               <Volume2 size={12} strokeWidth={1.5} className="text-muted-foreground" />
@@ -505,6 +545,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               </div>
             </button>
           </div>
+          )}
 
             <div className="flex items-center gap-1.5 mb-2">
               <Moon size={12} strokeWidth={1.5} className="text-muted-foreground" />
@@ -563,8 +604,8 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               </div>
             </button>
 
-            {/* Color Scheme Editor */}
-            <ColorSchemePanel />
+            {/* Color Scheme Editor — advanced */}
+            {showAdvanced && <ColorSchemePanel />}
           </div>
 
           {/* Change Password */}
