@@ -4,7 +4,7 @@ import { useTaskStore, Task } from '@/store/taskStore';
 import { useLibraryStore } from '@/store/libraryStore';
 
 import { X, RotateCcw, CheckCircle2, Trash2, Filter, Tag, ChevronsUpDown } from 'lucide-react';
-import { format, isToday, isYesterday } from 'date-fns';
+import { format, isToday, isYesterday, differenceInCalendarDays } from 'date-fns';
 
 type ArchiveFilter = 'all' | 'completed' | 'deleted' | 'tags';
 
@@ -317,6 +317,8 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
                   const d = group.date;
                   const today = isToday(d);
                   const yest = isYesterday(d);
+                  const daysAgo = differenceInCalendarDays(new Date(), d);
+                  const isOld = daysAgo > 7;
                   const weekdayColor = today
                     ? 'text-accent'
                     : 'text-foreground/80';
@@ -327,6 +329,8 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
                     ? 'Today'
                     : yest
                     ? 'Yesterday'
+                    : isOld
+                    ? d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' }).toUpperCase()
                     : d.toLocaleDateString('en-US', { weekday: 'long' });
                   return (
                     <section key={group.key}>
@@ -337,12 +341,25 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
                           {weekdayLabel}
                         </span>
                         <div className="flex flex-col items-end leading-tight pt-1">
-                          <span className={`text-lg sm:text-xl font-display font-bold tabular-nums ${dateNumColor}`}>
-                            {d.getDate()}
-                          </span>
-                          <span className="text-xs font-display text-muted-foreground">
-                            {d.toLocaleDateString('en-US', { month: 'long' })}
-                          </span>
+                          {isOld ? (
+                            <>
+                              <span className={`text-lg sm:text-xl font-display font-bold tabular-nums ${dateNumColor}`}>
+                                {daysAgo}
+                              </span>
+                              <span className="text-xs font-display text-muted-foreground">
+                                days ago
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span className={`text-lg sm:text-xl font-display font-bold tabular-nums ${dateNumColor}`}>
+                                {d.getDate()}
+                              </span>
+                              <span className="text-xs font-display text-muted-foreground">
+                                {d.toLocaleDateString('en-US', { month: 'long' })}
+                              </span>
+                            </>
+                          )}
                         </div>
                       </div>
                       <div className="divide-y divide-border/20 pl-1">
