@@ -13,15 +13,13 @@ interface ArchivePanelProps {
   onClose: () => void;
 }
 
-function getDateGroup(dateStr: string): string {
+function getDayKey(dateStr: string): string {
+  // YYYY-MM-DD bucket key based on local time of archivedAt
   const d = new Date(dateStr);
-  if (isToday(d)) return 'Today';
-  if (isYesterday(d)) return 'Yesterday';
-  const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
-  if (isWithinInterval(d, { start: weekStart, end: new Date() })) return 'Earlier this week';
-  const lastWeekStart = subDays(weekStart, 7);
-  if (isWithinInterval(d, { start: lastWeekStart, end: subDays(weekStart, 1) })) return 'Last week';
-  return format(d, 'MMMM d, yyyy');
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function formatDuration(mins?: number) {
@@ -104,16 +102,16 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
   }, [tasks, filter, tagFilter]);
 
   const grouped = useMemo(() => {
-    const groups: { label: string; tasks: Task[] }[] = [];
-    const seen = new Map<string, Task[]>();
+    const groups: { key: string; date: Date; tasks: Task[] }[] = [];
+    const seen = new Map<string, { key: string; date: Date; tasks: Task[] }>();
     archived.forEach((t) => {
-      const label = getDateGroup(t.archivedAt!);
-      if (!seen.has(label)) {
-        const arr: Task[] = [];
-        seen.set(label, arr);
-        groups.push({ label, tasks: arr });
+      const key = getDayKey(t.archivedAt!);
+      if (!seen.has(key)) {
+        const entry = { key, date: new Date(t.archivedAt!), tasks: [] as Task[] };
+        seen.set(key, entry);
+        groups.push(entry);
       }
-      seen.get(label)!.push(t);
+      seen.get(key)!.tasks.push(t);
     });
     return groups;
   }, [archived]);
@@ -315,21 +313,47 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
                 </p>
               </div>
             ) : (
-              <div className="pb-8">
-                {grouped.map((group) => (
-                  <div key={group.label}>
-                    <div className="sticky top-0 bg-background/95 backdrop-blur-sm px-4 py-2 border-b border-border/20">
-                      <span className="text-[9px] font-mono text-muted-foreground/50 tracking-[0.15em] uppercase">
-                        {group.label}
-                      </span>
-                    </div>
-                    <div className="divide-y divide-border/20">
-                      {group.tasks.map((task) => (
-                        <ArchiveRow key={task.id} task={task} onRevive={handleRevive} onEdit={setEditingTask} expandAll={expandAll} />
-                      ))}
-                    </div>
-                  </div>
-                ))}
+              <div className="pb-8 px-4 sm:px-6 pt-4 space-y-6">
+                {grouped.map((group) => {
+                  const d = group.date;
+                  const today = isToday(d);
+                  const yest = isYesterday(d);
+                  const weekdayColor = today
+                    ? 'text-accent'
+                    : 'text-foreground/80';
+                  const dateNumColor = today
+                    ? 'text-accent'
+                    : 'text-foreground/70';
+                  const weekdayLabel = today
+                    ? 'Today'
+                    : yest
+                    ? 'Yesterday'
+                    : d.toLocaleDateString('en-US', { weekday: 'long' });
+                  return (
+                    <section key={group.key}>
+                      <div className="w-full flex items-start justify-between gap-4 px-1 mb-3">
+                        <span
+                          className={`text-4xl sm:text-5xl font-display font-bold uppercase leading-none tracking-tight ${weekdayColor}`}
+                        >
+                          {weekdayLabel}
+                        </span>
+                        <div className="flex flex-col items-end leading-tight pt-1">
+                          <span className={`text-lg sm:text-xl font-display font-bold tabular-nums ${dateNumColor}`}>
+                            {d.getDate()}
+                          </span>
+                          <span className="text-xs font-display text-muted-foreground">
+                            {d.toLocaleDateString('en-US', { month: 'long' })}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="divide-y divide-border/20 pl-1">
+                        {group.tasks.map((task) => (
+                          <ArchiveRow key={task.id} task={task} onRevive={handleRevive} onEdit={setEditingTask} expandAll={expandAll} />
+                        ))}
+                      </div>
+                    </section>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -356,7 +380,7 @@ function ArchiveChip({ active, label, onClick }: { active: boolean; label: strin
 
 function ArchiveRow({ task, onRevive, onEdit, expandAll }: { task: Task; onRevive: (id: string) => void; onEdit: (id: string) => void; expandAll: boolean }) {
   const isCompleted = task.archiveReason === 'completed';
-  const hasDetails = !!(task.description || (task.subtasks && task.subtasks.length > 0) || task.category || task.date || task.time);
+  const hasDetails = !!(task.description || (task.subtasks && task.subtasks.length > 0));
   const expanded = expandAll && hasDetails;
 
   return (
@@ -420,12 +444,6 @@ function ArchiveRow({ task, onRevive, onEdit, expandAll }: { task: Task; onReviv
             className="overflow-hidden"
           >
             <div className="pl-7 pr-2 pt-2 space-y-1.5">
-              {(task.date || task.time) && (
-                <div className="text-[10px] font-mono text-muted-foreground/60">
-                  <span className="text-muted-foreground/40">When: </span>
-                  {task.date}{task.time ? ` · ${task.time}` : ''}
-                </div>
-              )}
               {task.description && (
                 <div className="text-[10px] font-mono text-muted-foreground/70 whitespace-pre-wrap">
                   {task.description}
