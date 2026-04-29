@@ -108,7 +108,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 w-full max-w-md mx-auto">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-8 w-full max-w-5xl mx-auto md:columns-2 md:gap-8 space-y-4 md:space-y-0 [&>*]:break-inside-avoid [&>*]:mb-4">
           {/* Help & Tips — top of settings */}
           <div className="space-y-2">
             <button
