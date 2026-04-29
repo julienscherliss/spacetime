@@ -486,8 +486,8 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               {notificationLevel === 'all' && 'Notifications for all scheduled tasks (FLEX, SEMI, FIXED, LOCK).'}
             </div>
 
-            {/* Persistent Overdue toggle */}
-            {notificationLevel !== 'off' && (
+            {/* Persistent Overdue toggle — advanced */}
+            {notificationLevel !== 'off' && showAdvanced && (
               <button
                 onClick={async () => {
                   const next = !persistentOverdue;
@@ -514,7 +514,8 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             )}
           </div>
 
-          {/* Sound */}
+          {/* Sound — advanced */}
+          {showAdvanced && (
           <div className="border-t border-border/30 pt-4">
             <div className="flex items-center gap-1.5 mb-2">
               <Volume2 size={12} strokeWidth={1.5} className="text-muted-foreground" />
@@ -544,6 +545,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               </div>
             </button>
           </div>
+          )}
 
             <div className="flex items-center gap-1.5 mb-2">
               <Moon size={12} strokeWidth={1.5} className="text-muted-foreground" />
