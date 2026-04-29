@@ -398,7 +398,8 @@ function ArchiveRow({ task, onRevive, onEdit, expandAll }: { task: Task; onReviv
       <div className="flex-1 min-w-0">
         <button
           onClick={() => onEdit(task.id)}
-          className={`text-sm sm:text-base font-mono truncate text-left hover:underline cursor-pointer ${isCompleted ? 'text-muted-foreground' : 'text-foreground/80'}`}
+          style={{ textDecoration: 'none' }}
+          className={`text-sm sm:text-base font-mono truncate text-left hover:!underline cursor-pointer no-underline ${isCompleted ? 'text-muted-foreground' : 'text-foreground/80'}`}
         >
           {task.title}
         </button>
