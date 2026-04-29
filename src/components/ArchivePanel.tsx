@@ -1,9 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Task } from '@/store/taskStore';
 import { useLibraryStore } from '@/store/libraryStore';
 
-import { X, RotateCcw, CheckCircle2, Trash2, Filter, Clock, AlertTriangle, Tag, ChevronDown, ChevronRight } from 'lucide-react';
+import { X, RotateCcw, CheckCircle2, Trash2, Filter, Clock, AlertTriangle, Tag, ChevronDown, ChevronRight, ChevronsUpDown } from 'lucide-react';
 import { format, isToday, isYesterday, startOfWeek, isWithinInterval, subDays } from 'date-fns';
 
 type ArchiveFilter = 'all' | 'completed' | 'deleted' | 'tags';
@@ -53,20 +53,56 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
   };
   const [filter, setFilter] = useState<ArchiveFilter>('all');
   const [tagFilter, setTagFilter] = useState<string>('all');
+  const [subTagOpen, setSubTagOpen] = useState(false);
+  const [expandAll, setExpandAll] = useState(false);
+  const subTagRef = useRef<HTMLDivElement>(null);
 
-  // Collect tags actually present on archived tasks
-  const archivedTaskTags = useMemo(() => {
-    const set = new Set<string>();
+  useEffect(() => {
+    if (!subTagOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (subTagRef.current && !subTagRef.current.contains(e.target as Node)) {
+        setSubTagOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [subTagOpen]);
+
+  // Collect tags actually present on archived tasks, split by root vs sub
+  const { archivedRootTags, archivedSubTagsByRoot } = useMemo(() => {
+    const all = new Set<string>();
     tasks.forEach((t) => {
-      if (t.archivedAt && t.category) set.add(t.category);
+      if (t.archivedAt && t.category) all.add(t.category);
     });
-    return Array.from(set).sort();
+    const roots = new Set<string>();
+    const subs = new Map<string, Set<string>>();
+    all.forEach((value) => {
+      const root = value.split('/')[0];
+      roots.add(root);
+      if (value !== root) {
+        if (!subs.has(root)) subs.set(root, new Set());
+        subs.get(root)!.add(value);
+      }
+    });
+    const subsObj: Record<string, string[]> = {};
+    subs.forEach((v, k) => { subsObj[k] = Array.from(v).sort(); });
+    return {
+      archivedRootTags: Array.from(roots).sort(),
+      archivedSubTagsByRoot: subsObj,
+    };
   }, [tasks]);
 
   const tagLabel = (value: string) => {
     const cat = allCategories.find((c) => c.value === value);
     return cat?.label ?? value;
   };
+
+  // Identify the active root (for showing the subtag dropdown)
+  const activeRoot = tagFilter === 'all' || tagFilter === '__none__'
+    ? null
+    : tagFilter.split('/')[0];
+  const activeRootSubs = activeRoot ? (archivedSubTagsByRoot[activeRoot] || []) : [];
+  const activeIsSub = !!activeRoot && tagFilter !== activeRoot;
 
   const archived = useMemo(() => {
     return tasks
@@ -158,8 +194,8 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
               ))}
             </div>
 
-            {/* Tag filter — only when not on the Tags management view */}
-            {filter !== 'tags' && archivedTaskTags.length > 0 && (
+            {/* Tag filter — root tags only, with optional subtag dropdown */}
+            {filter !== 'tags' && archivedRootTags.length > 0 && (
               <div className="flex items-center gap-1 px-4 pb-3 overflow-x-auto">
                 <span className="text-[9px] font-mono text-muted-foreground/50 tracking-[0.15em] uppercase pr-1 shrink-0">
                   Tag
@@ -174,20 +210,82 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
                 >
                   All
                 </button>
-                {archivedTaskTags.map((value) => (
-                  <button
-                    key={value}
-                    onClick={() => setTagFilter(value)}
-                    className={`px-2 py-1 rounded-md text-[10px] font-mono tracking-wide transition-colors shrink-0 flex items-center gap-1 ${
-                      tagFilter === value
-                        ? 'bg-foreground/8 text-foreground border border-border/50'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    <Tag size={10} strokeWidth={1.5} />
-                    {tagLabel(value)}
-                  </button>
-                ))}
+                {archivedRootTags.map((root) => {
+                  const isActive = activeRoot === root;
+                  return (
+                    <button
+                      key={root}
+                      onClick={() => setTagFilter(root)}
+                      className={`px-2 py-1 rounded-md text-[10px] font-mono tracking-wide transition-colors shrink-0 flex items-center gap-1 ${
+                        isActive
+                          ? 'bg-foreground/8 text-foreground border border-border/50'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <Tag size={10} strokeWidth={1.5} />
+                      {tagLabel(root)}
+                    </button>
+                  );
+                })}
+
+                {/* Subtag dropdown — only when a root with subtags is selected */}
+                {activeRoot && activeRootSubs.length > 0 && (
+                  <div ref={subTagRef} className="relative shrink-0">
+                    <button
+                      onClick={() => setSubTagOpen((v) => !v)}
+                      className={`px-2 py-1 rounded-md text-[10px] font-mono tracking-wide transition-colors flex items-center gap-1 border ${
+                        activeIsSub
+                          ? 'bg-foreground/8 text-foreground border-border/50'
+                          : 'text-muted-foreground hover:text-foreground border-transparent hover:border-border/50'
+                      }`}
+                    >
+                      <span>
+                        {activeIsSub ? tagLabel(tagFilter).split('/').slice(-1)[0] : 'Subtag'}
+                      </span>
+                      <ChevronDown size={10} strokeWidth={1.5} />
+                    </button>
+                    {subTagOpen && (
+                      <div className="absolute top-full mt-1 left-0 z-20 min-w-[140px] bg-background border border-border/50 rounded-md shadow-lg py-1">
+                        <button
+                          onClick={() => { setTagFilter(activeRoot); setSubTagOpen(false); }}
+                          className={`w-full text-left px-3 py-1.5 text-[10px] font-mono tracking-wide transition-colors ${
+                            !activeIsSub ? 'text-foreground bg-foreground/5' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                          }`}
+                        >
+                          All {tagLabel(activeRoot)}
+                        </button>
+                        {activeRootSubs.map((sub) => (
+                          <button
+                            key={sub}
+                            onClick={() => { setTagFilter(sub); setSubTagOpen(false); }}
+                            className={`w-full text-left px-3 py-1.5 text-[10px] font-mono tracking-wide transition-colors ${
+                              tagFilter === sub
+                                ? 'text-foreground bg-foreground/5'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                            }`}
+                          >
+                            {sub.split('/').slice(1).join('/')}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Expand-all toggle */}
+                <div className="flex-1" />
+                <button
+                  onClick={() => setExpandAll((v) => !v)}
+                  title={expandAll ? 'Collapse all details' : 'Expand all details'}
+                  className={`px-2 py-1 rounded-md text-[10px] font-mono tracking-wide transition-colors shrink-0 flex items-center gap-1 border ${
+                    expandAll
+                      ? 'bg-foreground/8 text-foreground border-border/50'
+                      : 'text-muted-foreground hover:text-foreground border-transparent hover:border-border/50'
+                  }`}
+                >
+                  <ChevronsUpDown size={10} strokeWidth={1.5} />
+                  <span>{expandAll ? 'Collapse' : 'Expand'}</span>
+                </button>
               </div>
             )}
           </div>
@@ -259,7 +357,7 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
                     </div>
                     <div className="divide-y divide-border/20">
                       {group.tasks.map((task) => (
-                        <ArchiveRow key={task.id} task={task} onRevive={handleRevive} onEdit={setEditingTask} />
+                        <ArchiveRow key={task.id} task={task} onRevive={handleRevive} onEdit={setEditingTask} expandAll={expandAll} />
                       ))}
                     </div>
                   </div>
@@ -273,26 +371,14 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
   );
 }
 
-function ArchiveRow({ task, onRevive, onEdit }: { task: Task; onRevive: (id: string) => void; onEdit: (id: string) => void }) {
+function ArchiveRow({ task, onRevive, onEdit, expandAll }: { task: Task; onRevive: (id: string) => void; onEdit: (id: string) => void; expandAll: boolean }) {
   const isCompleted = task.archiveReason === 'completed';
-  const [expanded, setExpanded] = useState(false);
   const hasDetails = !!(task.description || (task.subtasks && task.subtasks.length > 0) || task.category || task.date || task.time);
+  const expanded = expandAll && hasDetails;
 
   return (
     <div className="px-4 py-3 group">
       <div className="flex items-center gap-3">
-      {/* Expand toggle */}
-      <button
-        onClick={() => setExpanded((v) => !v)}
-        disabled={!hasDetails}
-        className={`shrink-0 p-0.5 rounded transition-colors ${
-          hasDetails ? 'text-muted-foreground/50 hover:text-foreground hover:bg-muted/50' : 'text-muted-foreground/20 cursor-default'
-        }`}
-        aria-label={expanded ? 'Collapse details' : 'Expand details'}
-      >
-        {expanded ? <ChevronDown size={12} strokeWidth={1.5} /> : <ChevronRight size={12} strokeWidth={1.5} />}
-      </button>
-
       {/* Status icon */}
       <div className={`shrink-0 ${isCompleted ? 'text-muted-foreground/40' : 'text-destructive/40'}`}>
         {isCompleted ? (
@@ -350,7 +436,7 @@ function ArchiveRow({ task, onRevive, onEdit }: { task: Task; onRevive: (id: str
             transition={{ duration: 0.15 }}
             className="overflow-hidden"
           >
-            <div className="pl-10 pr-2 pt-2 space-y-1.5">
+            <div className="pl-7 pr-2 pt-2 space-y-1.5">
               {(task.date || task.time) && (
                 <div className="text-[10px] font-mono text-muted-foreground/60">
                   <span className="text-muted-foreground/40">When: </span>
