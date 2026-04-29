@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Task } from '@/store/taskStore';
 import { useLibraryStore } from '@/store/libraryStore';
 
-import { X, RotateCcw, CheckCircle2, Trash2, Filter, Clock, AlertTriangle, Tag, ChevronDown, ChevronRight, ChevronsUpDown } from 'lucide-react';
+import { X, RotateCcw, CheckCircle2, Trash2, Filter, Clock, AlertTriangle, Tag, ChevronsUpDown } from 'lucide-react';
 import { format, isToday, isYesterday, startOfWeek, isWithinInterval, subDays } from 'date-fns';
 
 type ArchiveFilter = 'all' | 'completed' | 'deleted' | 'tags';
@@ -53,20 +53,8 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
   };
   const [filter, setFilter] = useState<ArchiveFilter>('all');
   const [tagFilter, setTagFilter] = useState<string>('all');
-  const [subTagOpen, setSubTagOpen] = useState(false);
+  const [drilldownParent, setDrilldownParent] = useState<string | null>(null);
   const [expandAll, setExpandAll] = useState(false);
-  const subTagRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!subTagOpen) return;
-    const onDoc = (e: MouseEvent) => {
-      if (subTagRef.current && !subTagRef.current.contains(e.target as Node)) {
-        setSubTagOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
-  }, [subTagOpen]);
 
   // Collect tags actually present on archived tasks, split by root vs sub
   const { archivedRootTags, archivedSubTagsByRoot } = useMemo(() => {
@@ -97,12 +85,7 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
     return cat?.label ?? value;
   };
 
-  // Identify the active root (for showing the subtag dropdown)
-  const activeRoot = tagFilter === 'all' || tagFilter === '__none__'
-    ? null
-    : tagFilter.split('/')[0];
-  const activeRootSubs = activeRoot ? (archivedSubTagsByRoot[activeRoot] || []) : [];
-  const activeIsSub = !!activeRoot && tagFilter !== activeRoot;
+  const drilldownSubs = drilldownParent ? (archivedSubTagsByRoot[drilldownParent] || []) : [];
 
   const archived = useMemo(() => {
     return tasks
@@ -194,93 +177,78 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
               ))}
             </div>
 
-            {/* Tag filter — root tags only, with optional subtag dropdown */}
+            {/* Tag filter — library-style pill chips with drilldown */}
             {filter !== 'tags' && archivedRootTags.length > 0 && (
-              <div className="flex items-center gap-1 px-4 pb-3 overflow-x-auto">
-                <span className="text-[9px] font-mono text-muted-foreground/50 tracking-[0.15em] uppercase pr-1 shrink-0">
-                  Tag
-                </span>
-                <button
-                  onClick={() => setTagFilter('all')}
-                  className={`px-2 py-1 rounded-md text-[10px] font-mono tracking-wide transition-colors shrink-0 ${
-                    tagFilter === 'all'
-                      ? 'bg-foreground/8 text-foreground border border-border/50'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  All
-                </button>
-                {archivedRootTags.map((root) => {
-                  const isActive = activeRoot === root;
-                  return (
-                    <button
-                      key={root}
-                      onClick={() => setTagFilter(root)}
-                      className={`px-2 py-1 rounded-md text-[10px] font-mono tracking-wide transition-colors shrink-0 flex items-center gap-1 ${
-                        isActive
-                          ? 'bg-foreground/8 text-foreground border border-border/50'
-                          : 'text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      <Tag size={10} strokeWidth={1.5} />
-                      {tagLabel(root)}
-                    </button>
-                  );
-                })}
-
-                {/* Subtag dropdown — only when a root with subtags is selected */}
-                {activeRoot && activeRootSubs.length > 0 && (
-                  <div ref={subTagRef} className="relative shrink-0">
-                    <button
-                      onClick={() => setSubTagOpen((v) => !v)}
-                      className={`px-2 py-1 rounded-md text-[10px] font-mono tracking-wide transition-colors flex items-center gap-1 border ${
-                        activeIsSub
-                          ? 'bg-foreground/8 text-foreground border-border/50'
-                          : 'text-muted-foreground hover:text-foreground border-transparent hover:border-border/50'
-                      }`}
-                    >
-                      <span>
-                        {activeIsSub ? tagLabel(tagFilter).split('/').slice(-1)[0] : 'Subtag'}
-                      </span>
-                      <ChevronDown size={10} strokeWidth={1.5} />
-                    </button>
-                    {subTagOpen && (
-                      <div className="absolute top-full mt-1 left-0 z-20 min-w-[140px] bg-background border border-border/50 rounded-md shadow-lg py-1">
-                        <button
-                          onClick={() => { setTagFilter(activeRoot); setSubTagOpen(false); }}
-                          className={`w-full text-left px-3 py-1.5 text-[10px] font-mono tracking-wide transition-colors ${
-                            !activeIsSub ? 'text-foreground bg-foreground/5' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                          }`}
-                        >
-                          All {tagLabel(activeRoot)}
-                        </button>
-                        {activeRootSubs.map((sub) => (
-                          <button
-                            key={sub}
-                            onClick={() => { setTagFilter(sub); setSubTagOpen(false); }}
-                            className={`w-full text-left px-3 py-1.5 text-[10px] font-mono tracking-wide transition-colors ${
-                              tagFilter === sub
-                                ? 'text-foreground bg-foreground/5'
-                                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                            }`}
-                          >
-                            {sub.split('/').slice(1).join('/')}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+              <div className="flex items-center gap-1.5 px-4 pb-3 overflow-x-auto scrollbar-none">
+                {drilldownParent ? (
+                  <>
+                    <ArchiveChip
+                      active={false}
+                      label="← Back"
+                      onClick={() => { setDrilldownParent(null); setTagFilter('all'); }}
+                    />
+                    <ArchiveChip
+                      active={tagFilter === drilldownParent}
+                      label={tagLabel(drilldownParent)}
+                      onClick={() => setTagFilter(drilldownParent)}
+                    />
+                    {drilldownSubs.map((sub) => {
+                      const subOnly = sub.split('/').slice(1).join('/');
+                      const fullLabel = tagLabel(sub);
+                      const subLabel = fullLabel.includes(' / ')
+                        ? fullLabel.split(' / ').slice(1).join(' / ')
+                        : (subOnly || fullLabel);
+                      return (
+                        <ArchiveChip
+                          key={sub}
+                          active={tagFilter === sub}
+                          label={subLabel}
+                          onClick={() => setTagFilter(sub)}
+                        />
+                      );
+                    })}
+                  </>
+                ) : (
+                  <>
+                    <ArchiveChip
+                      active={tagFilter === 'all'}
+                      label="All"
+                      onClick={() => setTagFilter('all')}
+                    />
+                    <ArchiveChip
+                      active={tagFilter === '__none__'}
+                      label="Untagged"
+                      onClick={() => setTagFilter(tagFilter === '__none__' ? 'all' : '__none__')}
+                    />
+                    {archivedRootTags.map((root) => {
+                      const hasSubs = (archivedSubTagsByRoot[root] || []).length > 0;
+                      return (
+                        <ArchiveChip
+                          key={root}
+                          active={tagFilter === root || (!!archivedSubTagsByRoot[root]?.includes(tagFilter))}
+                          label={tagLabel(root)}
+                          onClick={() => {
+                            if (tagFilter === root && hasSubs) {
+                              setDrilldownParent(root);
+                            } else {
+                              setTagFilter(tagFilter === root ? 'all' : root);
+                            }
+                          }}
+                        />
+                      );
+                    })}
+                  </>
                 )}
 
                 {/* Expand-all toggle */}
-                <div className="flex-1" />
+                <div className="flex-1 min-w-2" />
                 <button
                   onClick={() => setExpandAll((v) => !v)}
                   title={expandAll ? 'Collapse all details' : 'Expand all details'}
-                  className={`px-2 py-1 rounded-md text-[10px] font-mono tracking-wide transition-colors shrink-0 flex items-center gap-1 border ${
+                  className={`shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wider transition-colors border min-h-[32px] ${
                     expandAll
-                      ? 'bg-foreground/8 text-foreground border-border/50'
-                      : 'text-muted-foreground hover:text-foreground border-transparent hover:border-border/50'
+                      ? 'border-foreground/25 bg-foreground/8 text-foreground font-medium'
+                      : 'border-border/50 text-muted-foreground/60 hover:text-foreground hover:border-border'
                   }`}
                 >
                   <ChevronsUpDown size={10} strokeWidth={1.5} />
@@ -368,6 +336,21 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+function ArchiveChip({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`shrink-0 px-3 py-1.5 rounded-full text-[10px] font-mono tracking-wider transition-colors min-h-[32px] border select-none ${
+        active
+          ? 'border-foreground/25 bg-foreground/8 text-foreground font-medium'
+          : 'border-border/50 text-muted-foreground/60 hover:text-foreground hover:border-border'
+      }`}
+    >
+      {label}
+    </button>
   );
 }
 
