@@ -79,11 +79,10 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
 
   return (
     <>
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/20" onClick={onClose} />
-      <div className="relative bg-card border border-border rounded-t-lg sm:rounded-lg shadow-lg w-full sm:max-w-sm max-h-[80vh] flex flex-col">
+    <div className="fixed inset-0 z-50 bg-background flex flex-col">
+      <div className="relative bg-background w-full h-full flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-border/50 shrink-0">
           <div className="flex items-center gap-3">
             <h2 className="font-display font-bold text-foreground tracking-tight" style={{ fontSize: 'var(--ui-text-xl)' }}>SETTINGS</h2>
             <button
@@ -109,7 +108,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 w-full max-w-md mx-auto">
           {/* Help & Tips — top of settings */}
           <div className="space-y-2">
             <button
