@@ -511,13 +511,51 @@ export function useDataSync(user: User | null) {
   useEffect(() => {
     if (!user) return;
 
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible' && userIdRef.current === user.id) {
-        console.log('[Sync] App became visible — refetching from DB');
-        loadFromDB(user.id).then(() => {
-          initialLoadDone.current = true;
-        });
+    const handleVisibility = async () => {
+      if (document.visibilityState !== 'visible' || userIdRef.current !== user.id) return;
+
+      // CRITICAL: Flush any pending local writes BEFORE refetching from DB.
+      // On mobile, the app may have been backgrounded mid-debounce — if we
+      // refetch first, we'd overwrite unsaved local tasks with stale DB rows.
+      try {
+        if (taskSaveTimeout) {
+          clearTimeout(taskSaveTimeout);
+          taskSaveTimeout = null;
+          await saveTasksNow(user.id);
+        }
+        if (libSaveTimeout) {
+          clearTimeout(libSaveTimeout);
+          libSaveTimeout = null;
+          await saveLibraryNow(user.id);
+        }
+        if (catSaveTimeout) {
+          clearTimeout(catSaveTimeout);
+          catSaveTimeout = null;
+          await saveCategoriesNow(user.id);
+        }
+
+        // Also flush any local-only edits the snapshot diff might have missed
+        // (e.g. saves that were scheduled while the tab was hidden and the
+        // setTimeout never fired). Compare snapshots and push if dirty.
+        const taskState = useTaskStore.getState();
+        if (snapshotTasks(taskState.tasks) !== lastSyncedTaskSnapshot) {
+          await saveTasksNow(user.id);
+        }
+        const libState = useLibraryStore.getState();
+        if (snapshotLib(libState.items) !== lastSyncedLibSnapshot) {
+          await saveLibraryNow(user.id);
+        }
+        if (snapshotCats(libState.categories) !== lastSyncedCatSnapshot) {
+          await saveCategoriesNow(user.id);
+        }
+      } catch (err) {
+        console.error('[Sync] Error flushing pending writes on foreground:', err);
       }
+
+      if (userIdRef.current !== user.id) return;
+      console.log('[Sync] App became visible — refetching from DB');
+      await loadFromDB(user.id);
+      initialLoadDone.current = true;
     };
 
     document.addEventListener('visibilitychange', handleVisibility);
