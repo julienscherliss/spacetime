@@ -401,9 +401,9 @@ function ArchiveRow({ task, onRevive, onEdit, expandAll }: { task: Task; onReviv
 
   return (
     <div className="px-4 py-3 group">
-      <div className="flex items-center gap-3">
+      <div className="flex items-start gap-3">
       {/* Status icon */}
-      <div className={`shrink-0 ${isCompleted ? 'text-muted-foreground/40' : 'text-destructive/40'}`}>
+      <div className={`shrink-0 pt-1 ${isCompleted ? 'text-muted-foreground/40' : 'text-destructive/40'}`}>
         {isCompleted ? (
           <CheckCircle2 size={14} strokeWidth={1.5} />
         ) : (
