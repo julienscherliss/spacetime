@@ -363,6 +363,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               {mobilityMode === 'elite' && 'Same reflection prompts as Normal, plus due dates auto-escalate priority (this week → Semi · today → Fixed).'}
             </div>
           </div>
+          )}
 
           {/* Notifications */}
           <div className="mb-4">
