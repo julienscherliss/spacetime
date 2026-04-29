@@ -324,10 +324,12 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               </div>
             )}
           </div>
+          )}
           {/* Appearance */}
           <div className="border-t border-border/30 pt-4">
 
-          {/* Task Mobility */}
+          {/* Task Mobility — advanced */}
+          {showAdvanced && (
           <div className="mb-4">
             <div className="flex items-center gap-1.5 mb-2">
               <Shield size={12} strokeWidth={1.5} className="text-muted-foreground" />
