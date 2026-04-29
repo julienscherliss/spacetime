@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Task } from '@/store/taskStore';
 import { useLibraryStore } from '@/store/libraryStore';
