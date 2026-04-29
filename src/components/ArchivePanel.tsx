@@ -150,12 +150,26 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
                   </span>
                 )}
               </div>
-              <button
-                onClick={onClose}
-                className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-              >
-                <X size={18} strokeWidth={1.5} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setExpandAll((v) => !v)}
+                  title={expandAll ? 'Collapse all details' : 'Expand all details'}
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wider transition-colors border min-h-[32px] ${
+                    expandAll
+                      ? 'border-foreground/25 bg-foreground/8 text-foreground font-medium'
+                      : 'border-border/50 text-muted-foreground/60 hover:text-foreground hover:border-border'
+                  }`}
+                >
+                  <ChevronsUpDown size={10} strokeWidth={1.5} />
+                  <span>{expandAll ? 'Collapse' : 'Expand'}</span>
+                </button>
+                <button
+                  onClick={onClose}
+                  className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                >
+                  <X size={18} strokeWidth={1.5} />
+                </button>
+              </div>
             </div>
 
             {/* Filters */}
@@ -237,21 +251,6 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
                     })}
                   </>
                 )}
-
-                {/* Expand-all toggle */}
-                <div className="flex-1 min-w-2" />
-                <button
-                  onClick={() => setExpandAll((v) => !v)}
-                  title={expandAll ? 'Collapse all details' : 'Expand all details'}
-                  className={`shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wider transition-colors border min-h-[32px] ${
-                    expandAll
-                      ? 'border-foreground/25 bg-foreground/8 text-foreground font-medium'
-                      : 'border-border/50 text-muted-foreground/60 hover:text-foreground hover:border-border'
-                  }`}
-                >
-                  <ChevronsUpDown size={10} strokeWidth={1.5} />
-                  <span>{expandAll ? 'Collapse' : 'Expand'}</span>
-                </button>
               </div>
             )}
           </div>
@@ -399,7 +398,7 @@ function ArchiveRow({ task, onRevive, onEdit, expandAll }: { task: Task; onReviv
       <div className="flex-1 min-w-0">
         <button
           onClick={() => onEdit(task.id)}
-          className={`text-xs font-mono truncate text-left hover:underline cursor-pointer ${isCompleted ? 'text-muted-foreground line-through' : 'text-foreground/70'}`}
+          className={`text-sm sm:text-base font-mono truncate text-left hover:underline cursor-pointer ${isCompleted ? 'text-muted-foreground' : 'text-foreground/80'}`}
         >
           {task.title}
         </button>
