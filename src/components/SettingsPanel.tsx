@@ -175,7 +175,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               )}
             </div>
 
-            {!autoDetect && (
+            {!autoDetect && showAdvanced && (
               <>
                 <div className="relative mb-2">
                   <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/40" />
@@ -209,9 +209,15 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 </div>
               </>
             )}
+            {!autoDetect && !showAdvanced && (
+              <div className="text-[10px] font-mono text-muted-foreground/40 mt-1">
+                Enable Advanced (top of settings) to pick a timezone manually.
+              </div>
+            )}
           </div>
 
-          {/* Routines timezone behavior */}
+          {/* Routines timezone behavior — advanced */}
+          {showAdvanced && (
           <div className="border-t border-border/30 pt-4">
             <div className="flex items-center gap-1.5 mb-2">
               <Repeat size={12} strokeWidth={1.5} className="text-muted-foreground" />
@@ -234,8 +240,10 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               </div>
             </button>
           </div>
+          )}
 
-          {/* Google Calendar */}
+          {/* Google Calendar — advanced */}
+          {showAdvanced && (
           <div className="border-t border-border/30 pt-4">
             <div className="flex items-center gap-1.5 mb-2">
               <CalIcon size={12} strokeWidth={1.5} className="text-muted-foreground" />
