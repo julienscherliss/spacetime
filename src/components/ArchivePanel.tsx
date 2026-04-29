@@ -3,8 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Task } from '@/store/taskStore';
 import { useLibraryStore } from '@/store/libraryStore';
 
-import { X, RotateCcw, CheckCircle2, Trash2, Filter, Clock, AlertTriangle, Tag, ChevronsUpDown } from 'lucide-react';
-import { format, isToday, isYesterday, startOfWeek, isWithinInterval, subDays } from 'date-fns';
+import { X, RotateCcw, CheckCircle2, Trash2, Filter, Tag, ChevronsUpDown } from 'lucide-react';
+import { format, isToday, isYesterday } from 'date-fns';
 
 type ArchiveFilter = 'all' | 'completed' | 'deleted' | 'tags';
 
