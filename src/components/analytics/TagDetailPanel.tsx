@@ -1,9 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { X, Clock, CheckCircle, Calendar, TrendingUp } from 'lucide-react';
+import { X, Clock, CheckCircle, Calendar, TrendingUp, Tag as TagIcon } from 'lucide-react';
 import { useTaskStore } from '@/store/taskStore';
 
 import { useLibraryStore } from '@/store/libraryStore';
+import { TagPickerMenu } from '@/components/TagPickerMenu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { subDays, format, parseISO } from 'date-fns';
 
 function formatTime(minutes: number): string {
@@ -22,6 +24,7 @@ interface Props {
 export function TagDetailPanel({ tag, onClose }: Props) {
   const tasks = useTaskStore(s => s.tasks);
   const setEditingTask = useTaskStore(s => s.setEditingTask);
+  const updateTask = useTaskStore(s => s.updateTask);
   const categories = useLibraryStore(s => s.categories);
   const isUntagged = tag === 'untagged';
   const uncategorizedMatch = tag.match(/^(.+)\u0000uncategorized$/);
@@ -35,6 +38,51 @@ export function TagDetailPanel({ tag, onClose }: Props) {
 
   const PAGE_SIZE = 20;
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [batchMode, setBatchMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showTagPicker, setShowTagPicker] = useState(false);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFired = useRef(false);
+
+  const startLongPress = (taskId: string) => {
+    longPressFired.current = false;
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    longPressTimer.current = setTimeout(() => {
+      longPressFired.current = true;
+      setBatchMode(true);
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        next.add(taskId);
+        return next;
+      });
+    }, 450);
+  };
+  const cancelLongPress = () => {
+    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+  };
+
+  const toggleSelected = (taskId: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(taskId)) next.delete(taskId); else next.add(taskId);
+      return next;
+    });
+  };
+
+  const exitBatchMode = () => {
+    setBatchMode(false);
+    setSelectedIds(new Set());
+    setShowTagPicker(false);
+  };
+
+  const applyTagToSelected = (newTag: string) => {
+    selectedIds.forEach(id => {
+      // Skip synthetic calendar entries (id prefixed with cal-)
+      if (id.startsWith('cal-')) return;
+      updateTask(id, { category: newTag });
+    });
+    exitBatchMode();
+  };
 
   const stats = useMemo(() => {
     const tagTasks = tasks.filter(t => {
@@ -99,11 +147,44 @@ export function TagDetailPanel({ tag, onClose }: Props) {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="font-display text-lg font-bold text-foreground tracking-tight">{label.toUpperCase()}</h2>
-            <p className="text-[9px] font-mono text-muted-foreground/50 tracking-widest mt-0.5">TAG DETAIL</p>
+            <p className="text-[9px] font-mono text-muted-foreground/50 tracking-widest mt-0.5">
+              {batchMode ? `${selectedIds.size} SELECTED` : 'TAG DETAIL'}
+            </p>
           </div>
-          <button onClick={onClose} className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-1">
+            {batchMode && (
+              <>
+                <Popover open={showTagPicker} onOpenChange={setShowTagPicker}>
+                  <PopoverTrigger asChild>
+                    <button
+                      disabled={selectedIds.size === 0}
+                      className="px-2.5 py-1.5 rounded-md text-[10px] font-mono tracking-[0.12em] border border-primary/40 text-primary hover:bg-primary/10 transition-colors flex items-center gap-1.5 disabled:opacity-40"
+                    >
+                      <TagIcon size={11} /> ASSIGN TAG
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-44 p-1 z-[70]" align="end">
+                    <TagPickerMenu
+                      value=""
+                      onChange={(v) => applyTagToSelected(v)}
+                      onClose={() => setShowTagPicker(false)}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <button
+                  onClick={exitBatchMode}
+                  className="px-2.5 py-1.5 rounded-md text-[10px] font-mono tracking-[0.12em] text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+                >
+                  CANCEL
+                </button>
+              </>
+            )}
+            {!batchMode && (
+              <button onClick={onClose} className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
+                <X size={18} />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Summary cards */}
@@ -144,26 +225,62 @@ export function TagDetailPanel({ tag, onClose }: Props) {
           <h3 className="text-[9px] font-mono text-muted-foreground/40 tracking-[0.15em] mb-2">
             RECENT TASKS <span className="text-muted-foreground/30">({stats.recentTasks.length})</span>
           </h3>
-          {(isUntagged || isUncategorizedDirect) && stats.recentTasks.length > 0 && (
+          {batchMode ? (
+            <p className="text-[9px] font-mono text-primary/70 mb-2 leading-relaxed">
+              Tap tasks to select, then ASSIGN TAG. Long-press already enabled batch mode.
+            </p>
+          ) : (isUntagged || isUncategorizedDirect) && stats.recentTasks.length > 0 && (
             <p className="text-[9px] font-mono text-muted-foreground/50 mb-2 leading-relaxed">
-              Click any task to open it and assign a tag.
+              Click a task to open it. Long-press to batch-assign a tag to multiple tasks.
             </p>
           )}
           <div className="space-y-1">
-            {stats.recentTasks.slice(0, visibleCount).map(t => (
-              <button
-                key={t.id}
-                onClick={() => setEditingTask(t.id)}
-                className="w-full flex items-center gap-2 py-1.5 px-2 rounded border border-border/20 bg-card/30 hover:bg-card/60 transition-colors text-left cursor-pointer"
-              >
-                <div className={`w-1.5 h-1.5 rounded-full ${t.completed ? 'bg-green-500/60' : 'bg-muted-foreground/30'}`} />
-                <span className="text-[10px] font-mono text-foreground/70 flex-1 truncate hover:underline">{t.title}</span>
-                <span className="text-[8px] font-mono text-muted-foreground/40 shrink-0">{t.date}</span>
-                <span className="text-[8px] font-mono text-muted-foreground/60 tabular-nums shrink-0 ml-1 min-w-[28px] text-right">
-                  {formatTime(t.duration || 30)}
-                </span>
-              </button>
-            ))}
+            {stats.recentTasks.slice(0, visibleCount).map(t => {
+              const isSynthetic = t.id.startsWith('cal-');
+              const selected = selectedIds.has(t.id);
+              return (
+                <button
+                  key={t.id}
+                  onPointerDown={() => { if (!isSynthetic) startLongPress(t.id); }}
+                  onPointerUp={cancelLongPress}
+                  onPointerLeave={cancelLongPress}
+                  onPointerCancel={cancelLongPress}
+                  onClick={() => {
+                    if (longPressFired.current) { longPressFired.current = false; return; }
+                    if (batchMode) {
+                      if (!isSynthetic) toggleSelected(t.id);
+                    } else {
+                      setEditingTask(t.id);
+                    }
+                  }}
+                  onContextMenu={(e) => {
+                    if (isSynthetic) return;
+                    e.preventDefault();
+                    setBatchMode(true);
+                    setSelectedIds(prev => { const n = new Set(prev); n.add(t.id); return n; });
+                  }}
+                  className={`w-full flex items-center gap-2 py-1.5 px-2 rounded border transition-colors text-left cursor-pointer select-none ${
+                    selected
+                      ? 'border-primary/50 bg-primary/10'
+                      : 'border-border/20 bg-card/30 hover:bg-card/60'
+                  } ${isSynthetic && batchMode ? 'opacity-40' : ''}`}
+                >
+                  {batchMode && (
+                    <div className={`w-3 h-3 rounded-sm border shrink-0 flex items-center justify-center ${
+                      selected ? 'bg-primary border-primary' : 'border-muted-foreground/40'
+                    }`}>
+                      {selected && <div className="w-1.5 h-1.5 bg-primary-foreground rounded-[1px]" />}
+                    </div>
+                  )}
+                  <div className={`w-1.5 h-1.5 rounded-full ${t.completed ? 'bg-green-500/60' : 'bg-muted-foreground/30'}`} />
+                  <span className="text-[10px] font-mono text-foreground/70 flex-1 truncate">{t.title}</span>
+                  <span className="text-[8px] font-mono text-muted-foreground/40 shrink-0">{t.date}</span>
+                  <span className="text-[8px] font-mono text-muted-foreground/60 tabular-nums shrink-0 ml-1 min-w-[28px] text-right">
+                    {formatTime(t.duration || 30)}
+                  </span>
+                </button>
+              );
+            })}
             {stats.recentTasks.length === 0 && (
               <p className="text-[10px] font-mono text-muted-foreground/40 text-center py-4">NO TASKS</p>
             )}
