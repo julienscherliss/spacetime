@@ -57,9 +57,12 @@ interface BillingState {
     rangeStart: string | null;
     rangeEnd: string | null;
     items: Array<Omit<InvoiceItem, 'id' | 'invoiceId'>>;
+    invoiceNumber?: string;
   }) => Promise<Invoice | null>;
   setInvoiceStatus: (invoiceId: string, status: InvoiceStatus) => Promise<void>;
   deleteInvoice: (invoiceId: string) => Promise<void>;
+  /** Suggest the next sequential invoice number for a client (or globally if none). */
+  nextInvoiceNumber: (clientName?: string) => string;
 }
 
 function rowToSettings(r: any): TagBillingSettings {
