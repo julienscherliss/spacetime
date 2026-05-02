@@ -62,10 +62,17 @@ export function useBillableTagRows(start?: Date, end?: Date): BillableTagRow[] {
     // Build the union: tags with explicit settings + any category that
     // inherits billable status from a billable ancestor.
     const settingsByTag = new Map(settings.map(s => [s.tagValue, s]));
+    const archivedTagValues = new Set(
+      categories.filter(c => c.archived).map(c => c.value)
+    );
     const billableTagValues = new Set<string>();
 
-    // Direct billable settings
-    for (const s of settings) if (s.billable) billableTagValues.add(s.tagValue);
+    // Direct billable settings (skip archived tags)
+    for (const s of settings) {
+      if (!s.billable) continue;
+      if (archivedTagValues.has(s.tagValue)) continue;
+      billableTagValues.add(s.tagValue);
+    }
 
     // Inherited: any category whose ancestor is billable
     for (const cat of categories) {
