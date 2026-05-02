@@ -110,7 +110,7 @@ export function useBillableTagRows(start?: Date, end?: Date): BillableTagRow[] {
       const unbilledAmount =
         eff.rateType === 'hourly'
           ? unbilledHours * eff.hourlyRate
-          : unbilledMinutes > 0 ? eff.flatRate : 0;
+          : invoicedMinutes > 0 ? 0 : eff.flatRate;
 
       let status: 'unbilled' | 'invoiced' | 'paid' = 'unbilled';
       if (unbilledMinutes <= 0) {
