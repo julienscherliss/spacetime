@@ -191,6 +191,12 @@ export function BillableTimeBreakdown() {
       const c = catByValue.get(value);
       const archived = !!c?.archived;
       if (!showArchived && archived) continue;
+      // Hide archived tags that never had any activity (no tasks ever, never invoiced).
+      if (archived) {
+        const everUsed = perTag.lastUsed.has(value);
+        const everInvoiced = everInvoicedTags.has(value);
+        if (!everUsed && !everInvoiced) continue;
+      }
       // Derive a label: prefer category label, else last segment of the path prettified
       const label = c?.label || (() => {
         const last = value.split('/').pop() || value;
