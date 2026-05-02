@@ -1,0 +1,1 @@
+ALTER TABLE public.library_categories ADD COLUMN IF NOT EXISTS archived BOOLEAN NOT NULL DEFAULT false;

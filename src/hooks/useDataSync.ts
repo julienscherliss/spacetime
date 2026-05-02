@@ -112,11 +112,11 @@ function libraryItemToRow(item: LibraryTask, userId: string) {
 }
 
 function rowToCategory(row: any): CategoryDef {
-  return { value: row.value, label: row.label };
+  return { value: row.value, label: row.label, archived: row.archived ?? false };
 }
 
 function categoryToRow(cat: CategoryDef, userId: string) {
-  return { user_id: userId, value: cat.value, label: cat.label };
+  return { user_id: userId, value: cat.value, label: cat.label, archived: cat.archived ?? false };
 }
 
 // ─── Validation ────────────────────────────────────────
