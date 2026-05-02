@@ -230,9 +230,20 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
               REVIEW · CONFIRM · DOWNLOAD
             </p>
           </div>
-          <button onClick={onClose} className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setStylerOpen(true)}
+              className="px-2.5 py-1.5 rounded-md text-[10px] font-mono tracking-[0.12em] border border-border/40 text-foreground hover:bg-muted/40 transition-colors flex items-center gap-1.5"
+              title="Customize invoice template & style"
+            >
+              <Palette size={11} />
+              <span>{TEMPLATE_LABELS[invoiceStyle.template].toUpperCase()}</span>
+              <span className="w-2.5 h-2.5 rounded-sm border border-border/40" style={{ background: invoiceStyle.accentColor }} />
+            </button>
+            <button onClick={onClose} className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Tag selector */}
