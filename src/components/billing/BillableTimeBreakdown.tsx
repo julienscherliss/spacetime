@@ -259,6 +259,15 @@ export function BillableTimeBreakdown() {
     const n = new Set(p); n.has(v) ? n.delete(v) : n.add(v); return n;
   });
 
+  // Default: expand all rows the first time we have data.
+  const [didAutoExpand, setDidAutoExpand] = useState(false);
+  useEffect(() => {
+    if (didAutoExpand) return;
+    if (rows.length === 0) return;
+    setExpanded(new Set(rows.map(r => r.value)));
+    setDidAutoExpand(true);
+  }, [rows, didAutoExpand]);
+
   const maxMinutes = Math.max(1, ...rows.map(r => r.minutes));
 
   // Tags that aren't yet part of any billable hierarchy (for both MARK EXISTING dropdowns)
