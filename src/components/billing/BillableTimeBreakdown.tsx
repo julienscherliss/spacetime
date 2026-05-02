@@ -354,6 +354,14 @@ export function BillableTimeBreakdown() {
                 {r.rateLabel}
               </span>
             )}
+            {r.parentOnly && (
+              <span
+                className="text-[8px] font-mono tracking-[0.15em] px-1.5 py-0.5 rounded border border-border/40 text-muted-foreground/60 shrink-0"
+                title="Parent anchor — not billable itself, but every subtag inherits"
+              >
+                PARENT
+              </span>
+            )}
             {showWarn && (
               <span className={`text-[8px] font-mono tracking-[0.15em] ${r.daysSince != null && r.daysSince > 30 ? 'text-destructive' : 'text-muted-foreground/40'}`}>
                 {stalenessLabel(r.daysSince)}
