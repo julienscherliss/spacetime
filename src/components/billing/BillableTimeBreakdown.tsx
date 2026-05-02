@@ -59,6 +59,7 @@ interface TagRow {
 
 export function BillableTimeBreakdown() {
   const tasks = useTaskStore(s => s.tasks);
+  const updateTask = useTaskStore(s => s.updateTask);
   const categories = useLibraryStore(s => s.categories);
   const addCategory = useLibraryStore(s => s.addCategory);
   const archiveCategory = useLibraryStore(s => s.archiveCategory);
