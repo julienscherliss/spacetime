@@ -149,6 +149,7 @@ export const useBillingStore = create<BillingState>((set, get) => ({
       hourly_rate: patch.hourlyRate ?? existing?.hourlyRate ?? 0,
       flat_rate: patch.flatRate ?? existing?.flatRate ?? 0,
       client_name: patch.clientName ?? existing?.clientName ?? '',
+      client_id: patch.clientId !== undefined ? patch.clientId : (existing?.clientId ?? null),
       currency: patch.currency ?? existing?.currency ?? 'USD',
     };
     const { data, error } = await supabase
@@ -165,14 +166,16 @@ export const useBillingStore = create<BillingState>((set, get) => ({
     }));
   },
 
-  nextInvoiceNumber: (clientName?: string) => {
+  nextInvoiceNumber: (opts) => {
     const year = new Date().getFullYear();
     const prefix = `INV-${year}-`;
-    const norm = (clientName || '').trim().toLowerCase();
+    const clientId = opts?.clientId ?? null;
+    const norm = (opts?.clientName || '').trim().toLowerCase();
     const pool = get().invoices.filter(inv => {
       if (!inv.invoiceNumber.startsWith(prefix)) return false;
-      if (!norm) return true;
-      return (inv.clientName || '').trim().toLowerCase() === norm;
+      if (clientId) return inv.clientId === clientId;
+      if (norm) return (inv.clientName || '').trim().toLowerCase() === norm;
+      return true;
     });
     let maxSeq = 0;
     for (const inv of pool) {
@@ -183,12 +186,12 @@ export const useBillingStore = create<BillingState>((set, get) => ({
     return `${prefix}${String(maxSeq + 1).padStart(3, '0')}`;
   },
 
-  createInvoice: async ({ clientName, currency, notes, rangeStart, rangeEnd, items, invoiceNumber }) => {
+  createInvoice: async ({ clientName, clientId, currency, notes, rangeStart, rangeEnd, items, invoiceNumber }) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
     const subtotal = items.reduce((sum, it) => sum + it.amount, 0);
     const total = subtotal;
-    const num = (invoiceNumber || '').trim() || get().nextInvoiceNumber(clientName);
+    const num = (invoiceNumber || '').trim() || get().nextInvoiceNumber({ clientId, clientName });
 
     const { data: invRow, error: invErr } = await supabase
       .from('invoices')
@@ -196,6 +199,7 @@ export const useBillingStore = create<BillingState>((set, get) => ({
         user_id: user.id,
         invoice_number: num,
         client_name: clientName,
+        client_id: clientId,
         currency,
         subtotal,
         total,
