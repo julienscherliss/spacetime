@@ -284,7 +284,7 @@ export function WeekListView() {
           {task.title}
           {task.duration ? (
             <span className="ml-2 align-middle inline-block">
-              <DurationGlyph minutes={task.duration} size={12} />
+              <DurationGlyph minutes={task.duration} size={14} />
             </span>
           ) : null}
         </button>
