@@ -480,6 +480,42 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
           </button>
         </div>
       </motion.div>
+
+      {/* Style editor — draft preview from current line items */}
+      <InvoiceStyler
+        open={stylerOpen}
+        onClose={() => setStylerOpen(false)}
+        previewInvoice={{
+          id: 'preview',
+          invoiceNumber: 'INV-PREVIEW',
+          clientName: clientName || 'Sample Client',
+          status: 'invoiced',
+          currency,
+          subtotal: total,
+          total,
+          notes,
+          rangeStart: useRange && rangeStart ? rangeStart : null,
+          rangeEnd: useRange && rangeEnd ? rangeEnd : null,
+          issuedAt: new Date().toISOString(),
+          paidAt: null,
+          items: itemsWithAmounts.length > 0
+            ? itemsWithAmounts.map((it, i) => ({
+                id: `prev-${i}`,
+                invoiceId: 'preview',
+                tagValue: it.tag,
+                description: it.description,
+                rateType: it.rateType,
+                hours: it.hours,
+                rate: it.rate,
+                amount: it.amount,
+              }))
+            : [
+                { id: 'p1', invoiceId: 'preview', tagValue: 'sample', description: 'Design work', rateType: 'hourly' as const, hours: 8, rate: 120, amount: 960 },
+                { id: 'p2', invoiceId: 'preview', tagValue: 'sample', description: 'Development', rateType: 'hourly' as const, hours: 12, rate: 150, amount: 1800 },
+                { id: 'p3', invoiceId: 'preview', tagValue: 'sample', description: 'Consultation', rateType: 'hourly' as const, hours: 4, rate: 200, amount: 800 },
+              ],
+        } as Invoice}
+      />
     </motion.div>
   );
 }
