@@ -47,7 +47,7 @@ export function MinimalTemplate({ invoice, style }: TemplateProps) {
           {invoice.items.map(it => (
             <tr key={it.id} style={{ borderTop: '1px solid #F0F0F0' }}>
               <td className="py-4 text-[13px]">{it.description}</td>
-              <td className="py-4 text-[12px] text-right text-neutral-500 tabular-nums">{it.hours.toFixed(2)}</td>
+              <td className="py-4 text-[12px] text-right text-neutral-500 tabular-nums">{it.rateType === 'flat' ? '1' : it.hours.toFixed(2)}</td>
               <td className="py-4 text-[13px] text-right tabular-nums">{formatCurrency(it.amount, invoice.currency)}</td>
             </tr>
           ))}
