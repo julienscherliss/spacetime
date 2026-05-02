@@ -81,19 +81,6 @@ function HourGlyph({ size }: { size: number }) {
     </svg>
   );
 }
-      style={{ overflow: 'visible' }}
-    >
-      <rect
-        x={0.5}
-        y={h * 0.05}
-        width={w - 1}
-        height={h * 0.9}
-        rx={0.6}
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
 
 export function DurationGlyph({ minutes, size = 13, className = '' }: DurationGlyphProps) {
   if (!minutes || minutes <= 0) return null;
