@@ -29,6 +29,7 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
   const settings = useBillingStore(s => s.settings);
   const invoices = useBillingStore(s => s.invoices);
   const createInvoice = useBillingStore(s => s.createInvoice);
+  const nextInvoiceNumber = useBillingStore(s => s.nextInvoiceNumber);
   const categories = useLibraryStore(s => s.categories);
   const invoiceStyle = useInvoiceStyleStore(s => s.style);
   const loadStyle = useInvoiceStyleStore(s => s.load);
@@ -43,6 +44,8 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [stylerOpen, setStylerOpen] = useState(false);
+  const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [invoiceNumberEdited, setInvoiceNumberEdited] = useState(false);
   // Track which tags the user has manually edited so we don't overwrite their splits
   const [customizedTags, setCustomizedTags] = useState<Set<string>>(new Set());
 
@@ -161,6 +164,12 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
   const inferredClient = itemsWithAmounts.find(it => it.cfg?.clientName)?.cfg?.clientName || '';
   const clientName = clientOverride || inferredClient;
 
+  // Auto-suggest invoice number based on the current client (until the user edits it manually)
+  useEffect(() => {
+    if (invoiceNumberEdited) return;
+    setInvoiceNumber(nextInvoiceNumber(clientName));
+  }, [clientName, invoices, invoiceNumberEdited, nextInvoiceNumber]);
+
   const handleGenerate = async (alsoDownload: boolean) => {
     if (itemsWithAmounts.length === 0 || total <= 0) {
       toast({ title: 'Nothing to invoice', description: 'Select tags with billable time.' });
@@ -171,6 +180,7 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
       clientName,
       currency,
       notes,
+      invoiceNumber: invoiceNumber.trim() || undefined,
       rangeStart: useRange && rangeStart ? rangeStart : null,
       rangeEnd: useRange && rangeEnd ? rangeEnd : null,
       items: itemsWithAmounts
@@ -406,6 +416,26 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
 
         {/* Client + notes */}
         <div className="mb-4 border border-border/30 rounded-md bg-card/40 p-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <label className="text-[9px] font-mono text-muted-foreground/50 tracking-wide w-16 shrink-0">INVOICE #</label>
+            <input
+              type="text"
+              value={invoiceNumber}
+              onChange={(e) => { setInvoiceNumber(e.target.value); setInvoiceNumberEdited(true); }}
+              placeholder="INV-2026-001"
+              className="flex-1 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
+            />
+            {invoiceNumberEdited && (
+              <button
+                type="button"
+                onClick={() => { setInvoiceNumberEdited(false); setInvoiceNumber(nextInvoiceNumber(clientName)); }}
+                className="text-[9px] font-mono text-muted-foreground/50 hover:text-foreground tracking-wide"
+                title="Reset to auto-suggested number"
+              >
+                AUTO
+              </button>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             <label className="text-[9px] font-mono text-muted-foreground/50 tracking-wide w-16 shrink-0">CLIENT</label>
             <input

@@ -57,9 +57,12 @@ interface BillingState {
     rangeStart: string | null;
     rangeEnd: string | null;
     items: Array<Omit<InvoiceItem, 'id' | 'invoiceId'>>;
+    invoiceNumber?: string;
   }) => Promise<Invoice | null>;
   setInvoiceStatus: (invoiceId: string, status: InvoiceStatus) => Promise<void>;
   deleteInvoice: (invoiceId: string) => Promise<void>;
+  /** Suggest the next sequential invoice number for a client (or globally if none). */
+  nextInvoiceNumber: (clientName?: string) => string;
 }
 
 function rowToSettings(r: any): TagBillingSettings {
@@ -157,12 +160,30 @@ export const useBillingStore = create<BillingState>((set, get) => ({
     }));
   },
 
-  createInvoice: async ({ clientName, currency, notes, rangeStart, rangeEnd, items }) => {
+  nextInvoiceNumber: (clientName?: string) => {
+    const year = new Date().getFullYear();
+    const prefix = `INV-${year}-`;
+    const norm = (clientName || '').trim().toLowerCase();
+    const pool = get().invoices.filter(inv => {
+      if (!inv.invoiceNumber.startsWith(prefix)) return false;
+      if (!norm) return true;
+      return (inv.clientName || '').trim().toLowerCase() === norm;
+    });
+    let maxSeq = 0;
+    for (const inv of pool) {
+      const tail = inv.invoiceNumber.slice(prefix.length);
+      const n = parseInt(tail, 10);
+      if (!isNaN(n) && n > maxSeq) maxSeq = n;
+    }
+    return `${prefix}${String(maxSeq + 1).padStart(3, '0')}`;
+  },
+
+  createInvoice: async ({ clientName, currency, notes, rangeStart, rangeEnd, items, invoiceNumber }) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
     const subtotal = items.reduce((sum, it) => sum + it.amount, 0);
     const total = subtotal;
-    const num = `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
+    const num = (invoiceNumber || '').trim() || get().nextInvoiceNumber(clientName);
 
     const { data: invRow, error: invErr } = await supabase
       .from('invoices')
