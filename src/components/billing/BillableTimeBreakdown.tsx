@@ -63,7 +63,6 @@ export function BillableTimeBreakdown() {
   const addCategory = useLibraryStore(s => s.addCategory);
   const archiveCategory = useLibraryStore(s => s.archiveCategory);
   const unarchiveCategory = useLibraryStore(s => s.unarchiveCategory);
-  const removeCategory = useLibraryStore(s => s.removeCategory);
   const settings = useBillingStore(s => s.settings);
   const upsertSettings = useBillingStore(s => s.upsertSettings);
   const invoices = useBillingStore(s => s.invoices);
