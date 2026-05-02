@@ -31,13 +31,26 @@ export function TagGoalEditor({ tag, tagLabel }: Props) {
   const [metric, setMetric] = useState<GoalMetric>('completed-tasks');
   const [period, setPeriod] = useState<GoalPeriod>('weekly');
   const [target, setTarget] = useState<string>('5');
+  const [hours, setHours] = useState<string>('1');
+  const [minutes, setMinutes] = useState<string>('0');
+
+  const isTimeMetric = metric !== 'completed-tasks';
 
   const submit = () => {
-    const n = Number(target);
+    let n: number;
+    if (isTimeMetric) {
+      const h = Math.max(0, Number(hours) || 0);
+      const m = Math.max(0, Number(minutes) || 0);
+      n = h * 60 + m;
+    } else {
+      n = Number(target);
+    }
     if (!Number.isFinite(n) || n <= 0) return;
     addGoal({ tag, metric, period, target: n });
     setEditing(false);
     setTarget('5');
+    setHours('1');
+    setMinutes('0');
   };
 
   const progressFor = (g: Goal) => allProgress.find((p) => p.goal.id === g.id);
@@ -143,19 +156,45 @@ export function TagGoalEditor({ tag, tagLabel }: Props) {
           </div>
           <div>
             <div className="text-[8px] font-mono text-muted-foreground/50 tracking-[0.15em] mb-1">TARGET</div>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min={1}
-                value={target}
-                onChange={(e) => setTarget(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
-                className="w-20 bg-transparent border border-border/40 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
-                autoFocus
-              />
-              <span className="text-[9px] font-mono text-muted-foreground/60">
-                {METRIC_OPTS.find((m) => m.value === metric)!.unit}
-              </span>
+            <div className="flex items-center gap-2 flex-wrap">
+              {isTimeMetric ? (
+                <>
+                  <input
+                    type="number"
+                    min={0}
+                    value={hours}
+                    onChange={(e) => setHours(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+                    className="w-14 bg-transparent border border-border/40 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
+                    autoFocus
+                  />
+                  <span className="text-[9px] font-mono text-muted-foreground/60">h</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={59}
+                    step={5}
+                    value={minutes}
+                    onChange={(e) => setMinutes(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+                    className="w-14 bg-transparent border border-border/40 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
+                  />
+                  <span className="text-[9px] font-mono text-muted-foreground/60">min</span>
+                </>
+              ) : (
+                <>
+                  <input
+                    type="number"
+                    min={1}
+                    value={target}
+                    onChange={(e) => setTarget(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+                    className="w-20 bg-transparent border border-border/40 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
+                    autoFocus
+                  />
+                  <span className="text-[9px] font-mono text-muted-foreground/60">tasks</span>
+                </>
+              )}
               <div className="flex-1" />
               <button
                 onClick={() => setEditing(false)}
