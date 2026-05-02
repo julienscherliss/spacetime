@@ -6,6 +6,7 @@ import { useLibraryStore } from '@/store/libraryStore';
 import { useBillingStore } from '@/store/billingStore';
 import { TagBillingEditor } from '@/components/analytics/TagBillingEditor';
 import { getBillableRoots } from '@/lib/billingInheritance';
+import { BillableTimeBreakdown } from './BillableTimeBreakdown';
 
 interface Props {
   open: boolean;
@@ -205,6 +206,9 @@ export function BillingPanel({ open, onClose }: Props) {
                 )}
               </div>
             </div>
+
+            {/* Time spent by billable tag — with date-range, staleness, archive & delete */}
+            <BillableTimeBreakdown />
 
             {/* Reuse the existing billing module (unbilled, invoices, generator) */}
             <BillingModule />
