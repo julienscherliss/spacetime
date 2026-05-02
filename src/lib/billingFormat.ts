@@ -23,3 +23,20 @@ export function formatHours(minutes: number): string {
 export function decimalHours(minutes: number): number {
   return Math.round((minutes / 60) * 100) / 100;
 }
+
+/**
+ * Format a hierarchical tag label for billing display.
+ * Drops the top-level segment (e.g. "Projects") and joins remaining
+ * segments with " | ". Single-segment labels are returned unchanged.
+ *
+ * Examples:
+ *   "Projects / Color / Avalanche" -> "Color | Avalanche"
+ *   "Projects / MBAKS"             -> "MBAKS"
+ *   "MBAKS"                        -> "MBAKS"
+ */
+export function formatTagLabel(label: string): string {
+  if (!label) return label;
+  const parts = label.split(' / ').map(s => s.trim()).filter(Boolean);
+  if (parts.length <= 1) return label;
+  return parts.slice(1).join(' | ');
+}
