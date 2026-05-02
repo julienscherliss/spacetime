@@ -600,7 +600,7 @@ export function BillableTimeBreakdown() {
 
       <div className="px-3 pb-2 pt-1 border-t border-border/20 flex items-center gap-3 flex-wrap text-[8px] font-mono text-muted-foreground/40 tracking-[0.15em]">
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-primary/80" /> BILLED</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-foreground/30" /> UNBILLED</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-foreground/70" /> UNBILLED</span>
         <span className="text-muted-foreground/30">·</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-muted-foreground/40" /> &gt;7D STALE</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-destructive/60" /> &gt;30D INACTIVE</span>
