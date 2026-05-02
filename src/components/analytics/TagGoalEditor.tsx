@@ -21,7 +21,8 @@ const PERIOD_OPTS: { value: GoalPeriod; label: string }[] = [
 ];
 
 export function TagGoalEditor({ tag, tagLabel }: Props) {
-  const goals = useGoalsStore((s) => s.goals.filter((g) => g.tag === tag));
+  const allGoals = useGoalsStore((s) => s.goals);
+  const goals = allGoals.filter((g) => g.tag === tag);
   const addGoal = useGoalsStore((s) => s.addGoal);
   const removeGoal = useGoalsStore((s) => s.removeGoal);
   const allProgress = useGoalsProgress();
