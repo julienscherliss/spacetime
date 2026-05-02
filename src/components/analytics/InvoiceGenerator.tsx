@@ -96,6 +96,21 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
     });
   }, [settings, archivedTagValues, minutesByTag, invoicedMinutesByTag]);
 
+  // Drop any selected tags that aren't currently billable (e.g. became fully
+  // invoiced or archived) so we don't generate phantom line items.
+  useEffect(() => {
+    const billableSet = new Set(billable.map(b => b.tagValue));
+    setSelected(prev => {
+      let changed = false;
+      const next = new Set<string>();
+      prev.forEach(t => {
+        if (billableSet.has(t)) next.add(t);
+        else changed = true;
+      });
+      return changed ? next : prev;
+    });
+  }, [billable]);
+
   // Compute the available billable hours for a given tag
   const availableHoursForTag = (tag: string): number => {
     const totalMinutes = minutesByTag.get(tag) || 0;
