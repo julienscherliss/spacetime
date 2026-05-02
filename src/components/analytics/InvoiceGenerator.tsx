@@ -29,6 +29,7 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
   const settings = useBillingStore(s => s.settings);
   const invoices = useBillingStore(s => s.invoices);
   const createInvoice = useBillingStore(s => s.createInvoice);
+  const nextInvoiceNumber = useBillingStore(s => s.nextInvoiceNumber);
   const categories = useLibraryStore(s => s.categories);
   const invoiceStyle = useInvoiceStyleStore(s => s.style);
   const loadStyle = useInvoiceStyleStore(s => s.load);
@@ -43,6 +44,8 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [stylerOpen, setStylerOpen] = useState(false);
+  const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [invoiceNumberEdited, setInvoiceNumberEdited] = useState(false);
   // Track which tags the user has manually edited so we don't overwrite their splits
   const [customizedTags, setCustomizedTags] = useState<Set<string>>(new Set());
 
@@ -161,6 +164,12 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
   const inferredClient = itemsWithAmounts.find(it => it.cfg?.clientName)?.cfg?.clientName || '';
   const clientName = clientOverride || inferredClient;
 
+  // Auto-suggest invoice number based on the current client (until the user edits it manually)
+  useEffect(() => {
+    if (invoiceNumberEdited) return;
+    setInvoiceNumber(nextInvoiceNumber(clientName));
+  }, [clientName, invoices, invoiceNumberEdited, nextInvoiceNumber]);
+
   const handleGenerate = async (alsoDownload: boolean) => {
     if (itemsWithAmounts.length === 0 || total <= 0) {
       toast({ title: 'Nothing to invoice', description: 'Select tags with billable time.' });
@@ -171,6 +180,7 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
       clientName,
       currency,
       notes,
+      invoiceNumber: invoiceNumber.trim() || undefined,
       rangeStart: useRange && rangeStart ? rangeStart : null,
       rangeEnd: useRange && rangeEnd ? rangeEnd : null,
       items: itemsWithAmounts
