@@ -55,6 +55,7 @@ interface TagRow {
   daysSince: number | null; // days since most recent task touch (any time)
   rateLabel: string;
   parentOnly: boolean;
+  hasBeenInvoiced: boolean; // true if tag appears in any invoice ever
 }
 
 export function BillableTimeBreakdown() {
@@ -151,6 +152,20 @@ export function BillableTimeBreakdown() {
     return map;
   }, [invoices, interval]);
 
+  // Tags that have ever been invoiced (any time, any range).
+  const everInvoicedTags = useMemo(() => {
+    const set = new Set<string>();
+    for (const inv of invoices) {
+      for (const it of inv.items) {
+        const segs = (it.tagValue || '').split('/');
+        for (let i = segs.length; i >= 1; i--) {
+          set.add(segs.slice(0, i).join('/'));
+        }
+      }
+    }
+    return set;
+  }, [invoices]);
+
   const settingsByTag = useMemo(() => new Map(settings.map(s => [s.tagValue, s])), [settings]);
 
   const rateLabelFor = (tagValue: string): string => {
@@ -195,6 +210,7 @@ export function BillableTimeBreakdown() {
         daysSince,
         rateLabel: rateLabelFor(value),
         parentOnly: !!direct?.parentOnly,
+        hasBeenInvoiced: everInvoicedTags.has(value),
       });
     }
     // Sort: roots first by minutes desc, subtags follow their parent alphabetically
@@ -205,7 +221,7 @@ export function BillableTimeBreakdown() {
       if (a.minutes !== b.minutes) return b.minutes - a.minutes;
       return a.value.localeCompare(b.value);
     });
-  }, [categories, billableTagValues, perTag, billedByTag, showArchived, settings]);
+  }, [categories, billableTagValues, perTag, billedByTag, showArchived, settings, everInvoicedTags]);
 
   // A row is a "root" in this view if NO ancestor of it is also in the visible row set.
   // This way subtags (e.g. "Projects/Starfire") render as top-level when their parent
@@ -328,8 +344,9 @@ export function BillableTimeBreakdown() {
     const unbilledMinutes = Math.max(0, r.minutes - billedClamped);
     const billedPct = (billedClamped / maxMinutes) * 100;
     const unbilledPct = (unbilledMinutes / maxMinutes) * 100;
-    const labelColor = stalenessClass(r.daysSince);
-    const showWarn = r.daysSince == null || r.daysSince > 7;
+    // Only show stale/inactive treatment for tags that have been invoiced before.
+    const labelColor = r.hasBeenInvoiced ? stalenessClass(r.daysSince) : 'text-foreground/80';
+    const showWarn = r.hasBeenInvoiced && (r.daysSince == null || r.daysSince > 7);
     const isEditing = editingTag === r.value;
 
     return (
@@ -393,11 +410,11 @@ export function BillableTimeBreakdown() {
                   <Archive size={10} />
                 </button>
               )}
-              <HoldToDeleteButton onConfirm={() => removeCategory(r.value)} />
+              <HoldToDeleteButton onConfirm={() => removeCategory(r.value)} iconOnly />
             </div>
           </div>
-          <div className="h-1.5 bg-muted/40 rounded-sm overflow-hidden ml-4 flex">
-            {/* Billed (paid/invoiced) segment — solid */}
+          <div className="h-2 bg-muted/50 rounded-sm overflow-hidden ml-4 flex">
+            {/* Billed (paid/invoiced) segment — primary accent */}
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${billedPct}%` }}
@@ -405,15 +422,12 @@ export function BillableTimeBreakdown() {
               className="h-full bg-primary/80"
               title={`Billed: ${formatTime(billedClamped)}`}
             />
-            {/* Unbilled segment — striped via opacity */}
+            {/* Unbilled segment — solid dark grey, matches analytics chart */}
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${unbilledPct}%` }}
               transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1], delay: 0.05 }}
-              className={`h-full ${r.daysSince != null && r.daysSince > 30 ? 'bg-destructive/40' : r.daysSince != null && r.daysSince > 7 ? 'bg-muted-foreground/30' : 'bg-foreground/30'}`}
-              style={{
-                backgroundImage: 'repeating-linear-gradient(45deg, transparent 0 3px, hsl(var(--background) / 0.4) 3px 5px)',
-              }}
+              className="h-full bg-foreground/70"
               title={`Unbilled: ${formatTime(unbilledMinutes)}`}
             />
           </div>
