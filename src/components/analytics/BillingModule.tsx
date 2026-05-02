@@ -59,8 +59,45 @@ export function BillingModule() {
   }), [rows]);
 
   const billedRows = useMemo(
-    () => rows.filter(r => r.invoicedMinutes > 0).sort((a, b) => b.invoicedMinutes - a.invoicedMinutes),
-    [rows]
+    () => {
+      // Aggregate per-tag totals directly from invoice items so we include
+      // tags that have been archived (and thus are absent from `rows`).
+      const totals = new Map<string, { minutes: number; amount: number; rateType: 'hourly' | 'flat'; rate: number; currency: string; lastStatus: 'invoiced' | 'paid' }>();
+      // Sort invoices oldest -> newest so the latest status wins.
+      const sorted = [...invoices].sort((a, b) => a.issuedAt.localeCompare(b.issuedAt));
+      for (const inv of sorted) {
+        for (const it of inv.items) {
+          const cur = totals.get(it.tagValue) || {
+            minutes: 0, amount: 0, rateType: it.rateType, rate: it.rate, currency: inv.currency, lastStatus: inv.status,
+          };
+          cur.minutes += it.hours * 60;
+          cur.amount += it.amount;
+          cur.rate = it.rate;
+          cur.rateType = it.rateType;
+          cur.currency = inv.currency;
+          cur.lastStatus = inv.status;
+          totals.set(it.tagValue, cur);
+        }
+      }
+      return [...totals.entries()].map(([tagValue, t]) => {
+        const existing = rows.find(r => r.tagValue === tagValue);
+        const label = categories.find(c => c.value === tagValue)?.label || existing?.label || tagValue;
+        const archived = !!categories.find(c => c.value === tagValue)?.archived;
+        return {
+          tagValue,
+          label,
+          archived,
+          invoicedMinutes: t.minutes,
+          billedAmount: t.amount,
+          rateType: t.rateType,
+          rate: t.rate,
+          currency: t.currency,
+          clientName: existing?.settings.clientName || '',
+          status: t.lastStatus as 'invoiced' | 'paid',
+        };
+      }).sort((a, b) => b.billedAmount - a.billedAmount);
+    },
+    [invoices, rows, categories]
   );
 
   const totalUnbilled = unbilledRows.reduce((sum, r) => sum + r.unbilledAmount, 0);
