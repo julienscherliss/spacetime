@@ -4,7 +4,8 @@ import { useBillingStore } from '@/store/billingStore';
 import { useBillableTagRows } from '@/hooks/useBillingData';
 import { formatCurrency, formatHours } from '@/lib/billingFormat';
 import { useLibraryStore } from '@/store/libraryStore';
-import { downloadInvoicePdf } from '@/lib/invoicePdf';
+import { generateInvoicePdf } from '@/lib/renderInvoicePdf';
+import { useInvoiceStyleStore } from '@/store/invoiceStyleStore';
 import { InvoiceGenerator } from './InvoiceGenerator';
 import { format, parseISO } from 'date-fns';
 
@@ -22,11 +23,15 @@ export function BillingModule() {
   const deleteInvoice = useBillingStore(s => s.deleteInvoice);
   const categories = useLibraryStore(s => s.categories);
   const rows = useBillableTagRows();
+  const style = useInvoiceStyleStore(s => s.style);
+  const loadStyle = useInvoiceStyleStore(s => s.load);
+  const styleLoaded = useInvoiceStyleStore(s => s.loaded);
 
   const [generatorOpen, setGeneratorOpen] = useState(false);
   const [preselected, setPreselected] = useState<string[]>([]);
 
   useEffect(() => { if (!loaded) load(); }, [loaded, load]);
+  useEffect(() => { if (!styleLoaded) loadStyle(); }, [styleLoaded, loadStyle]);
 
   const openGenerator = (tags: string[]) => {
     setPreselected(tags);
@@ -36,11 +41,7 @@ export function BillingModule() {
   const downloadPdf = (invoiceId: string) => {
     const inv = invoices.find(i => i.id === invoiceId);
     if (!inv) return;
-    const labels: Record<string, string> = {};
-    inv.items.forEach(it => {
-      labels[it.tagValue] = categories.find(c => c.value === it.tagValue)?.label || it.tagValue;
-    });
-    downloadInvoicePdf(inv, labels);
+    generateInvoicePdf(inv, style);
   };
 
   const totalUnbilled = rows.reduce((sum, r) => sum + r.unbilledAmount, 0);
