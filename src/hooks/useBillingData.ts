@@ -3,6 +3,7 @@ import { useTaskStore } from '@/store/taskStore';
 import { useLibraryStore } from '@/store/libraryStore';
 import { useBillingStore, type TagBillingSettings } from '@/store/billingStore';
 import { parseISO, isWithinInterval } from 'date-fns';
+import { findBillableAncestor } from '@/lib/billingInheritance';
 
 export interface BillableTagRow {
   tagValue: string;
@@ -58,40 +59,80 @@ export function useBillableTagRows(start?: Date, end?: Date): BillableTagRow[] {
   const minutesByTag = useCompletedMinutesByTag(start, end);
 
   return useMemo(() => {
-    const billable = settings.filter(s => s.billable);
-    return billable.map(s => {
-      const label = categories.find(c => c.value === s.tagValue)?.label || s.tagValue;
-      const completedMinutes = minutesByTag.get(s.tagValue) || 0;
+    // Build the union: tags with explicit settings + any category that
+    // inherits billable status from a billable ancestor.
+    const settingsByTag = new Map(settings.map(s => [s.tagValue, s]));
+    const billableTagValues = new Set<string>();
+
+    // Direct billable settings
+    for (const s of settings) if (s.billable) billableTagValues.add(s.tagValue);
+
+    // Inherited: any category whose ancestor is billable
+    for (const cat of categories) {
+      if (cat.archived) continue;
+      const anc = findBillableAncestor(cat.value, settings);
+      if (anc) billableTagValues.add(cat.value);
+    }
+
+    const rows: BillableTagRow[] = [];
+    for (const tagValue of billableTagValues) {
+      // Effective settings: direct settings if present, else inherited from ancestor
+      const direct = settingsByTag.get(tagValue);
+      const inherited = !direct?.billable
+        ? findBillableAncestor(tagValue, settings)
+        : undefined;
+      const eff: TagBillingSettings = direct?.billable
+        ? direct
+        : (direct
+            ? { ...direct, billable: true, rateType: inherited!.rateType, hourlyRate: direct.hourlyRate || inherited!.hourlyRate, flatRate: direct.flatRate || inherited!.flatRate, flatItems: direct.flatItems.length ? direct.flatItems : inherited!.flatItems, currency: direct.currency || inherited!.currency, clientId: direct.clientId ?? inherited!.clientId, clientName: direct.clientName || inherited!.clientName }
+            : { ...inherited!, id: `inherited-${tagValue}`, tagValue });
+
+      const label = categories.find(c => c.value === tagValue)?.label || tagValue;
+      // For inherited (no direct settings), only count THIS leaf tag's own minutes
+      // (the parent row will roll up parent+all descendants via existing logic).
+      // To avoid double counting, only count direct minutes for inherited rows.
+      const completedMinutes = direct?.billable
+        ? (minutesByTag.get(tagValue) || 0)
+        : 0; // Inherited rows are informational; their time is already in the parent's roll-up
       const invoicedMinutes = invoices
         .flatMap(inv => inv.items)
-        .filter(it => it.tagValue === s.tagValue)
+        .filter(it => it.tagValue === tagValue)
         .reduce((sum, it) => sum + it.hours * 60, 0);
       const unbilledMinutes = Math.max(0, completedMinutes - invoicedMinutes);
       const unbilledHours = unbilledMinutes / 60;
       const unbilledAmount =
-        s.rateType === 'hourly'
-          ? unbilledHours * s.hourlyRate
-          : unbilledMinutes > 0 ? s.flatRate : 0;
+        eff.rateType === 'hourly'
+          ? unbilledHours * eff.hourlyRate
+          : unbilledMinutes > 0 ? eff.flatRate : 0;
 
-      // Status: most recent invoice for this tag determines status if no unbilled time
       let status: 'unbilled' | 'invoiced' | 'paid' = 'unbilled';
       if (unbilledMinutes <= 0) {
         const tagInvoices = invoices
-          .filter(inv => inv.items.some(it => it.tagValue === s.tagValue))
+          .filter(inv => inv.items.some(it => it.tagValue === tagValue))
           .sort((a, b) => b.issuedAt.localeCompare(a.issuedAt));
         if (tagInvoices.length > 0) status = tagInvoices[0].status;
       }
 
-      return {
-        tagValue: s.tagValue,
+      rows.push({
+        tagValue,
         label,
-        settings: s,
+        settings: eff,
         completedMinutes,
         invoicedMinutes,
         unbilledMinutes,
         unbilledAmount,
         status,
-      };
-    }).sort((a, b) => b.unbilledAmount - a.unbilledAmount);
+      });
+    }
+
+    // Hide inherited rows that have zero activity AND no billing history (they're noise).
+    // Keep direct billable tags always.
+    const filtered = rows.filter(r => {
+      const direct = settingsByTag.get(r.tagValue);
+      if (direct?.billable) return true;
+      return r.completedMinutes > 0 || r.invoicedMinutes > 0;
+    });
+
+    return filtered.sort((a, b) => b.unbilledAmount - a.unbilledAmount);
   }, [settings, invoices, categories, minutesByTag]);
 }
