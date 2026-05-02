@@ -69,6 +69,8 @@ export function InvoiceStyler({ open, onClose, previewInvoice }: Props) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className="fixed inset-0 z-[80] bg-background"
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
     >
       {/* Top bar */}
       <div className="h-12 border-b border-border/30 flex items-center justify-between px-4 bg-card/40">
