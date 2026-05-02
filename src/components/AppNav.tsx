@@ -26,6 +26,12 @@ export function AppNav() {
   const { panelOpen: libPanelOpen, setPanelOpen: setLibPanelOpen } = useLibraryStore();
   const showBillingPref = useTimezoneStore(s => s.showBilling);
   const billingSettings = useBillingStore(s => s.settings);
+  const billingLoaded = useBillingStore(s => s.loaded);
+  const loadBilling = useBillingStore(s => s.load);
+  // Load billing settings on mount so the Billing nav item appears
+  // immediately if any tag is billable (otherwise it would only show
+  // up after the user opened Settings or the Billing panel).
+  useEffect(() => { if (!billingLoaded) loadBilling(); }, [billingLoaded, loadBilling]);
   const hasBillableTag = billingSettings.some(s => s.billable);
   const showBilling = showBillingPref || hasBillableTag;
   const libCount = useLibraryStore((s) => s.items.length);
