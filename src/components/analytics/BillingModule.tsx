@@ -3,7 +3,7 @@ import { Receipt, Download, FileText, CheckCircle2, Trash2, ChevronLeft, Chevron
 import { useBillingStore } from '@/store/billingStore';
 import { useBillableTagRows } from '@/hooks/useBillingData';
 import { useCompletedMinutesByTag } from '@/hooks/useBillingData';
-import { formatCurrency, formatHours } from '@/lib/billingFormat';
+import { formatCurrency, formatHours, formatTagLabel } from '@/lib/billingFormat';
 import { useLibraryStore } from '@/store/libraryStore';
 import { generateInvoicePdf } from '@/lib/renderInvoicePdf';
 import { useInvoiceStyleStore } from '@/store/invoiceStyleStore';
@@ -186,8 +186,8 @@ export function BillingModule() {
               {/* Mobile: stacked layout */}
               <div className="sm:hidden flex items-baseline justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                  <div className="text-foreground/90 truncate flex items-center gap-1.5">
-                    <span className="truncate">{row.label}</span>
+                 <div className="text-foreground/90 truncate flex items-center gap-1.5">
+                    <span className="truncate">{formatTagLabel(row.label)}</span>
                     {showBilled && row.archived && (
                       <span className="text-[8px] tracking-[0.12em] text-muted-foreground/40 border border-border/30 rounded px-1 py-0 shrink-0">ARCHIVED</span>
                     )}
@@ -218,7 +218,7 @@ export function BillingModule() {
               {/* Desktop: grid columns */}
               <div className="hidden sm:block min-w-0">
                 <div className="text-foreground/90 truncate flex items-center gap-1.5">
-                  <span className="truncate">{row.label}</span>
+                  <span className="truncate">{formatTagLabel(row.label)}</span>
                   {showBilled && row.archived && (
                     <span className="text-[8px] tracking-[0.12em] text-muted-foreground/40 border border-border/30 rounded px-1 py-0">ARCHIVED</span>
                   )}
