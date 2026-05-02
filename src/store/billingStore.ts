@@ -14,6 +14,12 @@ export interface TagBillingSettings {
   id: string;
   tagValue: string;
   billable: boolean;
+  /**
+   * When true, this tag itself is NOT billable, but its presence acts as an
+   * inheritance anchor: any subtag created beneath it is treated as billable
+   * and prompts for a rate on creation.
+   */
+  parentOnly: boolean;
   rateType: RateType;
   hourlyRate: number;
   flatRate: number;
@@ -87,6 +93,7 @@ function rowToSettings(r: any): TagBillingSettings {
     id: r.id,
     tagValue: r.tag_value,
     billable: !!r.billable,
+    parentOnly: !!r.parent_only,
     rateType: r.rate_type,
     hourlyRate: Number(r.hourly_rate),
     flatRate: Number(r.flat_rate),
@@ -165,6 +172,7 @@ export const useBillingStore = create<BillingState>((set, get) => ({
       user_id: user.id,
       tag_value: tagValue,
       billable: patch.billable ?? existing?.billable ?? false,
+      parent_only: patch.parentOnly ?? existing?.parentOnly ?? false,
       rate_type: patch.rateType ?? existing?.rateType ?? 'hourly',
       hourly_rate: patch.hourlyRate ?? existing?.hourlyRate ?? 0,
       flat_rate: derivedFlatRate,

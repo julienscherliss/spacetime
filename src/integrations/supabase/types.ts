@@ -702,6 +702,7 @@ export type Database = {
           flat_rate: number
           hourly_rate: number
           id: string
+          parent_only: boolean
           rate_type: string
           tag_value: string
           updated_at: string
@@ -717,6 +718,7 @@ export type Database = {
           flat_rate?: number
           hourly_rate?: number
           id?: string
+          parent_only?: boolean
           rate_type?: string
           tag_value: string
           updated_at?: string
@@ -732,6 +734,7 @@ export type Database = {
           flat_rate?: number
           hourly_rate?: number
           id?: string
+          parent_only?: boolean
           rate_type?: string
           tag_value?: string
           updated_at?: string

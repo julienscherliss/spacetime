@@ -1,9 +1,10 @@
 import type { TagBillingSettings } from '@/store/billingStore';
 
 /**
- * Find the nearest billable ancestor (or self) for a tag.
- * Returns the settings of the closest billable tag in the path,
- * or undefined if none in the chain is billable.
+ * Find the nearest billable anchor (or self) for a tag.
+ * Returns the settings of the closest billable tag in the path — including
+ * `parentOnly` anchors (which aren't billable themselves but mark every
+ * descendant as billable).
  */
 export function findBillableAncestor(
   tagValue: string,
@@ -15,7 +16,7 @@ export function findBillableAncestor(
   for (let i = parts.length; i >= 1; i--) {
     const candidate = parts.slice(0, i).join('/');
     const s = byTag.get(candidate);
-    if (s && s.billable) return s;
+    if (s && (s.billable || s.parentOnly)) return s;
   }
   return undefined;
 }
@@ -35,7 +36,7 @@ export function isBillableInherited(
  * is NOT billable. Useful for showing a clean list to the user.
  */
 export function getBillableRoots(settings: TagBillingSettings[]): TagBillingSettings[] {
-  const billable = settings.filter(s => s.billable);
+  const billable = settings.filter(s => s.billable || s.parentOnly);
   return billable.filter(s => {
     const parts = s.tagValue.split('/');
     if (parts.length === 1) return true;

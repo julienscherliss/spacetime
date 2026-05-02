@@ -54,6 +54,7 @@ interface TagRow {
   billedMinutes: number; // invoiced minutes inside selected range
   daysSince: number | null; // days since most recent task touch (any time)
   rateLabel: string;
+  parentOnly: boolean;
 }
 
 export function BillableTimeBreakdown() {
@@ -74,14 +75,16 @@ export function BillableTimeBreakdown() {
   const [showAddTag, setShowAddTag] = useState(false);
   const [newTagName, setNewTagName] = useState('');
   const [newTagParent, setNewTagParent] = useState('');
+  const [newTagParentOnly, setNewTagParentOnly] = useState(false);
   const [pickFromExisting, setPickFromExisting] = useState('');
+  const [pickFromExistingParent, setPickFromExistingParent] = useState('');
 
   const interval = useMemo(() => rangeFor(range), [range]);
 
   // Determine which tags are billable (direct or inherited).
   const billableTagValues = useMemo(() => {
     const set = new Set<string>();
-    for (const s of settings) if (s.billable) set.add(s.tagValue);
+    for (const s of settings) if (s.billable || s.parentOnly) set.add(s.tagValue);
     for (const c of categories) {
       if (findBillableAncestor(c.value, settings)) set.add(c.value);
     }
@@ -152,8 +155,11 @@ export function BillableTimeBreakdown() {
 
   const rateLabelFor = (tagValue: string): string => {
     const direct = settingsByTag.get(tagValue);
-    const eff = direct?.billable ? direct : findBillableAncestor(tagValue, settings);
-    if (!eff) return '';
+    if (direct?.parentOnly) return '';
+    const eff = direct?.billable
+      ? direct
+      : findBillableAncestor(tagValue, settings);
+    if (!eff || eff.parentOnly) return '';
     return eff.rateType === 'hourly'
       ? `${eff.hourlyRate} ${eff.currency}/h`
       : `${eff.flatRate} ${eff.currency} flat`;
@@ -164,7 +170,7 @@ export function BillableTimeBreakdown() {
     const catByValue = new Map(categories.map(c => [c.value, c]));
     // Union of all billable tag values (from settings + categories that inherit)
     const allValues = new Set<string>(billableTagValues);
-    for (const s of settings) if (s.billable) allValues.add(s.tagValue);
+    for (const s of settings) if (s.billable || s.parentOnly) allValues.add(s.tagValue);
 
     for (const value of allValues) {
       const c = catByValue.get(value);
@@ -179,6 +185,7 @@ export function BillableTimeBreakdown() {
       const billedMinutes = billedByTag.get(value) || 0;
       const lastDate = perTag.lastUsed.get(value);
       const daysSince = lastDate ? differenceInDays(perTag.now, parseISO(lastDate)) : null;
+      const direct = settingsByTag.get(value);
       list.push({
         value,
         label,
@@ -187,6 +194,7 @@ export function BillableTimeBreakdown() {
         billedMinutes,
         daysSince,
         rateLabel: rateLabelFor(value),
+        parentOnly: !!direct?.parentOnly,
       });
     }
     // Sort: roots first by minutes desc, subtags follow their parent alphabetically
@@ -230,11 +238,14 @@ export function BillableTimeBreakdown() {
 
   const maxMinutes = Math.max(1, ...rows.map(r => r.minutes));
 
-  // Tags that aren't yet billable (for the MARK EXISTING dropdown)
+  // Tags that aren't yet part of any billable hierarchy (for both MARK EXISTING dropdowns)
   const nonBillableTags = categories
     .filter(c => !c.archived)
     .filter(c => !findBillableAncestor(c.value, settings))
-    .filter(c => !settingsByTag.get(c.value)?.billable);
+    .filter(c => {
+      const s = settingsByTag.get(c.value);
+      return !s?.billable && !s?.parentOnly;
+    });
 
   const parentCandidates = categories
     .filter(c => !c.archived)
@@ -247,7 +258,8 @@ export function BillableTimeBreakdown() {
     const value = newTagParent ? `${newTagParent}/${slug}` : slug;
     addCategory(trimmed, value);
     upsertSettings(value, {
-      billable: true,
+      billable: !newTagParentOnly,
+      parentOnly: newTagParentOnly,
       rateType: 'hourly',
       hourlyRate: 0,
       flatRate: 0,
@@ -256,14 +268,17 @@ export function BillableTimeBreakdown() {
     });
     setNewTagName('');
     setNewTagParent('');
+    const wasParentOnly = newTagParentOnly;
+    setNewTagParentOnly(false);
     setShowAddTag(false);
-    setEditingTag(value);
+    if (!wasParentOnly) setEditingTag(value);
   };
 
   const markExistingBillable = (tagValue: string) => {
     if (!tagValue) return;
     upsertSettings(tagValue, {
       billable: true,
+      parentOnly: false,
       rateType: 'hourly',
       hourlyRate: 0,
       flatRate: 0,
@@ -272,6 +287,20 @@ export function BillableTimeBreakdown() {
     });
     setPickFromExisting('');
     setEditingTag(tagValue);
+  };
+
+  const markExistingParentOnly = (tagValue: string) => {
+    if (!tagValue) return;
+    upsertSettings(tagValue, {
+      billable: false,
+      parentOnly: true,
+      rateType: 'hourly',
+      hourlyRate: 0,
+      flatRate: 0,
+      flatItems: [],
+      currency: 'USD',
+    });
+    setPickFromExisting('');
   };
 
   // Staleness: grey if no activity in 7 days, red if >30 days.
@@ -328,6 +357,14 @@ export function BillableTimeBreakdown() {
             {r.rateLabel && (
               <span className="text-[9px] font-mono text-muted-foreground/50 tracking-wide shrink-0">
                 {r.rateLabel}
+              </span>
+            )}
+            {r.parentOnly && (
+              <span
+                className="text-[8px] font-mono tracking-[0.15em] px-1.5 py-0.5 rounded border border-border/40 text-muted-foreground/60 shrink-0"
+                title="Parent anchor — not billable itself, but every subtag inherits"
+              >
+                PARENT
               </span>
             )}
             {showWarn && (
@@ -446,8 +483,8 @@ export function BillableTimeBreakdown() {
                   autoFocus
                   value={newTagName}
                   onChange={(e) => setNewTagName(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleAddTag(); if (e.key === 'Escape') { setShowAddTag(false); setNewTagParent(''); } }}
-                  placeholder="New billable tag name"
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleAddTag(); if (e.key === 'Escape') { setShowAddTag(false); setNewTagParent(''); setNewTagParentOnly(false); } }}
+                  placeholder={newTagParentOnly ? 'New parent tag name (subtags inherit)' : 'New billable tag name'}
                   className="flex-1 bg-transparent border border-border/40 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/60"
                 />
                 <button
@@ -470,6 +507,17 @@ export function BillableTimeBreakdown() {
                   ))}
                 </select>
               </div>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={newTagParentOnly}
+                  onChange={(e) => setNewTagParentOnly(e.target.checked)}
+                  className="accent-primary"
+                />
+                <span className="text-[9px] font-mono text-muted-foreground/70 tracking-wide">
+                  PARENT ONLY — not billable itself, but every subtag inherits
+                </span>
+              </label>
               {newTagParent && (
                 <p className="text-[9px] font-mono text-muted-foreground/40 leading-relaxed">
                   Will be created as <span className="text-foreground/70">{newTagParent}/{newTagName.trim().toLowerCase().replace(/\s+/g, '-') || '…'}</span>
@@ -478,19 +526,34 @@ export function BillableTimeBreakdown() {
             </div>
           )}
           {nonBillableTags.length > 0 && (
-            <div className="flex items-center gap-2">
-              <label className="text-[9px] font-mono text-muted-foreground/50 tracking-wide shrink-0">MARK EXISTING</label>
-              <select
-                value={pickFromExisting}
-                onChange={(e) => markExistingBillable(e.target.value)}
-                className="flex-1 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
-              >
-                <option value="">Select a tag…</option>
-                {nonBillableTags.map(c => (
-                  <option key={c.value} value={c.value}>{c.value}</option>
-                ))}
-              </select>
-            </div>
+            <>
+              <div className="flex items-center gap-2">
+                <label className="text-[9px] font-mono text-muted-foreground/50 tracking-wide shrink-0 w-24">MARK BILLABLE</label>
+                <select
+                  value={pickFromExisting}
+                  onChange={(e) => markExistingBillable(e.target.value)}
+                  className="flex-1 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
+                >
+                  <option value="">Select a tag…</option>
+                  {nonBillableTags.map(c => (
+                    <option key={c.value} value={c.value}>{c.value}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-[9px] font-mono text-muted-foreground/50 tracking-wide shrink-0 w-24" title="Tag itself isn't billable, but every subtag inherits and prompts for rate on creation">MARK PARENT</label>
+                <select
+                  value={pickFromExistingParent}
+                  onChange={(e) => { markExistingParentOnly(e.target.value); setPickFromExistingParent(''); }}
+                  className="flex-1 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
+                >
+                  <option value="">Select a tag…</option>
+                  {nonBillableTags.map(c => (
+                    <option key={c.value} value={c.value}>{c.value}</option>
+                  ))}
+                </select>
+              </div>
+            </>
           )}
         </div>
       )}
