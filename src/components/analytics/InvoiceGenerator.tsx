@@ -456,7 +456,7 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
             {invoiceNumberEdited && (
               <button
                 type="button"
-                onClick={() => { setInvoiceNumberEdited(false); setInvoiceNumber(nextInvoiceNumber(clientName)); }}
+                onClick={() => { setInvoiceNumberEdited(false); setInvoiceNumber(nextInvoiceNumber({ clientId, clientName })); }}
                 className="text-[9px] font-mono text-muted-foreground/50 hover:text-foreground tracking-wide"
                 title="Reset to auto-suggested number"
               >
@@ -466,14 +466,31 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
           </div>
           <div className="flex items-center gap-2">
             <label className="text-[9px] font-mono text-muted-foreground/50 tracking-wide w-16 shrink-0">CLIENT</label>
-            <input
-              type="text"
-              value={clientName}
-              onChange={(e) => setClientOverride(e.target.value)}
-              placeholder={inferredClient || 'Client name'}
-              className="flex-1 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
+            <ClientPicker
+              clientId={clientId}
+              onChange={(c) => { setClientId(c?.id ?? null); setClientNameOverride(null); }}
+              allowEdit
             />
           </div>
+          {clientHistory.length > 0 && (
+            <div className="flex items-start gap-2">
+              <label className="text-[9px] font-mono text-muted-foreground/50 tracking-wide w-16 shrink-0 pt-1 flex items-center gap-1">
+                <Clock size={9} /> HISTORY
+              </label>
+              <div className="flex-1 flex flex-wrap gap-1.5">
+                {clientHistory.map(inv => (
+                  <div
+                    key={inv.id}
+                    className="inline-flex items-baseline gap-1.5 px-2 py-0.5 rounded border border-border/30 bg-background/40"
+                    title={`${inv.invoiceNumber} · ${formatCurrency(inv.total, inv.currency)} · ${format(parseISO(inv.issuedAt), 'MMM d, yyyy')}`}
+                  >
+                    <span className="text-[10px] font-mono text-foreground/70">{inv.invoiceNumber.replace(/^INV-/, '')}</span>
+                    <span className="text-[9px] font-mono text-muted-foreground/50 tabular-nums">{formatCurrency(inv.total, inv.currency)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="flex items-start gap-2">
             <label className="text-[9px] font-mono text-muted-foreground/50 tracking-wide w-16 shrink-0 pt-1">NOTES</label>
             <textarea
