@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Receipt, Download, FileText, CheckCircle2, Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Receipt, Download, FileText, CheckCircle2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useBillingStore } from '@/store/billingStore';
 import { useBillableTagRows } from '@/hooks/useBillingData';
 import { formatCurrency, formatHours } from '@/lib/billingFormat';
@@ -29,6 +29,9 @@ export function BillingModule() {
 
   const [generatorOpen, setGeneratorOpen] = useState(false);
   const [preselected, setPreselected] = useState<string[]>([]);
+  const [showBilled, setShowBilled] = useState(false);
+  const [billedPage, setBilledPage] = useState(0);
+  const PAGE_SIZE = 10;
 
   useEffect(() => { if (!loaded) load(); }, [loaded, load]);
   useEffect(() => { if (!styleLoaded) loadStyle(); }, [styleLoaded, loadStyle]);
@@ -44,8 +47,25 @@ export function BillingModule() {
     generateInvoicePdf(inv, style);
   };
 
-  const totalUnbilled = rows.reduce((sum, r) => sum + r.unbilledAmount, 0);
-  const allUnbilledTags = rows.filter(r => r.unbilledMinutes > 0).map(r => r.tagValue);
+  // Unbilled view: only tags that actually have something left to bill.
+  // Hourly => unbilled minutes > 0. Flat => still unbilled (status === 'unbilled') AND not invoiced yet.
+  const unbilledRows = useMemo(() => rows.filter(r => {
+    if (r.settings.rateType === 'hourly') return r.unbilledMinutes > 0;
+    return r.status === 'unbilled' && r.invoicedMinutes <= 0;
+  }), [rows]);
+
+  const billedRows = useMemo(
+    () => rows.filter(r => r.invoicedMinutes > 0).sort((a, b) => b.invoicedMinutes - a.invoicedMinutes),
+    [rows]
+  );
+
+  const totalUnbilled = unbilledRows.reduce((sum, r) => sum + r.unbilledAmount, 0);
+  const allUnbilledTags = unbilledRows.map(r => r.tagValue);
+
+  const visibleRows = showBilled ? billedRows : unbilledRows;
+  const pageCount = Math.max(1, Math.ceil(visibleRows.length / PAGE_SIZE));
+  const safePage = Math.min(billedPage, pageCount - 1);
+  const pagedRows = showBilled ? visibleRows.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE) : visibleRows;
 
   return (
     <div>
@@ -57,22 +77,35 @@ export function BillingModule() {
             {formatCurrency(totalUnbilled, rows[0]?.settings.currency || 'USD')}
           </span>
         </div>
-        <button
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showBilled}
+              onChange={(e) => { setShowBilled(e.target.checked); setBilledPage(0); }}
+              className="w-3 h-3"
+            />
+            <span className="text-[9px] font-mono text-muted-foreground/60 tracking-[0.12em]">SHOW BILLED</span>
+          </label>
+          <button
           onClick={() => openGenerator(allUnbilledTags)}
           disabled={allUnbilledTags.length === 0}
           className="px-2.5 py-1 rounded text-[10px] font-mono tracking-[0.12em] bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-40 flex items-center gap-1.5"
         >
           <FileText size={11} /> NEW INVOICE
         </button>
+        </div>
       </div>
 
       {/* Billable tags */}
-      {rows.length === 0 ? (
+      {visibleRows.length === 0 ? (
         <div className="py-6 text-center">
           <Receipt size={20} className="text-muted-foreground/20 mx-auto mb-2" />
-          <p className="text-[10px] font-mono text-muted-foreground/50 tracking-wide">NO BILLABLE TAGS</p>
+          <p className="text-[10px] font-mono text-muted-foreground/50 tracking-wide">
+            {showBilled ? 'NO BILLED TAGS YET' : 'NO UNBILLED TAGS'}
+          </p>
           <p className="text-[9px] font-mono text-muted-foreground/30 mt-1 leading-relaxed">
-            Open a tag in TIME BY TAG and toggle BILLABLE to start.
+            {showBilled ? 'Tags appear here once they are included on an invoice.' : 'Open a tag in TIME BY TAG and toggle BILLABLE to start.'}
           </p>
         </div>
       ) : (
@@ -84,7 +117,7 @@ export function BillingModule() {
             <span className="text-right">AMOUNT</span>
             <span className="text-right">STATUS</span>
           </div>
-          {rows.map(row => (
+          {pagedRows.map(row => (
             <button
               key={row.tagValue}
               onClick={() => row.unbilledMinutes > 0 && openGenerator([row.tagValue])}
@@ -98,7 +131,7 @@ export function BillingModule() {
                 )}
               </div>
               <span className="text-muted-foreground/70 tabular-nums text-right">
-                {formatHours(row.unbilledMinutes)}
+                {formatHours(showBilled ? row.invoicedMinutes : row.unbilledMinutes)}
               </span>
               <span className="text-muted-foreground/60 tabular-nums text-right">
                 {row.settings.rateType === 'hourly'
@@ -115,6 +148,27 @@ export function BillingModule() {
               </span>
             </button>
           ))}
+          {showBilled && pageCount > 1 && (
+            <div className="flex items-center justify-between px-2.5 py-1.5 border-t border-border/20 bg-muted/10">
+              <button
+                onClick={() => setBilledPage(p => Math.max(0, p - 1))}
+                disabled={safePage === 0}
+                className="p-1 rounded text-muted-foreground/60 hover:text-foreground hover:bg-muted/40 transition-colors disabled:opacity-30"
+              >
+                <ChevronLeft size={12} />
+              </button>
+              <span className="text-[9px] font-mono text-muted-foreground/50 tabular-nums tracking-[0.12em]">
+                {safePage + 1} / {pageCount}
+              </span>
+              <button
+                onClick={() => setBilledPage(p => Math.min(pageCount - 1, p + 1))}
+                disabled={safePage >= pageCount - 1}
+                className="p-1 rounded text-muted-foreground/60 hover:text-foreground hover:bg-muted/40 transition-colors disabled:opacity-30"
+              >
+                <ChevronRight size={12} />
+              </button>
+            </div>
+          )}
         </div>
       )}
 
