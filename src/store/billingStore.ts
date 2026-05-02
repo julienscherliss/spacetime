@@ -77,6 +77,16 @@ interface BillingState {
   }) => Promise<Invoice | null>;
   setInvoiceStatus: (invoiceId: string, status: InvoiceStatus) => Promise<void>;
   deleteInvoice: (invoiceId: string) => Promise<void>;
+  updateInvoice: (invoiceId: string, patch: {
+    invoiceNumber?: string;
+    clientName?: string;
+    clientId?: string | null;
+    currency?: string;
+    notes?: string;
+    rangeStart?: string | null;
+    rangeEnd?: string | null;
+    items?: Array<Omit<InvoiceItem, 'id' | 'invoiceId'>>;
+  }) => Promise<void>;
   /** Suggest the next sequential invoice number for a client. Prefer clientId; falls back to clientName. */
   nextInvoiceNumber: (opts?: { clientId?: string | null; clientName?: string }) => string;
 }
