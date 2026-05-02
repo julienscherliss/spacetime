@@ -59,22 +59,23 @@ function RemainderGlyph({ mins, size }: { mins: number; size: number }) {
 }
 
 function HourGlyph({ size }: { size: number }) {
-  const w = size * 0.36;
-  const h = size;
+  // Bar should match cap-height of the surrounding text, not full line-box.
+  const w = size * 0.3;
+  const h = size * 0.72;
   return (
     <svg
       width={w}
       height={h}
       viewBox={`0 0 ${w} ${h}`}
-      className="inline-block align-middle"
-      style={{ overflow: 'visible' }}
+      className="inline-block"
+      style={{ overflow: 'visible', verticalAlign: '-0.08em' }}
     >
       <rect
-        x={0.5}
-        y={h * 0.05}
-        width={w - 1}
-        height={h * 0.9}
-        rx={0.6}
+        x={0}
+        y={0}
+        width={w}
+        height={h}
+        rx={0.8}
         fill="currentColor"
       />
     </svg>
