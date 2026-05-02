@@ -11,6 +11,7 @@ import { InvoiceEditor } from './InvoiceEditor';
 import { format, parseISO } from 'date-fns';
 
 const STATUS_STYLE: Record<string, string> = {
+  active: 'border-primary/50 text-primary',
   unbilled: 'border-muted-foreground/30 text-muted-foreground/70',
   invoiced: 'border-primary/40 text-primary/90',
   paid: 'border-green-500/40 text-green-600 dark:text-green-400',

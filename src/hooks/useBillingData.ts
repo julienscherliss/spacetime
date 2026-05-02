@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useTaskStore } from '@/store/taskStore';
 import { useLibraryStore } from '@/store/libraryStore';
 import { useBillingStore, type TagBillingSettings } from '@/store/billingStore';
-import { parseISO, isWithinInterval } from 'date-fns';
+import { parseISO, isWithinInterval, subDays } from 'date-fns';
 import { findBillableAncestor } from '@/lib/billingInheritance';
 
 export interface BillableTagRow {
@@ -17,8 +17,8 @@ export interface BillableTagRow {
   unbilledMinutes: number;
   /** Calculated unbilled amount based on rateType */
   unbilledAmount: number;
-  /** Status: 'unbilled' if unbilled > 0, else last invoice status, else 'unbilled' */
-  status: 'unbilled' | 'invoiced' | 'paid';
+  /** Status: 'active' if hours logged in past 7 days, else 'unbilled' if unbilled > 0, else last invoice status. */
+  status: 'active' | 'unbilled' | 'invoiced' | 'paid';
 }
 
 /**
@@ -57,6 +57,27 @@ export function useBillableTagRows(start?: Date, end?: Date): BillableTagRow[] {
   const invoices = useBillingStore(s => s.invoices);
   const categories = useLibraryStore(s => s.categories);
   const minutesByTag = useCompletedMinutesByTag(start, end);
+  const tasks = useTaskStore(s => s.tasks);
+
+  // Tags with completed time in the last 7 days (rolled up to ancestors).
+  const recentlyActiveTags = useMemo(() => {
+    const cutoff = subDays(new Date(), 7);
+    const set = new Set<string>();
+    for (const t of tasks) {
+      if (t.archiveReason === 'deleted') continue;
+      if (!t.completed) continue;
+      const cat = t.category || '';
+      if (!cat) continue;
+      const d = parseISO(t.date);
+      if (d < cutoff) continue;
+      set.add(cat);
+      const parts = cat.split('/');
+      for (let i = 1; i < parts.length; i++) {
+        set.add(parts.slice(0, i).join('/'));
+      }
+    }
+    return set;
+  }, [tasks]);
 
   return useMemo(() => {
     // Build the union: tags with explicit settings + any category that
@@ -112,13 +133,14 @@ export function useBillableTagRows(start?: Date, end?: Date): BillableTagRow[] {
           ? unbilledHours * eff.hourlyRate
           : invoicedMinutes > 0 ? 0 : eff.flatRate;
 
-      let status: 'unbilled' | 'invoiced' | 'paid' = 'unbilled';
+      let status: 'active' | 'unbilled' | 'invoiced' | 'paid' = 'unbilled';
       if (unbilledMinutes <= 0) {
         const tagInvoices = invoices
           .filter(inv => inv.items.some(it => it.tagValue === tagValue))
           .sort((a, b) => b.issuedAt.localeCompare(a.issuedAt));
         if (tagInvoices.length > 0) status = tagInvoices[0].status;
       }
+      if (recentlyActiveTags.has(tagValue)) status = 'active';
 
       rows.push({
         tagValue,
@@ -141,5 +163,5 @@ export function useBillableTagRows(start?: Date, end?: Date): BillableTagRow[] {
     });
 
     return filtered.sort((a, b) => b.unbilledAmount - a.unbilledAmount);
-  }, [settings, invoices, categories, minutesByTag]);
+  }, [settings, invoices, categories, minutesByTag, recentlyActiveTags]);
 }
