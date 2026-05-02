@@ -15,6 +15,7 @@ interface TimezoneState {
   showCompletedTasks: boolean;
   comfortMode: boolean;
   soundEnabled: boolean;
+  showBilling: boolean;
   setTimezone: (tz: string) => void;
   setRoutinesFixedTime: (v: boolean) => void;
   setAutoDetect: (v: boolean) => void;
@@ -25,6 +26,7 @@ interface TimezoneState {
   setShowCompletedTasks: (v: boolean) => void;
   setComfortMode: (v: boolean) => void;
   setSoundEnabled: (v: boolean) => void;
+  setShowBilling: (v: boolean) => void;
 }
 
 export const useTimezoneStore = create<TimezoneState>()(
@@ -40,6 +42,7 @@ export const useTimezoneStore = create<TimezoneState>()(
       showCompletedTasks: true,
       comfortMode: false,
       soundEnabled: true,
+      showBilling: false,
       setTimezone: (tz: string) => set({ timezone: tz }),
       setRoutinesFixedTime: (v: boolean) => set({ routinesFixedTime: v }),
       setAutoDetect: (v: boolean) => set({ autoDetect: v }),
@@ -56,6 +59,7 @@ export const useTimezoneStore = create<TimezoneState>()(
         set({ comfortMode: v });
       },
       setSoundEnabled: (v: boolean) => set({ soundEnabled: v }),
+      setShowBilling: (v: boolean) => set({ showBilling: v }),
     }),
     { name: 'do-timezone' }
   )
