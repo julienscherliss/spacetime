@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useBillingStore, type FlatLineItem } from '@/store/billingStore';
 import { useLibraryStore } from '@/store/libraryStore';
 import { Switch } from '@/components/ui/switch';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { ClientPicker } from './ClientPicker';
 import { Plus, X, Info } from 'lucide-react';
 
@@ -68,12 +69,23 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
           {hasSubtags && (
             <div className="flex items-center gap-2">
               <span className="text-[9px] font-mono text-muted-foreground/50 tracking-wide">PARENT</span>
-              <span
-                title="Marks this tag as a billing anchor: it isn't billable itself, but every subtag created beneath it is treated as billable and inherits its rate."
-                className="text-muted-foreground/40 hover:text-muted-foreground cursor-help"
-              >
-                <Info size={10} />
-              </span>
+              <TooltipProvider delayDuration={150}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={(e) => e.preventDefault()}
+                      className="inline-flex items-center justify-center text-muted-foreground/40 hover:text-muted-foreground cursor-help"
+                      aria-label="What does PARENT do?"
+                    >
+                      <Info size={11} strokeWidth={2} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-[220px] text-[10px] font-mono leading-relaxed">
+                    Marks this tag as a billing anchor: it isn't billable itself, but every subtag beneath it is treated as billable and inherits its rate.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <Switch
                 checked={parentOnly}
                 onCheckedChange={(v) => {
