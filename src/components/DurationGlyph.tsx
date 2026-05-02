@@ -26,9 +26,11 @@ function RemainderGlyph({ mins, size }: { mins: number; size: number }) {
   const w = mins === 45 ? size * 0.85 : size * 0.45;
   const h = size;
   const cx = w / 2;
-  const topY = h * 0.32;
-  const botY = h * 0.68;
-  const midY = h * 0.5;
+  // Nudge everything down slightly — SVG center sits above text optical
+  // middle when inline with capitals + descenders, so bias toward bottom.
+  const topY = h * 0.42;
+  const botY = h * 0.78;
+  const midY = h * 0.6;
 
   return (
     <svg
