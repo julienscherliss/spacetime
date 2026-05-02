@@ -9,6 +9,7 @@ import { useColorSchemeStore } from '@/store/colorSchemeStore';
 import { useCurrentTime, formatTime12h } from '@/hooks/useCurrentTime';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { GroupListRow } from '@/components/GroupListRow';
+import { DurationGlyph } from '@/components/DurationGlyph';
 
 function addDaysToDate(dateStr: string, days: number): string {
   const d = new Date(dateStr + 'T12:00:00');

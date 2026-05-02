@@ -14,6 +14,7 @@ import { useDragHandoffStore } from '@/store/dragHandoffStore';
 import { useCalendarStore } from '@/store/calendarStore';
 import { useCurrentTime, formatTime12h, getWeekBounds } from '@/hooks/useCurrentTime';
 import { ChevronLeft, ChevronRight, ChevronsRight } from 'lucide-react';
+import { DurationGlyph } from '@/components/DurationGlyph';
 
 function addDaysToDate(dateStr: string, days: number): string {
   const d = new Date(dateStr + 'T12:00:00');
