@@ -35,6 +35,7 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
   const createInvoice = useBillingStore(s => s.createInvoice);
   const nextInvoiceNumber = useBillingStore(s => s.nextInvoiceNumber);
   const categories = useLibraryStore(s => s.categories);
+  const archiveCategory = useLibraryStore(s => s.archiveCategory);
   const invoiceStyle = useInvoiceStyleStore(s => s.style);
   const loadStyle = useInvoiceStyleStore(s => s.load);
   const styleLoaded = useInvoiceStyleStore(s => s.loaded);
@@ -56,6 +57,11 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
   const [invoiceNumberEdited, setInvoiceNumberEdited] = useState(false);
   // Track which tags the user has manually edited so we don't overwrite their splits
   const [customizedTags, setCustomizedTags] = useState<Set<string>>(new Set());
+  // After-create archive prompt
+  const [archivePrompt, setArchivePrompt] = useState<{
+    tags: { value: string; label: string }[];
+    selected: Set<string>;
+  } | null>(null);
 
   useEffect(() => { if (!styleLoaded) loadStyle(); }, [styleLoaded, loadStyle]);
   useEffect(() => { if (!clientsLoaded) loadClients(); }, [clientsLoaded, loadClients]);
@@ -310,7 +316,21 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
       await generateInvoicePdf(invoice, invoiceStyle);
     }
     toast({ title: `Invoice ${invoice.invoiceNumber} created` });
-    onClose();
+
+    // Offer to archive any non-archived invoiced tags.
+    const archivedSet = new Set(categories.filter(c => c.archived).map(c => c.value));
+    const candidates = invoice.items
+      .map(it => it.tagValue)
+      .filter((v, i, arr) => arr.indexOf(v) === i && !archivedSet.has(v))
+      .map(v => ({
+        value: v,
+        label: categories.find(c => c.value === v)?.label || v,
+      }));
+    if (candidates.length > 0) {
+      setArchivePrompt({ tags: candidates, selected: new Set() });
+    } else {
+      onClose();
+    }
   };
 
   const toggle = (tag: string) =>
@@ -321,6 +341,79 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
     });
 
   if (!open) return null;
+
+  if (archivePrompt) {
+    const { tags, selected: sel } = archivePrompt;
+    const toggleArchive = (v: string) => {
+      setArchivePrompt(prev => {
+        if (!prev) return prev;
+        const next = new Set(prev.selected);
+        if (next.has(v)) next.delete(v); else next.add(v);
+        return { ...prev, selected: next };
+      });
+    };
+    const confirm = () => {
+      sel.forEach(v => archiveCategory(v));
+      if (sel.size > 0) {
+        toast({ title: `Archived ${sel.size} tag${sel.size === 1 ? '' : 's'}` });
+      }
+      setArchivePrompt(null);
+      onClose();
+    };
+    const skip = () => { setArchivePrompt(null); onClose(); };
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="fixed inset-0 z-[70] bg-background/95 backdrop-blur-sm flex items-center justify-center p-4"
+        onClick={skip}
+      >
+        <motion.div
+          initial={{ y: 16, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="max-w-sm w-full bg-card border border-border/30 rounded-md p-4"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h3 className="font-display text-base font-bold tracking-tight mb-1">Archive billed tags?</h3>
+          <p className="text-[10px] font-mono text-muted-foreground/60 mb-3 leading-relaxed">
+            Select any tags you're done with. Archived tags hide from active views but stay on this invoice.
+          </p>
+          <div className="space-y-1 mb-4 max-h-64 overflow-y-auto">
+            {tags.map(t => {
+              const checked = sel.has(t.value);
+              return (
+                <label key={t.value} className="flex items-center gap-2 py-1 cursor-pointer group">
+                  <div
+                    className={`w-3 h-3 rounded-sm border shrink-0 flex items-center justify-center ${
+                      checked ? 'bg-primary border-primary' : 'border-muted-foreground/40 group-hover:border-foreground/60'
+                    }`}
+                    onClick={() => toggleArchive(t.value)}
+                  >
+                    {checked && <div className="w-1.5 h-1.5 bg-primary-foreground rounded-[1px]" />}
+                  </div>
+                  <span className="text-[11px] font-mono text-foreground/80 flex-1" onClick={() => toggleArchive(t.value)}>{t.label}</span>
+                </label>
+              );
+            })}
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={skip}
+              className="px-3 py-1.5 rounded-md text-[10px] font-mono tracking-[0.12em] border border-border/40 text-foreground hover:bg-muted/40 transition-colors"
+            >
+              SKIP
+            </button>
+            <button
+              onClick={confirm}
+              className="px-3 py-1.5 rounded-md text-[10px] font-mono tracking-[0.12em] bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              {sel.size > 0 ? `ARCHIVE (${sel.size})` : 'DONE'}
+            </button>
+          </div>
+        </motion.div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
