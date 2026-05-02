@@ -118,14 +118,14 @@ export function BillingModule() {
   return (
     <div>
       {/* Summary bar */}
-      <div className="flex items-baseline justify-between mb-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-y-2 mb-3">
         <div className="flex items-baseline gap-3">
           <span className="text-[9px] font-mono text-muted-foreground/40 tracking-[0.15em]">UNBILLED</span>
           <span className="text-base font-display font-bold text-foreground tabular-nums">
             {formatCurrency(totalUnbilled, rows[0]?.settings.currency || 'USD')}
           </span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 ml-auto">
           <label className="flex items-center gap-1.5 cursor-pointer">
             <input
               type="checkbox"
@@ -136,12 +136,12 @@ export function BillingModule() {
             <span className="text-[9px] font-mono text-muted-foreground/60 tracking-[0.12em]">SHOW BILLED</span>
           </label>
           <button
-          onClick={() => openGenerator(allUnbilledTags)}
-          disabled={allUnbilledTags.length === 0}
-          className="px-2.5 py-1 rounded text-[10px] font-mono tracking-[0.12em] bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-40 flex items-center gap-1.5"
-        >
-          <FileText size={11} /> NEW INVOICE
-        </button>
+            onClick={() => openGenerator(allUnbilledTags)}
+            disabled={allUnbilledTags.length === 0}
+            className="px-2.5 py-1 rounded text-[10px] font-mono tracking-[0.12em] bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-40 flex items-center gap-1.5"
+          >
+            <FileText size={11} /> <span className="hidden xs:inline sm:inline">NEW INVOICE</span><span className="xs:hidden sm:hidden">NEW</span>
+          </button>
         </div>
       </div>
 
@@ -158,7 +158,8 @@ export function BillingModule() {
         </div>
       ) : (
         <div className="border border-border/20 rounded overflow-hidden">
-          <div className="grid grid-cols-[1fr_70px_110px_90px_80px] gap-3 px-2.5 py-1.5 border-b border-border/20 bg-muted/20 text-[8px] font-mono text-muted-foreground/50 tracking-[0.12em]">
+          {/* Header row — desktop only. Mobile uses card layout. */}
+          <div className="hidden sm:grid grid-cols-[1fr_70px_110px_90px_80px] gap-3 px-2.5 py-1.5 border-b border-border/20 bg-muted/20 text-[8px] font-mono text-muted-foreground/50 tracking-[0.12em]">
             <span>TAG · CLIENT</span>
             <span className="text-right">TIME</span>
             <span className="text-right">RATE</span>
@@ -178,9 +179,44 @@ export function BillingModule() {
               key={row.tagValue}
               onClick={() => clickable && openGenerator([row.tagValue])}
               disabled={!clickable}
-              className="w-full grid grid-cols-[1fr_70px_110px_90px_80px] gap-3 px-2.5 py-2 border-b border-border/10 last:border-b-0 text-[10px] font-mono items-baseline hover:bg-muted/20 transition-colors disabled:cursor-default disabled:hover:bg-transparent text-left"
+              className="w-full px-2.5 py-2 border-b border-border/10 last:border-b-0 text-[10px] font-mono hover:bg-muted/20 transition-colors disabled:cursor-default disabled:hover:bg-transparent text-left
+                sm:grid sm:grid-cols-[1fr_70px_110px_90px_80px] sm:gap-3 sm:items-baseline
+                flex flex-col gap-1"
             >
-              <div className="min-w-0">
+              {/* Mobile: stacked layout */}
+              <div className="sm:hidden flex items-baseline justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="text-foreground/90 truncate flex items-center gap-1.5">
+                    <span className="truncate">{row.label}</span>
+                    {showBilled && row.archived && (
+                      <span className="text-[8px] tracking-[0.12em] text-muted-foreground/40 border border-border/30 rounded px-1 py-0 shrink-0">ARCHIVED</span>
+                    )}
+                  </div>
+                  {clientName && (
+                    <div className="text-[9px] text-muted-foreground/50 truncate">{clientName}</div>
+                  )}
+                </div>
+                <span className="text-foreground tabular-nums font-medium shrink-0">
+                  {formatCurrency(amount, currency)}
+                </span>
+              </div>
+              <div className="sm:hidden flex items-center justify-between gap-2 text-[9px] text-muted-foreground/60">
+                <div className="flex items-center gap-2 tabular-nums">
+                  <span>{formatHours(minutes)}</span>
+                  <span className="text-muted-foreground/30">·</span>
+                  <span>
+                    {rateType === 'hourly'
+                      ? `${formatCurrency(rate, currency)}/h`
+                      : `${formatCurrency(rate, currency)} flat`}
+                  </span>
+                </div>
+                <span className={`text-[8px] tracking-[0.12em] px-1.5 py-0.5 border rounded shrink-0 ${STATUS_STYLE[row.status]}`}>
+                  {row.status.toUpperCase()}
+                </span>
+              </div>
+
+              {/* Desktop: grid columns */}
+              <div className="hidden sm:block min-w-0">
                 <div className="text-foreground/90 truncate flex items-center gap-1.5">
                   <span className="truncate">{row.label}</span>
                   {showBilled && row.archived && (
@@ -191,18 +227,18 @@ export function BillingModule() {
                   <div className="text-[9px] text-muted-foreground/50 truncate">{clientName}</div>
                 )}
               </div>
-              <span className="text-muted-foreground/70 tabular-nums text-right">
+              <span className="hidden sm:inline text-muted-foreground/70 tabular-nums text-right">
                 {formatHours(minutes)}
               </span>
-              <span className="text-muted-foreground/60 tabular-nums text-right">
+              <span className="hidden sm:inline text-muted-foreground/60 tabular-nums text-right">
                 {rateType === 'hourly'
                   ? `${formatCurrency(rate, currency)}/h`
                   : `${formatCurrency(rate, currency)} flat`}
               </span>
-              <span className="text-foreground tabular-nums text-right font-medium">
+              <span className="hidden sm:inline text-foreground tabular-nums text-right font-medium">
                 {formatCurrency(amount, currency)}
               </span>
-              <span className="flex justify-end">
+              <span className="hidden sm:flex justify-end">
                 <span className={`text-[8px] tracking-[0.12em] px-1.5 py-0.5 border rounded ${STATUS_STYLE[row.status]}`}>
                   {row.status.toUpperCase()}
                 </span>
@@ -242,53 +278,57 @@ export function BillingModule() {
             {invoices.map(inv => (
               <div
                 key={inv.id}
-                className="flex items-center gap-2 px-2.5 py-2 border-b border-border/10 last:border-b-0 text-[10px] font-mono"
+                className="flex flex-col sm:flex-row sm:items-center gap-2 px-2.5 py-2 border-b border-border/10 last:border-b-0 text-[10px] font-mono"
               >
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-foreground/90">{inv.invoiceNumber}</span>
+                  <div className="flex items-baseline gap-2 min-w-0">
+                    <span className="text-foreground/90 shrink-0">{inv.invoiceNumber}</span>
                     <span className="text-muted-foreground/60 truncate">{inv.clientName || '—'}</span>
                   </div>
                   <div className="text-[9px] text-muted-foreground/40">
                     {format(parseISO(inv.issuedAt), 'MMM d, yyyy')} · {inv.items.length} item{inv.items.length === 1 ? '' : 's'}
                   </div>
                 </div>
-                <span className="text-foreground tabular-nums">{formatCurrency(inv.total, inv.currency)}</span>
-                <span className={`text-[8px] tracking-[0.12em] px-1.5 py-0.5 border rounded ${STATUS_STYLE[inv.status]}`}>
-                  {inv.status.toUpperCase()}
-                </span>
-                <button
-                  onClick={() => downloadPdf(inv.id)}
-                  title="Download PDF"
-                  className="p-1 rounded text-muted-foreground/60 hover:text-foreground hover:bg-muted/40 transition-colors"
-                >
-                  <Download size={11} />
-                </button>
-                <button
-                  onClick={() => setEditingInvoiceId(inv.id)}
-                  title="Edit invoice"
-                  className="p-1 rounded text-muted-foreground/60 hover:text-foreground hover:bg-muted/40 transition-colors"
-                >
-                  <Pencil size={11} />
-                </button>
-                {inv.status !== 'paid' && (
-                  <button
-                    onClick={() => setInvoiceStatus(inv.id, 'paid')}
-                    title="Mark as paid"
-                    className="p-1 rounded text-muted-foreground/60 hover:text-green-600 dark:hover:text-green-400 hover:bg-muted/40 transition-colors"
-                  >
-                    <CheckCircle2 size={11} />
-                  </button>
-                )}
-                <button
-                  onClick={() => {
-                    if (confirm(`Delete invoice ${inv.invoiceNumber}?`)) deleteInvoice(inv.id);
-                  }}
-                  title="Delete"
-                  className="p-1 rounded text-muted-foreground/40 hover:text-destructive hover:bg-muted/40 transition-colors"
-                >
-                  <Trash2 size={11} />
-                </button>
+                <div className="flex items-center gap-2 justify-between sm:justify-end">
+                  <span className="text-foreground tabular-nums">{formatCurrency(inv.total, inv.currency)}</span>
+                  <span className={`text-[8px] tracking-[0.12em] px-1.5 py-0.5 border rounded shrink-0 ${STATUS_STYLE[inv.status]}`}>
+                    {inv.status.toUpperCase()}
+                  </span>
+                  <div className="flex items-center gap-0.5 ml-auto sm:ml-0">
+                    <button
+                      onClick={() => downloadPdf(inv.id)}
+                      title="Download PDF"
+                      className="p-1.5 sm:p-1 rounded text-muted-foreground/60 hover:text-foreground hover:bg-muted/40 transition-colors"
+                    >
+                      <Download size={12} />
+                    </button>
+                    <button
+                      onClick={() => setEditingInvoiceId(inv.id)}
+                      title="Edit invoice"
+                      className="p-1.5 sm:p-1 rounded text-muted-foreground/60 hover:text-foreground hover:bg-muted/40 transition-colors"
+                    >
+                      <Pencil size={12} />
+                    </button>
+                    {inv.status !== 'paid' && (
+                      <button
+                        onClick={() => setInvoiceStatus(inv.id, 'paid')}
+                        title="Mark as paid"
+                        className="p-1.5 sm:p-1 rounded text-muted-foreground/60 hover:text-green-600 dark:hover:text-green-400 hover:bg-muted/40 transition-colors"
+                      >
+                        <CheckCircle2 size={12} />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        if (confirm(`Delete invoice ${inv.invoiceNumber}?`)) deleteInvoice(inv.id);
+                      }}
+                      title="Delete"
+                      className="p-1.5 sm:p-1 rounded text-muted-foreground/40 hover:text-destructive hover:bg-muted/40 transition-colors"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
