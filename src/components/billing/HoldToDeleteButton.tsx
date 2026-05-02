@@ -6,6 +6,8 @@ interface Props {
   durationMs?: number;
   label?: string;
   className?: string;
+  /** Icon-only variant: small trash icon, grey by default, red on hover, hold to confirm. */
+  iconOnly?: boolean;
 }
 
 /**
@@ -17,6 +19,7 @@ export function HoldToDeleteButton({
   durationMs = 2000,
   label = 'DELETE',
   className = '',
+  iconOnly = false,
 }: Props) {
   const [progress, setProgress] = useState(0);
   const [holding, setHolding] = useState(false);
@@ -55,6 +58,29 @@ export function HoldToDeleteButton({
   };
 
   useEffect(() => () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); }, []);
+
+  if (iconOnly) {
+    return (
+      <button
+        onMouseDown={start}
+        onMouseUp={cancel}
+        onMouseLeave={cancel}
+        onTouchStart={(e) => { e.preventDefault(); start(); }}
+        onTouchEnd={cancel}
+        onTouchCancel={cancel}
+        onContextMenu={(e) => e.preventDefault()}
+        className={`relative overflow-hidden p-1 rounded text-muted-foreground/60 hover:text-destructive transition-colors select-none ${className}`}
+        title="Hold to delete"
+      >
+        <span
+          aria-hidden
+          className="absolute inset-0 bg-destructive/20 origin-left rounded"
+          style={{ transform: `scaleX(${progress})`, transition: holding ? 'none' : 'transform 0.2s ease-out' }}
+        />
+        <Trash2 size={12} className="relative z-10" />
+      </button>
+    );
+  }
 
   return (
     <button
