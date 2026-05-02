@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { X, FileText, Download, Plus, Trash2, Split, Palette } from 'lucide-react';
+import { X, FileText, Download, Plus, Trash2, Split, Palette, Clock } from 'lucide-react';
 import { useBillingStore, type Invoice } from '@/store/billingStore';
 import { useCompletedMinutesByTag } from '@/hooks/useBillingData';
 import { useLibraryStore } from '@/store/libraryStore';
@@ -8,6 +8,8 @@ import { formatCurrency, decimalHours } from '@/lib/billingFormat';
 import { generateInvoicePdf } from '@/lib/renderInvoicePdf';
 import { useInvoiceStyleStore, TEMPLATE_LABELS } from '@/store/invoiceStyleStore';
 import { InvoiceStyler } from './InvoiceStyler';
+import { ClientPicker } from './ClientPicker';
+import { useClientStore } from '@/store/clientStore';
 import { parseISO, format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 
@@ -34,12 +36,16 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
   const invoiceStyle = useInvoiceStyleStore(s => s.style);
   const loadStyle = useInvoiceStyleStore(s => s.load);
   const styleLoaded = useInvoiceStyleStore(s => s.loaded);
+  const clients = useClientStore(s => s.clients);
+  const loadClients = useClientStore(s => s.load);
+  const clientsLoaded = useClientStore(s => s.loaded);
 
   const [selected, setSelected] = useState<Set<string>>(new Set(initialTags));
   const [useRange, setUseRange] = useState(false);
   const [rangeStart, setRangeStart] = useState('');
   const [rangeEnd, setRangeEnd] = useState('');
-  const [clientOverride, setClientOverride] = useState('');
+  const [clientId, setClientId] = useState<string | null>(null);
+  const [clientNameOverride, setClientNameOverride] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
@@ -50,6 +56,7 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
   const [customizedTags, setCustomizedTags] = useState<Set<string>>(new Set());
 
   useEffect(() => { if (!styleLoaded) loadStyle(); }, [styleLoaded, loadStyle]);
+  useEffect(() => { if (!clientsLoaded) loadClients(); }, [clientsLoaded, loadClients]);
 
   const start = useRange && rangeStart ? parseISO(rangeStart) : undefined;
   const end = useRange && rangeEnd ? parseISO(rangeEnd) : undefined;
@@ -161,14 +168,34 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
 
   const total = itemsWithAmounts.reduce((sum, it) => sum + it.amount, 0);
   const currency = itemsWithAmounts.find(it => it.cfg)?.cfg?.currency || 'USD';
-  const inferredClient = itemsWithAmounts.find(it => it.cfg?.clientName)?.cfg?.clientName || '';
-  const clientName = clientOverride || inferredClient;
+
+  // Infer client from the first selected tag's billing settings (clientId preferred, fallback to clientName)
+  const inferredClientId = useMemo(() => {
+    return itemsWithAmounts.find(it => it.cfg?.clientId)?.cfg?.clientId || null;
+  }, [itemsWithAmounts]);
+  const inferredClientName = itemsWithAmounts.find(it => it.cfg?.clientName)?.cfg?.clientName || '';
+
+  // Auto-pick the inferred client if user hasn't chosen one yet
+  useEffect(() => {
+    if (clientId === null && inferredClientId) setClientId(inferredClientId);
+  }, [inferredClientId, clientId]);
+
+  const selectedClient = useMemo(() => clients.find(c => c.id === clientId) || null, [clients, clientId]);
+  const clientName = clientNameOverride ?? (selectedClient?.name || inferredClientName || '');
 
   // Auto-suggest invoice number based on the current client (until the user edits it manually)
   useEffect(() => {
     if (invoiceNumberEdited) return;
-    setInvoiceNumber(nextInvoiceNumber(clientName));
-  }, [clientName, invoices, invoiceNumberEdited, nextInvoiceNumber]);
+    setInvoiceNumber(nextInvoiceNumber({ clientId, clientName }));
+  }, [clientId, clientName, invoices, invoiceNumberEdited, nextInvoiceNumber]);
+
+  // Past invoices for the currently-selected client (shown as a small history strip)
+  const clientHistory = useMemo(() => {
+    if (!clientId) return [];
+    return invoices
+      .filter(inv => inv.clientId === clientId)
+      .slice(0, 5);
+  }, [invoices, clientId]);
 
   const handleGenerate = async (alsoDownload: boolean) => {
     if (itemsWithAmounts.length === 0 || total <= 0) {
@@ -178,6 +205,7 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
     setSubmitting(true);
     const invoice = await createInvoice({
       clientName,
+      clientId,
       currency,
       notes,
       invoiceNumber: invoiceNumber.trim() || undefined,
