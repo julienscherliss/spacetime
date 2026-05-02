@@ -20,6 +20,14 @@ const PERIOD_OPTS: { value: GoalPeriod; label: string }[] = [
   { value: 'monthly', label: 'Per month' },
 ];
 
+function formatTarget(metric: GoalMetric, target: number): string {
+  if (metric === 'completed-tasks') return `${target} task${target === 1 ? '' : 's'}`;
+  if (target < 60) return `${target} min`;
+  const h = Math.floor(target / 60);
+  const m = target % 60;
+  return m > 0 ? `${h}h ${m}min` : `${h}h`;
+}
+
 export function TagGoalEditor({ tag, tagLabel }: Props) {
   const allGoals = useGoalsStore((s) => s.goals);
   const goals = allGoals.filter((g) => g.tag === tag);
@@ -86,7 +94,7 @@ export function TagGoalEditor({ tag, tagLabel }: Props) {
             <div key={g.id} className="border border-border/30 rounded p-2 bg-card/30">
               <div className="flex items-center justify-between gap-2 mb-1.5">
                 <span className="text-[10px] font-mono text-foreground">
-                  {g.target} {opt.unit} · {periodOpt.label.toLowerCase()}
+                  {formatTarget(g.metric, g.target)} · {periodOpt.label.toLowerCase()}
                 </span>
                 <div className="flex items-center gap-1.5 shrink-0">
                   {p && (
