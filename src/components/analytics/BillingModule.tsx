@@ -158,8 +158,14 @@ export function BillingModule() {
             <span className="text-right">AMOUNT</span>
             <span className="text-right">STATUS</span>
           </div>
-          {pagedRows.map(row => {
+          {pagedRows.map((row: any) => {
             const clickable = !showBilled;
+            const minutes = showBilled ? row.invoicedMinutes : row.unbilledMinutes;
+            const amount = showBilled ? row.billedAmount : row.unbilledAmount;
+            const rateType = showBilled ? row.rateType : row.settings.rateType;
+            const rate = showBilled ? row.rate : (row.settings.rateType === 'hourly' ? row.settings.hourlyRate : row.settings.flatRate);
+            const currency = showBilled ? row.currency : row.settings.currency;
+            const clientName = showBilled ? row.clientName : row.settings.clientName;
             return (
             <button
               key={row.tagValue}
@@ -168,21 +174,26 @@ export function BillingModule() {
               className="w-full grid grid-cols-[1fr_70px_110px_90px_80px] gap-3 px-2.5 py-2 border-b border-border/10 last:border-b-0 text-[10px] font-mono items-baseline hover:bg-muted/20 transition-colors disabled:cursor-default disabled:hover:bg-transparent text-left"
             >
               <div className="min-w-0">
-                <div className="text-foreground/90 truncate">{row.label}</div>
-                {row.settings.clientName && (
-                  <div className="text-[9px] text-muted-foreground/50 truncate">{row.settings.clientName}</div>
+                <div className="text-foreground/90 truncate flex items-center gap-1.5">
+                  <span className="truncate">{row.label}</span>
+                  {showBilled && row.archived && (
+                    <span className="text-[8px] tracking-[0.12em] text-muted-foreground/40 border border-border/30 rounded px-1 py-0">ARCHIVED</span>
+                  )}
+                </div>
+                {clientName && (
+                  <div className="text-[9px] text-muted-foreground/50 truncate">{clientName}</div>
                 )}
               </div>
               <span className="text-muted-foreground/70 tabular-nums text-right">
-                {formatHours(showBilled ? row.invoicedMinutes : row.unbilledMinutes)}
+                {formatHours(minutes)}
               </span>
               <span className="text-muted-foreground/60 tabular-nums text-right">
-                {row.settings.rateType === 'hourly'
-                  ? `${formatCurrency(row.settings.hourlyRate, row.settings.currency)}/h`
-                  : `${formatCurrency(row.settings.flatRate, row.settings.currency)} flat`}
+                {rateType === 'hourly'
+                  ? `${formatCurrency(rate, currency)}/h`
+                  : `${formatCurrency(rate, currency)} flat`}
               </span>
               <span className="text-foreground tabular-nums text-right font-medium">
-                {formatCurrency(row.unbilledAmount, row.settings.currency)}
+                {formatCurrency(amount, currency)}
               </span>
               <span className="flex justify-end">
                 <span className={`text-[8px] tracking-[0.12em] px-1.5 py-0.5 border rounded ${STATUS_STYLE[row.status]}`}>
