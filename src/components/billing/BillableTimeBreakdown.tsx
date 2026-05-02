@@ -483,8 +483,8 @@ export function BillableTimeBreakdown() {
                   autoFocus
                   value={newTagName}
                   onChange={(e) => setNewTagName(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleAddTag(); if (e.key === 'Escape') { setShowAddTag(false); setNewTagParent(''); } }}
-                  placeholder="New billable tag name"
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleAddTag(); if (e.key === 'Escape') { setShowAddTag(false); setNewTagParent(''); setNewTagParentOnly(false); } }}
+                  placeholder={newTagParentOnly ? 'New parent tag name (subtags inherit)' : 'New billable tag name'}
                   className="flex-1 bg-transparent border border-border/40 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/60"
                 />
                 <button
@@ -507,6 +507,17 @@ export function BillableTimeBreakdown() {
                   ))}
                 </select>
               </div>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={newTagParentOnly}
+                  onChange={(e) => setNewTagParentOnly(e.target.checked)}
+                  className="accent-primary"
+                />
+                <span className="text-[9px] font-mono text-muted-foreground/70 tracking-wide">
+                  PARENT ONLY — not billable itself, but every subtag inherits
+                </span>
+              </label>
               {newTagParent && (
                 <p className="text-[9px] font-mono text-muted-foreground/40 leading-relaxed">
                   Will be created as <span className="text-foreground/70">{newTagParent}/{newTagName.trim().toLowerCase().replace(/\s+/g, '-') || '…'}</span>
@@ -515,19 +526,34 @@ export function BillableTimeBreakdown() {
             </div>
           )}
           {nonBillableTags.length > 0 && (
-            <div className="flex items-center gap-2">
-              <label className="text-[9px] font-mono text-muted-foreground/50 tracking-wide shrink-0">MARK EXISTING</label>
-              <select
-                value={pickFromExisting}
-                onChange={(e) => markExistingBillable(e.target.value)}
-                className="flex-1 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
-              >
-                <option value="">Select a tag…</option>
-                {nonBillableTags.map(c => (
-                  <option key={c.value} value={c.value}>{c.value}</option>
-                ))}
-              </select>
-            </div>
+            <>
+              <div className="flex items-center gap-2">
+                <label className="text-[9px] font-mono text-muted-foreground/50 tracking-wide shrink-0 w-24">MARK BILLABLE</label>
+                <select
+                  value={pickFromExisting}
+                  onChange={(e) => markExistingBillable(e.target.value)}
+                  className="flex-1 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
+                >
+                  <option value="">Select a tag…</option>
+                  {nonBillableTags.map(c => (
+                    <option key={c.value} value={c.value}>{c.value}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-[9px] font-mono text-muted-foreground/50 tracking-wide shrink-0 w-24" title="Tag itself isn't billable, but every subtag inherits and prompts for rate on creation">MARK PARENT</label>
+                <select
+                  value={pickFromExistingParent}
+                  onChange={(e) => { markExistingParentOnly(e.target.value); setPickFromExistingParent(''); }}
+                  className="flex-1 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
+                >
+                  <option value="">Select a tag…</option>
+                  {nonBillableTags.map(c => (
+                    <option key={c.value} value={c.value}>{c.value}</option>
+                  ))}
+                </select>
+              </div>
+            </>
           )}
         </div>
       )}
