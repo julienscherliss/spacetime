@@ -35,8 +35,8 @@ function RemainderGlyph({ mins, size }: { mins: number; size: number }) {
       width={w}
       height={h}
       viewBox={`0 0 ${w} ${h}`}
-      className="inline-block"
-      style={{ overflow: 'visible', verticalAlign: 'baseline' }}
+      className="inline-block align-middle"
+      style={{ overflow: 'visible' }}
     >
       {mins === 15 && <circle cx={cx} cy={midY} r={DOT_R} fill="currentColor" />}
       {mins === 30 && (
@@ -64,8 +64,8 @@ function HourGlyph({ size }: { size: number }) {
       width={w}
       height={h}
       viewBox={`0 0 ${w} ${h}`}
-      className="inline-block"
-      style={{ overflow: 'visible', verticalAlign: 'baseline' }}
+      className="inline-block align-middle"
+      style={{ overflow: 'visible' }}
     >
       <rect
         x={0.5}
