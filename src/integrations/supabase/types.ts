@@ -747,6 +747,33 @@ export type Database = {
           },
         ]
       }
+      tag_notes: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string
+          tag_value: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string
+          tag_value: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string
+          tag_value?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       tasks: {
         Row: {
           archive_reason: string | null
