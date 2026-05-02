@@ -39,7 +39,7 @@ export function MinimalTemplate({ invoice, style }: TemplateProps) {
         <thead>
           <tr>
             <th className="text-left pb-3 text-[9px] tracking-[0.25em] font-normal text-neutral-400">DESCRIPTION</th>
-            <th className="text-right pb-3 text-[9px] tracking-[0.25em] font-normal text-neutral-400 w-20">HRS</th>
+            <th className="text-right pb-3 text-[9px] tracking-[0.25em] font-normal text-neutral-400 w-20">QTY</th>
             <th className="text-right pb-3 text-[9px] tracking-[0.25em] font-normal text-neutral-400 w-32">AMOUNT</th>
           </tr>
         </thead>
