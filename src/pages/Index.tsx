@@ -25,6 +25,9 @@ import { InventoryDropZones } from '@/components/InventoryDropZones';
 import { ReflectionSheet } from '@/components/ReflectionSheet';
 import { CarryIndicator } from '@/components/CarryIndicator';
 import { AnalyticsPanel } from '@/components/analytics/AnalyticsPanel';
+import { BillingPanel } from '@/components/billing/BillingPanel';
+import { SubtagBillingPrompt } from '@/components/billing/SubtagBillingPrompt';
+import { useBillingSubtagWatcher } from '@/hooks/useBillingSubtagWatcher';
 import { Paywall } from '@/components/Paywall';
 import { useSubscription } from '@/hooks/useSubscription';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -37,10 +40,12 @@ const Index = () => {
   const { viewMode, daySubMode, weekSubMode, routinesEnabled, moveOverdueToWaitingRoom } = useTaskStore();
   useNativeNotifications();
   useForegroundReminders();
+  useBillingSubtagWatcher();
   const [waitingOpen, setWaitingOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const [billingOpen, setBillingOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [subscribeOpen, setSubscribeOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -129,6 +134,13 @@ const Index = () => {
     return () => window.removeEventListener('toggle-analytics', handler);
   }, []);
 
+  // Listen for billing toggle from nav
+  useEffect(() => {
+    const handler = () => setBillingOpen((o) => !o);
+    window.addEventListener('toggle-billing', handler);
+    return () => window.removeEventListener('toggle-billing', handler);
+  }, []);
+
   // Listen for help panel open requests (e.g. from drag blocked info button)
   useEffect(() => {
     const handler = (e: Event) => {
@@ -194,6 +206,8 @@ const Index = () => {
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <ArchivePanel open={archiveOpen} onClose={() => setArchiveOpen(false)} />
       <AnalyticsPanel open={analyticsOpen} onClose={() => setAnalyticsOpen(false)} />
+      <BillingPanel open={billingOpen} onClose={() => setBillingOpen(false)} />
+      <SubtagBillingPrompt />
       <HelpPanel open={helpOpen} onClose={() => { setHelpOpen(false); setHelpSection(undefined); }} initialSection={helpSection} />
       <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
 

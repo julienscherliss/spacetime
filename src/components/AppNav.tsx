@@ -10,8 +10,9 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import {
   Focus, List, CalendarDays, Grid3X3, Repeat,
-  Archive, Clock, LogOut, Settings, MoreHorizontal, X, ArchiveRestore, BarChart3, Scan, Maximize, PauseCircle, MessageSquarePlus
+  Archive, Clock, LogOut, Settings, MoreHorizontal, X, ArchiveRestore, BarChart3, Scan, Maximize, PauseCircle, MessageSquarePlus, Receipt
 } from 'lucide-react';
+import { useBillingStore } from '@/store/billingStore';
 
 const views: { mode: ViewMode; icon: typeof Focus; label: string }[] = [
   { mode: 'focus', icon: Focus, label: 'FOCUS' },
@@ -23,6 +24,10 @@ const views: { mode: ViewMode; icon: typeof Focus; label: string }[] = [
 export function AppNav() {
   const { viewMode, setViewMode, daySubMode, setDaySubMode, weekSubMode, setWeekSubMode, routinesEnabled, toggleRoutines, tasks } = useTaskStore();
   const { panelOpen: libPanelOpen, setPanelOpen: setLibPanelOpen } = useLibraryStore();
+  const showBillingPref = useTimezoneStore(s => s.showBilling);
+  const billingSettings = useBillingStore(s => s.settings);
+  const hasBillableTag = billingSettings.some(s => s.billable);
+  const showBilling = showBillingPref || hasBillableTag;
   const libCount = useLibraryStore((s) => s.items.length);
   const libUrgentCount = useLibraryStore((s) => {
     const today = new Date();
@@ -138,6 +143,13 @@ export function AppNav() {
                   label="Analytics"
                   onClick={() => { window.dispatchEvent(new CustomEvent('toggle-analytics')); setMoreOpen(false); }}
                 />
+                {showBilling && (
+                  <OverflowItem
+                    icon={<Receipt size={18} strokeWidth={1.5} />}
+                    label="Billing"
+                    onClick={() => { window.dispatchEvent(new CustomEvent('toggle-billing')); setMoreOpen(false); }}
+                  />
+                )}
 
                 <div className="border-t border-border/40 my-1" />
 
@@ -340,6 +352,15 @@ export function AppNav() {
             <BarChart3 size={13} strokeWidth={1.5} />
             <span>ANALYTICS</span>
           </button>
+          {showBilling && (
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('toggle-billing'))}
+              className={`${navItemBase} ${navItemInactive}`}
+            >
+              <Receipt size={13} strokeWidth={1.5} />
+              <span>BILLING</span>
+            </button>
+          )}
 
           {/* Utility separator */}
           <div className="w-px h-4 bg-border/25 mx-1.5" />

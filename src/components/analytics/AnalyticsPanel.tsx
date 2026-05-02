@@ -10,7 +10,6 @@ import { NeglectedTags } from './NeglectedTags';
 import { ReflectionInsights } from './ReflectionInsights';
 import { TagDetailPanel } from './TagDetailPanel';
 import { GoalsModule } from './GoalsModule';
-import { BillingModule } from './BillingModule';
 import { useGoalCelebrationWatcher } from '@/hooks/useGoalsProgress';
 import { useAnalyticsData, defaultFilters, type AnalyticsFilters } from '@/hooks/useAnalyticsData';
 import { format } from 'date-fns';
@@ -107,10 +106,6 @@ export function AnalyticsPanel({ open, onClose }: Props) {
 
               <ModuleCard title="GOALS">
                 <GoalsModule />
-              </ModuleCard>
-
-              <ModuleCard title="BILLING">
-                <BillingModule />
               </ModuleCard>
 
               <ModuleCard title="TREND">

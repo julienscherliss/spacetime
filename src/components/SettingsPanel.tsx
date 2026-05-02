@@ -23,6 +23,7 @@ import {
   syncWebNotifications,
 } from '@/utils/webNotificationService';
 import { useTaskStore } from '@/store/taskStore';
+import { useBillingStore } from '@/store/billingStore';
 
 interface SettingsPanelProps {
   open: boolean;
@@ -30,7 +31,13 @@ interface SettingsPanelProps {
 }
 
 export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
-  const { timezone, setTimezone, routinesFixedTime, setRoutinesFixedTime, autoDetect, setAutoDetect, darkMode, setDarkMode, mobilityMode, setMobilityMode, notificationLevel, setNotificationLevel, persistentOverdue, setPersistentOverdue, showCompletedTasks, setShowCompletedTasks, comfortMode, setComfortMode, soundEnabled, setSoundEnabled } = useTimezoneStore();
+  const { timezone, setTimezone, routinesFixedTime, setRoutinesFixedTime, autoDetect, setAutoDetect, darkMode, setDarkMode, mobilityMode, setMobilityMode, notificationLevel, setNotificationLevel, persistentOverdue, setPersistentOverdue, showCompletedTasks, setShowCompletedTasks, comfortMode, setComfortMode, soundEnabled, setSoundEnabled, showBilling, setShowBilling } = useTimezoneStore();
+  const billingSettings = useBillingStore(s => s.settings);
+  const loadBilling = useBillingStore(s => s.load);
+  const billingLoaded = useBillingStore(s => s.loaded);
+  const hasBillableTag = billingSettings.some(s => s.billable);
+  const billingEffectivelyOn = showBilling || hasBillableTag;
+  useEffect(() => { if (open && !billingLoaded) loadBilling(); }, [open, billingLoaded, loadBilling]);
   const { connected, email, calendars, loading, checkStatus, startAuth, refreshCalendarData, toggleCalendar, disconnect } = useCalendarStore();
   const nativeRuntime = isNativePlatform();
   const [search, setSearch] = useState('');
@@ -580,6 +587,30 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               </div>
               <div className={`w-9 h-5 rounded-full transition-colors flex items-center px-0.5 ${
                 showCompletedTasks ? 'bg-primary justify-end' : 'bg-border justify-start'
+              }`}>
+                <div className="w-4 h-4 rounded-full bg-white shadow-sm" />
+              </div>
+            </button>
+
+            {/* Billing section toggle */}
+            <button
+              onClick={() => {
+                if (hasBillableTag) return; // locked on while any tag is billable
+                setShowBilling(!showBilling);
+              }}
+              disabled={hasBillableTag}
+              className="w-full flex items-center justify-between bg-muted/30 border border-border/50 rounded-sm p-3 min-h-[48px] mb-3 disabled:cursor-not-allowed"
+            >
+              <div className="text-left">
+                <div className="text-[12px] font-mono text-foreground">Show Billing section</div>
+                <div className="text-[10px] font-mono text-muted-foreground/50 mt-0.5">
+                  {hasBillableTag
+                    ? 'Locked on — you have billable tags. Unmark them to hide.'
+                    : 'Adds Billing to the main navigation. Auto-enables when you mark a tag billable.'}
+                </div>
+              </div>
+              <div className={`w-9 h-5 rounded-full transition-colors flex items-center px-0.5 ${
+                billingEffectivelyOn ? 'bg-primary justify-end' : 'bg-border justify-start'
               }`}>
                 <div className="w-4 h-4 rounded-full bg-white shadow-sm" />
               </div>
