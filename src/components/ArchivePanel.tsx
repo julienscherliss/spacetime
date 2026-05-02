@@ -487,7 +487,41 @@ function ArchiveChip({ active, label, onClick }: { active: boolean; label: strin
   );
 }
 
-function ArchiveRow({ task, onRevive, onEdit, expandAll }: { task: Task; onRevive: (id: string) => void; onEdit: (id: string) => void; expandAll: boolean }) {
+function BillingSummaryTile({
+  icon,
+  label,
+  value,
+  muted = false,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  muted?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-md border px-3 py-2.5 ${
+        muted
+          ? 'border-border/40 bg-muted/20'
+          : 'border-foreground/15 bg-foreground/[0.03]'
+      }`}
+    >
+      <div className="flex items-center gap-1.5 text-muted-foreground/60">
+        {icon}
+        <span className="text-[9px] font-mono tracking-[0.15em] uppercase">{label}</span>
+      </div>
+      <div
+        className={`mt-1 text-lg sm:text-xl font-display font-bold tabular-nums ${
+          muted ? 'text-muted-foreground' : 'text-foreground'
+        }`}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function ArchiveRow({ task, onRevive, onEdit, expandAll, invoiced = false }: { task: Task; onRevive: (id: string) => void; onEdit: (id: string) => void; expandAll: boolean; invoiced?: boolean }) {
   const isCompleted = task.archiveReason === 'completed';
   const hasDetails = !!(task.description || (task.subtasks && task.subtasks.length > 0));
   const expanded = expandAll && hasDetails;
@@ -506,13 +540,23 @@ function ArchiveRow({ task, onRevive, onEdit, expandAll }: { task: Task; onReviv
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <button
-          onClick={() => onEdit(task.id)}
-          style={{ textDecoration: 'none' }}
-          className={`text-sm sm:text-base font-mono truncate text-left hover:!underline cursor-pointer no-underline ${isCompleted ? 'text-muted-foreground' : 'text-foreground/80'}`}
-        >
-          {task.title}
-        </button>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <button
+            onClick={() => onEdit(task.id)}
+            style={{ textDecoration: 'none' }}
+            className={`text-sm sm:text-base font-mono truncate text-left hover:!underline cursor-pointer no-underline ${isCompleted ? 'text-muted-foreground' : 'text-foreground/80'}`}
+          >
+            {task.title}
+          </button>
+          {invoiced && (
+            <span
+              title="Invoiced"
+              className="shrink-0 inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-foreground/10 text-foreground/70"
+            >
+              <CheckCircle2 size={10} strokeWidth={2} />
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-2 mt-0.5">
           {task.duration && (
             <span className="text-[9px] font-mono text-muted-foreground/40">
