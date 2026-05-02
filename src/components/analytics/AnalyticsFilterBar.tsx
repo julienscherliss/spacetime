@@ -11,6 +11,7 @@ const timeRanges: { value: TimeRange; label: string }[] = [
   { value: 'last-week', label: 'LAST WEEK' },
   { value: 'this-month', label: 'THIS MONTH' },
   { value: 'last-month', label: 'LAST MONTH' },
+  { value: 'all-time', label: 'ALL TIME' },
 ];
 
 const dataTypes: { value: DataType; label: string }[] = [
