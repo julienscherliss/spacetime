@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronRight, Archive, ArchiveRestore, Plus } from 'lucide-react';
+import { ChevronDown, ChevronRight, Archive, ArchiveRestore, Plus, X, AlertTriangle } from 'lucide-react';
 import { useTaskStore } from '@/store/taskStore';
 import { useLibraryStore } from '@/store/libraryStore';
 import { useBillingStore } from '@/store/billingStore';
@@ -8,7 +8,7 @@ import { findBillableAncestor } from '@/lib/billingInheritance';
 import { TagBillingEditor } from '@/components/analytics/TagBillingEditor';
 import {
   startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth,
-  subDays, subWeeks, subMonths, parseISO, isWithinInterval, differenceInDays,
+  subDays, subWeeks, subMonths, parseISO, isWithinInterval, differenceInDays, format,
 } from 'date-fns';
 
 type RangeKey = 'today' | 'this-week' | 'last-week' | 'this-month' | 'last-month' | 'all-time';
@@ -59,6 +59,7 @@ interface TagRow {
 
 export function BillableTimeBreakdown() {
   const tasks = useTaskStore(s => s.tasks);
+  const updateTask = useTaskStore(s => s.updateTask);
   const categories = useLibraryStore(s => s.categories);
   const addCategory = useLibraryStore(s => s.addCategory);
   const archiveCategory = useLibraryStore(s => s.archiveCategory);
@@ -77,6 +78,7 @@ export function BillableTimeBreakdown() {
   const [newTagParentOnly, setNewTagParentOnly] = useState(false);
   const [pickFromExisting, setPickFromExisting] = useState('');
   const [pickFromExistingParent, setPickFromExistingParent] = useState('');
+  const [archiveTarget, setArchiveTarget] = useState<{ value: string; label: string } | null>(null);
 
   const interval = useMemo(() => rangeFor(range), [range]);
 
@@ -401,15 +403,7 @@ export function BillableTimeBreakdown() {
                 </button>
               ) : (
                 <button
-                  onClick={() => {
-                    // Ensure the tag exists in the library before archiving —
-                    // tags created from the billing area may only live in
-                    // billing settings, in which case archiveCategory() is a no-op.
-                    if (!categories.some(c => c.value === r.value)) {
-                      addCategory(r.label, r.value);
-                    }
-                    archiveCategory(r.value);
-                  }}
+                  onClick={() => setArchiveTarget({ value: r.value, label: r.label })}
                   className="flex items-center gap-1 px-1.5 py-1 rounded text-[9px] font-mono tracking-wide border border-border/40 text-muted-foreground hover:text-foreground"
                   title="Archive"
                 >
@@ -610,6 +604,209 @@ export function BillableTimeBreakdown() {
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-muted-foreground/40" /> &gt;7D STALE</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-destructive/60" /> &gt;30D INACTIVE</span>
       </div>
+
+      <ArchiveConfirmModal
+        target={archiveTarget}
+        onClose={() => setArchiveTarget(null)}
+        onConfirm={(value, label) => {
+          if (!categories.some(c => c.value === value)) {
+            addCategory(label, value);
+          }
+          archiveCategory(value);
+          setArchiveTarget(null);
+        }}
+        tasks={tasks}
+        categories={categories}
+        updateTask={updateTask}
+      />
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Archive confirmation modal — blocks archive if future tasks exist on the tag
+// (or any subtag). User must batch-retag (or clear) those tasks first.
+// ─────────────────────────────────────────────────────────────────────────────
+interface ArchiveConfirmModalProps {
+  target: { value: string; label: string } | null;
+  onClose: () => void;
+  onConfirm: (value: string, label: string) => void;
+  tasks: ReturnType<typeof useTaskStore.getState>['tasks'];
+  categories: ReturnType<typeof useLibraryStore.getState>['categories'];
+  updateTask: ReturnType<typeof useTaskStore.getState>['updateTask'];
+}
+
+function ArchiveConfirmModal({
+  target, onClose, onConfirm, tasks, categories, updateTask,
+}: ArchiveConfirmModalProps) {
+  const [bulkRetag, setBulkRetag] = useState<string>('');
+  const [perTaskRetag, setPerTaskRetag] = useState<Record<string, string>>({});
+
+  // Reset selections whenever a new target opens.
+  useEffect(() => {
+    setBulkRetag('');
+    setPerTaskRetag({});
+  }, [target?.value]);
+
+  const futureTasks = useMemo(() => {
+    if (!target) return [];
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const prefix = target.value + '/';
+    return tasks.filter(t => {
+      if (t.archiveReason === 'deleted') return false;
+      if (t.completed) return false;
+      if (!t.category) return false;
+      const matchesTag = t.category === target.value || t.category.startsWith(prefix);
+      if (!matchesTag) return false;
+      // Future = scheduled today or later
+      return t.date >= todayStr;
+    }).sort((a, b) => a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || ''));
+  }, [tasks, target]);
+
+  // Available re-tag options: any non-archived category that isn't the target itself
+  // or a descendant of it.
+  const retagOptions = useMemo(() => {
+    if (!target) return [];
+    const prefix = target.value + '/';
+    return categories
+      .filter(c => !c.archived)
+      .filter(c => c.value !== target.value && !c.value.startsWith(prefix))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [categories, target]);
+
+  if (!target) return null;
+
+  const allResolved = futureTasks.every(t => {
+    const choice = perTaskRetag[t.id] ?? bulkRetag;
+    // "" with no choice means unresolved; "__none__" means clear tag
+    return !!choice;
+  });
+
+  const applyAndArchive = () => {
+    for (const t of futureTasks) {
+      const choice = perTaskRetag[t.id] || bulkRetag;
+      if (!choice) continue;
+      const newCategory = choice === '__none__' ? '' : choice;
+      updateTask(t.id, { category: newCategory });
+    }
+    onConfirm(target.value, target.label);
+  };
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[60] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4"
+        onClick={onClose}
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 8 }}
+          transition={{ duration: 0.15 }}
+          className="bg-card border border-border/60 rounded-md shadow-lg w-full max-w-lg max-h-[80vh] flex flex-col"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-start justify-between px-4 py-3 border-b border-border/30">
+            <div>
+              <h2 className="font-display text-sm font-bold tracking-tight">Archive tag</h2>
+              <p className="text-[9px] font-mono text-muted-foreground/60 tracking-[0.1em] mt-0.5">
+                {target.label.toUpperCase()}
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-1 rounded text-muted-foreground/60 hover:text-foreground hover:bg-muted/40"
+            >
+              <X size={14} />
+            </button>
+          </div>
+
+          <div className="px-4 py-3 overflow-y-auto flex-1">
+            {futureTasks.length === 0 ? (
+              <p className="text-[11px] font-mono text-muted-foreground">
+                Are you sure? This tag will be hidden from active lists. You can restore it later.
+              </p>
+            ) : (
+              <>
+                <div className="flex items-start gap-2 mb-3 p-2 rounded border border-destructive/30 bg-destructive/5">
+                  <AlertTriangle size={12} className="text-destructive shrink-0 mt-0.5" />
+                  <p className="text-[10px] font-mono text-foreground/80 leading-relaxed">
+                    {futureTasks.length} future task{futureTasks.length === 1 ? '' : 's'} {futureTasks.length === 1 ? 'is' : 'are'} scheduled under this tag. Re-tag {futureTasks.length === 1 ? 'it' : 'them'} before archiving.
+                  </p>
+                </div>
+
+                {/* Bulk re-tag */}
+                <div className="mb-3">
+                  <label className="text-[9px] font-mono text-muted-foreground/60 tracking-[0.1em] block mb-1">
+                    BULK RE-TAG ALL
+                  </label>
+                  <select
+                    value={bulkRetag}
+                    onChange={(e) => setBulkRetag(e.target.value)}
+                    className="w-full text-[10px] font-mono bg-background border border-border/50 rounded px-2 py-1.5"
+                  >
+                    <option value="">— select replacement —</option>
+                    <option value="__none__">Clear tag (no category)</option>
+                    {retagOptions.map(c => (
+                      <option key={c.value} value={c.value}>{c.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Per-task overrides */}
+                <div className="space-y-1.5">
+                  <div className="text-[9px] font-mono text-muted-foreground/60 tracking-[0.1em]">
+                    PER-TASK OVERRIDE (OPTIONAL)
+                  </div>
+                  {futureTasks.map(t => {
+                    const choice = perTaskRetag[t.id] ?? bulkRetag;
+                    return (
+                      <div key={t.id} className="flex items-center gap-2 text-[10px]">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-mono truncate text-foreground/90">{t.title}</div>
+                          <div className="font-mono text-[9px] text-muted-foreground/50">
+                            {t.date}{t.time ? ` · ${t.time}` : ''}
+                          </div>
+                        </div>
+                        <select
+                          value={perTaskRetag[t.id] ?? ''}
+                          onChange={(e) => setPerTaskRetag(p => ({ ...p, [t.id]: e.target.value }))}
+                          className={`text-[10px] font-mono bg-background border rounded px-1.5 py-1 max-w-[180px] ${choice ? 'border-border/50' : 'border-destructive/40'}`}
+                        >
+                          <option value="">{bulkRetag ? '— use bulk —' : '— choose —'}</option>
+                          <option value="__none__">Clear tag</option>
+                          {retagOptions.map(c => (
+                            <option key={c.value} value={c.value}>{c.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="px-4 py-3 border-t border-border/30 flex items-center justify-end gap-2">
+            <button
+              onClick={onClose}
+              className="text-[10px] font-mono tracking-wide px-3 py-1.5 rounded border border-border/50 text-muted-foreground hover:text-foreground"
+            >
+              CANCEL
+            </button>
+            <button
+              onClick={applyAndArchive}
+              disabled={futureTasks.length > 0 && !allResolved}
+              className="text-[10px] font-mono tracking-wide px-3 py-1.5 rounded bg-foreground text-background hover:bg-foreground/90 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {futureTasks.length > 0 ? 'RE-TAG & ARCHIVE' : 'ARCHIVE'}
+            </button>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 }
