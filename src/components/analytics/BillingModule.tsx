@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Receipt, Download, FileText, CheckCircle2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Receipt, Download, FileText, CheckCircle2, Trash2, ChevronLeft, ChevronRight, Pencil } from 'lucide-react';
 import { useBillingStore } from '@/store/billingStore';
 import { useBillableTagRows } from '@/hooks/useBillingData';
 import { formatCurrency, formatHours } from '@/lib/billingFormat';
@@ -7,6 +7,7 @@ import { useLibraryStore } from '@/store/libraryStore';
 import { generateInvoicePdf } from '@/lib/renderInvoicePdf';
 import { useInvoiceStyleStore } from '@/store/invoiceStyleStore';
 import { InvoiceGenerator } from './InvoiceGenerator';
+import { InvoiceEditor } from './InvoiceEditor';
 import { format, parseISO } from 'date-fns';
 
 const STATUS_STYLE: Record<string, string> = {
@@ -31,6 +32,7 @@ export function BillingModule() {
   const [preselected, setPreselected] = useState<string[]>([]);
   const [showBilled, setShowBilled] = useState(false);
   const [billedPage, setBilledPage] = useState(0);
+  const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
   const PAGE_SIZE = 10;
 
   useEffect(() => { if (!loaded) load(); }, [loaded, load]);
@@ -205,6 +207,13 @@ export function BillingModule() {
                 >
                   <Download size={11} />
                 </button>
+                <button
+                  onClick={() => setEditingInvoiceId(inv.id)}
+                  title="Edit invoice"
+                  className="p-1 rounded text-muted-foreground/60 hover:text-foreground hover:bg-muted/40 transition-colors"
+                >
+                  <Pencil size={11} />
+                </button>
                 {inv.status !== 'paid' && (
                   <button
                     onClick={() => setInvoiceStatus(inv.id, 'paid')}
@@ -233,6 +242,12 @@ export function BillingModule() {
         open={generatorOpen}
         onClose={() => setGeneratorOpen(false)}
         initialTags={preselected}
+      />
+
+      <InvoiceEditor
+        open={editingInvoiceId !== null}
+        onClose={() => setEditingInvoiceId(null)}
+        invoice={invoices.find(i => i.id === editingInvoiceId) || null}
       />
     </div>
   );
