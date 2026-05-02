@@ -23,6 +23,7 @@ export function BillingPanel({ open, onClose }: Props) {
   const [editingTag, setEditingTag] = useState<string | null>(null);
   const [showAddTag, setShowAddTag] = useState(false);
   const [newTagName, setNewTagName] = useState('');
+  const [newTagParent, setNewTagParent] = useState<string>('');
   const [pickFromExisting, setPickFromExisting] = useState('');
 
   useEffect(() => { if (open && !loaded) load(); }, [open, loaded, load]);
@@ -32,11 +33,17 @@ export function BillingPanel({ open, onClose }: Props) {
     .filter(c => !c.archived && !c.value.includes('/'))
     .filter(c => !settings.find(s => s.tagValue === c.value && s.billable));
 
+  // All non-archived tags eligible to be a parent (any depth)
+  const parentCandidates = categories
+    .filter(c => !c.archived)
+    .sort((a, b) => a.value.localeCompare(b.value));
+
   const handleAddTag = () => {
     const trimmed = newTagName.trim();
     if (!trimmed) { setShowAddTag(false); return; }
-    addCategory(trimmed);
-    const value = trimmed.toLowerCase().replace(/\s+/g, '-');
+    const slug = trimmed.toLowerCase().replace(/\s+/g, '-');
+    const value = newTagParent ? `${newTagParent}/${slug}` : slug;
+    addCategory(trimmed, value);
     // Mark billable with sensible defaults
     upsertSettings(value, {
       billable: true,
@@ -47,6 +54,7 @@ export function BillingPanel({ open, onClose }: Props) {
       currency: 'USD',
     });
     setNewTagName('');
+    setNewTagParent('');
     setShowAddTag(false);
     setEditingTag(value);
   };
@@ -110,21 +118,41 @@ export function BillingPanel({ open, onClose }: Props) {
               </div>
               <div className="p-3 space-y-2">
                 {showAddTag && (
-                  <div className="flex gap-2 mb-2">
-                    <input
-                      autoFocus
-                      value={newTagName}
-                      onChange={(e) => setNewTagName(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') handleAddTag(); if (e.key === 'Escape') setShowAddTag(false); }}
-                      placeholder="New billable tag name"
-                      className="flex-1 bg-transparent border border-border/40 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/60"
-                    />
-                    <button
-                      onClick={handleAddTag}
-                      className="px-2 py-1 rounded text-[10px] font-mono bg-primary text-primary-foreground hover:bg-primary/90 tracking-wide"
-                    >
-                      ADD
-                    </button>
+                  <div className="space-y-1.5 mb-2 p-2 border border-border/30 rounded bg-muted/20">
+                    <div className="flex gap-2">
+                      <input
+                        autoFocus
+                        value={newTagName}
+                        onChange={(e) => setNewTagName(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleAddTag(); if (e.key === 'Escape') { setShowAddTag(false); setNewTagParent(''); } }}
+                        placeholder="New billable tag name"
+                        className="flex-1 bg-transparent border border-border/40 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/60"
+                      />
+                      <button
+                        onClick={handleAddTag}
+                        className="px-2 py-1 rounded text-[10px] font-mono bg-primary text-primary-foreground hover:bg-primary/90 tracking-wide"
+                      >
+                        ADD
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="text-[9px] font-mono text-muted-foreground/50 tracking-wide w-16 shrink-0">PARENT</label>
+                      <select
+                        value={newTagParent}
+                        onChange={(e) => setNewTagParent(e.target.value)}
+                        className="flex-1 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
+                      >
+                        <option value="">— None (top-level) —</option>
+                        {parentCandidates.map(c => (
+                          <option key={c.value} value={c.value}>{c.value}</option>
+                        ))}
+                      </select>
+                    </div>
+                    {newTagParent && (
+                      <p className="text-[9px] font-mono text-muted-foreground/40 leading-relaxed">
+                        Will be created as <span className="text-foreground/70">{newTagParent}/{newTagName.trim().toLowerCase().replace(/\s+/g, '-') || '…'}</span>
+                      </p>
+                    )}
                   </div>
                 )}
 
