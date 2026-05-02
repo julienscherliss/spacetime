@@ -62,22 +62,22 @@ export function HoldToDeleteButton({
   if (iconOnly) {
     return (
       <button
-        onMouseDown={start}
-        onMouseUp={cancel}
-        onMouseLeave={cancel}
-        onTouchStart={(e) => { e.preventDefault(); start(); }}
-        onTouchEnd={cancel}
-        onTouchCancel={cancel}
+        onPointerDown={(e) => {
+          (e.currentTarget as HTMLButtonElement).setPointerCapture(e.pointerId);
+          start();
+        }}
+        onPointerUp={cancel}
+        onPointerCancel={cancel}
         onContextMenu={(e) => e.preventDefault()}
-        className={`relative overflow-hidden p-1 rounded text-muted-foreground/60 hover:text-destructive transition-colors select-none ${className}`}
+        className={`relative overflow-hidden p-1 rounded text-muted-foreground/60 hover:text-destructive transition-colors select-none touch-none ${className}`}
         title="Hold to delete"
       >
         <span
           aria-hidden
-          className="absolute inset-0 bg-destructive/20 origin-left rounded"
+          className="absolute inset-0 bg-destructive/20 origin-left rounded pointer-events-none"
           style={{ transform: `scaleX(${progress})`, transition: holding ? 'none' : 'transform 0.2s ease-out' }}
         />
-        <Trash2 size={12} className="relative z-10" />
+        <Trash2 size={12} className="relative z-10 pointer-events-none" />
       </button>
     );
   }
