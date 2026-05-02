@@ -13,7 +13,7 @@ import { useClientStore } from '@/store/clientStore';
 import { parseISO, format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Lock } from 'lucide-react';
+import { Lock, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Props {
   open: boolean;
@@ -56,6 +56,8 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
   const [invoiceNumberEdited, setInvoiceNumberEdited] = useState(false);
   // Track which tags the user has manually edited so we don't overwrite their splits
   const [customizedTags, setCustomizedTags] = useState<Set<string>>(new Set());
+  const [showBilled, setShowBilled] = useState(false);
+  const [billedPage, setBilledPage] = useState(0);
 
   useEffect(() => { if (!styleLoaded) loadStyle(); }, [styleLoaded, loadStyle]);
   useEffect(() => { if (!clientsLoaded) loadClients(); }, [clientsLoaded, loadClients]);
@@ -64,7 +66,54 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
   const end = useRange && rangeEnd ? parseISO(rangeEnd) : undefined;
   const minutesByTag = useCompletedMinutesByTag(start, end);
 
-  const billable = useMemo(() => settings.filter(s => s.billable), [settings]);
+  const archivedTagValues = useMemo(
+    () => new Set(categories.filter(c => c.archived).map(c => c.value)),
+    [categories]
+  );
+
+  // Per-tag invoiced minutes across all invoices
+  const invoicedMinutesByTag = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const inv of invoices) {
+      for (const it of inv.items) {
+        m.set(it.tagValue, (m.get(it.tagValue) || 0) + it.hours * 60);
+      }
+    }
+    return m;
+  }, [invoices]);
+
+  // Tags eligible for the unbilled invoice view: have remaining billable units
+  // AND aren't archived. Hourly => unbilled minutes > 0. Flat => not yet invoiced.
+  const billable = useMemo(() => {
+    return settings.filter(s => {
+      if (!s.billable) return false;
+      if (archivedTagValues.has(s.tagValue)) return false;
+      const totalMinutes = minutesByTag.get(s.tagValue) || 0;
+      const invoicedMinutes = invoicedMinutesByTag.get(s.tagValue) || 0;
+      if (s.rateType === 'hourly') {
+        return totalMinutes - invoicedMinutes > 0;
+      }
+      // flat: still billable until invoiced at least once
+      return invoicedMinutes <= 0;
+    });
+  }, [settings, archivedTagValues, minutesByTag, invoicedMinutesByTag]);
+
+  // Tags that have already been billed (any invoice contains them). Includes archived.
+  const previouslyBilledTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    for (const inv of invoices) for (const it of inv.items) tagSet.add(it.tagValue);
+    return [...tagSet].map(tagValue => {
+      const cfg = settings.find(s => s.tagValue === tagValue);
+      const label = categories.find(c => c.value === tagValue)?.label || tagValue;
+      const archived = archivedTagValues.has(tagValue);
+      return { tagValue, label, cfg, archived };
+    }).sort((a, b) => a.label.localeCompare(b.label));
+  }, [invoices, settings, categories, archivedTagValues]);
+
+  const PAGE_SIZE = 10;
+  const billedPageCount = Math.max(1, Math.ceil(previouslyBilledTags.length / PAGE_SIZE));
+  const billedPageItems = previouslyBilledTags.slice(billedPage * PAGE_SIZE, (billedPage + 1) * PAGE_SIZE);
+  useEffect(() => { if (billedPage >= billedPageCount) setBilledPage(0); }, [billedPage, billedPageCount]);
 
   // Compute the available billable hours for a given tag
   const availableHoursForTag = (tag: string): number => {
@@ -320,30 +369,93 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
 
         {/* Tag selector */}
         <div className="mb-4 border border-border/30 rounded-md bg-card/40 p-3">
-          <span className="text-[9px] font-mono text-muted-foreground/50 tracking-[0.15em] block mb-2">TAGS TO INCLUDE</span>
-          <div className="space-y-1">
-            {billable.length === 0 && (
-              <p className="text-[10px] font-mono text-muted-foreground/40 py-2">No billable tags configured.</p>
-            )}
-            {billable.map(s => {
-              const label = categories.find(c => c.value === s.tagValue)?.label || s.tagValue;
-              const checked = selected.has(s.tagValue);
-              return (
-                <label key={s.tagValue} className="flex items-center gap-2 py-1 cursor-pointer group">
-                  <div
-                    className={`w-3 h-3 rounded-sm border shrink-0 flex items-center justify-center ${
-                      checked ? 'bg-primary border-primary' : 'border-muted-foreground/40 group-hover:border-foreground/60'
-                    }`}
-                    onClick={() => toggle(s.tagValue)}
-                  >
-                    {checked && <div className="w-1.5 h-1.5 bg-primary-foreground rounded-[1px]" />}
-                  </div>
-                  <span className="text-[11px] font-mono text-foreground/80 flex-1" onClick={() => toggle(s.tagValue)}>{label}</span>
-                  {s.clientName && <span className="text-[9px] font-mono text-muted-foreground/50">{s.clientName}</span>}
-                </label>
-              );
-            })}
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[9px] font-mono text-muted-foreground/50 tracking-[0.15em]">
+              {showBilled ? 'PREVIOUSLY BILLED TAGS' : 'TAGS TO INCLUDE'}
+            </span>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showBilled}
+                onChange={(e) => { setShowBilled(e.target.checked); setBilledPage(0); }}
+                className="w-3 h-3"
+              />
+              <span className="text-[9px] font-mono text-muted-foreground/60 tracking-[0.12em]">SHOW BILLED</span>
+            </label>
           </div>
+          {!showBilled ? (
+            <div className="space-y-1">
+              {billable.length === 0 && (
+                <p className="text-[10px] font-mono text-muted-foreground/40 py-2">No billable tags with unbilled time.</p>
+              )}
+              {billable.map(s => {
+                const label = categories.find(c => c.value === s.tagValue)?.label || s.tagValue;
+                const checked = selected.has(s.tagValue);
+                return (
+                  <label key={s.tagValue} className="flex items-center gap-2 py-1 cursor-pointer group">
+                    <div
+                      className={`w-3 h-3 rounded-sm border shrink-0 flex items-center justify-center ${
+                        checked ? 'bg-primary border-primary' : 'border-muted-foreground/40 group-hover:border-foreground/60'
+                      }`}
+                      onClick={() => toggle(s.tagValue)}
+                    >
+                      {checked && <div className="w-1.5 h-1.5 bg-primary-foreground rounded-[1px]" />}
+                    </div>
+                    <span className="text-[11px] font-mono text-foreground/80 flex-1" onClick={() => toggle(s.tagValue)}>{label}</span>
+                    {s.clientName && <span className="text-[9px] font-mono text-muted-foreground/50">{s.clientName}</span>}
+                  </label>
+                );
+              })}
+            </div>
+          ) : (
+            <>
+              <div className="space-y-1">
+                {previouslyBilledTags.length === 0 && (
+                  <p className="text-[10px] font-mono text-muted-foreground/40 py-2">No previously billed tags.</p>
+                )}
+                {billedPageItems.map(({ tagValue, label, cfg, archived }) => {
+                  const checked = selected.has(tagValue);
+                  const disabled = !cfg;
+                  return (
+                    <label key={tagValue} className={`flex items-center gap-2 py-1 group ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                      <div
+                        className={`w-3 h-3 rounded-sm border shrink-0 flex items-center justify-center ${
+                          checked ? 'bg-primary border-primary' : 'border-muted-foreground/40 group-hover:border-foreground/60'
+                        }`}
+                        onClick={() => !disabled && toggle(tagValue)}
+                      >
+                        {checked && <div className="w-1.5 h-1.5 bg-primary-foreground rounded-[1px]" />}
+                      </div>
+                      <span className="text-[11px] font-mono text-foreground/80 flex-1" onClick={() => !disabled && toggle(tagValue)}>{label}</span>
+                      {archived && <span className="text-[8px] font-mono text-muted-foreground/50 tracking-[0.12em]">ARCHIVED</span>}
+                      {cfg?.clientName && <span className="text-[9px] font-mono text-muted-foreground/50">{cfg.clientName}</span>}
+                    </label>
+                  );
+                })}
+              </div>
+              {previouslyBilledTags.length > PAGE_SIZE && (
+                <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/20">
+                  <button
+                    onClick={() => setBilledPage(p => Math.max(0, p - 1))}
+                    disabled={billedPage === 0}
+                    className="p-1 rounded text-muted-foreground/60 hover:text-foreground hover:bg-muted/40 transition-colors disabled:opacity-30"
+                  >
+                    <ChevronLeft size={12} />
+                  </button>
+                  <span className="text-[9px] font-mono text-muted-foreground/50 tabular-nums">
+                    {billedPage + 1} / {billedPageCount}
+                  </span>
+                  <button
+                    onClick={() => setBilledPage(p => Math.min(billedPageCount - 1, p + 1))}
+                    disabled={billedPage >= billedPageCount - 1}
+                    className="p-1 rounded text-muted-foreground/60 hover:text-foreground hover:bg-muted/40 transition-colors disabled:opacity-30"
+                  >
+                    <ChevronRight size={12} />
+                  </button>
+                </div>
+              )}
+            </>
+          )}
         </div>
 
         {/* Line items editor */}
