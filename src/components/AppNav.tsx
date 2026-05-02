@@ -352,6 +352,15 @@ export function AppNav() {
             <BarChart3 size={13} strokeWidth={1.5} />
             <span>ANALYTICS</span>
           </button>
+          {showBilling && (
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('toggle-billing'))}
+              className={`${navItemBase} ${navItemInactive}`}
+            >
+              <Receipt size={13} strokeWidth={1.5} />
+              <span>BILLING</span>
+            </button>
+          )}
 
           {/* Utility separator */}
           <div className="w-px h-4 bg-border/25 mx-1.5" />
