@@ -7,6 +7,7 @@ export type InvoiceStatus = 'invoiced' | 'paid';
 export interface FlatLineItem {
   description: string;
   amount: number;
+  quantity?: number;
 }
 
 export interface TagBillingSettings {
@@ -80,6 +81,7 @@ function rowToSettings(r: any): TagBillingSettings {
     .map((it: any) => ({
       description: String(it?.description ?? ''),
       amount: Number(it?.amount) || 0,
+      quantity: it?.quantity != null ? (Number(it.quantity) || 1) : 1,
     }));
   return {
     id: r.id,

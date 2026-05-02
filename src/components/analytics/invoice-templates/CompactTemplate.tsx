@@ -47,7 +47,7 @@ export function CompactTemplate({ invoice, style }: TemplateProps) {
         <thead>
           <tr style={{ background: '#FAFAFA', borderTop: '1px solid #E5E5E5', borderBottom: '1px solid #E5E5E5' }}>
             <th className="text-left py-1.5 px-2 text-[9px] tracking-[0.15em] font-semibold text-neutral-600">DESC</th>
-            <th className="text-right py-1.5 px-2 text-[9px] tracking-[0.15em] font-semibold text-neutral-600 w-16">HRS</th>
+            <th className="text-right py-1.5 px-2 text-[9px] tracking-[0.15em] font-semibold text-neutral-600 w-16">QTY</th>
             <th className="text-right py-1.5 px-2 text-[9px] tracking-[0.15em] font-semibold text-neutral-600 w-20">RATE</th>
             <th className="text-right py-1.5 px-2 text-[9px] tracking-[0.15em] font-semibold text-neutral-600 w-24">AMOUNT</th>
           </tr>
@@ -56,7 +56,7 @@ export function CompactTemplate({ invoice, style }: TemplateProps) {
           {invoice.items.map(it => (
             <tr key={it.id} style={{ borderBottom: '1px solid #F5F5F5' }}>
               <td className="py-1.5 px-2 text-[11px]">{it.description}</td>
-              <td className="py-1.5 px-2 text-[11px] text-right tabular-nums">{it.hours.toFixed(2)}</td>
+              <td className="py-1.5 px-2 text-[11px] text-right tabular-nums">{it.rateType === 'flat' ? '1' : it.hours.toFixed(2)}</td>
               <td className="py-1.5 px-2 text-[11px] text-right tabular-nums text-neutral-600">
                 {it.rateType === 'hourly' ? formatCurrency(it.rate, invoice.currency) : 'flat'}
               </td>

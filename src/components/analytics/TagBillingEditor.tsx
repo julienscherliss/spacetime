@@ -148,6 +148,12 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
               </div>
 
               <div className="pl-[72px] space-y-1.5">
+                <div className="flex items-center gap-1.5 px-1">
+                  <span className="flex-1 text-[8px] font-mono text-muted-foreground/40 tracking-[0.15em]">DESCRIPTION</span>
+                  <span className="w-14 text-[8px] font-mono text-muted-foreground/40 tracking-[0.15em] text-right">QTY</span>
+                  <span className="w-24 text-[8px] font-mono text-muted-foreground/40 tracking-[0.15em] text-right">AMOUNT</span>
+                  <span className="w-5" />
+                </div>
                 {flatItems.map((it, idx) => (
                   <div key={idx} className="flex items-center gap-1.5">
                     <input
@@ -157,6 +163,16 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
                       onChange={(e) => updateItem(idx, { description: e.target.value })}
                       onBlur={() => commitFlatItems(flatItems)}
                       className="flex-1 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
+                    />
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      placeholder="1"
+                      value={Number.isFinite(it.quantity) && it.quantity ? it.quantity : 1}
+                      onChange={(e) => updateItem(idx, { quantity: Math.max(1, parseInt(e.target.value, 10) || 1) })}
+                      onBlur={() => commitFlatItems(flatItems)}
+                      className="w-14 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50 tabular-nums text-right"
                     />
                     <input
                       type="number"
@@ -181,7 +197,7 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
 
                 <button
                   type="button"
-                  onClick={() => commitFlatItems([...flatItems, { description: '', amount: 0 }])}
+                  onClick={() => commitFlatItems([...flatItems, { description: '', amount: 0, quantity: 1 }])}
                   className="flex items-center gap-1 px-2 py-1 rounded border border-dashed border-border/40 text-[10px] font-mono text-muted-foreground hover:text-primary hover:border-primary/50 transition-colors"
                 >
                   <Plus className="w-3 h-3" />

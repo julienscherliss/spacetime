@@ -52,7 +52,7 @@ export function BoldTemplate({ invoice, style }: TemplateProps) {
             {invoice.items.map(it => (
               <tr key={it.id} style={{ borderBottom: '1px solid #EEEEEE' }}>
                 <td className="py-4 text-[13px] font-medium">{it.description}</td>
-                <td className="py-4 text-[13px] text-right tabular-nums">{it.hours.toFixed(2)}</td>
+                <td className="py-4 text-[13px] text-right tabular-nums">{it.rateType === 'flat' ? '1' : it.hours.toFixed(2)}</td>
                 <td className="py-4 text-[13px] text-right tabular-nums">
                   {it.rateType === 'hourly' ? formatCurrency(it.rate, invoice.currency) : 'flat'}
                 </td>

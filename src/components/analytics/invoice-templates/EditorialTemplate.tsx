@@ -46,7 +46,7 @@ export function EditorialTemplate({ invoice, style }: TemplateProps) {
         <thead>
           <tr style={{ borderBottom: '1px solid #1A1A1A' }}>
             <th className="text-left py-2 text-[9px] tracking-[0.3em] font-normal text-neutral-500">Service</th>
-            <th className="text-right py-2 text-[9px] tracking-[0.3em] font-normal text-neutral-500 w-20">Hrs</th>
+            <th className="text-right py-2 text-[9px] tracking-[0.3em] font-normal text-neutral-500 w-20">Qty</th>
             <th className="text-right py-2 text-[9px] tracking-[0.3em] font-normal text-neutral-500 w-24">Rate</th>
             <th className="text-right py-2 text-[9px] tracking-[0.3em] font-normal text-neutral-500 w-28">Amount</th>
           </tr>
@@ -55,7 +55,7 @@ export function EditorialTemplate({ invoice, style }: TemplateProps) {
           {invoice.items.map(it => (
             <tr key={it.id} style={{ borderBottom: '1px solid #EEEEEE' }}>
               <td className="py-3.5 text-[13px]" style={{ fontFamily: headingFont }}>{it.description}</td>
-              <td className="py-3.5 text-[12px] text-right tabular-nums text-neutral-600">{it.hours.toFixed(2)}</td>
+              <td className="py-3.5 text-[12px] text-right tabular-nums text-neutral-600">{it.rateType === 'flat' ? '1' : it.hours.toFixed(2)}</td>
               <td className="py-3.5 text-[12px] text-right tabular-nums text-neutral-600">
                 {it.rateType === 'hourly' ? formatCurrency(it.rate, invoice.currency) : 'flat'}
               </td>

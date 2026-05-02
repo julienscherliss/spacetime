@@ -63,7 +63,7 @@ export function ClassicTemplate({ invoice, style }: TemplateProps) {
         <thead>
           <tr style={{ borderTop: `1.5px solid ${accent}`, borderBottom: `1.5px solid ${accent}` }}>
             <th className="text-left py-2 px-2 text-[10px] tracking-[0.15em] font-semibold text-neutral-700">DESCRIPTION</th>
-            <th className="text-right py-2 px-2 text-[10px] tracking-[0.15em] font-semibold text-neutral-700 w-20">HOURS</th>
+            <th className="text-right py-2 px-2 text-[10px] tracking-[0.15em] font-semibold text-neutral-700 w-20">QTY</th>
             <th className="text-right py-2 px-2 text-[10px] tracking-[0.15em] font-semibold text-neutral-700 w-24">RATE</th>
             <th className="text-right py-2 px-2 text-[10px] tracking-[0.15em] font-semibold text-neutral-700 w-28">AMOUNT</th>
           </tr>
@@ -72,7 +72,7 @@ export function ClassicTemplate({ invoice, style }: TemplateProps) {
           {invoice.items.map(it => (
             <tr key={it.id} style={{ borderBottom: '1px solid #E5E5E5' }}>
               <td className="py-3 px-2 text-[12px]">{it.description}</td>
-              <td className="py-3 px-2 text-[12px] text-right tabular-nums">{it.hours.toFixed(2)}</td>
+              <td className="py-3 px-2 text-[12px] text-right tabular-nums">{it.rateType === 'flat' ? '1' : it.hours.toFixed(2)}</td>
               <td className="py-3 px-2 text-[12px] text-right tabular-nums">
                 {it.rateType === 'hourly' ? `${formatCurrency(it.rate, invoice.currency)}/h` : 'flat'}
               </td>
