@@ -303,6 +303,57 @@ export type Database = {
           },
         ]
       }
+      invoice_style_settings: {
+        Row: {
+          accent_color: string
+          body_font: string
+          business_address: string
+          business_email: string
+          business_name: string
+          created_at: string
+          footer_note: string
+          heading_font: string
+          id: string
+          payment_instructions: string
+          template: string
+          terms_text: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accent_color?: string
+          body_font?: string
+          business_address?: string
+          business_email?: string
+          business_name?: string
+          created_at?: string
+          footer_note?: string
+          heading_font?: string
+          id?: string
+          payment_instructions?: string
+          template?: string
+          terms_text?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accent_color?: string
+          body_font?: string
+          business_address?: string
+          business_email?: string
+          business_name?: string
+          created_at?: string
+          footer_note?: string
+          heading_font?: string
+          id?: string
+          payment_instructions?: string
+          template?: string
+          terms_text?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       invoices: {
         Row: {
           client_name: string
