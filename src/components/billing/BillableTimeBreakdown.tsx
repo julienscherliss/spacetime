@@ -199,10 +199,29 @@ export function BillableTimeBreakdown() {
     });
   }, [categories, billableTagValues, perTag, billedByTag, showArchived, settings]);
 
-  const roots = rows.filter(r => !r.value.includes('/'));
+  // A row is a "root" in this view if NO ancestor of it is also in the visible row set.
+  // This way subtags (e.g. "Projects/Starfire") render as top-level when their parent
+  // ("Projects") isn't itself a billable row.
+  const rowValues = new Set(rows.map(r => r.value));
+  const hasVisibleAncestor = (value: string) => {
+    const parts = value.split('/');
+    for (let i = parts.length - 1; i >= 1; i--) {
+      const ancestor = parts.slice(0, i).join('/');
+      if (rowValues.has(ancestor)) return true;
+    }
+    return false;
+  };
+  const roots = rows.filter(r => !hasVisibleAncestor(r.value));
   const childrenOf = (parent: string) => rows.filter(r => {
+    if (r.value === parent) return false;
+    if (!r.value.startsWith(parent + '/')) return false;
+    // direct child only — nearest visible ancestor must be `parent`
     const parts = r.value.split('/');
-    return parts.length > 1 && parts.slice(0, -1).join('/') === parent;
+    for (let i = parts.length - 1; i >= 1; i--) {
+      const ancestor = parts.slice(0, i).join('/');
+      if (rowValues.has(ancestor)) return ancestor === parent;
+    }
+    return false;
   });
 
   const toggle = (v: string) => setExpanded(p => {
