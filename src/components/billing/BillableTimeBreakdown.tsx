@@ -353,6 +353,11 @@ export function BillableTimeBreakdown() {
   const renderRow = (r: TagRow, depth: number) => {
     const kids = childrenOf(r.value);
     const isOpen = expanded.has(r.value);
+    // When nested under a visible ancestor row, drop the parent path from the
+    // label so we don't repeat "Projects / Starfire" under the "Projects" row.
+    const displayLabel = depth > 0
+      ? (r.label.split(' / ').pop() || r.label)
+      : r.label;
     const totalPct = (r.minutes / maxMinutes) * 100;
     const billedClamped = Math.min(r.billedMinutes, r.minutes);
     const unbilledMinutes = Math.max(0, r.minutes - billedClamped);
@@ -383,7 +388,7 @@ export function BillableTimeBreakdown() {
               className={`text-[10px] font-mono tracking-wide truncate flex-1 text-left hover:text-foreground transition-colors ${labelColor} ${r.archived ? 'line-through opacity-60' : ''}`}
               title="Edit billing"
             >
-              {r.label.toUpperCase()}
+              {displayLabel.toUpperCase()}
             </button>
             {r.rateLabel && (
               <span className="text-[9px] font-mono text-muted-foreground/50 tracking-wide shrink-0">
