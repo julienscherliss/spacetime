@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Task } from '@/store/taskStore';
 import { useLibraryStore } from '@/store/libraryStore';
-
-import { X, RotateCcw, CheckCircle2, Trash2, Filter, Tag, ChevronsUpDown } from 'lucide-react';
+import { useBillingStore } from '@/store/billingStore';
+import { formatCurrency } from '@/lib/billingFormat';
+import { X, RotateCcw, CheckCircle2, Trash2, Filter, Tag, ChevronsUpDown, Receipt, CircleDollarSign } from 'lucide-react';
 import { format, isToday, isYesterday, differenceInCalendarDays } from 'date-fns';
 
 type ArchiveFilter = 'all' | 'completed' | 'deleted' | 'tags';
@@ -36,6 +37,12 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
   const allCategories = useLibraryStore((s) => s.categories);
   const allLibItems = useLibraryStore((s) => s.items);
   const unarchiveCategory = useLibraryStore((s) => s.unarchiveCategory);
+  const billingSettings = useBillingStore((s) => s.settings);
+  const billingInvoices = useBillingStore((s) => s.invoices);
+  const billingLoaded = useBillingStore((s) => s.loaded);
+  const loadBilling = useBillingStore((s) => s.load);
+
+  useEffect(() => { if (open && !billingLoaded) loadBilling(); }, [open, billingLoaded, loadBilling]);
   const archivedTags = useMemo(
     () => allCategories.filter((c) => c.archived),
     [allCategories]
@@ -100,6 +107,70 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
       })
       .sort((a, b) => new Date(b.archivedAt!).getTime() - new Date(a.archivedAt!).getTime());
   }, [tasks, filter, tagFilter]);
+
+  // ─── Billing rollup for the currently filtered tag ──────────────────────────
+  // A tag is "active for billing" when the user has narrowed to a single billable
+  // root or sub-tag. Aggregates roll up to include sub-tags.
+  const activeBillingTag = useMemo(() => {
+    if (tagFilter === 'all' || tagFilter === '__none__') return null;
+    const own = billingSettings.find((s) => s.tagValue === tagFilter && s.billable);
+    if (own) return own;
+    // Allow root filter to inherit settings from any matching billable descendant
+    const desc = billingSettings.find(
+      (s) => s.billable && (s.tagValue === tagFilter || s.tagValue.startsWith(tagFilter + '/'))
+    );
+    return desc || null;
+  }, [tagFilter, billingSettings]);
+
+  // Per-task invoiced flag (chronological allocation against invoiced hour buckets)
+  const { invoicedTaskIds, billedAmount, unbilledAmount, currency } = useMemo(() => {
+    const empty = { invoicedTaskIds: new Set<string>(), billedAmount: 0, unbilledAmount: 0, currency: 'USD' };
+    if (!activeBillingTag) return empty;
+
+    const tagPredicate = (cat?: string | null) =>
+      !!cat && (cat === tagFilter || cat.startsWith(tagFilter + '/'));
+
+    // Total invoiced hours + $ across all invoices for this tag (or its subtree)
+    let invoicedHours = 0;
+    let billed = 0;
+    billingInvoices.forEach((inv) => {
+      inv.items.forEach((it) => {
+        if (tagPredicate(it.tagValue)) {
+          invoicedHours += it.hours;
+          billed += it.amount;
+        }
+      });
+    });
+
+    // Walk completed tasks oldest-first; consume the invoiced-hour bucket
+    const completedForTag = tasks
+      .filter((t) => t.archivedAt && t.archiveReason === 'completed' && tagPredicate(t.category))
+      .sort((a, b) => new Date(a.archivedAt!).getTime() - new Date(b.archivedAt!).getTime());
+
+    const ids = new Set<string>();
+    let remaining = invoicedHours;
+    let totalCompletedHours = 0;
+    completedForTag.forEach((t) => {
+      const h = (t.duration || 0) / 60;
+      totalCompletedHours += h;
+      if (remaining > 0.0001) {
+        ids.add(t.id);
+        remaining -= h;
+      }
+    });
+
+    // Unbilled = $ value of completed hours not yet covered by an invoice
+    const unbilledHours = Math.max(0, totalCompletedHours - invoicedHours);
+    const rate = activeBillingTag.rateType === 'hourly' ? activeBillingTag.hourlyRate : 0;
+    const unbilled = unbilledHours * rate;
+
+    return {
+      invoicedTaskIds: ids,
+      billedAmount: billed,
+      unbilledAmount: unbilled,
+      currency: activeBillingTag.currency || 'USD',
+    };
+  }, [activeBillingTag, billingInvoices, tasks, tagFilter]);
 
   const grouped = useMemo(() => {
     const groups: { key: string; date: Date; tasks: Task[] }[] = [];
@@ -313,6 +384,21 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
               </div>
             ) : (
               <div className="pb-8 px-4 sm:px-6 pt-4 space-y-6">
+                {activeBillingTag && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <BillingSummaryTile
+                      icon={<Receipt size={12} strokeWidth={1.5} />}
+                      label="Billed"
+                      value={formatCurrency(billedAmount, currency)}
+                      muted
+                    />
+                    <BillingSummaryTile
+                      icon={<CircleDollarSign size={12} strokeWidth={1.5} />}
+                      label="Unbilled"
+                      value={formatCurrency(unbilledAmount, currency)}
+                    />
+                  </div>
+                )}
                 {grouped.map((group) => {
                   const d = group.date;
                   const today = isToday(d);
@@ -364,7 +450,14 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
                       </div>
                       <div className="divide-y divide-border/20 pl-1">
                         {group.tasks.map((task) => (
-                          <ArchiveRow key={task.id} task={task} onRevive={handleRevive} onEdit={setEditingTask} expandAll={expandAll} />
+                          <ArchiveRow
+                            key={task.id}
+                            task={task}
+                            onRevive={handleRevive}
+                            onEdit={setEditingTask}
+                            expandAll={expandAll}
+                            invoiced={invoicedTaskIds.has(task.id)}
+                          />
                         ))}
                       </div>
                     </section>
@@ -394,7 +487,41 @@ function ArchiveChip({ active, label, onClick }: { active: boolean; label: strin
   );
 }
 
-function ArchiveRow({ task, onRevive, onEdit, expandAll }: { task: Task; onRevive: (id: string) => void; onEdit: (id: string) => void; expandAll: boolean }) {
+function BillingSummaryTile({
+  icon,
+  label,
+  value,
+  muted = false,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  muted?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-md border px-3 py-2.5 ${
+        muted
+          ? 'border-border/40 bg-muted/20'
+          : 'border-foreground/15 bg-foreground/[0.03]'
+      }`}
+    >
+      <div className="flex items-center gap-1.5 text-muted-foreground/60">
+        {icon}
+        <span className="text-[9px] font-mono tracking-[0.15em] uppercase">{label}</span>
+      </div>
+      <div
+        className={`mt-1 text-lg sm:text-xl font-display font-bold tabular-nums ${
+          muted ? 'text-muted-foreground' : 'text-foreground'
+        }`}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function ArchiveRow({ task, onRevive, onEdit, expandAll, invoiced = false }: { task: Task; onRevive: (id: string) => void; onEdit: (id: string) => void; expandAll: boolean; invoiced?: boolean }) {
   const isCompleted = task.archiveReason === 'completed';
   const hasDetails = !!(task.description || (task.subtasks && task.subtasks.length > 0));
   const expanded = expandAll && hasDetails;
@@ -413,13 +540,23 @@ function ArchiveRow({ task, onRevive, onEdit, expandAll }: { task: Task; onReviv
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <button
-          onClick={() => onEdit(task.id)}
-          style={{ textDecoration: 'none' }}
-          className={`text-sm sm:text-base font-mono truncate text-left hover:!underline cursor-pointer no-underline ${isCompleted ? 'text-muted-foreground' : 'text-foreground/80'}`}
-        >
-          {task.title}
-        </button>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <button
+            onClick={() => onEdit(task.id)}
+            style={{ textDecoration: 'none' }}
+            className={`text-sm sm:text-base font-mono truncate text-left hover:!underline cursor-pointer no-underline ${isCompleted ? 'text-muted-foreground' : 'text-foreground/80'}`}
+          >
+            {task.title}
+          </button>
+          {invoiced && (
+            <span
+              title="Invoiced"
+              className="shrink-0 inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-foreground/10 text-foreground/70"
+            >
+              <CheckCircle2 size={10} strokeWidth={2} />
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-2 mt-0.5">
           {task.duration && (
             <span className="text-[9px] font-mono text-muted-foreground/40">
