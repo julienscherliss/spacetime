@@ -457,6 +457,7 @@ export type Database = {
       }
       library_categories: {
         Row: {
+          archived: boolean
           created_at: string
           id: string
           label: string
@@ -465,6 +466,7 @@ export type Database = {
           value: string
         }
         Insert: {
+          archived?: boolean
           created_at?: string
           id?: string
           label: string
@@ -473,6 +475,7 @@ export type Database = {
           value: string
         }
         Update: {
+          archived?: boolean
           created_at?: string
           id?: string
           label?: string
