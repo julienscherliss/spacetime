@@ -73,11 +73,12 @@ export function BillableTimeBreakdown() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [editingTag, setEditingTag] = useState<string | null>(null);
   const [showAddTag, setShowAddTag] = useState(false);
+  const [addMode, setAddMode] = useState<'new' | 'existing'>('new');
+  const [existingPick, setExistingPick] = useState('');
+  const [existingParentOnly, setExistingParentOnly] = useState(false);
   const [newTagName, setNewTagName] = useState('');
   const [newTagParent, setNewTagParent] = useState('');
   const [newTagParentOnly, setNewTagParentOnly] = useState(false);
-  const [pickFromExisting, setPickFromExisting] = useState('');
-  const [pickFromExistingParent, setPickFromExistingParent] = useState('');
   const [archiveTarget, setArchiveTarget] = useState<{ value: string; label: string } | null>(null);
 
   const interval = useMemo(() => rangeFor(range), [range]);
@@ -307,7 +308,6 @@ export function BillableTimeBreakdown() {
       flatItems: [],
       currency: 'USD',
     });
-    setPickFromExisting('');
     setEditingTag(tagValue);
   };
 
@@ -322,7 +322,6 @@ export function BillableTimeBreakdown() {
       flatItems: [],
       currency: 'USD',
     });
-    setPickFromExisting('');
   };
 
   // Staleness: grey if no activity in 7 days, red if >30 days.
@@ -492,90 +491,132 @@ export function BillableTimeBreakdown() {
         </div>
       </div>
 
-      {/* Add / mark existing controls */}
-      {(showAddTag || nonBillableTags.length > 0) && (
-        <div className="px-3 pt-2 pb-2 border-b border-border/20 space-y-2 bg-muted/10">
-          {showAddTag && (
-            <div className="space-y-1.5 p-2 border border-border/30 rounded bg-background/40">
-              <div className="flex gap-2">
-                <input
-                  autoFocus
-                  value={newTagName}
-                  onChange={(e) => setNewTagName(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleAddTag(); if (e.key === 'Escape') { setShowAddTag(false); setNewTagParent(''); setNewTagParentOnly(false); } }}
-                  placeholder={newTagParentOnly ? 'New parent tag name (subtags inherit)' : 'New billable tag name'}
-                  className="flex-1 bg-transparent border border-border/40 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/60"
-                />
+      {/* Add tag panel — unified: existing OR new */}
+      {showAddTag && (() => {
+        const pickedHasSubtags = !!existingPick && categories.some(c => !c.archived && c.value.startsWith(existingPick + '/'));
+        return (
+          <div className="px-3 pt-2 pb-2 border-b border-border/20 bg-muted/10">
+            <div className="space-y-2 p-2 border border-border/30 rounded bg-background/40">
+              {/* Mode toggle */}
+              <div className="flex items-center gap-1">
+                {(['existing', 'new'] as const).map(m => (
+                  <button
+                    key={m}
+                    onClick={() => setAddMode(m)}
+                    className={`px-2 py-1 rounded text-[9px] font-mono tracking-wider border transition-colors ${
+                      addMode === m
+                        ? 'bg-foreground text-background border-foreground'
+                        : 'bg-transparent text-muted-foreground/60 border-border/40 hover:text-foreground'
+                    }`}
+                  >
+                    {m === 'existing' ? 'EXISTING TAG' : 'NEW TAG'}
+                  </button>
+                ))}
+                <div className="flex-1" />
                 <button
-                  onClick={handleAddTag}
-                  className="px-2 py-1 rounded text-[10px] font-mono bg-primary text-primary-foreground hover:bg-primary/90 tracking-wide"
+                  onClick={() => { setShowAddTag(false); setNewTagName(''); setNewTagParent(''); setNewTagParentOnly(false); setExistingPick(''); setExistingParentOnly(false); }}
+                  className="p-1 text-muted-foreground/50 hover:text-foreground"
+                  aria-label="Close"
                 >
-                  ADD
+                  <X size={12} />
                 </button>
               </div>
-              <div className="flex items-center gap-2">
-                <label className="text-[9px] font-mono text-muted-foreground/50 tracking-wide w-16 shrink-0">PARENT</label>
-                <select
-                  value={newTagParent}
-                  onChange={(e) => setNewTagParent(e.target.value)}
-                  className="flex-1 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
-                >
-                  <option value="">— None (top-level) —</option>
-                  {parentCandidates.map(c => (
-                    <option key={c.value} value={c.value}>{c.value}</option>
-                  ))}
-                </select>
-              </div>
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={newTagParentOnly}
-                  onChange={(e) => setNewTagParentOnly(e.target.checked)}
-                  className="accent-primary"
-                />
-                <span className="text-[9px] font-mono text-muted-foreground/70 tracking-wide">
-                  PARENT ONLY — not billable itself, but every subtag inherits
-                </span>
-              </label>
-              {newTagParent && (
-                <p className="text-[9px] font-mono text-muted-foreground/40 leading-relaxed">
-                  Will be created as <span className="text-foreground/70">{newTagParent}/{newTagName.trim().toLowerCase().replace(/\s+/g, '-') || '…'}</span>
-                </p>
+
+              {addMode === 'existing' ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <label className="text-[9px] font-mono text-muted-foreground/50 tracking-wide w-16 shrink-0">TAG</label>
+                    <select
+                      value={existingPick}
+                      onChange={(e) => { setExistingPick(e.target.value); setExistingParentOnly(false); }}
+                      className="flex-1 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
+                    >
+                      <option value="">Select a tag…</option>
+                      {nonBillableTags.map(c => (
+                        <option key={c.value} value={c.value}>{c.value}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {pickedHasSubtags && (
+                    <label className="flex items-center gap-2 cursor-pointer select-none pl-[72px]">
+                      <input
+                        type="checkbox"
+                        checked={existingParentOnly}
+                        onChange={(e) => setExistingParentOnly(e.target.checked)}
+                        className="accent-primary"
+                      />
+                      <span className="text-[9px] font-mono text-muted-foreground/70 tracking-wide">
+                        PARENT ONLY — not billable itself, every subtag inherits
+                      </span>
+                    </label>
+                  )}
+                  <div className="flex justify-end">
+                    <button
+                      disabled={!existingPick}
+                      onClick={() => {
+                        if (existingParentOnly) markExistingParentOnly(existingPick);
+                        else markExistingBillable(existingPick);
+                        setExistingPick(''); setExistingParentOnly(false); setShowAddTag(false);
+                      }}
+                      className="px-2 py-1 rounded text-[10px] font-mono bg-primary text-primary-foreground hover:bg-primary/90 tracking-wide disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      ADD
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex gap-2">
+                    <input
+                      autoFocus
+                      value={newTagName}
+                      onChange={(e) => setNewTagName(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleAddTag(); if (e.key === 'Escape') setShowAddTag(false); }}
+                      placeholder={newTagParentOnly ? 'New parent tag name (subtags inherit)' : 'New billable tag name'}
+                      className="flex-1 bg-transparent border border-border/40 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/60"
+                    />
+                    <button
+                      onClick={handleAddTag}
+                      className="px-2 py-1 rounded text-[10px] font-mono bg-primary text-primary-foreground hover:bg-primary/90 tracking-wide"
+                    >
+                      ADD
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-[9px] font-mono text-muted-foreground/50 tracking-wide w-16 shrink-0">PARENT</label>
+                    <select
+                      value={newTagParent}
+                      onChange={(e) => setNewTagParent(e.target.value)}
+                      className="flex-1 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
+                    >
+                      <option value="">— None (top-level) —</option>
+                      {parentCandidates.map(c => (
+                        <option key={c.value} value={c.value}>{c.value}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={newTagParentOnly}
+                      onChange={(e) => setNewTagParentOnly(e.target.checked)}
+                      className="accent-primary"
+                    />
+                    <span className="text-[9px] font-mono text-muted-foreground/70 tracking-wide">
+                      PARENT ONLY — not billable itself, but every subtag inherits
+                    </span>
+                  </label>
+                  {newTagParent && (
+                    <p className="text-[9px] font-mono text-muted-foreground/40 leading-relaxed">
+                      Will be created as <span className="text-foreground/70">{newTagParent}/{newTagName.trim().toLowerCase().replace(/\s+/g, '-') || '…'}</span>
+                    </p>
+                  )}
+                </>
               )}
             </div>
-          )}
-          {nonBillableTags.length > 0 && (
-            <>
-              <div className="flex items-center gap-2">
-                <label className="text-[9px] font-mono text-muted-foreground/50 tracking-wide shrink-0 w-24">MARK BILLABLE</label>
-                <select
-                  value={pickFromExisting}
-                  onChange={(e) => markExistingBillable(e.target.value)}
-                  className="flex-1 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
-                >
-                  <option value="">Select a tag…</option>
-                  {nonBillableTags.map(c => (
-                    <option key={c.value} value={c.value}>{c.value}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-[9px] font-mono text-muted-foreground/50 tracking-wide shrink-0 w-24" title="Tag itself isn't billable, but every subtag inherits and prompts for rate on creation">MARK PARENT</label>
-                <select
-                  value={pickFromExistingParent}
-                  onChange={(e) => { markExistingParentOnly(e.target.value); setPickFromExistingParent(''); }}
-                  className="flex-1 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
-                >
-                  <option value="">Select a tag…</option>
-                  {nonBillableTags.map(c => (
-                    <option key={c.value} value={c.value}>{c.value}</option>
-                  ))}
-                </select>
-              </div>
-            </>
-          )}
-        </div>
-      )}
+          </div>
+        );
+      })()}
 
       <div className="px-3 pt-2 pb-1 flex items-center gap-1 overflow-x-auto scrollbar-none">
         {RANGES.map(r => (
