@@ -12,6 +12,7 @@ export interface TagBillingSettings {
   hourlyRate: number;
   flatRate: number;
   clientName: string;
+  clientId: string | null;
   currency: string;
 }
 
@@ -30,6 +31,7 @@ export interface Invoice {
   id: string;
   invoiceNumber: string;
   clientName: string;
+  clientId: string | null;
   status: InvoiceStatus;
   currency: string;
   subtotal: number;
@@ -52,6 +54,7 @@ interface BillingState {
   getSettings: (tagValue: string) => TagBillingSettings | undefined;
   createInvoice: (invoice: {
     clientName: string;
+    clientId: string | null;
     currency: string;
     notes: string;
     rangeStart: string | null;
@@ -61,8 +64,8 @@ interface BillingState {
   }) => Promise<Invoice | null>;
   setInvoiceStatus: (invoiceId: string, status: InvoiceStatus) => Promise<void>;
   deleteInvoice: (invoiceId: string) => Promise<void>;
-  /** Suggest the next sequential invoice number for a client (or globally if none). */
-  nextInvoiceNumber: (clientName?: string) => string;
+  /** Suggest the next sequential invoice number for a client. Prefer clientId; falls back to clientName. */
+  nextInvoiceNumber: (opts?: { clientId?: string | null; clientName?: string }) => string;
 }
 
 function rowToSettings(r: any): TagBillingSettings {
@@ -74,6 +77,7 @@ function rowToSettings(r: any): TagBillingSettings {
     hourlyRate: Number(r.hourly_rate),
     flatRate: Number(r.flat_rate),
     clientName: r.client_name || '',
+    clientId: r.client_id || null,
     currency: r.currency || 'USD',
   };
 }
@@ -83,6 +87,7 @@ function rowToInvoice(r: any, items: any[]): Invoice {
     id: r.id,
     invoiceNumber: r.invoice_number,
     clientName: r.client_name || '',
+    clientId: r.client_id || null,
     status: r.status,
     currency: r.currency || 'USD',
     subtotal: Number(r.subtotal),
@@ -144,6 +149,7 @@ export const useBillingStore = create<BillingState>((set, get) => ({
       hourly_rate: patch.hourlyRate ?? existing?.hourlyRate ?? 0,
       flat_rate: patch.flatRate ?? existing?.flatRate ?? 0,
       client_name: patch.clientName ?? existing?.clientName ?? '',
+      client_id: patch.clientId !== undefined ? patch.clientId : (existing?.clientId ?? null),
       currency: patch.currency ?? existing?.currency ?? 'USD',
     };
     const { data, error } = await supabase
@@ -160,14 +166,16 @@ export const useBillingStore = create<BillingState>((set, get) => ({
     }));
   },
 
-  nextInvoiceNumber: (clientName?: string) => {
+  nextInvoiceNumber: (opts) => {
     const year = new Date().getFullYear();
     const prefix = `INV-${year}-`;
-    const norm = (clientName || '').trim().toLowerCase();
+    const clientId = opts?.clientId ?? null;
+    const norm = (opts?.clientName || '').trim().toLowerCase();
     const pool = get().invoices.filter(inv => {
       if (!inv.invoiceNumber.startsWith(prefix)) return false;
-      if (!norm) return true;
-      return (inv.clientName || '').trim().toLowerCase() === norm;
+      if (clientId) return inv.clientId === clientId;
+      if (norm) return (inv.clientName || '').trim().toLowerCase() === norm;
+      return true;
     });
     let maxSeq = 0;
     for (const inv of pool) {
@@ -178,12 +186,12 @@ export const useBillingStore = create<BillingState>((set, get) => ({
     return `${prefix}${String(maxSeq + 1).padStart(3, '0')}`;
   },
 
-  createInvoice: async ({ clientName, currency, notes, rangeStart, rangeEnd, items, invoiceNumber }) => {
+  createInvoice: async ({ clientName, clientId, currency, notes, rangeStart, rangeEnd, items, invoiceNumber }) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
     const subtotal = items.reduce((sum, it) => sum + it.amount, 0);
     const total = subtotal;
-    const num = (invoiceNumber || '').trim() || get().nextInvoiceNumber(clientName);
+    const num = (invoiceNumber || '').trim() || get().nextInvoiceNumber({ clientId, clientName });
 
     const { data: invRow, error: invErr } = await supabase
       .from('invoices')
@@ -191,6 +199,7 @@ export const useBillingStore = create<BillingState>((set, get) => ({
         user_id: user.id,
         invoice_number: num,
         client_name: clientName,
+        client_id: clientId,
         currency,
         subtotal,
         total,

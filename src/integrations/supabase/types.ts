@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      clients: {
+        Row: {
+          address: string
+          archived: boolean
+          created_at: string
+          email: string
+          id: string
+          name: string
+          notes: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string
+          archived?: boolean
+          created_at?: string
+          email?: string
+          id?: string
+          name: string
+          notes?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string
+          archived?: boolean
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          notes?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       email_send_log: {
         Row: {
           created_at: string
@@ -356,6 +392,7 @@ export type Database = {
       }
       invoices: {
         Row: {
+          client_id: string | null
           client_name: string
           created_at: string
           currency: string
@@ -373,6 +410,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          client_id?: string | null
           client_name?: string
           created_at?: string
           currency?: string
@@ -390,6 +428,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          client_id?: string | null
           client_name?: string
           created_at?: string
           currency?: string
@@ -406,7 +445,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "invoices_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       library_categories: {
         Row: {
@@ -647,6 +694,7 @@ export type Database = {
       tag_billing_settings: {
         Row: {
           billable: boolean
+          client_id: string | null
           client_name: string
           created_at: string
           currency: string
@@ -660,6 +708,7 @@ export type Database = {
         }
         Insert: {
           billable?: boolean
+          client_id?: string | null
           client_name?: string
           created_at?: string
           currency?: string
@@ -673,6 +722,7 @@ export type Database = {
         }
         Update: {
           billable?: boolean
+          client_id?: string | null
           client_name?: string
           created_at?: string
           currency?: string
@@ -684,7 +734,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tag_billing_settings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tasks: {
         Row: {
