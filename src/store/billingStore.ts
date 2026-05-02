@@ -77,6 +77,16 @@ interface BillingState {
   }) => Promise<Invoice | null>;
   setInvoiceStatus: (invoiceId: string, status: InvoiceStatus) => Promise<void>;
   deleteInvoice: (invoiceId: string) => Promise<void>;
+  updateInvoice: (invoiceId: string, patch: {
+    invoiceNumber?: string;
+    clientName?: string;
+    clientId?: string | null;
+    currency?: string;
+    notes?: string;
+    rangeStart?: string | null;
+    rangeEnd?: string | null;
+    items?: Array<Omit<InvoiceItem, 'id' | 'invoiceId'>>;
+  }) => Promise<void>;
   /** Suggest the next sequential invoice number for a client. Prefer clientId; falls back to clientName. */
   nextInvoiceNumber: (opts?: { clientId?: string | null; clientName?: string }) => string;
 }
@@ -273,5 +283,85 @@ export const useBillingStore = create<BillingState>((set, get) => ({
     const { error } = await supabase.from('invoices').delete().eq('id', invoiceId);
     if (error) return;
     set(s => ({ invoices: s.invoices.filter(inv => inv.id !== invoiceId) }));
+  },
+
+  updateInvoice: async (invoiceId, patch) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const existing = get().invoices.find(i => i.id === invoiceId);
+    if (!existing) return;
+
+    const next = {
+      invoiceNumber: patch.invoiceNumber ?? existing.invoiceNumber,
+      clientName: patch.clientName ?? existing.clientName,
+      clientId: patch.clientId !== undefined ? patch.clientId : existing.clientId,
+      currency: patch.currency ?? existing.currency,
+      notes: patch.notes ?? existing.notes,
+      rangeStart: patch.rangeStart !== undefined ? patch.rangeStart : existing.rangeStart,
+      rangeEnd: patch.rangeEnd !== undefined ? patch.rangeEnd : existing.rangeEnd,
+    };
+    const items = patch.items ?? existing.items.map(it => ({
+      tagValue: it.tagValue,
+      description: it.description,
+      rateType: it.rateType,
+      hours: it.hours,
+      rate: it.rate,
+      amount: it.amount,
+    }));
+    const subtotal = items.reduce((sum, it) => sum + it.amount, 0);
+    const total = subtotal;
+
+    const { error: invErr } = await supabase
+      .from('invoices')
+      .update({
+        invoice_number: next.invoiceNumber,
+        client_name: next.clientName,
+        client_id: next.clientId,
+        currency: next.currency,
+        notes: next.notes,
+        range_start: next.rangeStart,
+        range_end: next.rangeEnd,
+        subtotal,
+        total,
+      })
+      .eq('id', invoiceId);
+    if (invErr) return;
+
+    if (patch.items) {
+      // Replace line items wholesale
+      await supabase.from('invoice_items').delete().eq('invoice_id', invoiceId);
+      const itemRows = items.map(it => ({
+        invoice_id: invoiceId,
+        user_id: user.id,
+        tag_value: it.tagValue,
+        description: it.description,
+        rate_type: it.rateType,
+        hours: it.hours,
+        rate: it.rate,
+        amount: it.amount,
+      }));
+      const { data: newItems } = await supabase.from('invoice_items').insert(itemRows).select();
+      const mappedItems: InvoiceItem[] = (newItems || []).map((it: any) => ({
+        id: it.id,
+        invoiceId: it.invoice_id,
+        tagValue: it.tag_value,
+        description: it.description || '',
+        rateType: it.rate_type as RateType,
+        hours: Number(it.hours),
+        rate: Number(it.rate),
+        amount: Number(it.amount),
+      }));
+      set(s => ({
+        invoices: s.invoices.map(inv => inv.id === invoiceId
+          ? { ...inv, ...next, subtotal, total, items: mappedItems }
+          : inv),
+      }));
+    } else {
+      set(s => ({
+        invoices: s.invoices.map(inv => inv.id === invoiceId
+          ? { ...inv, ...next, subtotal, total }
+          : inv),
+      }));
+    }
   },
 }));
