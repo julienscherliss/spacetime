@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { X, FileText, Download, Plus, Trash2, Split } from 'lucide-react';
-import { useBillingStore } from '@/store/billingStore';
+import { X, FileText, Download, Plus, Trash2, Split, Palette } from 'lucide-react';
+import { useBillingStore, type Invoice } from '@/store/billingStore';
 import { useCompletedMinutesByTag } from '@/hooks/useBillingData';
 import { useLibraryStore } from '@/store/libraryStore';
 import { formatCurrency, decimalHours } from '@/lib/billingFormat';
-import { downloadInvoicePdf } from '@/lib/invoicePdf';
+import { generateInvoicePdf } from '@/lib/renderInvoicePdf';
+import { useInvoiceStyleStore, TEMPLATE_LABELS } from '@/store/invoiceStyleStore';
+import { InvoiceStyler } from './InvoiceStyler';
 import { parseISO, format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 
@@ -28,6 +30,9 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
   const invoices = useBillingStore(s => s.invoices);
   const createInvoice = useBillingStore(s => s.createInvoice);
   const categories = useLibraryStore(s => s.categories);
+  const invoiceStyle = useInvoiceStyleStore(s => s.style);
+  const loadStyle = useInvoiceStyleStore(s => s.load);
+  const styleLoaded = useInvoiceStyleStore(s => s.loaded);
 
   const [selected, setSelected] = useState<Set<string>>(new Set(initialTags));
   const [useRange, setUseRange] = useState(false);
@@ -37,8 +42,11 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
+  const [stylerOpen, setStylerOpen] = useState(false);
   // Track which tags the user has manually edited so we don't overwrite their splits
   const [customizedTags, setCustomizedTags] = useState<Set<string>>(new Set());
+
+  useEffect(() => { if (!styleLoaded) loadStyle(); }, [styleLoaded, loadStyle]);
 
   const start = useRange && rangeStart ? parseISO(rangeStart) : undefined;
   const end = useRange && rangeEnd ? parseISO(rangeEnd) : undefined;
@@ -182,9 +190,7 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
       return;
     }
     if (alsoDownload) {
-      const labels: Record<string, string> = {};
-      itemsWithAmounts.forEach(it => { labels[it.tag] = it.description; });
-      downloadInvoicePdf(invoice, labels);
+      await generateInvoicePdf(invoice, invoiceStyle);
     }
     toast({ title: `Invoice ${invoice.invoiceNumber} created` });
     onClose();
