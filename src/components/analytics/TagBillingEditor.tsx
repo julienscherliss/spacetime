@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useBillingStore } from '@/store/billingStore';
 import { Switch } from '@/components/ui/switch';
 
@@ -10,6 +10,8 @@ interface Props {
 export function TagBillingEditor({ tag, tagLabel }: Props) {
   const settings = useBillingStore(s => s.settings.find(x => x.tagValue === tag));
   const upsertSettings = useBillingStore(s => s.upsertSettings);
+  const allSettings = useBillingStore(s => s.settings);
+  const allInvoices = useBillingStore(s => s.invoices);
   const loaded = useBillingStore(s => s.loaded);
   const load = useBillingStore(s => s.load);
 
@@ -21,6 +23,37 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
   const [flatRate, setFlatRate] = useState<string>(String(settings?.flatRate ?? ''));
   const [clientName, setClientName] = useState(settings?.clientName ?? '');
   const [currency, setCurrency] = useState(settings?.currency ?? 'USD');
+  const [clientFocused, setClientFocused] = useState(false);
+  const [highlightIdx, setHighlightIdx] = useState(0);
+  const clientWrapRef = useRef<HTMLDivElement>(null);
+
+  const pastClients = useMemo(() => {
+    const set = new Set<string>();
+    allSettings.forEach(s => { if (s.clientName?.trim()) set.add(s.clientName.trim()); });
+    allInvoices.forEach(i => { if (i.clientName?.trim()) set.add(i.clientName.trim()); });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [allSettings, allInvoices]);
+
+  const clientSuggestions = useMemo(() => {
+    const q = clientName.trim().toLowerCase();
+    return pastClients
+      .filter(c => c.toLowerCase() !== q)
+      .filter(c => !q || c.toLowerCase().includes(q))
+      .slice(0, 8);
+  }, [pastClients, clientName]);
+
+  useEffect(() => { setHighlightIdx(0); }, [clientName, clientFocused]);
+
+  useEffect(() => {
+    if (!clientFocused) return;
+    const handler = (e: MouseEvent) => {
+      if (clientWrapRef.current && !clientWrapRef.current.contains(e.target as Node)) {
+        setClientFocused(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [clientFocused]);
 
   // Sync local state when settings load
   useEffect(() => {
@@ -54,16 +87,63 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
       {billable && (
         <div className="p-3 space-y-3">
           {/* Client */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 relative">
             <label className="text-[9px] font-mono text-muted-foreground/50 tracking-wide w-16 shrink-0">CLIENT</label>
-            <input
-              type="text"
-              value={clientName}
-              onChange={(e) => setClientName(e.target.value)}
-              onBlur={() => save({ clientName })}
-              placeholder="Client name"
-              className="flex-1 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
-            />
+            <div ref={clientWrapRef} className="flex-1 relative">
+              <input
+                type="text"
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
+                onFocus={() => setClientFocused(true)}
+                onBlur={() => save({ clientName })}
+                onKeyDown={(e) => {
+                  if (!clientFocused || clientSuggestions.length === 0) return;
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setHighlightIdx(i => Math.min(i + 1, clientSuggestions.length - 1));
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setHighlightIdx(i => Math.max(i - 1, 0));
+                  } else if (e.key === 'Enter' || e.key === 'Tab') {
+                    const pick = clientSuggestions[highlightIdx];
+                    if (pick) {
+                      e.preventDefault();
+                      setClientName(pick);
+                      save({ clientName: pick });
+                      setClientFocused(false);
+                    }
+                  } else if (e.key === 'Escape') {
+                    setClientFocused(false);
+                  }
+                }}
+                placeholder="Client name"
+                className="w-full bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
+              />
+              {clientFocused && clientSuggestions.length > 0 && (
+                <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-card border border-border/50 rounded-md shadow-lg py-1 max-h-48 overflow-y-auto">
+                  {clientSuggestions.map((c, i) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onMouseEnter={() => setHighlightIdx(i)}
+                      onPointerDown={(e) => {
+                        e.preventDefault();
+                        setClientName(c);
+                        save({ clientName: c });
+                        setClientFocused(false);
+                      }}
+                      className={`w-full text-left px-2.5 py-1.5 text-[11px] font-mono transition-colors ${
+                        i === highlightIdx
+                          ? 'bg-muted/50 text-foreground'
+                          : 'text-muted-foreground/80 hover:bg-muted/30 hover:text-foreground'
+                      }`}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Rate type */}
