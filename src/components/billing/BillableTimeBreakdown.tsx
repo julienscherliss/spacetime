@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronRight, Archive, ArchiveRestore, Plus } from 'lucide-react';
+import { ChevronDown, ChevronRight, Archive, ArchiveRestore, Plus, X, AlertTriangle } from 'lucide-react';
 import { useTaskStore } from '@/store/taskStore';
 import { useLibraryStore } from '@/store/libraryStore';
 import { useBillingStore } from '@/store/billingStore';
@@ -8,7 +8,7 @@ import { findBillableAncestor } from '@/lib/billingInheritance';
 import { TagBillingEditor } from '@/components/analytics/TagBillingEditor';
 import {
   startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth,
-  subDays, subWeeks, subMonths, parseISO, isWithinInterval, differenceInDays,
+  subDays, subWeeks, subMonths, parseISO, isWithinInterval, differenceInDays, format,
 } from 'date-fns';
 
 type RangeKey = 'today' | 'this-week' | 'last-week' | 'this-month' | 'last-month' | 'all-time';
