@@ -12,6 +12,8 @@ import { ClientPicker } from './ClientPicker';
 import { useClientStore } from '@/store/clientStore';
 import { parseISO, format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { Lock } from 'lucide-react';
 
 interface Props {
   open: boolean;
@@ -196,6 +198,36 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
       .filter(inv => inv.clientId === clientId)
       .slice(0, 5);
   }, [invoices, clientId]);
+
+  // Fetch private per-tag notes for the currently-selected tags
+  const [tagNotes, setTagNotes] = useState<Record<string, string>>({});
+  useEffect(() => {
+    let cancelled = false;
+    const tags = [...selected];
+    if (tags.length === 0) { setTagNotes({}); return; }
+    (async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      const uid = auth.user?.id;
+      if (!uid) return;
+      const { data } = await supabase
+        .from('tag_notes')
+        .select('tag_value, notes')
+        .eq('user_id', uid)
+        .in('tag_value', tags);
+      if (cancelled) return;
+      const map: Record<string, string> = {};
+      (data || []).forEach((row: { tag_value: string; notes: string }) => {
+        if (row.notes && row.notes.trim()) map[row.tag_value] = row.notes;
+      });
+      setTagNotes(map);
+    })();
+    return () => { cancelled = true; };
+  }, [selected]);
+
+  const tagsWithNotes = useMemo(
+    () => [...selected].filter(t => tagNotes[t]),
+    [selected, tagNotes]
+  );
 
   const handleGenerate = async (alsoDownload: boolean) => {
     if (itemsWithAmounts.length === 0 || total <= 0) {
