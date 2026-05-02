@@ -564,6 +564,7 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
           id: 'preview',
           invoiceNumber: 'INV-PREVIEW',
           clientName: clientName || 'Sample Client',
+          clientId: clientId,
           status: 'invoiced',
           currency,
           subtotal: total,
