@@ -55,7 +55,7 @@ export function EditorialTemplate({ invoice, style }: TemplateProps) {
           {invoice.items.map(it => (
             <tr key={it.id} style={{ borderBottom: '1px solid #EEEEEE' }}>
               <td className="py-3.5 text-[13px]" style={{ fontFamily: headingFont }}>{it.description}</td>
-              <td className="py-3.5 text-[12px] text-right tabular-nums text-neutral-600">{it.hours.toFixed(2)}</td>
+              <td className="py-3.5 text-[12px] text-right tabular-nums text-neutral-600">{it.rateType === 'flat' ? '1' : it.hours.toFixed(2)}</td>
               <td className="py-3.5 text-[12px] text-right tabular-nums text-neutral-600">
                 {it.rateType === 'hourly' ? formatCurrency(it.rate, invoice.currency) : 'flat'}
               </td>
