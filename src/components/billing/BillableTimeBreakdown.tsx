@@ -71,7 +71,6 @@ export function BillableTimeBreakdown() {
   const [range, setRange] = useState<RangeKey>('this-week');
   const [showArchived, setShowArchived] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const didAutoExpandRef = (useState(() => ({ done: false }))[0]);
   const [editingTag, setEditingTag] = useState<string | null>(null);
   const [showAddTag, setShowAddTag] = useState(false);
   const [addMode, setAddMode] = useState<'new' | 'existing'>('new');
