@@ -592,6 +592,30 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               </div>
             </button>
 
+            {/* Billing section toggle */}
+            <button
+              onClick={() => {
+                if (hasBillableTag) return; // locked on while any tag is billable
+                setShowBilling(!showBilling);
+              }}
+              disabled={hasBillableTag}
+              className="w-full flex items-center justify-between bg-muted/30 border border-border/50 rounded-sm p-3 min-h-[48px] mb-3 disabled:cursor-not-allowed"
+            >
+              <div className="text-left">
+                <div className="text-[12px] font-mono text-foreground">Show Billing section</div>
+                <div className="text-[10px] font-mono text-muted-foreground/50 mt-0.5">
+                  {hasBillableTag
+                    ? 'Locked on — you have billable tags. Unmark them to hide.'
+                    : 'Adds Billing to the main navigation. Auto-enables when you mark a tag billable.'}
+                </div>
+              </div>
+              <div className={`w-9 h-5 rounded-full transition-colors flex items-center px-0.5 ${
+                billingEffectivelyOn ? 'bg-primary justify-end' : 'bg-border justify-start'
+              }`}>
+                <div className="w-4 h-4 rounded-full bg-white shadow-sm" />
+              </div>
+            </button>
+
             {/* Comfort Mode toggle */}
             <button
               onClick={() => setComfortMode(!comfortMode)}
