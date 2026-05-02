@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Receipt, Download, FileText, CheckCircle2, Trash2, ChevronLeft, ChevronRight, Pencil } from 'lucide-react';
 import { useBillingStore } from '@/store/billingStore';
 import { useBillableTagRows } from '@/hooks/useBillingData';
+import { useCompletedMinutesByTag } from '@/hooks/useBillingData';
 import { formatCurrency, formatHours } from '@/lib/billingFormat';
 import { useLibraryStore } from '@/store/libraryStore';
 import { generateInvoicePdf } from '@/lib/renderInvoicePdf';
@@ -25,6 +26,7 @@ export function BillingModule() {
   const deleteInvoice = useBillingStore(s => s.deleteInvoice);
   const categories = useLibraryStore(s => s.categories);
   const rows = useBillableTagRows();
+  const completedMinutesByTag = useCompletedMinutesByTag();
   const style = useInvoiceStyleStore(s => s.style);
   const loadStyle = useInvoiceStyleStore(s => s.load);
   const styleLoaded = useInvoiceStyleStore(s => s.loaded);
@@ -70,7 +72,8 @@ export function BillingModule() {
           const cur = totals.get(it.tagValue) || {
             minutes: 0, amount: 0, rateType: it.rateType, rate: it.rate, currency: inv.currency, lastStatus: inv.status,
           };
-          cur.minutes += it.hours * 60;
+          // Only sum hours from hourly items — flat items use `hours` as quantity.
+          if (it.rateType === 'hourly') cur.minutes += it.hours * 60;
           cur.amount += it.amount;
           cur.rate = it.rate;
           cur.rateType = it.rateType;
@@ -83,11 +86,15 @@ export function BillingModule() {
         const existing = rows.find(r => r.tagValue === tagValue);
         const label = categories.find(c => c.value === tagValue)?.label || existing?.label || tagValue;
         const archived = !!categories.find(c => c.value === tagValue)?.archived;
+        // For flat-rate tags, show actual time logged (not the invoice quantity).
+        const minutes = t.rateType === 'flat'
+          ? (completedMinutesByTag.get(tagValue) || 0)
+          : t.minutes;
         return {
           tagValue,
           label,
           archived,
-          invoicedMinutes: t.minutes,
+          invoicedMinutes: minutes,
           billedAmount: t.amount,
           rateType: t.rateType,
           rate: t.rate,
@@ -97,7 +104,7 @@ export function BillingModule() {
         };
       }).sort((a, b) => b.billedAmount - a.billedAmount);
     },
-    [invoices, rows, categories]
+    [invoices, rows, categories, completedMinutesByTag]
   );
 
   const totalUnbilled = unbilledRows.reduce((sum, r) => sum + r.unbilledAmount, 0);
