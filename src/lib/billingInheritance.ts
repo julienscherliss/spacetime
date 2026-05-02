@@ -16,7 +16,12 @@ export function findBillableAncestor(
   for (let i = parts.length; i >= 1; i--) {
     const candidate = parts.slice(0, i).join('/');
     const s = byTag.get(candidate);
-    if (s && (s.billable || s.parentOnly)) return s;
+    if (s) {
+      if (s.billable || s.parentOnly) return s;
+      // Explicit opt-out: tag has settings but is not billable and not a
+      // parent anchor. Block inheritance from any further ancestor.
+      return undefined;
+    }
   }
   return undefined;
 }
