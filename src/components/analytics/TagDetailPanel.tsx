@@ -357,7 +357,16 @@ export function TagDetailPanel({ tag, onClose }: Props) {
                     </div>
                   )}
                   <div className={`w-1.5 h-1.5 rounded-full ${t.completed ? 'bg-green-500/60' : 'bg-muted-foreground/30'}`} />
-                  <span className="text-[10px] font-mono text-foreground/70 flex-1 truncate">{t.title}</span>
+                  <span className="text-[10px] font-mono text-foreground/70 flex-1 truncate flex items-center gap-1.5">
+                    <span className="truncate">{t.title}</span>
+                    {invoicedTaskIds.has(t.id) && (
+                      <CheckCircle2
+                        size={10}
+                        className="text-primary/70 shrink-0"
+                        aria-label="Invoiced"
+                      />
+                    )}
+                  </span>
                   <span className="text-[8px] font-mono text-muted-foreground/40 shrink-0">{t.date}</span>
                   <span className="text-[8px] font-mono text-muted-foreground/60 tabular-nums shrink-0 ml-1 min-w-[28px] text-right">
                     {formatTime(t.duration || 30)}
