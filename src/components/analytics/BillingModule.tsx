@@ -77,7 +77,7 @@ export function BillingModule() {
         </div>
       ) : (
         <div className="border border-border/20 rounded overflow-hidden">
-          <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 px-2.5 py-1.5 border-b border-border/20 bg-muted/20 text-[8px] font-mono text-muted-foreground/50 tracking-[0.12em]">
+          <div className="grid grid-cols-[1fr_70px_110px_90px_80px] gap-3 px-2.5 py-1.5 border-b border-border/20 bg-muted/20 text-[8px] font-mono text-muted-foreground/50 tracking-[0.12em]">
             <span>TAG · CLIENT</span>
             <span className="text-right">TIME</span>
             <span className="text-right">RATE</span>
@@ -89,7 +89,7 @@ export function BillingModule() {
               key={row.tagValue}
               onClick={() => row.unbilledMinutes > 0 && openGenerator([row.tagValue])}
               disabled={row.unbilledMinutes <= 0}
-              className="w-full grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 px-2.5 py-2 border-b border-border/10 last:border-b-0 text-[10px] font-mono items-baseline hover:bg-muted/20 transition-colors disabled:cursor-default disabled:hover:bg-transparent text-left"
+              className="w-full grid grid-cols-[1fr_70px_110px_90px_80px] gap-3 px-2.5 py-2 border-b border-border/10 last:border-b-0 text-[10px] font-mono items-baseline hover:bg-muted/20 transition-colors disabled:cursor-default disabled:hover:bg-transparent text-left"
             >
               <div className="min-w-0">
                 <div className="text-foreground/90 truncate">{row.label}</div>
@@ -108,8 +108,10 @@ export function BillingModule() {
               <span className="text-foreground tabular-nums text-right font-medium">
                 {formatCurrency(row.unbilledAmount, row.settings.currency)}
               </span>
-              <span className={`text-[8px] tracking-[0.12em] px-1.5 py-0.5 border rounded ${STATUS_STYLE[row.status]}`}>
-                {row.status.toUpperCase()}
+              <span className="flex justify-end">
+                <span className={`text-[8px] tracking-[0.12em] px-1.5 py-0.5 border rounded ${STATUS_STYLE[row.status]}`}>
+                  {row.status.toUpperCase()}
+                </span>
               </span>
             </button>
           ))}
