@@ -12,7 +12,6 @@ import {
   Focus, List, CalendarDays, Grid3X3, Repeat,
   Archive, Clock, LogOut, Settings, MoreHorizontal, X, ArchiveRestore, BarChart3, Scan, Maximize, PauseCircle, MessageSquarePlus, Receipt
 } from 'lucide-react';
-import { useTimezoneStore } from '@/store/timezoneStore';
 import { useBillingStore } from '@/store/billingStore';
 
 const views: { mode: ViewMode; icon: typeof Focus; label: string }[] = [
