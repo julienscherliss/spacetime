@@ -68,7 +68,7 @@ export function BillableTimeBreakdown() {
   const upsertSettings = useBillingStore(s => s.upsertSettings);
   const invoices = useBillingStore(s => s.invoices);
 
-  const [range, setRange] = useState<RangeKey>('this-week');
+  const [range, setRange] = useState<RangeKey>('all-time');
   const [showArchived, setShowArchived] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [editingTag, setEditingTag] = useState<string | null>(null);
