@@ -12,6 +12,8 @@ import { ClientPicker } from './ClientPicker';
 import { useClientStore } from '@/store/clientStore';
 import { parseISO, format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { Lock } from 'lucide-react';
 
 interface Props {
   open: boolean;
@@ -196,6 +198,36 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
       .filter(inv => inv.clientId === clientId)
       .slice(0, 5);
   }, [invoices, clientId]);
+
+  // Fetch private per-tag notes for the currently-selected tags
+  const [tagNotes, setTagNotes] = useState<Record<string, string>>({});
+  useEffect(() => {
+    let cancelled = false;
+    const tags = [...selected];
+    if (tags.length === 0) { setTagNotes({}); return; }
+    (async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      const uid = auth.user?.id;
+      if (!uid) return;
+      const { data } = await supabase
+        .from('tag_notes')
+        .select('tag_value, notes')
+        .eq('user_id', uid)
+        .in('tag_value', tags);
+      if (cancelled) return;
+      const map: Record<string, string> = {};
+      (data || []).forEach((row: { tag_value: string; notes: string }) => {
+        if (row.notes && row.notes.trim()) map[row.tag_value] = row.notes;
+      });
+      setTagNotes(map);
+    })();
+    return () => { cancelled = true; };
+  }, [selected]);
+
+  const tagsWithNotes = useMemo(
+    () => [...selected].filter(t => tagNotes[t]),
+    [selected, tagNotes]
+  );
 
   const handleGenerate = async (alsoDownload: boolean) => {
     if (itemsWithAmounts.length === 0 || total <= 0) {
@@ -502,6 +534,36 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
             />
           </div>
         </div>
+
+        {/* Private tag notes (for your eyes only — not included in invoice) */}
+        {tagsWithNotes.length > 0 && (
+          <div className="mb-4 border border-border/30 rounded-md bg-card/40 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5">
+                <Lock size={10} className="text-muted-foreground/40" />
+                <span className="text-[9px] font-mono text-muted-foreground/60 tracking-[0.15em]">
+                  YOUR PRIVATE TAG NOTES
+                </span>
+              </div>
+              <span className="text-[9px] font-mono text-muted-foreground/40">NOT ON INVOICE</span>
+            </div>
+            <div className="space-y-2">
+              {tagsWithNotes.map(tag => {
+                const label = categories.find(c => c.value === tag)?.label || tag;
+                return (
+                  <div key={tag} className="border border-border/20 rounded p-2 bg-background/40">
+                    <div className="text-[9px] font-mono text-muted-foreground/60 tracking-[0.12em] mb-1">
+                      {label.toUpperCase()}
+                    </div>
+                    <div className="text-[11px] font-mono text-foreground/80 whitespace-pre-wrap leading-relaxed">
+                      {tagNotes[tag]}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Preview */}
         <div className="mb-4 border border-border/30 rounded-md bg-card/40 overflow-hidden">
