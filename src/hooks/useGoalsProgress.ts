@@ -84,10 +84,10 @@ export function useGoalsProgress(): GoalProgress[] {
 /** Mount once at the app/Analytics level — fires a single toast per period when a goal is hit. */
 export function useGoalCelebrationWatcher() {
   const progress = useGoalsProgress();
-  const lastCelebrated = useGoalsStore((s) => s.lastCelebrated);
   const markCelebrated = useGoalsStore((s) => s.markCelebrated);
 
   useEffect(() => {
+    const { lastCelebrated } = useGoalsStore.getState();
     progress.forEach((p) => {
       if (!p.reached) return;
       if (lastCelebrated[p.goal.id] === p.periodKey) return;
@@ -103,5 +103,5 @@ export function useGoalCelebrationWatcher() {
       });
       markCelebrated(p.goal.id, p.periodKey);
     });
-  }, [progress, lastCelebrated, markCelebrated]);
+  }, [progress, markCelebrated]);
 }
