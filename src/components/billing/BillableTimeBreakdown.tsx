@@ -54,6 +54,7 @@ interface TagRow {
   billedMinutes: number; // invoiced minutes inside selected range
   daysSince: number | null; // days since most recent task touch (any time)
   rateLabel: string;
+  parentOnly: boolean;
 }
 
 export function BillableTimeBreakdown() {
@@ -81,7 +82,7 @@ export function BillableTimeBreakdown() {
   // Determine which tags are billable (direct or inherited).
   const billableTagValues = useMemo(() => {
     const set = new Set<string>();
-    for (const s of settings) if (s.billable) set.add(s.tagValue);
+    for (const s of settings) if (s.billable || s.parentOnly) set.add(s.tagValue);
     for (const c of categories) {
       if (findBillableAncestor(c.value, settings)) set.add(c.value);
     }
@@ -152,8 +153,11 @@ export function BillableTimeBreakdown() {
 
   const rateLabelFor = (tagValue: string): string => {
     const direct = settingsByTag.get(tagValue);
-    const eff = direct?.billable ? direct : findBillableAncestor(tagValue, settings);
-    if (!eff) return '';
+    if (direct?.parentOnly) return '';
+    const eff = direct?.billable
+      ? direct
+      : findBillableAncestor(tagValue, settings);
+    if (!eff || eff.parentOnly) return '';
     return eff.rateType === 'hourly'
       ? `${eff.hourlyRate} ${eff.currency}/h`
       : `${eff.flatRate} ${eff.currency} flat`;
@@ -164,7 +168,7 @@ export function BillableTimeBreakdown() {
     const catByValue = new Map(categories.map(c => [c.value, c]));
     // Union of all billable tag values (from settings + categories that inherit)
     const allValues = new Set<string>(billableTagValues);
-    for (const s of settings) if (s.billable) allValues.add(s.tagValue);
+    for (const s of settings) if (s.billable || s.parentOnly) allValues.add(s.tagValue);
 
     for (const value of allValues) {
       const c = catByValue.get(value);
@@ -179,6 +183,7 @@ export function BillableTimeBreakdown() {
       const billedMinutes = billedByTag.get(value) || 0;
       const lastDate = perTag.lastUsed.get(value);
       const daysSince = lastDate ? differenceInDays(perTag.now, parseISO(lastDate)) : null;
+      const direct = settingsByTag.get(value);
       list.push({
         value,
         label,
@@ -187,6 +192,7 @@ export function BillableTimeBreakdown() {
         billedMinutes,
         daysSince,
         rateLabel: rateLabelFor(value),
+        parentOnly: !!direct?.parentOnly,
       });
     }
     // Sort: roots first by minutes desc, subtags follow their parent alphabetically
@@ -230,11 +236,14 @@ export function BillableTimeBreakdown() {
 
   const maxMinutes = Math.max(1, ...rows.map(r => r.minutes));
 
-  // Tags that aren't yet billable (for the MARK EXISTING dropdown)
+  // Tags that aren't yet part of any billable hierarchy (for both MARK EXISTING dropdowns)
   const nonBillableTags = categories
     .filter(c => !c.archived)
     .filter(c => !findBillableAncestor(c.value, settings))
-    .filter(c => !settingsByTag.get(c.value)?.billable);
+    .filter(c => {
+      const s = settingsByTag.get(c.value);
+      return !s?.billable && !s?.parentOnly;
+    });
 
   const parentCandidates = categories
     .filter(c => !c.archived)
@@ -264,6 +273,7 @@ export function BillableTimeBreakdown() {
     if (!tagValue) return;
     upsertSettings(tagValue, {
       billable: true,
+      parentOnly: false,
       rateType: 'hourly',
       hourlyRate: 0,
       flatRate: 0,
@@ -272,6 +282,20 @@ export function BillableTimeBreakdown() {
     });
     setPickFromExisting('');
     setEditingTag(tagValue);
+  };
+
+  const markExistingParentOnly = (tagValue: string) => {
+    if (!tagValue) return;
+    upsertSettings(tagValue, {
+      billable: false,
+      parentOnly: true,
+      rateType: 'hourly',
+      hourlyRate: 0,
+      flatRate: 0,
+      flatItems: [],
+      currency: 'USD',
+    });
+    setPickFromExisting('');
   };
 
   // Staleness: grey if no activity in 7 days, red if >30 days.
