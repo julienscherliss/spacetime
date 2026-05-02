@@ -9,6 +9,8 @@ import { CompletionMetrics } from './CompletionMetrics';
 import { NeglectedTags } from './NeglectedTags';
 import { ReflectionInsights } from './ReflectionInsights';
 import { TagDetailPanel } from './TagDetailPanel';
+import { GoalsModule } from './GoalsModule';
+import { useGoalCelebrationWatcher } from '@/hooks/useGoalsProgress';
 import { useAnalyticsData, defaultFilters, type AnalyticsFilters } from '@/hooks/useAnalyticsData';
 import { format } from 'date-fns';
 
@@ -33,6 +35,7 @@ export function AnalyticsPanel({ open, onClose }: Props) {
   const [detailTag, setDetailTag] = useState<string | null>(null);
 
   const data = useAnalyticsData(filters);
+  useGoalCelebrationWatcher();
 
   const updateFilters = (patch: Partial<AnalyticsFilters>) => {
     setFilters(f => ({ ...f, ...patch }));
@@ -96,6 +99,10 @@ export function AnalyticsPanel({ open, onClose }: Props) {
                   dataType={filters.dataType}
                   onTagClick={setDetailTag}
                 />
+              </ModuleCard>
+
+              <ModuleCard title="GOALS">
+                <GoalsModule />
               </ModuleCard>
 
               <ModuleCard title="TREND">
