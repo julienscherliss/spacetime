@@ -11,7 +11,7 @@ import type { Invoice } from '@/store/billingStore';
  * - Encode as high-quality JPEG (much smaller than PNG, no visible loss for invoices)
  * - Map canvas pixels 1:1 to US-Letter points so nothing is upscaled
  */
-export async function downloadInvoicePdfFromNode(node: HTMLElement, invoice: Invoice) {
+export async function downloadInvoicePdfFromNode(node: HTMLElement, invoice: Invoice, filename?: string) {
   const canvas = await html2canvas(node, {
     scale: 3,
     backgroundColor: '#ffffff',
@@ -44,5 +44,5 @@ export async function downloadInvoicePdfFromNode(node: HTMLElement, invoice: Inv
     heightLeft -= pageHeight;
   }
 
-  pdf.save(`${invoice.invoiceNumber}.pdf`);
+  pdf.save(filename || `${invoice.invoiceNumber}.pdf`);
 }
