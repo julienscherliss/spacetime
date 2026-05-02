@@ -341,12 +341,12 @@ export const useBillingStore = create<BillingState>((set, get) => ({
         amount: it.amount,
       }));
       const { data: newItems } = await supabase.from('invoice_items').insert(itemRows).select();
-      const mappedItems = (newItems || []).map(it => ({
+      const mappedItems: InvoiceItem[] = (newItems || []).map((it: any) => ({
         id: it.id,
         invoiceId: it.invoice_id,
         tagValue: it.tag_value,
         description: it.description || '',
-        rateType: it.rate_type,
+        rateType: it.rate_type as RateType,
         hours: Number(it.hours),
         rate: Number(it.rate),
         amount: Number(it.amount),
