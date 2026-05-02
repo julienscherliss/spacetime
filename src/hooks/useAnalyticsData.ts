@@ -8,7 +8,7 @@ import {
   eachDayOfInterval, differenceInDays, startOfDay,
 } from 'date-fns';
 
-export type TimeRange = 'today' | 'yesterday' | 'this-week' | 'last-week' | 'this-month' | 'last-month' | 'custom';
+export type TimeRange = 'today' | 'yesterday' | 'this-week' | 'last-week' | 'this-month' | 'last-month' | 'all-time' | 'custom';
 export type DataType = 'scheduled-time' | 'completed-time' | 'task-count' | 'completion-rate';
 
 export interface AnalyticsFilters {
@@ -54,6 +54,8 @@ function getDateRange(filters: AnalyticsFilters): { start: Date; end: Date } {
       const lm = subMonths(today, 1);
       return { start: startOfMonth(lm), end: endOfMonth(lm) };
     }
+    case 'all-time':
+      return { start: new Date(2000, 0, 1), end: today };
     case 'custom':
       return {
         start: filters.customStart ? parseISO(filters.customStart) : subDays(today, 7),
