@@ -9,6 +9,7 @@ import { useColorSchemeStore } from '@/store/colorSchemeStore';
 import { useCurrentTime, formatTime12h } from '@/hooks/useCurrentTime';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { GroupListRow } from '@/components/GroupListRow';
+import { DurationGlyph } from '@/components/DurationGlyph';
 
 function addDaysToDate(dateStr: string, days: number): string {
   const d = new Date(dateStr + 'T12:00:00');
@@ -671,8 +672,8 @@ export function DayListView() {
             }`}>
               {task.title}
               {task.duration ? (
-                <span className="ml-1.5 text-[11px] font-mono text-muted-foreground/50 tabular-nums">
-                  {formatDurationBracket(task.duration)}
+                <span className="ml-2 align-middle inline-block">
+                  <DurationGlyph minutes={task.duration} size={isChild ? 10 : 12} />
                 </span>
               ) : null}
             </p>

@@ -14,6 +14,7 @@ import { useDragHandoffStore } from '@/store/dragHandoffStore';
 import { useCalendarStore } from '@/store/calendarStore';
 import { useCurrentTime, formatTime12h, getWeekBounds } from '@/hooks/useCurrentTime';
 import { ChevronLeft, ChevronRight, ChevronsRight } from 'lucide-react';
+import { DurationGlyph } from '@/components/DurationGlyph';
 
 function addDaysToDate(dateStr: string, days: number): string {
   const d = new Date(dateStr + 'T12:00:00');
@@ -282,8 +283,8 @@ export function WeekListView() {
         >
           {task.title}
           {task.duration ? (
-            <span className="ml-1.5 text-[11px] font-mono text-muted-foreground/50 tabular-nums">
-              {formatDurationBracket(task.duration)}
+            <span className="ml-2 align-middle inline-block">
+              <DurationGlyph minutes={task.duration} size={12} />
             </span>
           ) : null}
         </button>
