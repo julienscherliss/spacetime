@@ -56,7 +56,7 @@ export function AnalyticsPanel({ open, onClose }: Props) {
         >
           <div
             className="max-w-2xl mx-auto px-4 py-4"
-            style={{ zoom: 1.15 }}
+            style={{ zoom: 1.25 }}
           >
             {/* Header */}
             <div className="flex items-start justify-between mb-4">
