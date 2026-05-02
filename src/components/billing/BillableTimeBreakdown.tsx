@@ -6,7 +6,6 @@ import { useLibraryStore } from '@/store/libraryStore';
 import { useBillingStore } from '@/store/billingStore';
 import { findBillableAncestor } from '@/lib/billingInheritance';
 import { TagBillingEditor } from '@/components/analytics/TagBillingEditor';
-import { HoldToDeleteButton } from './HoldToDeleteButton';
 import {
   startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth,
   subDays, subWeeks, subMonths, parseISO, isWithinInterval, differenceInDays,
@@ -64,7 +63,6 @@ export function BillableTimeBreakdown() {
   const addCategory = useLibraryStore(s => s.addCategory);
   const archiveCategory = useLibraryStore(s => s.archiveCategory);
   const unarchiveCategory = useLibraryStore(s => s.unarchiveCategory);
-  const removeCategory = useLibraryStore(s => s.removeCategory);
   const settings = useBillingStore(s => s.settings);
   const upsertSettings = useBillingStore(s => s.upsertSettings);
   const invoices = useBillingStore(s => s.invoices);
@@ -410,7 +408,6 @@ export function BillableTimeBreakdown() {
                   <Archive size={10} />
                 </button>
               )}
-              <HoldToDeleteButton onConfirm={() => removeCategory(r.value)} iconOnly />
             </div>
           </div>
           <div className="h-2 bg-muted/50 rounded-sm overflow-hidden ml-4 flex">
