@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useBillingStore, type FlatLineItem } from '@/store/billingStore';
+import { useLibraryStore } from '@/store/libraryStore';
 import { Switch } from '@/components/ui/switch';
 import { ClientPicker } from './ClientPicker';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Info } from 'lucide-react';
 
 interface Props {
   tag: string;
@@ -14,10 +15,14 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
   const upsertSettings = useBillingStore(s => s.upsertSettings);
   const loaded = useBillingStore(s => s.loaded);
   const load = useBillingStore(s => s.load);
+  const hasSubtags = useLibraryStore(s =>
+    s.categories.some(c => !c.archived && c.value.startsWith(tag + '/'))
+  );
 
   useEffect(() => { if (!loaded) load(); }, [loaded, load]);
 
   const [billable, setBillable] = useState(settings?.billable ?? false);
+  const [parentOnly, setParentOnly] = useState(settings?.parentOnly ?? false);
   const [rateType, setRateType] = useState<'hourly' | 'flat'>(settings?.rateType ?? 'hourly');
   const [hourlyRate, setHourlyRate] = useState<string>(String(settings?.hourlyRate ?? ''));
   const [flatRate, setFlatRate] = useState<string>(String(settings?.flatRate ?? ''));
@@ -29,6 +34,7 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
   useEffect(() => {
     if (settings) {
       setBillable(settings.billable);
+      setParentOnly(settings.parentOnly);
       setRateType(settings.rateType);
       setHourlyRate(String(settings.hourlyRate || ''));
       setFlatRate(String(settings.flatRate || ''));
@@ -58,12 +64,38 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
     <div className="mb-6 border border-border/30 rounded-md bg-card/40 overflow-hidden">
       <div className="px-3 py-2 border-b border-border/20 flex items-center justify-between">
         <span className="text-[9px] font-mono text-muted-foreground/50 tracking-[0.15em]">BILLING</span>
-        <div className="flex items-center gap-2">
-          <span className="text-[9px] font-mono text-muted-foreground/50 tracking-wide">BILLABLE</span>
-          <Switch
-            checked={billable}
-            onCheckedChange={(v) => { setBillable(v); save({ billable: v }); }}
-          />
+        <div className="flex items-center gap-4">
+          {hasSubtags && (
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] font-mono text-muted-foreground/50 tracking-wide">PARENT</span>
+              <span
+                title="Marks this tag as a billing anchor: it isn't billable itself, but every subtag created beneath it is treated as billable and inherits its rate."
+                className="text-muted-foreground/40 hover:text-muted-foreground cursor-help"
+              >
+                <Info size={10} />
+              </span>
+              <Switch
+                checked={parentOnly}
+                onCheckedChange={(v) => {
+                  setParentOnly(v);
+                  // Parent-only and Billable are mutually exclusive.
+                  if (v && billable) setBillable(false);
+                  save({ parentOnly: v, ...(v && billable ? { billable: false } : {}) });
+                }}
+              />
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] font-mono text-muted-foreground/50 tracking-wide">BILLABLE</span>
+            <Switch
+              checked={billable}
+              onCheckedChange={(v) => {
+                setBillable(v);
+                if (v && parentOnly) setParentOnly(false);
+                save({ billable: v, ...(v && parentOnly ? { parentOnly: false } : {}) });
+              }}
+            />
+          </div>
         </div>
       </div>
 
