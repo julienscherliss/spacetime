@@ -7,6 +7,7 @@ import { useLibraryStore } from '@/store/libraryStore';
 import { TagPickerMenu } from '@/components/TagPickerMenu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { TagGoalEditor } from '@/components/analytics/TagGoalEditor';
+import { TagBillingEditor } from '@/components/analytics/TagBillingEditor';
 import { subDays, format, parseISO } from 'date-fns';
 
 function formatTime(minutes: number): string {
@@ -223,7 +224,10 @@ export function TagDetailPanel({ tag, onClose }: Props) {
 
         {/* Goals — only for real tags (not the synthetic untagged / uncategorized buckets) */}
         {!isUntagged && !isUncategorizedDirect && (
-          <TagGoalEditor tag={tag} tagLabel={label} />
+          <>
+            <TagBillingEditor tag={tag} tagLabel={label} />
+            <TagGoalEditor tag={tag} tagLabel={label} />
+          </>
         )}
 
         {/* Recent tasks */}

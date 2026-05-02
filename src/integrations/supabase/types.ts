@@ -256,6 +256,107 @@ export type Database = {
         }
         Relationships: []
       }
+      invoice_items: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string
+          hours: number
+          id: string
+          invoice_id: string
+          rate: number
+          rate_type: string
+          tag_value: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          description?: string
+          hours?: number
+          id?: string
+          invoice_id: string
+          rate?: number
+          rate_type: string
+          tag_value: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string
+          hours?: number
+          id?: string
+          invoice_id?: string
+          rate?: number
+          rate_type?: string
+          tag_value?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          client_name: string
+          created_at: string
+          currency: string
+          id: string
+          invoice_number: string
+          issued_at: string
+          notes: string
+          paid_at: string | null
+          range_end: string | null
+          range_start: string | null
+          status: string
+          subtotal: number
+          total: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          client_name?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          invoice_number: string
+          issued_at?: string
+          notes?: string
+          paid_at?: string | null
+          range_end?: string | null
+          range_start?: string | null
+          status?: string
+          subtotal?: number
+          total?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          client_name?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          invoice_number?: string
+          issued_at?: string
+          notes?: string
+          paid_at?: string | null
+          range_end?: string | null
+          range_start?: string | null
+          status?: string
+          subtotal?: number
+          total?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       library_categories: {
         Row: {
           created_at: string
@@ -489,6 +590,48 @@ export type Database = {
           id?: string
           metadata?: Json | null
           reason?: string
+        }
+        Relationships: []
+      }
+      tag_billing_settings: {
+        Row: {
+          billable: boolean
+          client_name: string
+          created_at: string
+          currency: string
+          flat_rate: number
+          hourly_rate: number
+          id: string
+          rate_type: string
+          tag_value: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          billable?: boolean
+          client_name?: string
+          created_at?: string
+          currency?: string
+          flat_rate?: number
+          hourly_rate?: number
+          id?: string
+          rate_type?: string
+          tag_value: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          billable?: boolean
+          client_name?: string
+          created_at?: string
+          currency?: string
+          flat_rate?: number
+          hourly_rate?: number
+          id?: string
+          rate_type?: string
+          tag_value?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
