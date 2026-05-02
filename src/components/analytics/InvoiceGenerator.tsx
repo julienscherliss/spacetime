@@ -4,7 +4,7 @@ import { X, FileText, Download, Plus, Trash2, Split, Palette, Clock } from 'luci
 import { useBillingStore, type Invoice } from '@/store/billingStore';
 import { useCompletedMinutesByTag } from '@/hooks/useBillingData';
 import { useLibraryStore } from '@/store/libraryStore';
-import { formatCurrency, decimalHours } from '@/lib/billingFormat';
+import { formatCurrency, decimalHours, formatTagLabel } from '@/lib/billingFormat';
 import { generateInvoicePdf } from '@/lib/renderInvoicePdf';
 import { useInvoiceStyleStore, TEMPLATE_LABELS } from '@/store/invoiceStyleStore';
 import { InvoiceStyler } from './InvoiceStyler';
@@ -143,7 +143,7 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
         if (customizedTags.has(tag) && existing.length > 0) {
           next.push(...existing);
         } else {
-          const label = categories.find(c => c.value === tag)?.label || tag;
+          const label = formatTagLabel(categories.find(c => c.value === tag)?.label || tag);
           const isFlat = cfg.rateType === 'flat';
           const defaultQty = isFlat ? 1 : availableHoursForTag(tag);
           next.push({
@@ -173,7 +173,7 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
       const half = decimalHours((orig.hours / 2) * 60);
       const remainder = decimalHours((orig.hours - half) * 60);
       const cfg = settings.find(s => s.tagValue === orig.tag);
-      const baseLabel = categories.find(c => c.value === orig.tag)?.label || orig.tag;
+      const baseLabel = formatTagLabel(categories.find(c => c.value === orig.tag)?.label || orig.tag);
       const next = [...prev];
       next[idx] = { ...orig, hours: half };
       next.splice(idx + 1, 0, {
@@ -391,7 +391,7 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
                   >
                     {checked && <div className="w-1.5 h-1.5 bg-primary-foreground rounded-[1px]" />}
                   </div>
-                  <span className="text-[11px] font-mono text-foreground/80 flex-1" onClick={() => toggleArchive(t.value)}>{t.label}</span>
+                  <span className="text-[11px] font-mono text-foreground/80 flex-1" onClick={() => toggleArchive(t.value)}>{formatTagLabel(t.label)}</span>
                 </label>
               );
             })}
@@ -468,7 +468,7 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
               <p className="text-[10px] font-mono text-muted-foreground/40 py-2">No billable tags with unbilled time.</p>
             )}
             {billable.map(s => {
-              const label = categories.find(c => c.value === s.tagValue)?.label || s.tagValue;
+              const label = formatTagLabel(categories.find(c => c.value === s.tagValue)?.label || s.tagValue);
               const checked = selected.has(s.tagValue);
               return (
                 <label key={s.tagValue} className="flex items-center gap-2 py-1 cursor-pointer group">
@@ -502,7 +502,7 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
                 const tagLines = itemsWithAmounts.filter(li => li.tag === tag);
                 const totalTagHours = tagLines.reduce((sum, li) => sum + li.hours, 0);
                 const available = availableHoursForTag(tag);
-                const baseLabel = categories.find(c => c.value === tag)?.label || tag;
+                const baseLabel = formatTagLabel(categories.find(c => c.value === tag)?.label || tag);
                 const overAllocated = totalTagHours > available + 0.01;
                 return (
                   <div key={tag} className="border border-border/20 rounded bg-background/40">
@@ -693,7 +693,7 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
             </div>
             <div className="space-y-2">
               {tagsWithNotes.map(tag => {
-                const label = categories.find(c => c.value === tag)?.label || tag;
+                const label = formatTagLabel(categories.find(c => c.value === tag)?.label || tag);
                 return (
                   <div key={tag} className="border border-border/20 rounded p-2 bg-background/40">
                     <div className="text-[9px] font-mono text-muted-foreground/60 tracking-[0.12em] mb-1">
