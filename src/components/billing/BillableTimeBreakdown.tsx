@@ -308,7 +308,6 @@ export function BillableTimeBreakdown() {
       flatItems: [],
       currency: 'USD',
     });
-    setPickFromExisting('');
     setEditingTag(tagValue);
   };
 
@@ -323,7 +322,6 @@ export function BillableTimeBreakdown() {
       flatItems: [],
       currency: 'USD',
     });
-    setPickFromExisting('');
   };
 
   // Staleness: grey if no activity in 7 days, red if >30 days.
