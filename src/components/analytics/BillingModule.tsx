@@ -54,7 +54,8 @@ export function BillingModule() {
   // Hourly => unbilled minutes > 0. Flat => still unbilled (status === 'unbilled') AND not invoiced yet.
   const unbilledRows = useMemo(() => rows.filter(r => {
     if (r.settings.rateType === 'hourly') return r.unbilledMinutes > 0;
-    return r.status === 'unbilled' && r.invoicedMinutes <= 0;
+    // Flat-rate: still pending if never invoiced. (status may be 'active' if recent work logged.)
+    return r.invoicedMinutes <= 0;
   }), [rows]);
 
   const billedRows = useMemo(
