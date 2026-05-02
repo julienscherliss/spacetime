@@ -78,6 +78,7 @@ export function BillableTimeBreakdown() {
   const [newTagParentOnly, setNewTagParentOnly] = useState(false);
   const [pickFromExisting, setPickFromExisting] = useState('');
   const [pickFromExistingParent, setPickFromExistingParent] = useState('');
+  const [archiveTarget, setArchiveTarget] = useState<{ value: string; label: string } | null>(null);
 
   const interval = useMemo(() => rangeFor(range), [range]);
 
