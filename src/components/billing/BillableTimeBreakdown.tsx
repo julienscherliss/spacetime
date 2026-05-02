@@ -401,7 +401,15 @@ export function BillableTimeBreakdown() {
                 </button>
               ) : (
                 <button
-                  onClick={() => archiveCategory(r.value)}
+                  onClick={() => {
+                    // Ensure the tag exists in the library before archiving —
+                    // tags created from the billing area may only live in
+                    // billing settings, in which case archiveCategory() is a no-op.
+                    if (!categories.some(c => c.value === r.value)) {
+                      addCategory(r.label, r.value);
+                    }
+                    archiveCategory(r.value);
+                  }}
                   className="flex items-center gap-1 px-1.5 py-1 rounded text-[9px] font-mono tracking-wide border border-border/40 text-muted-foreground hover:text-foreground"
                   title="Archive"
                 >
