@@ -410,7 +410,6 @@ export function BillableTimeBreakdown() {
                   <Archive size={10} />
                 </button>
               )}
-              <HoldToDeleteButton onConfirm={() => removeCategory(r.value)} iconOnly />
             </div>
           </div>
           <div className="h-2 bg-muted/50 rounded-sm overflow-hidden ml-4 flex">
