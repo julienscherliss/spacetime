@@ -8,6 +8,7 @@ import { TagPickerMenu } from '@/components/TagPickerMenu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { TagGoalEditor } from '@/components/analytics/TagGoalEditor';
 import { TagBillingEditor } from '@/components/analytics/TagBillingEditor';
+import { TagNotesEditor } from '@/components/analytics/TagNotesEditor';
 import { useBillingStore } from '@/store/billingStore';
 import { formatCurrency } from '@/lib/billingFormat';
 import { subDays, format, parseISO } from 'date-fns';
@@ -301,6 +302,7 @@ export function TagDetailPanel({ tag, onClose }: Props) {
           <>
             <TagBillingEditor tag={tag} tagLabel={label} />
             <TagGoalEditor tag={tag} tagLabel={label} />
+            <TagNotesEditor tag={tag} />
           </>
         )}
 
