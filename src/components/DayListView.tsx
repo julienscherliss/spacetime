@@ -673,7 +673,7 @@ export function DayListView() {
               {task.title}
               {task.duration ? (
                 <span className="ml-2 align-middle inline-block">
-                  <DurationGlyph minutes={task.duration} size={isChild ? 10 : 12} />
+                  <DurationGlyph minutes={task.duration} size={isChild ? 12 : 14} />
                 </span>
               ) : null}
             </p>
