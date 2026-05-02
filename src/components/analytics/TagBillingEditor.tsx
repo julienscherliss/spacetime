@@ -82,7 +82,7 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="max-w-[220px] text-[10px] font-mono leading-relaxed">
-                    Marks this tag as a billing anchor: it isn't billable itself, but every subtag beneath it is treated as billable and inherits its rate.
+                    Marks this tag as a billing anchor: it isn't billable itself, but every subtag beneath it is treated as billable.
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
