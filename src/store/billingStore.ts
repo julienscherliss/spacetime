@@ -12,6 +12,7 @@ export interface TagBillingSettings {
   hourlyRate: number;
   flatRate: number;
   clientName: string;
+  clientId: string | null;
   currency: string;
 }
 
@@ -30,6 +31,7 @@ export interface Invoice {
   id: string;
   invoiceNumber: string;
   clientName: string;
+  clientId: string | null;
   status: InvoiceStatus;
   currency: string;
   subtotal: number;
@@ -52,6 +54,7 @@ interface BillingState {
   getSettings: (tagValue: string) => TagBillingSettings | undefined;
   createInvoice: (invoice: {
     clientName: string;
+    clientId: string | null;
     currency: string;
     notes: string;
     rangeStart: string | null;
@@ -61,8 +64,8 @@ interface BillingState {
   }) => Promise<Invoice | null>;
   setInvoiceStatus: (invoiceId: string, status: InvoiceStatus) => Promise<void>;
   deleteInvoice: (invoiceId: string) => Promise<void>;
-  /** Suggest the next sequential invoice number for a client (or globally if none). */
-  nextInvoiceNumber: (clientName?: string) => string;
+  /** Suggest the next sequential invoice number for a client. Prefer clientId; falls back to clientName. */
+  nextInvoiceNumber: (opts?: { clientId?: string | null; clientName?: string }) => string;
 }
 
 function rowToSettings(r: any): TagBillingSettings {
@@ -74,6 +77,7 @@ function rowToSettings(r: any): TagBillingSettings {
     hourlyRate: Number(r.hourly_rate),
     flatRate: Number(r.flat_rate),
     clientName: r.client_name || '',
+    clientId: r.client_id || null,
     currency: r.currency || 'USD',
   };
 }
@@ -83,6 +87,7 @@ function rowToInvoice(r: any, items: any[]): Invoice {
     id: r.id,
     invoiceNumber: r.invoice_number,
     clientName: r.client_name || '',
+    clientId: r.client_id || null,
     status: r.status,
     currency: r.currency || 'USD',
     subtotal: Number(r.subtotal),
