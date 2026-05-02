@@ -161,21 +161,32 @@ export function BillableTimeBreakdown() {
 
   const rows: TagRow[] = useMemo(() => {
     const list: TagRow[] = [];
-    for (const c of categories) {
-      if (!billableTagValues.has(c.value)) continue;
-      if (!showArchived && c.archived) continue;
-      const minutes = perTag.minutes.get(c.value) || 0;
-      const billedMinutes = billedByTag.get(c.value) || 0;
-      const last = perTag.lastUsed.get(c.value);
-      const daysSince = last ? differenceInDays(perTag.now, parseISO(last)) : null;
+    const catByValue = new Map(categories.map(c => [c.value, c]));
+    // Union of all billable tag values (from settings + categories that inherit)
+    const allValues = new Set<string>(billableTagValues);
+    for (const s of settings) if (s.billable) allValues.add(s.tagValue);
+
+    for (const value of allValues) {
+      const c = catByValue.get(value);
+      const archived = !!c?.archived;
+      if (!showArchived && archived) continue;
+      // Derive a label: prefer category label, else last segment of the path prettified
+      const label = c?.label || (() => {
+        const last = value.split('/').pop() || value;
+        return last.replace(/[-_]/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase());
+      })();
+      const minutes = perTag.minutes.get(value) || 0;
+      const billedMinutes = billedByTag.get(value) || 0;
+      const lastDate = perTag.lastUsed.get(value);
+      const daysSince = lastDate ? differenceInDays(perTag.now, parseISO(lastDate)) : null;
       list.push({
-        value: c.value,
-        label: c.label,
-        archived: !!c.archived,
+        value,
+        label,
+        archived,
         minutes,
         billedMinutes,
         daysSince,
-        rateLabel: rateLabelFor(c.value),
+        rateLabel: rateLabelFor(value),
       });
     }
     // Sort: roots first by minutes desc, subtags follow their parent alphabetically
