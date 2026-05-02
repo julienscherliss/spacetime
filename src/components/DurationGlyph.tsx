@@ -19,15 +19,15 @@ interface DurationGlyphProps {
   className?: string;
 }
 
-const DOT_R = 1.1;
+const DOT_R = 1.5;
 
 function RemainderGlyph({ mins, size }: { mins: number; size: number }) {
   // Width of cell scales with remainder so 45m gets a touch more room.
   const w = mins === 45 ? size * 0.85 : size * 0.45;
   const h = size;
   const cx = w / 2;
-  const topY = h * 0.3;
-  const botY = h * 0.7;
+  const topY = h * 0.32;
+  const botY = h * 0.68;
   const midY = h * 0.5;
 
   return (
@@ -57,7 +57,7 @@ function RemainderGlyph({ mins, size }: { mins: number; size: number }) {
 }
 
 function HourGlyph({ size }: { size: number }) {
-  const w = size * 0.32;
+  const w = size * 0.36;
   const h = size;
   return (
     <svg
@@ -69,9 +69,9 @@ function HourGlyph({ size }: { size: number }) {
     >
       <rect
         x={0.5}
-        y={h * 0.18}
+        y={h * 0.05}
         width={w - 1}
-        height={h * 0.64}
+        height={h * 0.9}
         rx={0.6}
         fill="currentColor"
       />
@@ -79,7 +79,7 @@ function HourGlyph({ size }: { size: number }) {
   );
 }
 
-export function DurationGlyph({ minutes, size = 11, className = '' }: DurationGlyphProps) {
+export function DurationGlyph({ minutes, size = 13, className = '' }: DurationGlyphProps) {
   if (!minutes || minutes <= 0) return null;
   const hours = Math.floor(minutes / 60);
   const remainder = minutes % 60; // 0, 15, 30, or 45 (rounded to nearest 15)
