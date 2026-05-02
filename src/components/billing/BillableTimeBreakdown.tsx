@@ -75,7 +75,9 @@ export function BillableTimeBreakdown() {
   const [showAddTag, setShowAddTag] = useState(false);
   const [newTagName, setNewTagName] = useState('');
   const [newTagParent, setNewTagParent] = useState('');
+  const [newTagParentOnly, setNewTagParentOnly] = useState(false);
   const [pickFromExisting, setPickFromExisting] = useState('');
+  const [pickFromExistingParent, setPickFromExistingParent] = useState('');
 
   const interval = useMemo(() => rangeFor(range), [range]);
 
@@ -256,7 +258,8 @@ export function BillableTimeBreakdown() {
     const value = newTagParent ? `${newTagParent}/${slug}` : slug;
     addCategory(trimmed, value);
     upsertSettings(value, {
-      billable: true,
+      billable: !newTagParentOnly,
+      parentOnly: newTagParentOnly,
       rateType: 'hourly',
       hourlyRate: 0,
       flatRate: 0,
@@ -265,8 +268,10 @@ export function BillableTimeBreakdown() {
     });
     setNewTagName('');
     setNewTagParent('');
+    const wasParentOnly = newTagParentOnly;
+    setNewTagParentOnly(false);
     setShowAddTag(false);
-    setEditingTag(value);
+    if (!wasParentOnly) setEditingTag(value);
   };
 
   const markExistingBillable = (tagValue: string) => {
