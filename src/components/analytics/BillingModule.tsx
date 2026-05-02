@@ -117,11 +117,13 @@ export function BillingModule() {
             <span className="text-right">AMOUNT</span>
             <span className="text-right">STATUS</span>
           </div>
-          {pagedRows.map(row => (
+          {pagedRows.map(row => {
+            const clickable = !showBilled;
+            return (
             <button
               key={row.tagValue}
-              onClick={() => row.unbilledMinutes > 0 && openGenerator([row.tagValue])}
-              disabled={row.unbilledMinutes <= 0}
+              onClick={() => clickable && openGenerator([row.tagValue])}
+              disabled={!clickable}
               className="w-full grid grid-cols-[1fr_70px_110px_90px_80px] gap-3 px-2.5 py-2 border-b border-border/10 last:border-b-0 text-[10px] font-mono items-baseline hover:bg-muted/20 transition-colors disabled:cursor-default disabled:hover:bg-transparent text-left"
             >
               <div className="min-w-0">
@@ -147,7 +149,8 @@ export function BillingModule() {
                 </span>
               </span>
             </button>
-          ))}
+            );
+          })}
           {showBilled && pageCount > 1 && (
             <div className="flex items-center justify-between px-2.5 py-1.5 border-t border-border/20 bg-muted/10">
               <button
