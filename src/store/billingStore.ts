@@ -4,6 +4,11 @@ import { supabase } from '@/integrations/supabase/client';
 export type RateType = 'hourly' | 'flat';
 export type InvoiceStatus = 'invoiced' | 'paid';
 
+export interface FlatLineItem {
+  description: string;
+  amount: number;
+}
+
 export interface TagBillingSettings {
   id: string;
   tagValue: string;
@@ -11,6 +16,7 @@ export interface TagBillingSettings {
   rateType: RateType;
   hourlyRate: number;
   flatRate: number;
+  flatItems: FlatLineItem[];
   clientName: string;
   clientId: string | null;
   currency: string;
@@ -69,6 +75,12 @@ interface BillingState {
 }
 
 function rowToSettings(r: any): TagBillingSettings {
+  const rawItems = Array.isArray(r.flat_items) ? r.flat_items : [];
+  const flatItems: FlatLineItem[] = rawItems
+    .map((it: any) => ({
+      description: String(it?.description ?? ''),
+      amount: Number(it?.amount) || 0,
+    }));
   return {
     id: r.id,
     tagValue: r.tag_value,
@@ -76,6 +88,7 @@ function rowToSettings(r: any): TagBillingSettings {
     rateType: r.rate_type,
     hourlyRate: Number(r.hourly_rate),
     flatRate: Number(r.flat_rate),
+    flatItems,
     clientName: r.client_name || '',
     clientId: r.client_id || null,
     currency: r.currency || 'USD',
@@ -141,13 +154,19 @@ export const useBillingStore = create<BillingState>((set, get) => ({
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const existing = get().settings.find(s => s.tagValue === tagValue);
+    // If flatItems supplied, derive flat_rate from sum (keeps existing consumers working).
+    const nextFlatItems = patch.flatItems ?? existing?.flatItems ?? [];
+    const derivedFlatRate = patch.flatItems
+      ? nextFlatItems.reduce((sum, it) => sum + (Number(it.amount) || 0), 0)
+      : (patch.flatRate ?? existing?.flatRate ?? 0);
     const merged = {
       user_id: user.id,
       tag_value: tagValue,
       billable: patch.billable ?? existing?.billable ?? false,
       rate_type: patch.rateType ?? existing?.rateType ?? 'hourly',
       hourly_rate: patch.hourlyRate ?? existing?.hourlyRate ?? 0,
-      flat_rate: patch.flatRate ?? existing?.flatRate ?? 0,
+      flat_rate: derivedFlatRate,
+      flat_items: nextFlatItems as any,
       client_name: patch.clientName ?? existing?.clientName ?? '',
       client_id: patch.clientId !== undefined ? patch.clientId : (existing?.clientId ?? null),
       currency: patch.currency ?? existing?.currency ?? 'USD',
