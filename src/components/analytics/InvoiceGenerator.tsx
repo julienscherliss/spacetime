@@ -93,11 +93,13 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
           next.push(...existing);
         } else {
           const label = categories.find(c => c.value === tag)?.label || tag;
+          const isFlat = cfg.rateType === 'flat';
+          const defaultQty = isFlat ? 1 : availableHoursForTag(tag);
           next.push({
             id: `${tag}-${Math.random().toString(36).slice(2, 8)}`,
             tag,
             description: label,
-            hours: availableHoursForTag(tag),
+            hours: defaultQty,
           });
         }
       }
@@ -154,9 +156,9 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
       if (cfg.rateType === 'hourly') {
         amount = li.hours * cfg.hourlyRate;
       } else {
-        const totalForTag = totalHoursByTag.get(li.tag) || 0;
-        const share = totalForTag > 0 ? li.hours / totalForTag : 0;
-        amount = (totalForTag > 0 ? cfg.flatRate : 0) * share;
+        // Flat fee: hours field acts as quantity. Each unit = full flat rate.
+        const qty = li.hours > 0 ? li.hours : 1;
+        amount = cfg.flatRate * qty;
       }
       return {
         ...li,
