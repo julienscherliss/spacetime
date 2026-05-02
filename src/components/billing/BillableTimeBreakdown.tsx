@@ -161,21 +161,32 @@ export function BillableTimeBreakdown() {
 
   const rows: TagRow[] = useMemo(() => {
     const list: TagRow[] = [];
-    for (const c of categories) {
-      if (!billableTagValues.has(c.value)) continue;
-      if (!showArchived && c.archived) continue;
-      const minutes = perTag.minutes.get(c.value) || 0;
-      const billedMinutes = billedByTag.get(c.value) || 0;
-      const last = perTag.lastUsed.get(c.value);
-      const daysSince = last ? differenceInDays(perTag.now, parseISO(last)) : null;
+    const catByValue = new Map(categories.map(c => [c.value, c]));
+    // Union of all billable tag values (from settings + categories that inherit)
+    const allValues = new Set<string>(billableTagValues);
+    for (const s of settings) if (s.billable) allValues.add(s.tagValue);
+
+    for (const value of allValues) {
+      const c = catByValue.get(value);
+      const archived = !!c?.archived;
+      if (!showArchived && archived) continue;
+      // Derive a label: prefer category label, else last segment of the path prettified
+      const label = c?.label || (() => {
+        const last = value.split('/').pop() || value;
+        return last.replace(/[-_]/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase());
+      })();
+      const minutes = perTag.minutes.get(value) || 0;
+      const billedMinutes = billedByTag.get(value) || 0;
+      const lastDate = perTag.lastUsed.get(value);
+      const daysSince = lastDate ? differenceInDays(perTag.now, parseISO(lastDate)) : null;
       list.push({
-        value: c.value,
-        label: c.label,
-        archived: !!c.archived,
+        value,
+        label,
+        archived,
         minutes,
         billedMinutes,
         daysSince,
-        rateLabel: rateLabelFor(c.value),
+        rateLabel: rateLabelFor(value),
       });
     }
     // Sort: roots first by minutes desc, subtags follow their parent alphabetically
@@ -188,10 +199,29 @@ export function BillableTimeBreakdown() {
     });
   }, [categories, billableTagValues, perTag, billedByTag, showArchived, settings]);
 
-  const roots = rows.filter(r => !r.value.includes('/'));
+  // A row is a "root" in this view if NO ancestor of it is also in the visible row set.
+  // This way subtags (e.g. "Projects/Starfire") render as top-level when their parent
+  // ("Projects") isn't itself a billable row.
+  const rowValues = new Set(rows.map(r => r.value));
+  const hasVisibleAncestor = (value: string) => {
+    const parts = value.split('/');
+    for (let i = parts.length - 1; i >= 1; i--) {
+      const ancestor = parts.slice(0, i).join('/');
+      if (rowValues.has(ancestor)) return true;
+    }
+    return false;
+  };
+  const roots = rows.filter(r => !hasVisibleAncestor(r.value));
   const childrenOf = (parent: string) => rows.filter(r => {
+    if (r.value === parent) return false;
+    if (!r.value.startsWith(parent + '/')) return false;
+    // direct child only — nearest visible ancestor must be `parent`
     const parts = r.value.split('/');
-    return parts.length > 1 && parts.slice(0, -1).join('/') === parent;
+    for (let i = parts.length - 1; i >= 1; i--) {
+      const ancestor = parts.slice(0, i).join('/');
+      if (rowValues.has(ancestor)) return ancestor === parent;
+    }
+    return false;
   });
 
   const toggle = (v: string) => setExpanded(p => {
