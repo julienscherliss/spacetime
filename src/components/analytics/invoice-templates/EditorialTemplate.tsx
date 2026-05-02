@@ -46,7 +46,7 @@ export function EditorialTemplate({ invoice, style }: TemplateProps) {
         <thead>
           <tr style={{ borderBottom: '1px solid #1A1A1A' }}>
             <th className="text-left py-2 text-[9px] tracking-[0.3em] font-normal text-neutral-500">Service</th>
-            <th className="text-right py-2 text-[9px] tracking-[0.3em] font-normal text-neutral-500 w-20">Hrs</th>
+            <th className="text-right py-2 text-[9px] tracking-[0.3em] font-normal text-neutral-500 w-20">Qty</th>
             <th className="text-right py-2 text-[9px] tracking-[0.3em] font-normal text-neutral-500 w-24">Rate</th>
             <th className="text-right py-2 text-[9px] tracking-[0.3em] font-normal text-neutral-500 w-28">Amount</th>
           </tr>
