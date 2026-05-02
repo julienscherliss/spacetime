@@ -38,5 +38,5 @@ export function formatTagLabel(label: string): string {
   if (!label) return label;
   const parts = label.split(' / ').map(s => s.trim()).filter(Boolean);
   if (parts.length <= 1) return label;
-  return parts.slice(1).join(' | ');
+  return parts.slice(1).reverse().join(' | ');
 }
