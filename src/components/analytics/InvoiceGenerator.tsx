@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { X, FileText, Download } from 'lucide-react';
+import { X, FileText, Download, Plus, Trash2, Split } from 'lucide-react';
 import { useBillingStore } from '@/store/billingStore';
 import { useCompletedMinutesByTag } from '@/hooks/useBillingData';
 import { useLibraryStore } from '@/store/libraryStore';
@@ -16,6 +16,13 @@ interface Props {
   initialTags: string[];
 }
 
+interface LineItem {
+  id: string;
+  tag: string;
+  description: string;
+  hours: number;
+}
+
 export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
   const settings = useBillingStore(s => s.settings);
   const invoices = useBillingStore(s => s.invoices);
@@ -29,6 +36,9 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
   const [clientOverride, setClientOverride] = useState('');
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [lineItems, setLineItems] = useState<LineItem[]>([]);
+  // Track which tags the user has manually edited so we don't overwrite their splits
+  const [customizedTags, setCustomizedTags] = useState<Set<string>>(new Set());
 
   const start = useRange && rangeStart ? parseISO(rangeStart) : undefined;
   const end = useRange && rangeEnd ? parseISO(rangeEnd) : undefined;
@@ -36,36 +46,115 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
 
   const billable = useMemo(() => settings.filter(s => s.billable), [settings]);
 
-  const items = useMemo(() => {
-    return [...selected].map(tag => {
-      const cfg = settings.find(s => s.tagValue === tag);
-      if (!cfg) return null;
-      const totalMinutes = minutesByTag.get(tag) || 0;
-      // Subtract already-invoiced hours (only when using all-time, not custom range)
-      let hoursToBill = totalMinutes / 60;
-      if (!useRange) {
-        const invoicedMinutes = invoices
-          .flatMap(inv => inv.items)
-          .filter(it => it.tagValue === tag)
-          .reduce((sum, it) => sum + it.hours * 60, 0);
-        hoursToBill = Math.max(0, totalMinutes - invoicedMinutes) / 60;
-      }
-      const hours = decimalHours(hoursToBill * 60);
-      const amount = cfg.rateType === 'hourly'
-        ? hours * cfg.hourlyRate
-        : (hours > 0 ? cfg.flatRate : 0);
-      const label = categories.find(c => c.value === tag)?.label || tag;
-      return { tag, label, cfg, hours, amount };
-    }).filter(Boolean) as Array<{ tag: string; label: string; cfg: typeof settings[number]; hours: number; amount: number }>;
-  }, [selected, settings, minutesByTag, useRange, invoices, categories]);
+  // Compute the available billable hours for a given tag
+  const availableHoursForTag = (tag: string): number => {
+    const totalMinutes = minutesByTag.get(tag) || 0;
+    let hoursToBill = totalMinutes / 60;
+    if (!useRange) {
+      const invoicedMinutes = invoices
+        .flatMap(inv => inv.items)
+        .filter(it => it.tagValue === tag)
+        .reduce((sum, it) => sum + it.hours * 60, 0);
+      hoursToBill = Math.max(0, totalMinutes - invoicedMinutes) / 60;
+    }
+    return decimalHours(hoursToBill * 60);
+  };
 
-  const total = items.reduce((sum, it) => sum + it.amount, 0);
-  const currency = items[0]?.cfg.currency || 'USD';
-  const inferredClient = items.find(it => it.cfg.clientName)?.cfg.clientName || '';
+  // Sync line items when selection or available hours change (preserves user customizations)
+  useEffect(() => {
+    setLineItems(prev => {
+      const next: LineItem[] = [];
+      const selectedArr = [...selected];
+      for (const tag of selectedArr) {
+        const cfg = settings.find(s => s.tagValue === tag);
+        if (!cfg) continue;
+        const existing = prev.filter(li => li.tag === tag);
+        if (customizedTags.has(tag) && existing.length > 0) {
+          next.push(...existing);
+        } else {
+          const label = categories.find(c => c.value === tag)?.label || tag;
+          next.push({
+            id: `${tag}-${Math.random().toString(36).slice(2, 8)}`,
+            tag,
+            description: label,
+            hours: availableHoursForTag(tag),
+          });
+        }
+      }
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected, minutesByTag, useRange, settings, categories]);
+
+  const updateLine = (id: string, patch: Partial<LineItem>) => {
+    setLineItems(prev => prev.map(li => li.id === id ? { ...li, ...patch } : li));
+    const tag = lineItems.find(li => li.id === id)?.tag;
+    if (tag) setCustomizedTags(prev => new Set(prev).add(tag));
+  };
+
+  const splitLine = (id: string) => {
+    setLineItems(prev => {
+      const idx = prev.findIndex(li => li.id === id);
+      if (idx < 0) return prev;
+      const orig = prev[idx];
+      const half = decimalHours((orig.hours / 2) * 60);
+      const remainder = decimalHours((orig.hours - half) * 60);
+      const cfg = settings.find(s => s.tagValue === orig.tag);
+      const baseLabel = categories.find(c => c.value === orig.tag)?.label || orig.tag;
+      const next = [...prev];
+      next[idx] = { ...orig, hours: half };
+      next.splice(idx + 1, 0, {
+        id: `${orig.tag}-${Math.random().toString(36).slice(2, 8)}`,
+        tag: orig.tag,
+        description: orig.description === baseLabel ? `${baseLabel} (cont.)` : orig.description,
+        hours: remainder,
+      });
+      return next;
+    });
+    const tag = lineItems.find(li => li.id === id)?.tag;
+    if (tag) setCustomizedTags(prev => new Set(prev).add(tag));
+  };
+
+  const removeLine = (id: string) => {
+    const tag = lineItems.find(li => li.id === id)?.tag;
+    setLineItems(prev => prev.filter(li => li.id !== id));
+    if (tag) setCustomizedTags(prev => new Set(prev).add(tag));
+  };
+
+  // Compute amounts per line. Flat-rate tags split their flat fee proportionally across their lines.
+  const itemsWithAmounts = useMemo(() => {
+    const totalHoursByTag = new Map<string, number>();
+    lineItems.forEach(li => {
+      totalHoursByTag.set(li.tag, (totalHoursByTag.get(li.tag) || 0) + li.hours);
+    });
+    return lineItems.map(li => {
+      const cfg = settings.find(s => s.tagValue === li.tag);
+      if (!cfg) return { ...li, cfg: undefined, amount: 0, rateType: 'hourly' as const, rate: 0 };
+      let amount = 0;
+      if (cfg.rateType === 'hourly') {
+        amount = li.hours * cfg.hourlyRate;
+      } else {
+        const totalForTag = totalHoursByTag.get(li.tag) || 0;
+        const share = totalForTag > 0 ? li.hours / totalForTag : 0;
+        amount = (totalForTag > 0 ? cfg.flatRate : 0) * share;
+      }
+      return {
+        ...li,
+        cfg,
+        amount,
+        rateType: cfg.rateType,
+        rate: cfg.rateType === 'hourly' ? cfg.hourlyRate : cfg.flatRate,
+      };
+    });
+  }, [lineItems, settings]);
+
+  const total = itemsWithAmounts.reduce((sum, it) => sum + it.amount, 0);
+  const currency = itemsWithAmounts.find(it => it.cfg)?.cfg?.currency || 'USD';
+  const inferredClient = itemsWithAmounts.find(it => it.cfg?.clientName)?.cfg?.clientName || '';
   const clientName = clientOverride || inferredClient;
 
   const handleGenerate = async (alsoDownload: boolean) => {
-    if (items.length === 0 || total <= 0) {
+    if (itemsWithAmounts.length === 0 || total <= 0) {
       toast({ title: 'Nothing to invoice', description: 'Select tags with billable time.' });
       return;
     }
@@ -76,14 +165,16 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
       notes,
       rangeStart: useRange && rangeStart ? rangeStart : null,
       rangeEnd: useRange && rangeEnd ? rangeEnd : null,
-      items: items.map(it => ({
-        tagValue: it.tag,
-        description: it.label,
-        rateType: it.cfg.rateType,
-        hours: it.hours,
-        rate: it.cfg.rateType === 'hourly' ? it.cfg.hourlyRate : it.cfg.flatRate,
-        amount: it.amount,
-      })),
+      items: itemsWithAmounts
+        .filter(it => it.cfg)
+        .map(it => ({
+          tagValue: it.tag,
+          description: it.description,
+          rateType: it.rateType,
+          hours: it.hours,
+          rate: it.rate,
+          amount: it.amount,
+        })),
     });
     setSubmitting(false);
     if (!invoice) {
@@ -92,7 +183,7 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
     }
     if (alsoDownload) {
       const labels: Record<string, string> = {};
-      items.forEach(it => { labels[it.tag] = it.label; });
+      itemsWithAmounts.forEach(it => { labels[it.tag] = it.description; });
       downloadInvoicePdf(invoice, labels);
     }
     toast({ title: `Invoice ${invoice.invoiceNumber} created` });
@@ -166,6 +257,101 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
           </div>
         </div>
 
+        {/* Line items editor */}
+        {lineItems.length > 0 && (
+          <div className="mb-4 border border-border/30 rounded-md bg-card/40 overflow-hidden">
+            <div className="px-3 py-2 border-b border-border/20 flex items-center justify-between">
+              <span className="text-[9px] font-mono text-muted-foreground/50 tracking-[0.15em]">LINE ITEMS</span>
+              <span className="text-[9px] font-mono text-muted-foreground/40 tracking-wide">RENAME · SPLIT · ADJUST HOURS</span>
+            </div>
+            <div className="p-3 space-y-2">
+              {[...selected].map(tag => {
+                const cfg = settings.find(s => s.tagValue === tag);
+                if (!cfg) return null;
+                const tagLines = itemsWithAmounts.filter(li => li.tag === tag);
+                const totalTagHours = tagLines.reduce((sum, li) => sum + li.hours, 0);
+                const available = availableHoursForTag(tag);
+                const baseLabel = categories.find(c => c.value === tag)?.label || tag;
+                const overAllocated = totalTagHours > available + 0.01;
+                return (
+                  <div key={tag} className="border border-border/20 rounded bg-background/40">
+                    <div className="flex items-center justify-between px-2 py-1.5 border-b border-border/20">
+                      <span className="text-[10px] font-mono text-muted-foreground/70 tracking-wide">
+                        {baseLabel.toUpperCase()}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[9px] font-mono tabular-nums ${overAllocated ? 'text-destructive' : 'text-muted-foreground/50'}`}>
+                          {totalTagHours.toFixed(2)} / {available.toFixed(2)}h
+                        </span>
+                        <button
+                          onClick={() => {
+                            const newId = `${tag}-${Math.random().toString(36).slice(2, 8)}`;
+                            setLineItems(prev => {
+                              const lastIdx = [...prev].map((li, i) => ({ li, i })).filter(x => x.li.tag === tag).pop()?.i ?? -1;
+                              const insert = { id: newId, tag, description: baseLabel, hours: 0 };
+                              if (lastIdx < 0) return [...prev, insert];
+                              const next = [...prev];
+                              next.splice(lastIdx + 1, 0, insert);
+                              return next;
+                            });
+                            setCustomizedTags(prev => new Set(prev).add(tag));
+                          }}
+                          className="p-1 rounded text-muted-foreground/60 hover:text-foreground hover:bg-muted/40 transition-colors"
+                          title="Add line"
+                        >
+                          <Plus size={11} />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="p-2 space-y-1.5">
+                      {tagLines.map(li => (
+                        <div key={li.id} className="flex items-center gap-1.5">
+                          <input
+                            type="text"
+                            value={li.description}
+                            onChange={(e) => updateLine(li.id, { description: e.target.value })}
+                            placeholder="Description"
+                            className="flex-1 min-w-0 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
+                          />
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              min={0}
+                              step={0.25}
+                              value={li.hours}
+                              onChange={(e) => updateLine(li.id, { hours: Math.max(0, parseFloat(e.target.value) || 0) })}
+                              className="w-16 bg-transparent border border-border/30 rounded px-1.5 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50 tabular-nums text-right"
+                            />
+                            <span className="text-[9px] font-mono text-muted-foreground/50">h</span>
+                          </div>
+                          <span className="text-[10px] font-mono text-foreground/70 tabular-nums w-20 text-right shrink-0">
+                            {formatCurrency(li.amount, cfg.currency)}
+                          </span>
+                          <button
+                            onClick={() => splitLine(li.id)}
+                            className="p-1 rounded text-muted-foreground/50 hover:text-foreground hover:bg-muted/40 transition-colors"
+                            title="Split this line in half"
+                          >
+                            <Split size={10} />
+                          </button>
+                          <button
+                            onClick={() => removeLine(li.id)}
+                            disabled={tagLines.length === 1}
+                            className="p-1 rounded text-muted-foreground/50 hover:text-destructive hover:bg-muted/40 transition-colors disabled:opacity-30 disabled:hover:text-muted-foreground/50"
+                            title="Remove line"
+                          >
+                            <Trash2 size={10} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Date range */}
         <div className="mb-4 border border-border/30 rounded-md bg-card/40 p-3">
           <label className="flex items-center gap-2 cursor-pointer mb-2">
@@ -231,19 +417,19 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
             <span className="text-[9px] font-mono text-muted-foreground/50 tracking-[0.15em]">PREVIEW</span>
           </div>
           <div className="p-3">
-            {items.length === 0 ? (
+            {itemsWithAmounts.length === 0 ? (
               <p className="text-[10px] font-mono text-muted-foreground/40 py-2 text-center">SELECT TAGS TO PREVIEW</p>
             ) : (
               <>
                 <div className="space-y-1.5">
-                  {items.map(it => (
-                    <div key={it.tag} className="flex items-baseline gap-2 text-[11px] font-mono">
-                      <span className="text-foreground/80 flex-1 truncate">{it.label}</span>
+                  {itemsWithAmounts.map(it => (
+                    <div key={it.id} className="flex items-baseline gap-2 text-[11px] font-mono">
+                      <span className="text-foreground/80 flex-1 truncate">{it.description}</span>
                       <span className="text-muted-foreground/60 tabular-nums w-20 text-right">
-                        {it.cfg.rateType === 'hourly' ? `${it.hours.toFixed(2)}h` : 'flat'}
+                        {it.rateType === 'hourly' ? `${it.hours.toFixed(2)}h` : `${it.hours.toFixed(2)}h flat`}
                       </span>
                       <span className="text-foreground tabular-nums w-24 text-right">
-                        {formatCurrency(it.amount, it.cfg.currency)}
+                        {formatCurrency(it.amount, it.cfg?.currency || currency)}
                       </span>
                     </div>
                   ))}
