@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { X, Clock, CheckCircle, Calendar, TrendingUp, Tag as TagIcon } from 'lucide-react';
+import { X, Clock, CheckCircle, Calendar, TrendingUp, Tag as TagIcon, CheckCircle2, DollarSign, Receipt } from 'lucide-react';
 import { useTaskStore } from '@/store/taskStore';
 
 import { useLibraryStore } from '@/store/libraryStore';
@@ -8,6 +8,8 @@ import { TagPickerMenu } from '@/components/TagPickerMenu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { TagGoalEditor } from '@/components/analytics/TagGoalEditor';
 import { TagBillingEditor } from '@/components/analytics/TagBillingEditor';
+import { useBillingStore } from '@/store/billingStore';
+import { formatCurrency } from '@/lib/billingFormat';
 import { subDays, format, parseISO } from 'date-fns';
 
 function formatTime(minutes: number): string {
@@ -28,6 +30,8 @@ export function TagDetailPanel({ tag, onClose }: Props) {
   const setEditingTask = useTaskStore(s => s.setEditingTask);
   const updateTask = useTaskStore(s => s.updateTask);
   const categories = useLibraryStore(s => s.categories);
+  const billingSettings = useBillingStore(s => s.settings.find(x => x.tagValue === tag));
+  const allInvoices = useBillingStore(s => s.invoices);
   const isUntagged = tag === 'untagged';
   const uncategorizedMatch = tag.match(/^(.+)\u0000uncategorized$/);
   const isUncategorizedDirect = !!uncategorizedMatch;
@@ -136,6 +140,46 @@ export function TagDetailPanel({ tag, onClose }: Props) {
     };
   }, [tasks, tag, isUntagged, isUncategorizedDirect, parentTag]);
 
+  // Billing roll-up for this exact tag (does not roll up children — matches BillingModule)
+  const billing = useMemo(() => {
+    if (!billingSettings?.billable || isUntagged || isUncategorizedDirect) return null;
+    const tagInvoices = allInvoices.filter(inv => inv.items.some(it => it.tagValue === tag));
+    const billed = tagInvoices.reduce((sum, inv) => {
+      return sum + inv.items
+        .filter(it => it.tagValue === tag)
+        .reduce((s, it) => s + Number(it.amount || 0), 0);
+    }, 0);
+    const invoicedHours = tagInvoices.reduce((sum, inv) => {
+      return sum + inv.items
+        .filter(it => it.tagValue === tag)
+        .reduce((s, it) => s + Number(it.hours || 0), 0);
+    }, 0);
+    const completedHours = stats.totalCompleted / 60;
+    const unbilledHours = Math.max(0, completedHours - invoicedHours);
+    const unbilled = billingSettings.rateType === 'hourly'
+      ? unbilledHours * (billingSettings.hourlyRate || 0)
+      : unbilledHours > 0 ? (billingSettings.flatRate || 0) : 0;
+    const currency = billingSettings.currency || tagInvoices[0]?.currency || 'USD';
+    return { billed, unbilled, invoicedHours, unbilledHours, currency };
+  }, [billingSettings, allInvoices, tag, stats.totalCompleted, isUntagged, isUncategorizedDirect]);
+
+  // Allocate invoiced hours chronologically (oldest completed task first) to determine which tasks are "invoiced"
+  const invoicedTaskIds = useMemo(() => {
+    if (!billing) return new Set<string>();
+    const completed = stats.recentTasks
+      .filter(t => t.completed)
+      .slice()
+      .sort((a, b) => a.date.localeCompare(b.date));
+    const ids = new Set<string>();
+    let remaining = billing.invoicedHours;
+    for (const t of completed) {
+      if (remaining <= 0.0001) break;
+      ids.add(t.id);
+      remaining -= (t.duration || 0) / 60;
+    }
+    return ids;
+  }, [billing, stats.recentTasks]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -206,6 +250,36 @@ export function TagDetailPanel({ tag, onClose }: Props) {
             </div>
           ))}
         </div>
+
+        {/* Billing roll-up — only when this tag is billable */}
+        {billing && (
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            <div className="border border-border/30 rounded-md p-3 bg-card/50">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Receipt size={10} className="text-muted-foreground/40" />
+                <span className="text-[8px] font-mono text-muted-foreground/40 tracking-[0.12em]">BILLED</span>
+              </div>
+              <span className="text-base font-display font-bold text-foreground tabular-nums">
+                {formatCurrency(billing.billed, billing.currency)}
+              </span>
+              <span className="text-[9px] font-mono text-muted-foreground/40 block mt-0.5 tabular-nums">
+                {billing.invoicedHours.toFixed(2)}h invoiced
+              </span>
+            </div>
+            <div className={`border rounded-md p-3 ${billing.unbilled > 0 ? 'border-primary/40 bg-primary/5' : 'border-border/30 bg-card/50'}`}>
+              <div className="flex items-center gap-1.5 mb-1">
+                <DollarSign size={10} className={billing.unbilled > 0 ? 'text-primary/70' : 'text-muted-foreground/40'} />
+                <span className={`text-[8px] font-mono tracking-[0.12em] ${billing.unbilled > 0 ? 'text-primary/80' : 'text-muted-foreground/40'}`}>UNBILLED</span>
+              </div>
+              <span className={`text-base font-display font-bold tabular-nums ${billing.unbilled > 0 ? 'text-primary' : 'text-foreground'}`}>
+                {formatCurrency(billing.unbilled, billing.currency)}
+              </span>
+              <span className="text-[9px] font-mono text-muted-foreground/40 block mt-0.5 tabular-nums">
+                {billing.unbilledHours.toFixed(2)}h pending
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Top days */}
         {stats.topDays.length > 0 && (
@@ -283,7 +357,16 @@ export function TagDetailPanel({ tag, onClose }: Props) {
                     </div>
                   )}
                   <div className={`w-1.5 h-1.5 rounded-full ${t.completed ? 'bg-green-500/60' : 'bg-muted-foreground/30'}`} />
-                  <span className="text-[10px] font-mono text-foreground/70 flex-1 truncate">{t.title}</span>
+                  <span className="text-[10px] font-mono text-foreground/70 flex-1 truncate flex items-center gap-1.5">
+                    <span className="truncate">{t.title}</span>
+                    {invoicedTaskIds.has(t.id) && (
+                      <CheckCircle2
+                        size={10}
+                        className="text-primary/70 shrink-0"
+                        aria-label="Invoiced"
+                      />
+                    )}
+                  </span>
                   <span className="text-[8px] font-mono text-muted-foreground/40 shrink-0">{t.date}</span>
                   <span className="text-[8px] font-mono text-muted-foreground/60 tabular-nums shrink-0 ml-1 min-w-[28px] text-right">
                     {formatTime(t.duration || 30)}
