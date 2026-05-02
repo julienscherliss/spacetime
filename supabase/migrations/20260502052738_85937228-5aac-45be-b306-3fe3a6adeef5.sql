@@ -1,0 +1,1 @@
+ALTER TABLE public.tag_billing_settings ADD COLUMN IF NOT EXISTS flat_items JSONB NOT NULL DEFAULT '[]'::jsonb;

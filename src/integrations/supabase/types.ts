@@ -698,6 +698,7 @@ export type Database = {
           client_name: string
           created_at: string
           currency: string
+          flat_items: Json
           flat_rate: number
           hourly_rate: number
           id: string
@@ -712,6 +713,7 @@ export type Database = {
           client_name?: string
           created_at?: string
           currency?: string
+          flat_items?: Json
           flat_rate?: number
           hourly_rate?: number
           id?: string
@@ -726,6 +728,7 @@ export type Database = {
           client_name?: string
           created_at?: string
           currency?: string
+          flat_items?: Json
           flat_rate?: number
           hourly_rate?: number
           id?: string
