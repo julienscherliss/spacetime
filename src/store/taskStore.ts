@@ -916,7 +916,10 @@ export const useTaskStore = create<TaskState>()(
         const mobilityMode = useTimezoneStore.getState().mobilityMode;
         // LOCK same-day reorder → route through Reflection prompt
         // (only when mobility mode enforces constraints; Disabled mode skips the prompt).
-        if (task.priority >= 3 && mobilityMode !== 'disabled') {
+        // Moving the task EARLIER in the day is never considered a delay, so
+        // it shouldn't surface the locked prompt either.
+        const isEarlierSameDay = !!task.time && newTime < task.time;
+        if (task.priority >= 3 && mobilityMode !== 'disabled' && !isEarlierSameDay) {
           import('@/store/reflectionStore').then(({ requestPendingMove }) => {
             requestPendingMove({
               taskId: id,
