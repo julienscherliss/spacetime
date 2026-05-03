@@ -26,18 +26,20 @@ function RemainderGlyph({ mins, size }: { mins: number; size: number }) {
   const w = mins === 45 ? size * 0.85 : size * 0.45;
   const h = size;
   const cx = w / 2;
-  // Nudge everything down slightly — SVG center sits above text optical
-  // middle when inline with capitals + descenders, so bias toward bottom.
-  const topY = h * 0.42;
-  const botY = h * 0.78;
-  const midY = h * 0.6;
+  // Symmetric around the SVG's vertical center so that when the parent
+  // inline-flex centers this SVG against the HourGlyph rectangle, the dots
+  // and the bar share the same optical midline.
+  const midY = h * 0.5;
+  const spread = h * 0.18; // distance of stacked dots from the midline
+  const topY = midY - spread;
+  const botY = midY + spread;
 
   return (
     <svg
       width={w}
       height={h}
       viewBox={`0 0 ${w} ${h}`}
-      className="inline-block align-middle"
+      className="inline-block"
       style={{ overflow: 'visible' }}
     >
       {mins === 15 && <circle cx={cx} cy={midY} r={DOT_R} fill="currentColor" />}
@@ -60,21 +62,25 @@ function RemainderGlyph({ mins, size }: { mins: number; size: number }) {
 
 function HourGlyph({ size }: { size: number }) {
   // Bar should match cap-height of the surrounding text, not full line-box.
+  // SVG height matches `size` so the rectangle is centered inside the same
+  // box used by RemainderGlyph — guarantees the bar and dots share a midline.
   const w = size * 0.3;
-  const h = size * 0.72;
+  const h = size;
+  const barH = size * 0.72;
+  const barY = (h - barH) / 2;
   return (
     <svg
       width={w}
       height={h}
       viewBox={`0 0 ${w} ${h}`}
       className="inline-block"
-      style={{ overflow: 'visible', verticalAlign: '-0.08em' }}
+      style={{ overflow: 'visible' }}
     >
       <rect
         x={0}
-        y={0}
+        y={barY}
         width={w}
-        height={h}
+        height={barH}
         rx={0.8}
         fill="currentColor"
       />
@@ -92,8 +98,8 @@ export function DurationGlyph({ minutes, size = 13, className = '' }: DurationGl
 
   return (
     <span
-      className={`inline-flex items-center gap-[2px] text-foreground ${className}`}
-      style={{ lineHeight: 0 }}
+      className={`inline-flex items-center gap-[2px] text-foreground align-middle ${className}`}
+      style={{ lineHeight: 0, verticalAlign: '-0.18em' }}
       aria-label={`${minutes} minutes`}
     >
       {Array.from({ length: hours }).map((_, i) => (
