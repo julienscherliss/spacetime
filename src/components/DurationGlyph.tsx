@@ -100,7 +100,7 @@ export function DurationGlyph({ minutes, size = 13, className = '' }: DurationGl
       height={size}
       viewBox={`0 0 ${totalWidth} ${size}`}
       className={`inline-block text-foreground ${className}`}
-      style={{ overflow: 'visible', verticalAlign: '-0.12em' }}
+      style={{ overflow: 'visible', verticalAlign: 'middle' }}
       role="img"
       aria-label={`${minutes} minutes`}
     >
