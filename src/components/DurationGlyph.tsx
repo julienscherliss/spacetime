@@ -99,7 +99,7 @@ export function DurationGlyph({ minutes, size = 13, className = '' }: DurationGl
   return (
     <span
       className={`inline-flex items-center gap-[2px] text-foreground ${className}`}
-      style={{ lineHeight: 0, verticalAlign: '0.18em' }}
+      style={{ lineHeight: 0, verticalAlign: 'middle', position: 'relative', top: '-0.08em' }}
       aria-label={`${minutes} minutes`}
     >
       {Array.from({ length: hours }).map((_, i) => (
