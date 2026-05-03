@@ -671,11 +671,7 @@ export function DayListView() {
               task.completed ? 'line-through text-muted-foreground/50' : ''
             }`}>
               {task.title}
-              {task.duration ? (
-                <span className="ml-2 align-middle inline-block">
-                  <DurationGlyph minutes={task.duration} size={isChild ? 12 : 14} />
-                </span>
-              ) : null}
+              {task.duration ? <DurationGlyph minutes={task.duration} size={isChild ? 12 : 14} className="ml-2" /> : null}
             </p>
             {task.description && !isChild && (
               <p className="text-[11px] text-muted-foreground/50 mt-0.5 line-clamp-1">

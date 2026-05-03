@@ -282,11 +282,7 @@ export function WeekListView() {
           className={`flex-1 min-w-0 text-left text-[15px] font-display leading-snug truncate active:bg-muted/40 rounded-sm -mx-1 px-1 py-0.5 transition-colors ${task.completed ? 'text-muted-foreground/50 line-through' : isPast ? 'text-foreground/50' : 'text-foreground'}`}
         >
           {task.title}
-          {task.duration ? (
-            <span className="ml-2 align-middle inline-block">
-              <DurationGlyph minutes={task.duration} size={14} />
-            </span>
-          ) : null}
+          {task.duration ? <DurationGlyph minutes={task.duration} size={14} className="ml-2" /> : null}
         </button>
       </div>
     );
