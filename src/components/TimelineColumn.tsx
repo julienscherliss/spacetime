@@ -492,7 +492,7 @@ export function TimelineColumn({
     if (!taskId) { setDragOverTime(null); return; }
 
     if (sourceDate && sourceDate !== date) {
-      const validation = canMoveTask(taskId, date);
+      const validation = canMoveTask(taskId, date, newTime);
       if (!validation.allowed) {
         const violation = 'reason' in validation ? validation.reason : 'Cannot move';
         const opened = requestPendingMove({ taskId, newDate: date, newTime, violation });
@@ -922,7 +922,7 @@ export function TimelineColumn({
     } else {
       // Regular scheduled task (incl. tasks picked up from a Group)
       if (dropped.fromDate !== date) {
-        const validation = canMoveTask(dropped.taskId, date);
+        const validation = canMoveTask(dropped.taskId, date, newTime);
         if (!validation.allowed) {
           const violation = 'reason' in validation ? validation.reason : 'Cannot move';
           requestPendingMove({ taskId: dropped.taskId, newDate: date, newTime, violation });
@@ -1038,7 +1038,7 @@ export function TimelineColumn({
           } as any);
         } else if (dragging.type === 'task') {
           if (dragging.sourceDate && dragging.sourceDate !== date) {
-            const validation = canMoveTask(dragging.id, date);
+            const validation = canMoveTask(dragging.id, date, newTime);
             if (!validation.allowed) {
               const violation = 'reason' in validation ? validation.reason : 'Cannot move';
               requestPendingMove({ taskId: dragging.id, newDate: date, newTime, violation });
@@ -1141,7 +1141,7 @@ export function TimelineColumn({
       if (state.blocked) {
         // Distinguish constraint violation (priority) from physical collision.
         if (state.sourceDate && state.sourceDate !== state.targetDate) {
-          const validation = canMoveTask(state.taskId, state.targetDate);
+          const validation = canMoveTask(state.taskId, state.targetDate, state.currentMinutes !== null ? minutesToTime(state.currentMinutes) : undefined);
           if (!validation.allowed && state.currentMinutes !== null) {
             const violation = 'reason' in validation ? validation.reason : 'Cannot move';
             const newTime = minutesToTime(state.currentMinutes);
@@ -1227,7 +1227,7 @@ export function TimelineColumn({
       }
 
       if (state.sourceDate && state.sourceDate !== state.targetDate) {
-        const validation = canMoveTask(state.taskId, state.targetDate);
+        const validation = canMoveTask(state.taskId, state.targetDate, state.currentMinutes !== null ? minutesToTime(state.currentMinutes) : undefined);
         if (!validation.allowed) {
           const violation = 'reason' in validation ? validation.reason : 'Cannot move';
           requestPendingMove({ taskId: state.taskId, newDate: state.targetDate, newTime, violation });
