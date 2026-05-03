@@ -125,7 +125,7 @@ interface TaskState {
   deleteFutureInstances: (parentId: string, fromDate: string) => void;
   removeInstances: (parentId: string) => void;
   deleteRecurrenceSeries: (parentId: string) => void;
-  canMoveTask: (id: string, newDate: string) => MoveValidation;
+  canMoveTask: (id: string, newDate: string, newTime?: string) => MoveValidation;
   moveTask: (id: string, newDate: string, newTime?: string) => { blocked: boolean };
   /** Bypasses canMoveTask checks. Used by Reflection flow after the user
    *  acknowledges a constraint violation. Still resolves collisions. */
