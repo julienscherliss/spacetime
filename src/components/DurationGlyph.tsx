@@ -21,91 +21,90 @@ interface DurationGlyphProps {
 
 const DOT_R = 1.5;
 
-function RemainderGlyph({ mins, size }: { mins: number; size: number }) {
-  // Width of cell scales with remainder so 45m gets a touch more room.
-  const w = mins === 45 ? size * 0.85 : size * 0.45;
-  const h = size;
-  const cx = w / 2;
-  // Symmetric around the SVG's vertical center so that when the parent
-  // inline-flex centers this SVG against the HourGlyph rectangle, the dots
-  // and the bar share the same optical midline.
-  const midY = h * 0.5;
-  const spread = h * 0.18; // distance of stacked dots from the midline
-  const topY = midY - spread;
-  const botY = midY + spread;
-
-  return (
-    <svg
-      width={w}
-      height={h}
-      viewBox={`0 0 ${w} ${h}`}
-      className="inline-block"
-      style={{ overflow: 'visible' }}
-    >
-      {mins === 15 && <circle cx={cx} cy={midY} r={DOT_R} fill="currentColor" />}
-      {mins === 30 && (
-        <>
-          <circle cx={cx} cy={topY} r={DOT_R} fill="currentColor" />
-          <circle cx={cx} cy={botY} r={DOT_R} fill="currentColor" />
-        </>
-      )}
-      {mins === 45 && (
-        <>
-          <circle cx={w * 0.32} cy={topY} r={DOT_R} fill="currentColor" />
-          <circle cx={w * 0.32} cy={botY} r={DOT_R} fill="currentColor" />
-          <circle cx={w * 0.72} cy={midY} r={DOT_R} fill="currentColor" />
-        </>
-      )}
-    </svg>
-  );
-}
-
-function HourGlyph({ size }: { size: number }) {
-  // Bar should match cap-height of the surrounding text, not full line-box.
-  // SVG height matches `size` so the rectangle is centered inside the same
-  // box used by RemainderGlyph — guarantees the bar and dots share a midline.
-  const w = size * 0.3;
-  const h = size;
-  const barH = size * 0.72;
-  const barY = (h - barH) / 2;
-  return (
-    <svg
-      width={w}
-      height={h}
-      viewBox={`0 0 ${w} ${h}`}
-      className="inline-block"
-      style={{ overflow: 'visible' }}
-    >
-      <rect
-        x={0}
-        y={barY}
-        width={w}
-        height={barH}
-        rx={0.8}
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
+const getHourWidth = (size: number) => size * 0.3;
+const getRemainderWidth = (mins: number, size: number) => (mins === 45 ? size * 0.85 : size * 0.45);
 
 export function DurationGlyph({ minutes, size = 13, className = '' }: DurationGlyphProps) {
   if (!minutes || minutes <= 0) return null;
+
   const hours = Math.floor(minutes / 60);
   const remainder = minutes % 60; // 0, 15, 30, or 45 (rounded to nearest 15)
   const roundedRem = remainder === 0 ? 0 : [15, 30, 45].reduce((p, c) =>
     Math.abs(c - remainder) < Math.abs(p - remainder) ? c : p, 15
   );
 
+  const gap = 2;
+  const unitWidths = [
+    ...Array.from({ length: hours }, () => getHourWidth(size)),
+    ...(roundedRem > 0 ? [getRemainderWidth(roundedRem, size)] : []),
+  ];
+  const totalWidth = unitWidths.reduce((sum, width) => sum + width, 0) + Math.max(unitWidths.length - 1, 0) * gap;
+
+  const midY = size * 0.5;
+  const spread = size * 0.18;
+  const topY = midY - spread;
+  const botY = midY + spread;
+  const barH = size * 0.72;
+  const barY = (size - barH) / 2;
+
+  let cursorX = 0;
+  const shapes: React.ReactNode[] = [];
+
+  for (let i = 0; i < hours; i += 1) {
+    const width = getHourWidth(size);
+    shapes.push(
+      <rect
+        key={`h-${i}`}
+        x={cursorX}
+        y={barY}
+        width={width}
+        height={barH}
+        rx={0.8}
+        fill="currentColor"
+      />
+    );
+    cursorX += width + gap;
+  }
+
+  if (roundedRem > 0) {
+    const width = getRemainderWidth(roundedRem, size);
+    const cx = cursorX + width / 2;
+
+    if (roundedRem === 15) {
+      shapes.push(<circle key="r-15" cx={cx} cy={midY} r={DOT_R} fill="currentColor" />);
+    }
+
+    if (roundedRem === 30) {
+      shapes.push(
+        <React.Fragment key="r-30">
+          <circle cx={cx} cy={topY} r={DOT_R} fill="currentColor" />
+          <circle cx={cx} cy={botY} r={DOT_R} fill="currentColor" />
+        </React.Fragment>
+      );
+    }
+
+    if (roundedRem === 45) {
+      shapes.push(
+        <React.Fragment key="r-45">
+          <circle cx={cursorX + width * 0.32} cy={topY} r={DOT_R} fill="currentColor" />
+          <circle cx={cursorX + width * 0.32} cy={botY} r={DOT_R} fill="currentColor" />
+          <circle cx={cursorX + width * 0.72} cy={midY} r={DOT_R} fill="currentColor" />
+        </React.Fragment>
+      );
+    }
+  }
+
   return (
-    <span
-      className={`inline-flex items-center gap-[2px] text-foreground ${className}`}
-      style={{ lineHeight: 0, verticalAlign: 'middle', position: 'relative', top: '-0.08em' }}
+    <svg
+      width={totalWidth}
+      height={size}
+      viewBox={`0 0 ${totalWidth} ${size}`}
+      className={`inline-block text-foreground ${className}`}
+      style={{ overflow: 'visible', verticalAlign: '-0.12em' }}
+      role="img"
       aria-label={`${minutes} minutes`}
     >
-      {Array.from({ length: hours }).map((_, i) => (
-        <HourGlyph key={`h-${i}`} size={size} />
-      ))}
-      {roundedRem > 0 && <RemainderGlyph mins={roundedRem} size={size} />}
-    </span>
+      {shapes}
+    </svg>
   );
 }
