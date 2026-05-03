@@ -125,7 +125,7 @@ interface TaskState {
   deleteFutureInstances: (parentId: string, fromDate: string) => void;
   removeInstances: (parentId: string) => void;
   deleteRecurrenceSeries: (parentId: string) => void;
-  canMoveTask: (id: string, newDate: string) => MoveValidation;
+  canMoveTask: (id: string, newDate: string, newTime?: string) => MoveValidation;
   moveTask: (id: string, newDate: string, newTime?: string) => { blocked: boolean };
   /** Bypasses canMoveTask checks. Used by Reflection flow after the user
    *  acknowledges a constraint violation. Still resolves collisions. */
@@ -734,7 +734,7 @@ export const useTaskStore = create<TaskState>()(
           editingTaskId: null,
         })),
 
-      canMoveTask: (id, newDate) => {
+      canMoveTask: (id, newDate, newTime) => {
         const task = get().tasks.find((t) => t.id === id);
         if (!task) return { allowed: false, reason: 'Task not found' };
         const mobilityMode = useTimezoneStore.getState().mobilityMode;
@@ -744,22 +744,37 @@ export const useTaskStore = create<TaskState>()(
         }
         const today = new Date().toISOString().split('T')[0];
         const pri = computeEffectivePriority(task, today);
+        // Moving a task EARLIER (closer to now / sooner in the day) is never
+        // treated as a delay — locked / fixed / semi prompts only apply when
+        // the move pushes the task later in time. Same-day earlier reorders
+        // and earlier-day moves skip the constraint prompt entirely.
+        const isEarlierMove = (() => {
+          if (newDate < task.date) return true;
+          if (newDate > task.date) return false;
+          // Same day — compare times when both available
+          if (!newTime || !task.time) return false;
+          return newTime < task.time;
+        })();
         if (task.date === newDate) {
           if (pri >= 3) {
+            if (isEarlierMove) return { allowed: true };
             return { allowed: false, reason: 'Task is marked as “Locked” — why would you like to move it?' };
           }
           return { allowed: true };
         }
 
         if (pri >= 3) {
+          if (isEarlierMove) return { allowed: true };
           return { allowed: false, reason: 'Task is marked as “Locked” — why would you like to move it?' };
         }
         if (pri >= 2) {
+          if (isEarlierMove) return { allowed: true };
           return { allowed: false, reason: 'Task is marked as “Fixed” — why would you like to move it?' };
         }
         if (pri >= 1) {
           const srcWeek = getWeekBounds(task.date);
           if (newDate < srcWeek.start || newDate > srcWeek.end) {
+            if (isEarlierMove) return { allowed: true };
             return { allowed: false, reason: 'Task is marked as “Semi-flexible” — why would you like to move it?' };
           }
         }
@@ -770,11 +785,7 @@ export const useTaskStore = create<TaskState>()(
         const task = get().tasks.find((t) => t.id === id);
         if (!task) return { blocked: false };
 
-        if (task.priority >= 3) {
-          return { blocked: true };
-        }
-
-        const validation = get().canMoveTask(id, newDate);
+        const validation = get().canMoveTask(id, newDate, newTime);
         if (!validation.allowed) {
           return { blocked: true };
         }
@@ -905,7 +916,10 @@ export const useTaskStore = create<TaskState>()(
         const mobilityMode = useTimezoneStore.getState().mobilityMode;
         // LOCK same-day reorder → route through Reflection prompt
         // (only when mobility mode enforces constraints; Disabled mode skips the prompt).
-        if (task.priority >= 3 && mobilityMode !== 'disabled') {
+        // Moving the task EARLIER in the day is never considered a delay, so
+        // it shouldn't surface the locked prompt either.
+        const isEarlierSameDay = !!task.time && newTime < task.time;
+        if (task.priority >= 3 && mobilityMode !== 'disabled' && !isEarlierSameDay) {
           import('@/store/reflectionStore').then(({ requestPendingMove }) => {
             requestPendingMove({
               taskId: id,
