@@ -734,7 +734,7 @@ export const useTaskStore = create<TaskState>()(
           editingTaskId: null,
         })),
 
-      canMoveTask: (id, newDate) => {
+      canMoveTask: (id, newDate, newTime) => {
         const task = get().tasks.find((t) => t.id === id);
         if (!task) return { allowed: false, reason: 'Task not found' };
         const mobilityMode = useTimezoneStore.getState().mobilityMode;
@@ -744,22 +744,37 @@ export const useTaskStore = create<TaskState>()(
         }
         const today = new Date().toISOString().split('T')[0];
         const pri = computeEffectivePriority(task, today);
+        // Moving a task EARLIER (closer to now / sooner in the day) is never
+        // treated as a delay — locked / fixed / semi prompts only apply when
+        // the move pushes the task later in time. Same-day earlier reorders
+        // and earlier-day moves skip the constraint prompt entirely.
+        const isEarlierMove = (() => {
+          if (newDate < task.date) return true;
+          if (newDate > task.date) return false;
+          // Same day — compare times when both available
+          if (!newTime || !task.time) return false;
+          return newTime < task.time;
+        })();
         if (task.date === newDate) {
           if (pri >= 3) {
+            if (isEarlierMove) return { allowed: true };
             return { allowed: false, reason: 'Task is marked as “Locked” — why would you like to move it?' };
           }
           return { allowed: true };
         }
 
         if (pri >= 3) {
+          if (isEarlierMove) return { allowed: true };
           return { allowed: false, reason: 'Task is marked as “Locked” — why would you like to move it?' };
         }
         if (pri >= 2) {
+          if (isEarlierMove) return { allowed: true };
           return { allowed: false, reason: 'Task is marked as “Fixed” — why would you like to move it?' };
         }
         if (pri >= 1) {
           const srcWeek = getWeekBounds(task.date);
           if (newDate < srcWeek.start || newDate > srcWeek.end) {
+            if (isEarlierMove) return { allowed: true };
             return { allowed: false, reason: 'Task is marked as “Semi-flexible” — why would you like to move it?' };
           }
         }
@@ -770,11 +785,7 @@ export const useTaskStore = create<TaskState>()(
         const task = get().tasks.find((t) => t.id === id);
         if (!task) return { blocked: false };
 
-        if (task.priority >= 3) {
-          return { blocked: true };
-        }
-
-        const validation = get().canMoveTask(id, newDate);
+        const validation = get().canMoveTask(id, newDate, newTime);
         if (!validation.allowed) {
           return { blocked: true };
         }
