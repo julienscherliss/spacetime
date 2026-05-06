@@ -119,7 +119,7 @@ describe('useDataSync regression guard', () => {
 
     useTaskStore.setState({ tasks: [] });
     await (syncModule as any).saveTasksNow('user-1');
-    expect(deleteIn).toHaveBeenCalledWith([completedTask.id]);
+    expect(deleteIn).toHaveBeenCalledWith('id', [completedTask.id]);
 
     useTaskStore.setState({ tasks: [] });
     await (syncModule as any).saveTasksNow('user-1');
