@@ -170,6 +170,29 @@ function snapshotCats(cats: CategoryDef[]): string {
   return JSON.stringify(cats);
 }
 
+async function fetchAllRows(table: 'tasks' | 'library_items' | 'library_categories', userId: string) {
+  const pageSize = 1000;
+  const rows: any[] = [];
+  let from = 0;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from(table)
+      .select('*')
+      .eq('user_id', userId)
+      .range(from, from + pageSize - 1);
+
+    if (error) return { data: null, error };
+
+    const batch = data || [];
+    rows.push(...batch);
+    if (batch.length < pageSize) break;
+    from += pageSize;
+  }
+
+  return { data: rows, error: null };
+}
+
 // ─── Clear all user-scoped state ───────────────────────
 
 function clearAllUserState() {
@@ -352,9 +375,9 @@ async function loadFromDB(
 ): Promise<boolean> {
   try {
     const [taskRes, libRes, catRes] = await Promise.all([
-      options.skipTasks ? Promise.resolve({ data: null, error: null } as any) : supabase.from('tasks').select('*').eq('user_id', userId),
-      options.skipLibrary ? Promise.resolve({ data: null, error: null } as any) : supabase.from('library_items').select('*').eq('user_id', userId),
-      options.skipCategories ? Promise.resolve({ data: null, error: null } as any) : supabase.from('library_categories').select('*').eq('user_id', userId),
+      options.skipTasks ? Promise.resolve({ data: null, error: null } as any) : fetchAllRows('tasks', userId),
+      options.skipLibrary ? Promise.resolve({ data: null, error: null } as any) : fetchAllRows('library_items', userId),
+      options.skipCategories ? Promise.resolve({ data: null, error: null } as any) : fetchAllRows('library_categories', userId),
     ]);
 
     if (!options.skipTasks && taskRes.error) {
