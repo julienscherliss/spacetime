@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTaskStore, Task, Priority, TaskType } from '@/store/taskStore';
 import { useLibraryStore, LibraryTask, CategoryDef } from '@/store/libraryStore';
+import { isNativePlatform } from '@/utils/nativePlatform';
 import { toast } from 'sonner';
 import type { User } from '@supabase/supabase-js';
 
@@ -131,6 +132,12 @@ function isValidUUID(id: string): boolean {
 let taskSaveTimeout: ReturnType<typeof setTimeout> | null = null;
 let libSaveTimeout: ReturnType<typeof setTimeout> | null = null;
 let catSaveTimeout: ReturnType<typeof setTimeout> | null = null;
+let taskSaveInFlight: Promise<boolean> | null = null;
+let libSaveInFlight: Promise<boolean> | null = null;
+let catSaveInFlight: Promise<boolean> | null = null;
+let ignoreTaskReloadUntil = 0;
+let ignoreLibraryReloadUntil = 0;
+let ignoreCategoryReloadUntil = 0;
 
 // ─── Snapshot for diffing ──────────────────────────────
 
@@ -166,6 +173,7 @@ function clearAllUserState() {
   useLibraryStore.setState({ items: [], categories: [] });
   try {
     localStorage.removeItem('do-task-store');
+    localStorage.removeItem('task-storage');
     localStorage.removeItem('do-library-store');
   } catch (_) {}
   if (taskSaveTimeout) { clearTimeout(taskSaveTimeout); taskSaveTimeout = null; }
@@ -178,7 +186,10 @@ function clearAllUserState() {
 
 // ─── Write-through save functions ──────────────────────
 
-async function saveTasksNow(userId: string): Promise<boolean> {
+export async function saveTasksNow(userId: string): Promise<boolean> {
+  if (taskSaveInFlight) return taskSaveInFlight;
+
+  const run = async (): Promise<boolean> => {
   const state = useTaskStore.getState();
   const validTasks = state.tasks.filter(t => isValidUUID(t.id));
   const snap = snapshotTasks(state.tasks);
@@ -222,15 +233,26 @@ async function saveTasksNow(userId: string): Promise<boolean> {
     }
 
     lastSyncedTaskSnapshot = snap;
+      ignoreTaskReloadUntil = Date.now() + 2500;
     return true;
   } catch (err) {
     console.error('[Sync] Task save error:', err);
     toast.error('Sync error — please check your connection.');
     return false;
   }
+  };
+
+  taskSaveInFlight = run().finally(() => {
+    taskSaveInFlight = null;
+  });
+
+  return taskSaveInFlight;
 }
 
 async function saveLibraryNow(userId: string): Promise<boolean> {
+  if (libSaveInFlight) return libSaveInFlight;
+
+  const run = async (): Promise<boolean> => {
   const state = useLibraryStore.getState();
   const validItems = state.items.filter(i => isValidUUID(i.id));
   const snap = snapshotLib(state.items);
@@ -266,14 +288,25 @@ async function saveLibraryNow(userId: string): Promise<boolean> {
     }
 
     lastSyncedLibSnapshot = snap;
+      ignoreLibraryReloadUntil = Date.now() + 2500;
     return true;
   } catch (err) {
     console.error('[Sync] Library save error:', err);
     return false;
   }
+  };
+
+  libSaveInFlight = run().finally(() => {
+    libSaveInFlight = null;
+  });
+
+  return libSaveInFlight;
 }
 
 async function saveCategoriesNow(userId: string): Promise<boolean> {
+  if (catSaveInFlight) return catSaveInFlight;
+
+  const run = async (): Promise<boolean> => {
   const state = useLibraryStore.getState();
   const snap = snapshotCats(state.categories);
 
@@ -300,39 +333,52 @@ async function saveCategoriesNow(userId: string): Promise<boolean> {
     }
 
     lastSyncedCatSnapshot = snap;
+      ignoreCategoryReloadUntil = Date.now() + 2500;
     return true;
   } catch (_) {
     return false;
   }
+  };
+
+  catSaveInFlight = run().finally(() => {
+    catSaveInFlight = null;
+  });
+
+  return catSaveInFlight;
 }
 
 // ─── Load from DB (source of truth) ───────────────────
 
-async function loadFromDB(userId: string): Promise<boolean> {
+async function loadFromDB(
+  userId: string,
+  options: { skipTasks?: boolean; skipLibrary?: boolean; skipCategories?: boolean } = {}
+): Promise<boolean> {
   try {
     const [taskRes, libRes, catRes] = await Promise.all([
-      supabase.from('tasks').select('*').eq('user_id', userId),
-      supabase.from('library_items').select('*').eq('user_id', userId),
-      supabase.from('library_categories').select('*').eq('user_id', userId),
+      options.skipTasks ? Promise.resolve({ data: null, error: null } as any) : supabase.from('tasks').select('*').eq('user_id', userId),
+      options.skipLibrary ? Promise.resolve({ data: null, error: null } as any) : supabase.from('library_items').select('*').eq('user_id', userId),
+      options.skipCategories ? Promise.resolve({ data: null, error: null } as any) : supabase.from('library_categories').select('*').eq('user_id', userId),
     ]);
 
-    if (taskRes.error) {
+    if (!options.skipTasks && taskRes.error) {
       console.error('[Sync] Failed to load tasks:', taskRes.error);
       toast.error('Failed to load tasks. Please refresh.');
       return false;
     }
 
-    const tasks = (taskRes.data || []).map(rowToTask);
-    useTaskStore.setState({ tasks });
-    lastSyncedTaskSnapshot = snapshotTasks(tasks);
+    if (!options.skipTasks) {
+      const tasks = (taskRes.data || []).map(rowToTask);
+      useTaskStore.setState({ tasks });
+      lastSyncedTaskSnapshot = snapshotTasks(tasks);
+    }
 
-    if (!libRes.error) {
+    if (!options.skipLibrary && !libRes.error) {
       const items = (libRes.data || []).map(rowToLibraryItem);
       useLibraryStore.setState({ items });
       lastSyncedLibSnapshot = snapshotLib(items);
     }
 
-    if (!catRes.error) {
+    if (!options.skipCategories && !catRes.error) {
       const categories = (catRes.data || []).map(rowToCategory);
       useLibraryStore.setState({ categories });
       lastSyncedCatSnapshot = snapshotCats(categories);
@@ -353,6 +399,39 @@ export function useDataSync(user: User | null) {
   const userIdRef = useRef<string | null>(null);
   const prevUserIdRef = useRef<string | null>(null);
   const accessTokenRef = useRef<string | null>(null);
+  const flushPendingWrites = useCallback(async (activeUserId: string) => {
+    try {
+      if (taskSaveTimeout) {
+        clearTimeout(taskSaveTimeout);
+        taskSaveTimeout = null;
+        await saveTasksNow(activeUserId);
+      }
+      if (libSaveTimeout) {
+        clearTimeout(libSaveTimeout);
+        libSaveTimeout = null;
+        await saveLibraryNow(activeUserId);
+      }
+      if (catSaveTimeout) {
+        clearTimeout(catSaveTimeout);
+        catSaveTimeout = null;
+        await saveCategoriesNow(activeUserId);
+      }
+
+      const taskState = useTaskStore.getState();
+      if (snapshotTasks(taskState.tasks) !== lastSyncedTaskSnapshot) {
+        await saveTasksNow(activeUserId);
+      }
+      const libState = useLibraryStore.getState();
+      if (snapshotLib(libState.items) !== lastSyncedLibSnapshot) {
+        await saveLibraryNow(activeUserId);
+      }
+      if (snapshotCats(libState.categories) !== lastSyncedCatSnapshot) {
+        await saveCategoriesNow(activeUserId);
+      }
+    } catch (err) {
+      console.error('[Sync] Error flushing pending writes:', err);
+    }
+  }, []);
 
   // Keep access token up to date for beforeunload
   useEffect(() => {
@@ -480,7 +559,7 @@ export function useDataSync(user: User | null) {
     const scheduleReload = () => {
       if (!initialLoadDone.current || userIdRef.current !== user.id) return;
       // If a local save is pending, wait for it to flush so we don't clobber in-flight edits
-      if (taskSaveTimeout || libSaveTimeout || catSaveTimeout) {
+      if (taskSaveTimeout || libSaveTimeout || catSaveTimeout || taskSaveInFlight || libSaveInFlight || catSaveInFlight) {
         if (reloadTimeout) clearTimeout(reloadTimeout);
         reloadTimeout = setTimeout(scheduleReload, 600);
         return;
@@ -489,7 +568,12 @@ export function useDataSync(user: User | null) {
       reloadTimeout = setTimeout(() => {
         if (userIdRef.current === user.id) {
           console.log('[Sync] Realtime change detected — refetching');
-          loadFromDB(user.id);
+          const now = Date.now();
+          loadFromDB(user.id, {
+            skipTasks: now < ignoreTaskReloadUntil,
+            skipLibrary: now < ignoreLibraryReloadUntil,
+            skipCategories: now < ignoreCategoryReloadUntil,
+          });
         }
       }, 400);
     };
@@ -517,44 +601,16 @@ export function useDataSync(user: User | null) {
       // CRITICAL: Flush any pending local writes BEFORE refetching from DB.
       // On mobile, the app may have been backgrounded mid-debounce — if we
       // refetch first, we'd overwrite unsaved local tasks with stale DB rows.
-      try {
-        if (taskSaveTimeout) {
-          clearTimeout(taskSaveTimeout);
-          taskSaveTimeout = null;
-          await saveTasksNow(user.id);
-        }
-        if (libSaveTimeout) {
-          clearTimeout(libSaveTimeout);
-          libSaveTimeout = null;
-          await saveLibraryNow(user.id);
-        }
-        if (catSaveTimeout) {
-          clearTimeout(catSaveTimeout);
-          catSaveTimeout = null;
-          await saveCategoriesNow(user.id);
-        }
-
-        // Also flush any local-only edits the snapshot diff might have missed
-        // (e.g. saves that were scheduled while the tab was hidden and the
-        // setTimeout never fired). Compare snapshots and push if dirty.
-        const taskState = useTaskStore.getState();
-        if (snapshotTasks(taskState.tasks) !== lastSyncedTaskSnapshot) {
-          await saveTasksNow(user.id);
-        }
-        const libState = useLibraryStore.getState();
-        if (snapshotLib(libState.items) !== lastSyncedLibSnapshot) {
-          await saveLibraryNow(user.id);
-        }
-        if (snapshotCats(libState.categories) !== lastSyncedCatSnapshot) {
-          await saveCategoriesNow(user.id);
-        }
-      } catch (err) {
-        console.error('[Sync] Error flushing pending writes on foreground:', err);
-      }
+      await flushPendingWrites(user.id);
 
       if (userIdRef.current !== user.id) return;
       console.log('[Sync] App became visible — refetching from DB');
-      await loadFromDB(user.id);
+      const now = Date.now();
+      await loadFromDB(user.id, {
+        skipTasks: now < ignoreTaskReloadUntil,
+        skipLibrary: now < ignoreLibraryReloadUntil,
+        skipCategories: now < ignoreCategoryReloadUntil,
+      });
       initialLoadDone.current = true;
     };
 
@@ -600,5 +656,29 @@ export function useDataSync(user: User | null) {
       document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [user?.id]);
+  }, [flushPendingWrites, user?.id]);
+
+  useEffect(() => {
+    if (!user || !isNativePlatform()) return;
+
+    let removeListener: (() => void) | undefined;
+
+    (async () => {
+      const { App } = await import('@capacitor/app');
+      const listener = await App.addListener('appStateChange', async ({ isActive }) => {
+        if (!userIdRef.current || userIdRef.current !== user.id) return;
+        if (!isActive) {
+          await flushPendingWrites(user.id);
+        }
+      });
+
+      removeListener = () => {
+        listener.remove();
+      };
+    })();
+
+    return () => {
+      removeListener?.();
+    };
+  }, [flushPendingWrites, user?.id]);
 }
