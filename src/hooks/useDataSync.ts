@@ -347,31 +347,36 @@ async function saveCategoriesNow(userId: string): Promise<boolean> {
 
 // ─── Load from DB (source of truth) ───────────────────
 
-async function loadFromDB(userId: string): Promise<boolean> {
+async function loadFromDB(
+  userId: string,
+  options: { skipTasks?: boolean; skipLibrary?: boolean; skipCategories?: boolean } = {}
+): Promise<boolean> {
   try {
     const [taskRes, libRes, catRes] = await Promise.all([
-      supabase.from('tasks').select('*').eq('user_id', userId),
-      supabase.from('library_items').select('*').eq('user_id', userId),
-      supabase.from('library_categories').select('*').eq('user_id', userId),
+      options.skipTasks ? Promise.resolve({ data: null, error: null } as any) : supabase.from('tasks').select('*').eq('user_id', userId),
+      options.skipLibrary ? Promise.resolve({ data: null, error: null } as any) : supabase.from('library_items').select('*').eq('user_id', userId),
+      options.skipCategories ? Promise.resolve({ data: null, error: null } as any) : supabase.from('library_categories').select('*').eq('user_id', userId),
     ]);
 
-    if (taskRes.error) {
+    if (!options.skipTasks && taskRes.error) {
       console.error('[Sync] Failed to load tasks:', taskRes.error);
       toast.error('Failed to load tasks. Please refresh.');
       return false;
     }
 
-    const tasks = (taskRes.data || []).map(rowToTask);
-    useTaskStore.setState({ tasks });
-    lastSyncedTaskSnapshot = snapshotTasks(tasks);
+    if (!options.skipTasks) {
+      const tasks = (taskRes.data || []).map(rowToTask);
+      useTaskStore.setState({ tasks });
+      lastSyncedTaskSnapshot = snapshotTasks(tasks);
+    }
 
-    if (!libRes.error) {
+    if (!options.skipLibrary && !libRes.error) {
       const items = (libRes.data || []).map(rowToLibraryItem);
       useLibraryStore.setState({ items });
       lastSyncedLibSnapshot = snapshotLib(items);
     }
 
-    if (!catRes.error) {
+    if (!options.skipCategories && !catRes.error) {
       const categories = (catRes.data || []).map(rowToCategory);
       useLibraryStore.setState({ categories });
       lastSyncedCatSnapshot = snapshotCats(categories);
@@ -519,7 +524,7 @@ export function useDataSync(user: User | null) {
     const scheduleReload = () => {
       if (!initialLoadDone.current || userIdRef.current !== user.id) return;
       // If a local save is pending, wait for it to flush so we don't clobber in-flight edits
-      if (taskSaveTimeout || libSaveTimeout || catSaveTimeout) {
+      if (taskSaveTimeout || libSaveTimeout || catSaveTimeout || taskSaveInFlight || libSaveInFlight || catSaveInFlight) {
         if (reloadTimeout) clearTimeout(reloadTimeout);
         reloadTimeout = setTimeout(scheduleReload, 600);
         return;
@@ -528,7 +533,12 @@ export function useDataSync(user: User | null) {
       reloadTimeout = setTimeout(() => {
         if (userIdRef.current === user.id) {
           console.log('[Sync] Realtime change detected — refetching');
-          loadFromDB(user.id);
+          const now = Date.now();
+          loadFromDB(user.id, {
+            skipTasks: now < ignoreTaskReloadUntil,
+            skipLibrary: now < ignoreLibraryReloadUntil,
+            skipCategories: now < ignoreCategoryReloadUntil,
+          });
         }
       }, 400);
     };
@@ -593,7 +603,12 @@ export function useDataSync(user: User | null) {
 
       if (userIdRef.current !== user.id) return;
       console.log('[Sync] App became visible — refetching from DB');
-      await loadFromDB(user.id);
+      const now = Date.now();
+      await loadFromDB(user.id, {
+        skipTasks: now < ignoreTaskReloadUntil,
+        skipLibrary: now < ignoreLibraryReloadUntil,
+        skipCategories: now < ignoreCategoryReloadUntil,
+      });
       initialLoadDone.current = true;
     };
 
