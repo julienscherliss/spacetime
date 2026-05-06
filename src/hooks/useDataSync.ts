@@ -184,7 +184,7 @@ function clearAllUserState() {
 
 // ─── Write-through save functions ──────────────────────
 
-async function saveTasksNow(userId: string): Promise<boolean> {
+export async function saveTasksNow(userId: string): Promise<boolean> {
   if (taskSaveInFlight) return taskSaveInFlight;
 
   const run = async (): Promise<boolean> => {
