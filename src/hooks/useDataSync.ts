@@ -131,6 +131,12 @@ function isValidUUID(id: string): boolean {
 let taskSaveTimeout: ReturnType<typeof setTimeout> | null = null;
 let libSaveTimeout: ReturnType<typeof setTimeout> | null = null;
 let catSaveTimeout: ReturnType<typeof setTimeout> | null = null;
+let taskSaveInFlight: Promise<boolean> | null = null;
+let libSaveInFlight: Promise<boolean> | null = null;
+let catSaveInFlight: Promise<boolean> | null = null;
+let ignoreTaskReloadUntil = 0;
+let ignoreLibraryReloadUntil = 0;
+let ignoreCategoryReloadUntil = 0;
 
 // ─── Snapshot for diffing ──────────────────────────────
 
@@ -179,6 +185,9 @@ function clearAllUserState() {
 // ─── Write-through save functions ──────────────────────
 
 async function saveTasksNow(userId: string): Promise<boolean> {
+  if (taskSaveInFlight) return taskSaveInFlight;
+
+  const run = async (): Promise<boolean> => {
   const state = useTaskStore.getState();
   const validTasks = state.tasks.filter(t => isValidUUID(t.id));
   const snap = snapshotTasks(state.tasks);
@@ -222,15 +231,26 @@ async function saveTasksNow(userId: string): Promise<boolean> {
     }
 
     lastSyncedTaskSnapshot = snap;
+      ignoreTaskReloadUntil = Date.now() + 2500;
     return true;
   } catch (err) {
     console.error('[Sync] Task save error:', err);
     toast.error('Sync error — please check your connection.');
     return false;
   }
+  };
+
+  taskSaveInFlight = run().finally(() => {
+    taskSaveInFlight = null;
+  });
+
+  return taskSaveInFlight;
 }
 
 async function saveLibraryNow(userId: string): Promise<boolean> {
+  if (libSaveInFlight) return libSaveInFlight;
+
+  const run = async (): Promise<boolean> => {
   const state = useLibraryStore.getState();
   const validItems = state.items.filter(i => isValidUUID(i.id));
   const snap = snapshotLib(state.items);
@@ -266,14 +286,25 @@ async function saveLibraryNow(userId: string): Promise<boolean> {
     }
 
     lastSyncedLibSnapshot = snap;
+      ignoreLibraryReloadUntil = Date.now() + 2500;
     return true;
   } catch (err) {
     console.error('[Sync] Library save error:', err);
     return false;
   }
+  };
+
+  libSaveInFlight = run().finally(() => {
+    libSaveInFlight = null;
+  });
+
+  return libSaveInFlight;
 }
 
 async function saveCategoriesNow(userId: string): Promise<boolean> {
+  if (catSaveInFlight) return catSaveInFlight;
+
+  const run = async (): Promise<boolean> => {
   const state = useLibraryStore.getState();
   const snap = snapshotCats(state.categories);
 
@@ -300,10 +331,18 @@ async function saveCategoriesNow(userId: string): Promise<boolean> {
     }
 
     lastSyncedCatSnapshot = snap;
+      ignoreCategoryReloadUntil = Date.now() + 2500;
     return true;
   } catch (_) {
     return false;
   }
+  };
+
+  catSaveInFlight = run().finally(() => {
+    catSaveInFlight = null;
+  });
+
+  return catSaveInFlight;
 }
 
 // ─── Load from DB (source of truth) ───────────────────
