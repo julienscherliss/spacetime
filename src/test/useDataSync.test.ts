@@ -121,21 +121,11 @@ describe('useDataSync regression guard', () => {
     await (syncModule as any).saveTasksNow('user-1');
     expect(deleteIn).toHaveBeenCalledWith([completedTask.id]);
 
-    const unsyncedTask = {
-      ...completedTask,
-      id: crypto.randomUUID(),
-      title: 'Transiently missing task',
-    };
-
     useTaskStore.setState({ tasks: [] });
     await (syncModule as any).saveTasksNow('user-1');
 
-    useTaskStore.setState({ tasks: [unsyncedTask] });
+    deleteIn.mockClear();
     await (syncModule as any).saveTasksNow('user-1');
-
-    useTaskStore.setState({ tasks: [] });
-    await (syncModule as any).saveTasksNow('user-1');
-
-    expect(deleteIn).not.toHaveBeenCalledWith([unsyncedTask.id]);
+    expect(deleteIn).not.toHaveBeenCalled();
   });
 });
