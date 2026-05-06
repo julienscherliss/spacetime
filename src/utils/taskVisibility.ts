@@ -10,7 +10,8 @@ export function shouldShowScheduledTask(
   const isCompletedArchive = !!task.archivedAt && task.completed && task.archiveReason === 'completed';
   if (task.archivedAt && !(showCompleted && isCompletedArchive)) return false;
 
-  if (!routinesEnabled && task.isRoutine !== false && task.type === 'recurring') return false;
+  const isRoutineTask = task.isRoutine !== false && task.type === 'recurring';
+  if (!routinesEnabled && isRoutineTask && !isCompletedArchive) return false;
 
   return true;
 }
