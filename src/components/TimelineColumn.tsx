@@ -197,7 +197,7 @@ function CompletedTaskBlock({ task, top, height, showTimeLabels }: {
   return (
     <div
       data-task-block
-      className="absolute right-1 z-10 pointer-events-auto cursor-pointer"
+      className="absolute right-1 z-[18] pointer-events-auto cursor-pointer"
       style={{
         top,
         height,
