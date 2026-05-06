@@ -10,6 +10,8 @@ import { useCurrentTime, formatTime12h } from '@/hooks/useCurrentTime';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { GroupListRow } from '@/components/GroupListRow';
 import { DurationGlyph } from '@/components/DurationGlyph';
+import { useTimezoneStore } from '@/store/timezoneStore';
+import { shouldShowScheduledTask } from '@/utils/taskVisibility';
 
 function addDaysToDate(dateStr: string, days: number): string {
   const d = new Date(dateStr + 'T12:00:00');
@@ -108,6 +110,7 @@ export function DayListView() {
   const { dateStr: today } = useCurrentTime(15000);
   const { minutes: nowMinutes } = useCurrentTime(30000);
   const activeScheme = useColorSchemeStore((s) => s.getActiveScheme());
+  const showCompletedTasks = useTimezoneStore((s) => s.showCompletedTasks);
   const [selectedDate, _setSelectedDate] = useState(navigateToDate || currentDate || today);
 
   const setSelectedDate = useCallback((dateOrFn: string | ((prev: string) => string)) => {
@@ -140,8 +143,7 @@ export function DayListView() {
   }, [selectedDate, connected, calendars, fetchEvents]);
 
   const dayTasks = tasks
-    .filter((t) => t.date === selectedDate && !t.inWaitingRoom && t.archiveReason !== 'deleted' &&
-      !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring'))
+    .filter((t) => t.date === selectedDate && shouldShowScheduledTask(t, { showCompleted: showCompletedTasks, routinesEnabled }))
     // Hide children of Groups from the top-level list — they render inside the group expander.
     .filter((t) => !t.groupId)
     .sort((a, b) => {
@@ -154,8 +156,7 @@ export function DayListView() {
   // For the "completed" counter, count every visible task (groups + non-grouped) plus
   // their group children, so progress reflects real work done.
   const visibleWithChildren = tasks.filter(
-    (t) => t.date === selectedDate && !t.inWaitingRoom && t.archiveReason !== 'deleted' &&
-      !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring'),
+    (t) => t.date === selectedDate && shouldShowScheduledTask(t, { showCompleted: showCompletedTasks, routinesEnabled }),
   );
   const completedCount = visibleWithChildren.filter((t) => t.completed).length;
   const isToday = selectedDate === today;
