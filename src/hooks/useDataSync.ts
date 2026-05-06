@@ -180,6 +180,7 @@ async function fetchAllRows(table: 'tasks' | 'library_items' | 'library_categori
       .from(table)
       .select('*')
       .eq('user_id', userId)
+      .order('created_at', { ascending: true })
       .range(from, from + pageSize - 1);
 
     if (error) return { data: null, error };
