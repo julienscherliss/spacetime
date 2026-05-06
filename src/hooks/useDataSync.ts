@@ -145,6 +145,10 @@ let lastSyncedTaskSnapshot: string = '';
 let lastSyncedLibSnapshot: string = '';
 let lastSyncedCatSnapshot: string = '';
 
+function validTaskIds(tasks: Task[]): string[] {
+  return tasks.filter((t) => isValidUUID(t.id)).map((t) => t.id);
+}
+
 function snapshotTasks(tasks: Task[]): string {
   return JSON.stringify(tasks.filter(t => isValidUUID(t.id)).map(t => ({
     id: t.id, title: t.title, category: t.category, description: t.description,
@@ -193,25 +197,18 @@ export async function saveTasksNow(userId: string): Promise<boolean> {
   const state = useTaskStore.getState();
   const validTasks = state.tasks.filter(t => isValidUUID(t.id));
   const snap = snapshotTasks(state.tasks);
+  const previousIds = new Set(
+    lastSyncedTaskSnapshot
+      ? (JSON.parse(lastSyncedTaskSnapshot) as Array<{ id: string }>).map((task) => task.id)
+      : [],
+  );
 
   // Skip if nothing changed
   if (snap === lastSyncedTaskSnapshot) return true;
 
   try {
-    // Get current DB IDs to detect deletions
-    const { data: dbTasks, error: fetchErr } = await supabase
-      .from('tasks')
-      .select('id')
-      .eq('user_id', userId);
-
-    if (fetchErr) {
-      console.error('[Sync] Failed to fetch task IDs:', fetchErr);
-      toast.error('Sync failed — changes may not persist across devices.');
-      return false;
-    }
-
-    const localIds = new Set(state.tasks.map(t => t.id));
-    const toDelete = (dbTasks || []).map((t: any) => t.id).filter((id: string) => !localIds.has(id));
+    const localIds = new Set(validTaskIds(state.tasks));
+    const toDelete = Array.from(previousIds).filter((id) => !localIds.has(id));
 
     if (toDelete.length > 0) {
       const { error: delErr } = await supabase.from('tasks').delete().in('id', toDelete);
