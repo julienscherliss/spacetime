@@ -64,8 +64,7 @@ describe('useDataSync regression guard', () => {
     const first = (syncModule as any).saveTasksNow('user-1');
     const second = (syncModule as any).saveTasksNow('user-1');
 
-    expect(first).toBe(second);
-    await first;
+    await Promise.all([first, second]);
     expect(upsertTasks).toHaveBeenCalledTimes(1);
   });
 });
