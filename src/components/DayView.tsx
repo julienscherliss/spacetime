@@ -255,10 +255,9 @@ export function DayView() {
   const goToToday = () => setSelectedDate(today);
 
   const showCompletedSetting = useTimezoneStore((s) => s.showCompletedTasks);
-  const dayTasks = tasks.filter((t) => t.date === selectedDate && !t.inWaitingRoom &&
+  const dayTasks = tasks.filter((t) => t.date === selectedDate &&
     !t.groupId && // hide Group children — they live inside the Group block
-    shouldShowScheduledTask(t, { showCompleted: showCompletedSetting, routinesEnabled }) &&
-    !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring'));
+    shouldShowScheduledTask(t, { showCompleted: showCompletedSetting, routinesEnabled }));
   const completedCount = dayTasks.filter((t) => t.completed).length;
   const isToday = selectedDate === today;
 
