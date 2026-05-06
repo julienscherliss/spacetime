@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTaskStore, Task, Priority, TaskType } from '@/store/taskStore';
 import { useLibraryStore, LibraryTask, CategoryDef } from '@/store/libraryStore';
+import { isNativePlatform } from '@/utils/nativePlatform';
 import { toast } from 'sonner';
 import type { User } from '@supabase/supabase-js';
 
@@ -172,6 +173,7 @@ function clearAllUserState() {
   useLibraryStore.setState({ items: [], categories: [] });
   try {
     localStorage.removeItem('do-task-store');
+    localStorage.removeItem('task-storage');
     localStorage.removeItem('do-library-store');
   } catch (_) {}
   if (taskSaveTimeout) { clearTimeout(taskSaveTimeout); taskSaveTimeout = null; }
