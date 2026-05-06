@@ -4,6 +4,8 @@ vi.mock('@/integrations/supabase/client', () => ({
   supabase: {},
 }));
 
+import { shouldShowScheduledTask } from '@/utils/taskVisibility';
+
 describe('useDataSync regression guard', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -206,5 +208,27 @@ describe('useDataSync regression guard', () => {
     const titles = useTaskStore.getState().tasks.map((task) => task.title);
     expect(tasksRange).toHaveBeenCalledTimes(2);
     expect(titles).toContain('Photo Edits A1');
+  });
+
+  it('keeps completed recurring routines visible in schedule views when show completed is enabled', () => {
+    expect(shouldShowScheduledTask({
+      id: crypto.randomUUID(),
+      title: 'Daily Checkin',
+      type: 'recurring',
+      priority: 0,
+      originalPriority: 0,
+      date: '2026-05-06',
+      time: '07:00',
+      duration: 30,
+      completed: true,
+      archivedAt: '2026-05-06T14:31:53.634Z',
+      archiveReason: 'completed',
+      isRoutine: true,
+      createdAt: '2026-05-06T00:00:00.000Z',
+      moveCount: 0,
+    }, {
+      showCompleted: true,
+      routinesEnabled: false,
+    })).toBe(true);
   });
 });
