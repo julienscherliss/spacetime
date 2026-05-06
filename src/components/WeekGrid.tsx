@@ -4,6 +4,7 @@ import { useTimezoneStore } from '@/store/timezoneStore';
 import { TimelineColumn, HOURS } from '@/components/TimelineColumn';
 import { formatHour12h } from '@/hooks/useCurrentTime';
 import { TaskCluster } from '@/utils/taskClustering';
+import { shouldShowScheduledTask } from '@/utils/taskVisibility';
 
 
 function getWeekDays(offset: number, today: string, count: number = 7, dayShift: number = 0) {
@@ -110,10 +111,9 @@ export function WeekGrid({
         {/* Day columns */}
         {weekDays.map((day) => {
           const showCompleted = useTimezoneStore.getState().showCompletedTasks;
-          const dayTasks = tasks.filter((t) => t.date === day.date && !t.inWaitingRoom &&
+          const dayTasks = tasks.filter((t) => t.date === day.date &&
             !t.groupId && // hide Group children — they live inside the Group block
-            (!t.archivedAt || (showCompleted && t.completed && t.archiveReason === 'completed')) &&
-            !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring'));
+            shouldShowScheduledTask(t, { showCompleted, routinesEnabled }));
           return (
             <div
               key={day.date}

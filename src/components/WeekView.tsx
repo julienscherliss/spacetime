@@ -16,6 +16,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { AllDayEventStrip } from '@/components/AllDayEventStrip';
 import { START_HOUR } from '@/components/TimelineColumn';
 import { TaskCluster } from '@/utils/taskClustering';
+import { useTimezoneStore } from '@/store/timezoneStore';
+import { shouldShowScheduledTask } from '@/utils/taskVisibility';
 
 export function WeekView() {
   const { tasks, routinesEnabled, generateRecurringInstances } = useTaskStore();
@@ -30,6 +32,7 @@ export function WeekView() {
     return dow === 0 || dow >= 4 ? 3 : 0;
   });
   const isMobile = useIsMobile();
+  const showCompletedTasks = useTimezoneStore((s) => s.showCompletedTasks);
 
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
@@ -218,8 +221,7 @@ export function WeekView() {
   // Visible tasks for fit button
   const visibleDates = new Set(week.map(d => d.date));
   const visibleTasks = tasks.filter(t =>
-    visibleDates.has(t.date) && !t.inWaitingRoom && !t.archivedAt &&
-    !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring')
+    visibleDates.has(t.date) && shouldShowScheduledTask(t, { showCompleted: showCompletedTasks, routinesEnabled })
   );
 
   // Navigation controls placed in the sticky header gutter

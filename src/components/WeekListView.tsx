@@ -15,6 +15,8 @@ import { useCalendarStore } from '@/store/calendarStore';
 import { useCurrentTime, formatTime12h, getWeekBounds } from '@/hooks/useCurrentTime';
 import { ChevronLeft, ChevronRight, ChevronsRight } from 'lucide-react';
 import { DurationGlyph } from '@/components/DurationGlyph';
+import { useTimezoneStore } from '@/store/timezoneStore';
+import { shouldShowScheduledTask } from '@/utils/taskVisibility';
 
 function addDaysToDate(dateStr: string, days: number): string {
   const d = new Date(dateStr + 'T12:00:00');
@@ -52,6 +54,7 @@ export function WeekListView() {
     setListReturnZoom, setShowListReturn,
   } = useTaskStore();
   const { dateStr: today, minutes: nowMinutes } = useCurrentTime(30000);
+  const showCompletedTasks = useTimezoneStore((s) => s.showCompletedTasks);
 
   // Week navigation: anchor on a date, derive the Mon→Sun bounds.
   const [anchor, setAnchor] = useState(today);
@@ -138,8 +141,7 @@ export function WeekListView() {
 
   const tasksFor = (date: string) =>
     tasks
-      .filter((t) => t.date === date && !t.inWaitingRoom && !t.archivedAt &&
-        !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring'))
+      .filter((t) => t.date === date && shouldShowScheduledTask(t, { showCompleted: showCompletedTasks, routinesEnabled }))
       .filter((t) => !t.groupId)
       .sort((a, b) => {
         if (!a.time && !b.time) return 0;

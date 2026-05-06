@@ -3,6 +3,7 @@ import { useTrackpadSwipe } from '@/hooks/useTrackpadSwipe';
 import { motion } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
 import { useTimezoneStore } from '@/store/timezoneStore';
+import { shouldShowScheduledTask } from '@/utils/taskVisibility';
 import { useCalendarStore } from '@/store/calendarStore';
 import { useTouchDragStore } from '@/store/touchDragStore';
 import { useScheduledDragStore } from '@/store/scheduledDragStore';
@@ -254,10 +255,9 @@ export function DayView() {
   const goToToday = () => setSelectedDate(today);
 
   const showCompletedSetting = useTimezoneStore((s) => s.showCompletedTasks);
-  const dayTasks = tasks.filter((t) => t.date === selectedDate && !t.inWaitingRoom &&
+  const dayTasks = tasks.filter((t) => t.date === selectedDate &&
     !t.groupId && // hide Group children — they live inside the Group block
-    (!t.archivedAt || (showCompletedSetting && t.completed && t.archiveReason === 'completed')) &&
-    !(!routinesEnabled && t.isRoutine !== false && t.type === 'recurring'));
+    shouldShowScheduledTask(t, { showCompleted: showCompletedSetting, routinesEnabled }));
   const completedCount = dayTasks.filter((t) => t.completed).length;
   const isToday = selectedDate === today;
 
