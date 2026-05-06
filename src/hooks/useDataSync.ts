@@ -399,6 +399,39 @@ export function useDataSync(user: User | null) {
   const userIdRef = useRef<string | null>(null);
   const prevUserIdRef = useRef<string | null>(null);
   const accessTokenRef = useRef<string | null>(null);
+  const flushPendingWrites = useCallback(async (activeUserId: string) => {
+    try {
+      if (taskSaveTimeout) {
+        clearTimeout(taskSaveTimeout);
+        taskSaveTimeout = null;
+        await saveTasksNow(activeUserId);
+      }
+      if (libSaveTimeout) {
+        clearTimeout(libSaveTimeout);
+        libSaveTimeout = null;
+        await saveLibraryNow(activeUserId);
+      }
+      if (catSaveTimeout) {
+        clearTimeout(catSaveTimeout);
+        catSaveTimeout = null;
+        await saveCategoriesNow(activeUserId);
+      }
+
+      const taskState = useTaskStore.getState();
+      if (snapshotTasks(taskState.tasks) !== lastSyncedTaskSnapshot) {
+        await saveTasksNow(activeUserId);
+      }
+      const libState = useLibraryStore.getState();
+      if (snapshotLib(libState.items) !== lastSyncedLibSnapshot) {
+        await saveLibraryNow(activeUserId);
+      }
+      if (snapshotCats(libState.categories) !== lastSyncedCatSnapshot) {
+        await saveCategoriesNow(activeUserId);
+      }
+    } catch (err) {
+      console.error('[Sync] Error flushing pending writes:', err);
+    }
+  }, []);
 
   // Keep access token up to date for beforeunload
   useEffect(() => {
@@ -568,40 +601,7 @@ export function useDataSync(user: User | null) {
       // CRITICAL: Flush any pending local writes BEFORE refetching from DB.
       // On mobile, the app may have been backgrounded mid-debounce — if we
       // refetch first, we'd overwrite unsaved local tasks with stale DB rows.
-      try {
-        if (taskSaveTimeout) {
-          clearTimeout(taskSaveTimeout);
-          taskSaveTimeout = null;
-          await saveTasksNow(user.id);
-        }
-        if (libSaveTimeout) {
-          clearTimeout(libSaveTimeout);
-          libSaveTimeout = null;
-          await saveLibraryNow(user.id);
-        }
-        if (catSaveTimeout) {
-          clearTimeout(catSaveTimeout);
-          catSaveTimeout = null;
-          await saveCategoriesNow(user.id);
-        }
-
-        // Also flush any local-only edits the snapshot diff might have missed
-        // (e.g. saves that were scheduled while the tab was hidden and the
-        // setTimeout never fired). Compare snapshots and push if dirty.
-        const taskState = useTaskStore.getState();
-        if (snapshotTasks(taskState.tasks) !== lastSyncedTaskSnapshot) {
-          await saveTasksNow(user.id);
-        }
-        const libState = useLibraryStore.getState();
-        if (snapshotLib(libState.items) !== lastSyncedLibSnapshot) {
-          await saveLibraryNow(user.id);
-        }
-        if (snapshotCats(libState.categories) !== lastSyncedCatSnapshot) {
-          await saveCategoriesNow(user.id);
-        }
-      } catch (err) {
-        console.error('[Sync] Error flushing pending writes on foreground:', err);
-      }
+      await flushPendingWrites(user.id);
 
       if (userIdRef.current !== user.id) return;
       console.log('[Sync] App became visible — refetching from DB');
@@ -656,5 +656,29 @@ export function useDataSync(user: User | null) {
       document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [user?.id]);
+  }, [flushPendingWrites, user?.id]);
+
+  useEffect(() => {
+    if (!user || !isNativePlatform()) return;
+
+    let removeListener: (() => void) | undefined;
+
+    (async () => {
+      const { App } = await import('@capacitor/app');
+      const listener = await App.addListener('appStateChange', async ({ isActive }) => {
+        if (!userIdRef.current || userIdRef.current !== user.id) return;
+        if (!isActive) {
+          await flushPendingWrites(user.id);
+        }
+      });
+
+      removeListener = () => {
+        listener.remove();
+      };
+    })();
+
+    return () => {
+      removeListener?.();
+    };
+  }, [flushPendingWrites, user?.id]);
 }
