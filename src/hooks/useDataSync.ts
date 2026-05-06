@@ -369,7 +369,7 @@ async function saveCategoriesNow(userId: string): Promise<boolean> {
 
 // ─── Load from DB (source of truth) ───────────────────
 
-async function loadFromDB(
+export async function loadFromDB(
   userId: string,
   options: { skipTasks?: boolean; skipLibrary?: boolean; skipCategories?: boolean } = {}
 ): Promise<boolean> {
