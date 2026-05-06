@@ -167,7 +167,9 @@ describe('useDataSync regression guard', () => {
       if (table === 'tasks') {
         return {
           select: () => ({
-            eq: () => ({ range: tasksRange }),
+            eq: () => ({
+              order: () => ({ range: tasksRange }),
+            }),
           }),
           upsert: vi.fn().mockResolvedValue({ error: null }),
           delete: () => ({ in: vi.fn().mockResolvedValue({ error: null }) }),
@@ -177,7 +179,9 @@ describe('useDataSync regression guard', () => {
       return {
         select: () => ({
           eq: () => ({
-            range: vi.fn().mockResolvedValue({ data: [], error: null }),
+            order: () => ({
+              range: vi.fn().mockResolvedValue({ data: [], error: null }),
+            }),
           }),
         }),
         upsert: vi.fn().mockResolvedValue({ error: null }),
@@ -197,8 +201,7 @@ describe('useDataSync regression guard', () => {
     const { useTaskStore } = await import('@/store/taskStore');
     const syncModule = await import('@/hooks/useDataSync');
 
-    await (syncModule as any).useDataSync?.(null);
-    await (syncModule as any).loadFromDB?.('user-1');
+    await (syncModule as any).loadFromDB('user-1');
 
     const titles = useTaskStore.getState().tasks.map((task) => task.title);
     expect(tasksRange).toHaveBeenCalledTimes(2);
