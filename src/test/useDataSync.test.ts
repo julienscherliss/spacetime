@@ -128,4 +128,80 @@ describe('useDataSync regression guard', () => {
     await (syncModule as any).saveTasksNow('user-1');
     expect(deleteIn).not.toHaveBeenCalled();
   });
+
+  it('loads task data across multiple backend pages instead of stopping at 1000 rows', async () => {
+    const pageA = Array.from({ length: 1000 }, (_, i) => ({
+      id: crypto.randomUUID(),
+      title: `Task ${i + 1}`,
+      type: 'one-time',
+      priority: 0,
+      original_priority: 0,
+      date: '2026-05-06',
+      completed: false,
+      move_count: 0,
+      created_at: '2026-05-06T00:00:00.000Z',
+    }));
+    const pageB = [{
+      id: crypto.randomUUID(),
+      title: 'Photo Edits A1',
+      type: 'one-time',
+      priority: 0,
+      original_priority: 0,
+      date: '2026-05-06',
+      time: '07:30',
+      duration: 30,
+      completed: true,
+      archived_at: '2026-05-06T15:52:53.587Z',
+      archive_reason: 'completed',
+      move_count: 0,
+      created_at: '2026-05-06T00:00:00.000Z',
+    }];
+
+    const tasksRange = vi.fn((from: number, to: number) => {
+      if (from === 0 && to === 999) return Promise.resolve({ data: pageA, error: null });
+      if (from === 1000 && to === 1999) return Promise.resolve({ data: pageB, error: null });
+      return Promise.resolve({ data: [], error: null });
+    });
+
+    const from = vi.fn((table: string) => {
+      if (table === 'tasks') {
+        return {
+          select: () => ({
+            eq: () => ({ range: tasksRange }),
+          }),
+          upsert: vi.fn().mockResolvedValue({ error: null }),
+          delete: () => ({ in: vi.fn().mockResolvedValue({ error: null }) }),
+        };
+      }
+
+      return {
+        select: () => ({
+          eq: () => ({
+            range: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        }),
+        upsert: vi.fn().mockResolvedValue({ error: null }),
+        delete: () => ({ in: vi.fn() }),
+      };
+    });
+
+    const auth = {
+      onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
+      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+    };
+
+    vi.doMock('@/integrations/supabase/client', () => ({
+      supabase: { from, auth },
+    }));
+
+    const { useTaskStore } = await import('@/store/taskStore');
+    const syncModule = await import('@/hooks/useDataSync');
+
+    await (syncModule as any).useDataSync?.(null);
+    await (syncModule as any).loadFromDB?.('user-1');
+
+    const titles = useTaskStore.getState().tasks.map((task) => task.title);
+    expect(tasksRange).toHaveBeenCalledTimes(2);
+    expect(titles).toContain('Photo Edits A1');
+  });
 });
