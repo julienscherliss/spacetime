@@ -141,21 +141,21 @@ export function ClientPicker({ clientId, onChange, placeholder = 'Search or add 
             value={editName}
             onChange={(e) => setEditName(e.target.value)}
             placeholder="Client name"
-            className="w-full bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
+          className="input-compact w-full bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
           />
           <input
             type="text"
             value={editEmail}
             onChange={(e) => setEditEmail(e.target.value)}
             placeholder="Email (optional)"
-            className="w-full bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
+            className="input-compact w-full bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
           />
           <textarea
             value={editAddress}
             onChange={(e) => setEditAddress(e.target.value)}
             placeholder="Address (optional)"
             rows={2}
-            className="w-full bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50 resize-none"
+            className="input-compact w-full bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50 resize-none"
           />
           <div className="flex items-center gap-1.5 justify-end">
             <button
@@ -205,7 +205,7 @@ export function ClientPicker({ clientId, onChange, placeholder = 'Search or add 
           }
         }}
         placeholder={placeholder}
-        className="w-full bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
+        className="input-compact w-full bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
       />
       {open && (suggestions.length > 0 || query.trim()) && (
         <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-card border border-border/50 rounded-md shadow-lg py-1 max-h-56 overflow-y-auto">
