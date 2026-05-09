@@ -918,12 +918,14 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               <span>Recently Deleted</span>
               <span className="text-[10px] text-muted-foreground/50">→</span>
             </button>
-            <button
-              onClick={() => setDeleteAccountOpen(true)}
-              className="w-full flex items-center justify-center gap-2 bg-destructive/5 border border-destructive/30 rounded-sm p-3 min-h-[44px] text-[12px] font-mono tracking-wider text-destructive hover:bg-destructive/10 transition-colors"
-            >
-              DELETE ACCOUNT
-            </button>
+            {showAdvanced && (
+              <button
+                onClick={() => setDeleteAccountOpen(true)}
+                className="w-full flex items-center justify-center gap-2 bg-destructive/5 border border-destructive/30 rounded-sm p-3 min-h-[44px] text-[12px] font-mono tracking-wider text-destructive hover:bg-destructive/10 transition-colors"
+              >
+                DELETE ACCOUNT
+              </button>
+            )}
             {showAdvanced && (
               <button
                 onClick={() => setDebugOpen(true)}
