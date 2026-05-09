@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { HelpPanel } from './HelpPanel';
 import { ColorSchemePanel } from './ColorSchemePanel';
 import { AdminPanel } from './AdminPanel';
+import { DeleteAccountModal } from './DeleteAccountModal';
 import { isNativePlatform } from '@/utils/nativePlatform';
 import { useSubscription } from '@/hooks/useSubscription';
 import type { NotificationLevel } from '@/utils/notificationService';
@@ -53,6 +54,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const [adminOpen, setAdminOpen] = useState(false);
   const { isAdmin, subscription, trialDaysLeft, cancellingDaysLeft } = useSubscription();
   const [pwMode, setPwMode] = useState<'closed' | 'change' | 'reset'>('closed');
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
@@ -881,12 +883,54 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             </div>
           )}
 
+          {/* Account — Privacy / Terms / Recently Deleted / Delete Account */}
+          <div className="border-t border-border/30 pt-4 space-y-2">
+            <div className="text-[10px] font-mono text-muted-foreground/50 tracking-[0.18em] mb-1">
+              ACCOUNT
+            </div>
+            <a
+              href="https://launchspacetime.com/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-between bg-muted/20 border border-border/40 rounded-sm p-3 min-h-[44px] text-[12px] font-mono text-foreground hover:bg-muted/40 transition-colors"
+            >
+              <span>Privacy Policy</span>
+              <span className="text-[10px] text-muted-foreground/50">↗</span>
+            </a>
+            <a
+              href="https://launchspacetime.com/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-between bg-muted/20 border border-border/40 rounded-sm p-3 min-h-[44px] text-[12px] font-mono text-foreground hover:bg-muted/40 transition-colors"
+            >
+              <span>Terms of Service</span>
+              <span className="text-[10px] text-muted-foreground/50">↗</span>
+            </a>
+            <button
+              onClick={() => {
+                onClose();
+                window.dispatchEvent(new CustomEvent('toggle-archive'));
+              }}
+              className="w-full flex items-center justify-between bg-muted/20 border border-border/40 rounded-sm p-3 min-h-[44px] text-[12px] font-mono text-foreground hover:bg-muted/40 transition-colors"
+            >
+              <span>Recently Deleted</span>
+              <span className="text-[10px] text-muted-foreground/50">→</span>
+            </button>
+            <button
+              onClick={() => setDeleteAccountOpen(true)}
+              className="w-full flex items-center justify-center gap-2 bg-destructive/5 border border-destructive/30 rounded-sm p-3 min-h-[44px] text-[12px] font-mono tracking-wider text-destructive hover:bg-destructive/10 transition-colors"
+            >
+              DELETE ACCOUNT
+            </button>
+          </div>
+
         </div>
       </div>
     </div>
 
     <HelpPanel open={helpOpen} onClose={() => setHelpOpen(false)} />
     <AdminPanel open={adminOpen} onClose={() => setAdminOpen(false)} />
+    <DeleteAccountModal open={deleteAccountOpen} onClose={() => setDeleteAccountOpen(false)} />
     </>
   );
 }
