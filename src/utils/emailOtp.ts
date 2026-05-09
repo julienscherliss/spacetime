@@ -48,27 +48,105 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 
+type OtpAttemptMeta = {
+  email: string;
+  source: string;
+  startedAt: number;
+};
+
+let lastSendAttempt: OtpAttemptMeta | null = null;
+let activeSendRequest: Promise<{ error: Error | null }> | null = null;
+
+function maskEmail(email: string) {
+  const normalized = email.trim().toLowerCase();
+  const [name, domain] = normalized.split('@');
+  if (!name || !domain) return normalized;
+  if (name.length <= 2) return `${name[0] ?? ''}•@${domain}`;
+  return `${name[0]}${'•'.repeat(Math.max(name.length - 2, 1))}${name[name.length - 1]}@${domain}`;
+}
+
+function maskOtpSuffix(token: string) {
+  if (!token) return '';
+  const normalized = token.replace(/\s+/g, '').trim();
+  if (normalized.length <= 2) return normalized;
+  return `${'•'.repeat(normalized.length - 2)}${normalized.slice(-2)}`;
+}
+
+function getProjectRefFromUrl(url?: string | null) {
+  if (!url) return null;
+  const match = url.match(/^https?:\/\/([^.]+)\.supabase\.co/i);
+  return match?.[1] ?? null;
+}
+
+export function getLastOtpSendMeta() {
+  return lastSendAttempt;
+}
+
 /** Send a 6-digit code to the given email address. */
-export async function sendEmailOtp(email: string): Promise<{ error: Error | null }> {
-  console.log('[AUTH/OTP] sendEmailOtp →', email);
+export async function sendEmailOtp(email: string, source = 'unknown'): Promise<{ error: Error | null }> {
+  const normalizedEmail = email.trim().toLowerCase();
+  const now = Date.now();
+
+  if (activeSendRequest) {
+    console.warn('[AUTH/OTP] sendEmailOtp blocked — request already in flight', {
+      source,
+      email: maskEmail(normalizedEmail),
+    });
+    return activeSendRequest;
+  }
+
+  lastSendAttempt = {
+    email: normalizedEmail,
+    source,
+    startedAt: now,
+  };
+
+  console.log('[AUTH/OTP] sendEmailOtp called', {
+    source,
+    email: maskEmail(normalizedEmail),
+    timestamp: new Date(now).toISOString(),
+    resendCooldownSeconds: 60,
+    projectRef: getProjectRefFromUrl(import.meta.env.VITE_SUPABASE_URL),
+    shouldCreateUser: true,
+    hasEmailRedirectTo: false,
+  });
 
   // GUARD: must NOT pass emailRedirectTo — that turns it into a magic-link.
   // GUARD: must NOT call resetPasswordForEmail.
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
+  activeSendRequest = supabase.auth.signInWithOtp({
+    email: normalizedEmail,
     options: {
       shouldCreateUser: true,
       // emailRedirectTo intentionally OMITTED. Do not add this.
     },
+  }).then(({ error }) => {
+    const finishedAt = Date.now();
+    if (error) {
+      console.warn('[AUTH/OTP] sendEmailOtp failed', {
+        source,
+        email: maskEmail(normalizedEmail),
+        timestamp: new Date(finishedAt).toISOString(),
+        durationMs: finishedAt - now,
+        result: 'error',
+        message: error.message,
+        code: (error as any)?.code ?? null,
+      });
+    } else {
+      console.log('[AUTH/OTP] sendEmailOtp success', {
+        source,
+        email: maskEmail(normalizedEmail),
+        timestamp: new Date(finishedAt).toISOString(),
+        durationMs: finishedAt - now,
+        result: 'queued',
+      });
+    }
+
+    return { error: error as Error | null };
+  }).finally(() => {
+    activeSendRequest = null;
   });
 
-  if (error) {
-    console.warn('[AUTH/OTP] sendEmailOtp failed:', error.message);
-  } else {
-    console.log('[AUTH/OTP] sendEmailOtp success — email queued');
-  }
-
-  return { error: error as Error | null };
+  return activeSendRequest;
 }
 
 /**
@@ -84,17 +162,24 @@ export async function verifyEmailOtp(
 ): Promise<{ error: Error | null }> {
   const normalizedEmail = email.trim().toLowerCase();
   const normalizedToken = token.replace(/\s+/g, '').trim();
-  const maskedToken = normalizedToken.length >= 2
-    ? `${normalizedToken.slice(0, 1)}${'•'.repeat(Math.max(normalizedToken.length - 2, 0))}${normalizedToken.slice(-1)}`
-    : normalizedToken;
+  const maskedToken = maskOtpSuffix(normalizedToken);
+  const verifyStartedAt = Date.now();
+  const elapsedSinceSendSeconds = lastSendAttempt?.email === normalizedEmail
+    ? Math.round((verifyStartedAt - lastSendAttempt.startedAt) / 1000)
+    : null;
 
-  console.log('[AUTH/OTP] verifyEmailOtp v7 →', normalizedEmail, 'token.length=', normalizedToken.length);
-  console.log('[AUTH/OTP] token normalization →', {
+  console.log('[AUTH/OTP] verifyEmailOtp called', {
+    email: maskEmail(normalizedEmail),
+    timestamp: new Date(verifyStartedAt).toISOString(),
+    tokenLength: normalizedToken.length,
+    tokenFormat: /^\d+$/.test(normalizedToken) ? 'numeric' : 'non-numeric',
+    tokenSuffix: maskedToken,
+    verifyType: 'email',
+    elapsedSinceSendSeconds,
     originalLength: token.length,
     normalizedLength: normalizedToken.length,
     whitespaceRemoved: token !== normalizedToken,
-    digitsOnly: /^\d+$/.test(normalizedToken),
-    maskedToken,
+    projectRef: getProjectRefFromUrl(import.meta.env.VITE_SUPABASE_URL),
   });
 
   const { error } = await supabase.auth.verifyOtp({
@@ -104,11 +189,27 @@ export async function verifyEmailOtp(
   });
 
   if (error) {
-    console.warn('[AUTH/OTP] verifyEmailOtp v7 failed:', error.message);
+    console.warn('[AUTH/OTP] verifyEmailOtp failed', {
+      email: maskEmail(normalizedEmail),
+      timestamp: new Date().toISOString(),
+      verifyType: 'email',
+      elapsedSinceSendSeconds,
+      tokenLength: normalizedToken.length,
+      tokenFormat: /^\d+$/.test(normalizedToken) ? 'numeric' : 'non-numeric',
+      tokenSuffix: maskedToken,
+      message: error.message,
+      code: (error as any)?.code ?? null,
+      status: (error as any)?.status ?? null,
+    });
     console.warn('[AUTH/OTP] hard stop after type=email failure');
     return { error: error as Error };
   }
 
-  console.log('[AUTH/OTP] verifyEmailOtp v7 SUCCESS via type=email');
+  console.log('[AUTH/OTP] verifyEmailOtp success', {
+    email: maskEmail(normalizedEmail),
+    timestamp: new Date().toISOString(),
+    verifyType: 'email',
+    elapsedSinceSendSeconds,
+  });
   return { error: null };
 }

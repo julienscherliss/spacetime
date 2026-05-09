@@ -11,6 +11,8 @@ import { getAuthRedirectOrigin, debugLogAuthEnv } from '@/utils/authEnvironment'
 
 type Step = 'entry' | 'otp' | 'password-login';
 
+const OTP_RESEND_COOLDOWN_SECONDS = 60;
+
 export default function Auth() {
   const location = useLocation();
   const fromLanding = (location.state as any)?.plan;
@@ -28,6 +30,7 @@ export default function Auth() {
   const [resendCooldown, setResendCooldown] = useState(0);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastOtpSendAtRef = useRef<number | null>(null);
 
   // Cooldown timer
   useEffect(() => {
@@ -54,12 +57,27 @@ export default function Auth() {
     }
   }, [step]);
 
-  const sendOtp = useCallback(async () => {
+  const sendOtp = useCallback(async (source = 'auth-screen') => {
     if (!email) { toast.error('Enter your email first'); return; }
+    const now = Date.now();
+    if (lastOtpSendAtRef.current && now - lastOtpSendAtRef.current < 1200) {
+      console.warn('[AUTH/OTP] send blocked by debounce', {
+        source,
+        email,
+        sinceLastMs: now - lastOtpSendAtRef.current,
+      });
+      return;
+    }
+    if (resendCooldown > 0) {
+      toast.error(`Please wait ${resendCooldown}s before requesting another code.`);
+      return;
+    }
+
+    lastOtpSendAtRef.current = now;
     setLoading(true);
     try {
       // Unified email OTP — see src/utils/emailOtp.ts for the full contract.
-      const { error } = await sendEmailOtp(email);
+      const { error } = await sendEmailOtp(email, source);
       if (error) {
         const msg = (error.message || '').toLowerCase();
         if (msg.includes('rate') || msg.includes('too many')) {
@@ -72,14 +90,14 @@ export default function Auth() {
       setStep('otp');
       setOtpDigits(['', '', '', '', '', '']);
       setOtpAttempts(0);
-      setResendCooldown(30);
-      toast.success('Check your email — use the LATEST code (older codes are now invalid)');
+      setResendCooldown(OTP_RESEND_COOLDOWN_SECONDS);
+      toast.success('Check your email — use the newest code we sent. Older codes no longer work.');
     } catch (err: any) {
       toast.error(err.message || 'Network error. Check your connection and try again.');
     } finally {
       setLoading(false);
     }
-  }, [email]);
+  }, [email, resendCooldown]);
 
   const handleOtpChange = (index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;
@@ -225,6 +243,9 @@ export default function Auth() {
             <p className="text-[10px] font-mono text-muted-foreground/50 tracking-wide mt-2 leading-relaxed max-w-[240px] mx-auto">
               We sent a 6-digit code to {email}. It expires in 10 minutes.
             </p>
+            <p className="text-[9px] font-mono text-muted-foreground/40 tracking-wide mt-2 max-w-[240px] mx-auto">
+              Use the newest code we sent. If you resend, all older codes stop working.
+            </p>
           </div>
 
           {/* 6-digit inputs */}
@@ -256,7 +277,7 @@ export default function Auth() {
 
           <div className="text-center mt-4">
             <button
-              onClick={sendOtp}
+              onClick={() => sendOtp('otp-resend-button')}
               disabled={loading || resendCooldown > 0}
               className="text-[10px] font-mono text-primary/60 hover:text-primary transition-colors disabled:opacity-30"
             >
@@ -347,7 +368,7 @@ export default function Auth() {
               <div className="text-right">
                 <button
                   type="button"
-                  onClick={() => { setStep('entry'); sendOtp(); }}
+                  onClick={() => { setStep('entry'); void sendOtp('password-login-inline-link'); }}
                   disabled={loading || !email}
                   className="text-[9px] font-mono text-primary/60 hover:text-primary hover:underline transition-colors disabled:opacity-50"
                 >
@@ -416,7 +437,7 @@ export default function Auth() {
 
           {/* Primary: Send code */}
           <button
-            onClick={sendOtp}
+            onClick={() => void sendOtp('entry-primary-button')}
             disabled={loading || !email}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-sm bg-primary text-primary-foreground font-mono text-[11px] tracking-widest hover:bg-primary/90 disabled:opacity-50 transition-colors mb-3"
           >
@@ -523,7 +544,7 @@ export default function Auth() {
             <div className="text-right">
               <button
                 type="button"
-                onClick={sendOtp}
+                onClick={() => void sendOtp('password-login-text-link')}
                 disabled={loading || !email}
                 className="text-[9px] font-mono text-primary/60 hover:text-primary hover:underline transition-colors disabled:opacity-50"
               >
@@ -545,7 +566,7 @@ export default function Auth() {
         {mode === 'login' && (
           <button
             type="button"
-            onClick={sendOtp}
+            onClick={() => sendOtp('entry-secondary-button')}
             disabled={loading || !email}
             className="w-full mt-3 py-2.5 rounded-sm border border-border text-muted-foreground hover:text-foreground font-mono text-[10px] tracking-widest hover:bg-muted/30 transition-colors disabled:opacity-50"
           >

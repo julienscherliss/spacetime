@@ -206,7 +206,15 @@ async function handleWebhook(req: Request): Promise<Response> {
   // The email action type is in payload.data.action_type (e.g., "signup", "recovery")
   // payload.type is the hook event type ("auth")
   const emailType = payload.data.action_type
-  console.log('Received auth event', { emailType, email: payload.data.email, run_id })
+  console.log('Received auth event', {
+    emailType,
+    email: payload.data.email,
+    run_id,
+    hasToken: Boolean(payload.data.token),
+    tokenLength: payload.data.token?.length ?? 0,
+    tokenSuffix: payload.data.token ? String(payload.data.token).slice(-2) : null,
+    hasConfirmationUrl: Boolean(payload.data.url),
+  })
 
   const EmailTemplate = EMAIL_TEMPLATES[emailType]
   if (!EmailTemplate) {
@@ -232,6 +240,17 @@ async function handleWebhook(req: Request): Promise<Response> {
   const html = await renderAsync(React.createElement(EmailTemplate, templateProps))
   const text = await renderAsync(React.createElement(EmailTemplate, templateProps), {
     plainText: true,
+  })
+
+  console.log('Auth email render audit', {
+    emailType,
+    run_id,
+    containsHref: /href\s*=\s*["']/i.test(html),
+    containsAnchorTag: /<a\b/i.test(html),
+    containsConfirmationUrl: payload.data.url ? html.includes(payload.data.url) || text.includes(payload.data.url) : false,
+    containsToken: payload.data.token ? html.includes(payload.data.token) || text.includes(payload.data.token) : false,
+    textLength: text.length,
+    htmlLength: html.length,
   })
 
   // Enqueue email for async processing by the dispatcher (process-email-queue).
