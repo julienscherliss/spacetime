@@ -17,7 +17,7 @@ export interface Subscription {
   updated_at: string;
 }
 
-export function useSubscription() {
+export function useSubscription(userId?: string | null, authReady = true) {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -25,51 +25,88 @@ export function useSubscription() {
   useEffect(() => {
     let cancelled = false;
 
-    async function load(userId: string) {
+    async function load(targetUserId: string) {
       if (cancelled) return;
       setLoading(true);
 
-      // Check subscription
-      const { data: sub } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      // Check admin role
-      const { data: roles } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId);
+      const [{ data: sub, error: subError }, { data: roles, error: rolesError }] = await Promise.all([
+        supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', targetUserId)
+          .maybeSingle(),
+        supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', targetUserId),
+      ]);
 
       if (!cancelled) {
+        if (subError) {
+          console.error('[SUBSCRIPTION] failed to load subscription', subError.message);
+        }
+        if (rolesError) {
+          console.error('[SUBSCRIPTION] failed to load roles', rolesError.message);
+        }
         setSubscription(sub as Subscription | null);
         setIsAdmin(roles?.some((r: any) => r.role === 'admin') ?? false);
         setLoading(false);
       }
     }
 
-    // Initial load — wait for session so we don't settle with null user
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    function resetSignedOutState() {
       if (cancelled) return;
-      if (session?.user) {
-        load(session.user.id);
-      } else {
-        setSubscription(null);
-        setIsAdmin(false);
-        setLoading(false);
-      }
-    });
+      setSubscription(null);
+      setIsAdmin(false);
+      setLoading(false);
+    }
 
-    // Re-run on any auth change (sign-in after mount, token refresh, sign-out)
+    async function resolveSessionWithRetry(attempt = 0) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (cancelled) return;
+
+      if (session?.user?.id) {
+        await load(session.user.id);
+        return;
+      }
+
+      if (attempt < 4) {
+        window.setTimeout(() => {
+          void resolveSessionWithRetry(attempt + 1);
+        }, 250 * (attempt + 1));
+        return;
+      }
+
+      resetSignedOutState();
+    }
+
+    if (!authReady) {
+      setLoading(true);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (userId !== undefined) {
+      if (userId) {
+        void load(userId);
+      } else {
+        resetSignedOutState();
+      }
+
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void resolveSessionWithRetry();
+
     const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (cancelled) return;
       if (session?.user) {
-        load(session.user.id);
+        void load(session.user.id);
       } else {
-        setSubscription(null);
-        setIsAdmin(false);
-        setLoading(false);
+        void resolveSessionWithRetry();
       }
     });
 
@@ -77,7 +114,7 @@ export function useSubscription() {
       cancelled = true;
       authSub.unsubscribe();
     };
-  }, []);
+  }, [userId, authReady]);
 
   const hasAccess = (() => {
     if (isAdmin) return true;
@@ -113,14 +150,27 @@ export function useSubscription() {
   })();
 
   const refresh = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data: sub } = await supabase
-      .from('subscriptions')
-      .select('*')
-      .eq('user_id', user.id)
-      .maybeSingle();
+    const resolvedUserId = userId ?? (await supabase.auth.getUser()).data.user?.id ?? null;
+    if (!resolvedUserId) {
+      setSubscription(null);
+      setIsAdmin(false);
+      return;
+    }
+
+    const [{ data: sub }, { data: roles }] = await Promise.all([
+      supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', resolvedUserId)
+        .maybeSingle(),
+      supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', resolvedUserId),
+    ]);
+
     setSubscription(sub as Subscription | null);
+    setIsAdmin(roles?.some((r: any) => r.role === 'admin') ?? false);
   };
 
   return { subscription, loading, hasAccess, trialDaysLeft, cancellingDaysLeft, isAdmin, refresh };
