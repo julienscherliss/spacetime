@@ -56,16 +56,16 @@ export function logAudit(payload: AuditPayload): void {
       const { data } = await supabase.auth.getUser();
       const userId = data?.user?.id;
       if (!userId) return;
-      await supabase.from('audit_log').insert({
+      await supabase.from('audit_log').insert([{
         user_id: userId,
         action: payload.action,
         object_type: payload.objectType ?? '',
         object_id: payload.objectId ?? '',
-        prev_state: trim(payload.prev),
-        new_state: trim(payload.next),
+        prev_state: trim(payload.prev) as any,
+        new_state: trim(payload.next) as any,
         platform: detectPlatform(),
-        metadata: trim(payload.metadata),
-      });
+        metadata: trim(payload.metadata) as any,
+      }]);
     } catch {
       // Intentionally silent.
     }
