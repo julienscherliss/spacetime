@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
+import { logAudit } from '@/utils/auditLog';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -31,6 +32,10 @@ export function useAuth() {
             editingTaskId: null,
           });
         });
+        logAudit({ action: 'auth.signed_in', metadata: { provider: session?.user?.app_metadata?.provider ?? 'email' } });
+      }
+      if (event === 'TOKEN_REFRESHED' && !session) {
+        logAudit({ action: 'auth.session_expired' });
       }
       setSession(session);
       setUser(session?.user ?? null);
@@ -56,6 +61,7 @@ export function useAuth() {
   }, []);
 
   const signOut = async () => {
+    logAudit({ action: 'auth.signed_out' });
     // Clear user-scoped stores before sign-out to prevent stale data flash
     const { useTaskStore } = await import('@/store/taskStore');
     const { useLibraryStore } = await import('@/store/libraryStore');
