@@ -174,7 +174,7 @@ export async function verifyEmailOtp(
     tokenLength: normalizedToken.length,
     tokenFormat: /^\d+$/.test(normalizedToken) ? 'numeric' : 'non-numeric',
     tokenSuffix: maskedToken,
-    verifyType: 'email',
+    verifyType: 'magiclink',
     elapsedSinceSendSeconds,
     originalLength: token.length,
     normalizedLength: normalizedToken.length,
