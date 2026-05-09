@@ -437,7 +437,7 @@ export default function Auth() {
 
           {/* Primary: Send code */}
           <button
-            onClick={sendOtp}
+            onClick={() => void sendOtp('entry-primary-button')}
             disabled={loading || !email}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-sm bg-primary text-primary-foreground font-mono text-[11px] tracking-widest hover:bg-primary/90 disabled:opacity-50 transition-colors mb-3"
           >
@@ -544,7 +544,7 @@ export default function Auth() {
             <div className="text-right">
               <button
                 type="button"
-                onClick={sendOtp}
+                onClick={() => void sendOtp('password-login-text-link')}
                 disabled={loading || !email}
                 className="text-[9px] font-mono text-primary/60 hover:text-primary hover:underline transition-colors disabled:opacity-50"
               >
