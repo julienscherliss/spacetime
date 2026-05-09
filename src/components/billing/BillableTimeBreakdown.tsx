@@ -176,9 +176,10 @@ export function BillableTimeBreakdown() {
       ? direct
       : findBillableAncestor(tagValue, settings);
     if (!eff || eff.parentOnly) return '';
+    const sym = currencySymbol(eff.currency);
     return eff.rateType === 'hourly'
-      ? `${eff.hourlyRate} ${eff.currency}/h`
-      : `${eff.flatRate} ${eff.currency} flat`;
+      ? `${sym}${eff.hourlyRate}/h`
+      : `${sym}${eff.flatRate} flat`;
   };
 
   const rows: TagRow[] = useMemo(() => {
