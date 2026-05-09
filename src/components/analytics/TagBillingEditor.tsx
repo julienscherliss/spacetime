@@ -162,7 +162,7 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
                   value={hourlyRate}
                   onChange={(e) => setHourlyRate(e.target.value)}
                   onBlur={() => save({ hourlyRate: parseFloat(hourlyRate) || 0 })}
-                  className="flex-1 min-w-0 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50 tabular-nums"
+                  className="input-compact flex-1 min-w-0 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50 tabular-nums"
                 />
                 <input
                   type="text"
@@ -170,7 +170,7 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
                   onChange={(e) => setCurrency(e.target.value.toUpperCase().slice(0, 3))}
                   onBlur={() => save({ currency: currency || 'USD' })}
                   maxLength={3}
-                  className="w-14 shrink-0 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50 uppercase"
+                  className="input-compact w-14 shrink-0 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50 uppercase"
                 />
               </div>
             </div>
@@ -188,7 +188,7 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
                     onChange={(e) => setCurrency(e.target.value.toUpperCase().slice(0, 3))}
                     onBlur={() => save({ currency: currency || 'USD' })}
                     maxLength={3}
-                    className="w-14 shrink-0 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50 uppercase"
+                    className="input-compact w-14 shrink-0 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50 uppercase"
                   />
                 </div>
               </div>
@@ -208,7 +208,7 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
                       value={it.description}
                       onChange={(e) => updateItem(idx, { description: e.target.value })}
                       onBlur={() => commitFlatItems(flatItems)}
-                      className="w-full sm:flex-1 sm:w-auto min-w-0 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
+                      className="input-compact w-full sm:flex-1 sm:w-auto min-w-0 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
                     />
                     <input
                       type="number"
@@ -218,7 +218,7 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
                       value={Number.isFinite(it.quantity) && it.quantity ? it.quantity : 1}
                       onChange={(e) => updateItem(idx, { quantity: Math.max(1, parseInt(e.target.value, 10) || 1) })}
                       onBlur={() => commitFlatItems(flatItems)}
-                      className="w-12 sm:w-14 shrink-0 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50 tabular-nums text-right"
+                      className="input-compact w-12 sm:w-14 shrink-0 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50 tabular-nums text-right"
                     />
                     <input
                       type="number"
@@ -228,7 +228,7 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
                       value={Number.isFinite(it.amount) ? it.amount : 0}
                       onChange={(e) => updateItem(idx, { amount: parseFloat(e.target.value) || 0 })}
                       onBlur={() => commitFlatItems(flatItems)}
-                      className="flex-1 sm:flex-none sm:w-24 min-w-0 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50 tabular-nums text-right"
+                      className="input-compact flex-1 sm:flex-none sm:w-24 min-w-0 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50 tabular-nums text-right"
                     />
                     <button
                       type="button"
