@@ -23,12 +23,15 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const native = isNativePlatform();
 
-  // OTP state (mobile)
+  // OTP state (mobile + web)
+  // Supabase issues alphanumeric tokens (currently 8 chars) for the
+  // signInWithOtp / magiclink flow, so we accept the full token as a single
+  // string instead of constraining it to 6 numeric digits.
   const [step, setStep] = useState<Step>('entry');
-  const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
+  const [otpCode, setOtpCode] = useState('');
   const [otpAttempts, setOtpAttempts] = useState(0);
   const [resendCooldown, setResendCooldown] = useState(0);
-  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const otpInputRef = useRef<HTMLInputElement | null>(null);
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastOtpSendAtRef = useRef<number | null>(null);
 
@@ -50,10 +53,10 @@ export default function Auth() {
     return () => { if (cooldownRef.current) clearInterval(cooldownRef.current); };
   }, [resendCooldown > 0]);
 
-  // Auto-focus first OTP input
+  // Auto-focus OTP input
   useEffect(() => {
     if (step === 'otp') {
-      setTimeout(() => otpRefs.current[0]?.focus(), 100);
+      setTimeout(() => otpInputRef.current?.focus(), 100);
     }
   }, [step]);
 
@@ -88,7 +91,7 @@ export default function Auth() {
         return;
       }
       setStep('otp');
-      setOtpDigits(['', '', '', '', '', '']);
+      setOtpCode('');
       setOtpAttempts(0);
       setResendCooldown(OTP_RESEND_COOLDOWN_SECONDS);
       toast.success('Check your email — use the newest code we sent. Older codes no longer work.');
@@ -99,32 +102,16 @@ export default function Auth() {
     }
   }, [email, resendCooldown]);
 
-  const handleOtpChange = (index: number, value: string) => {
-    if (!/^\d*$/.test(value)) return;
-    const next = [...otpDigits];
-    if (value.length > 1) {
-      // Handle paste
-      const chars = value.slice(0, 6).split('');
-      chars.forEach((c, i) => { if (i + index < 6) next[i + index] = c; });
-      setOtpDigits(next);
-      const focusIdx = Math.min(index + chars.length, 5);
-      otpRefs.current[focusIdx]?.focus();
-      return;
-    }
-    next[index] = value;
-    setOtpDigits(next);
-    if (value && index < 5) otpRefs.current[index + 1]?.focus();
-  };
-
-  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
-      otpRefs.current[index - 1]?.focus();
-    }
+  const handleOtpChange = (value: string) => {
+    // Accept alphanumeric; strip whitespace. Do NOT uppercase/lowercase —
+    // pass token to Supabase exactly as received.
+    const cleaned = value.replace(/\s+/g, '').slice(0, 12);
+    setOtpCode(cleaned);
   };
 
   const handleVerifyOtp = async () => {
-    const token = otpDigits.join('');
-    if (token.length !== 6) { toast.error('Enter all 6 digits'); return; }
+    const token = otpCode.trim();
+    if (token.length < 6) { toast.error('Enter the full code from your email'); return; }
     if (otpAttempts >= 5) { toast.error('Too many attempts. Request a new code.'); return; }
 
     setLoading(true);
@@ -241,34 +228,36 @@ export default function Auth() {
               ENTER CODE
             </h1>
             <p className="text-[10px] font-mono text-muted-foreground/50 tracking-wide mt-2 leading-relaxed max-w-[240px] mx-auto">
-              We sent a 6-digit code to {email}. It expires in 10 minutes.
+              We sent a code to {email}. It expires in 10 minutes.
             </p>
             <p className="text-[9px] font-mono text-muted-foreground/40 tracking-wide mt-2 max-w-[240px] mx-auto">
               Use the newest code we sent. If you resend, all older codes stop working.
             </p>
           </div>
 
-          {/* 6-digit inputs */}
-          <div className="flex justify-center gap-2 mb-6">
-            {otpDigits.map((digit, i) => (
-              <input
-                key={i}
-                ref={(el) => { otpRefs.current[i] = el; }}
-                type="text"
-                inputMode="numeric"
-                maxLength={i === 0 ? 6 : 1}
-                value={digit}
-                onChange={(e) => handleOtpChange(i, e.target.value)}
-                onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                className="w-11 h-12 text-center text-lg font-mono font-bold bg-muted/40 border border-border rounded-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all"
-                autoComplete="one-time-code"
-              />
-            ))}
+          {/* Single alphanumeric code input — token from Supabase magiclink
+              flow is currently 8 chars, may include letters. */}
+          <div className="flex justify-center mb-6">
+            <input
+              ref={otpInputRef}
+              type="text"
+              inputMode="text"
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
+              maxLength={12}
+              value={otpCode}
+              onChange={(e) => handleOtpChange(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleVerifyOtp(); }}
+              placeholder="CODE"
+              className="w-full h-12 text-center text-lg font-mono font-bold tracking-[0.4em] bg-muted/40 border border-border rounded-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all"
+              autoComplete="one-time-code"
+            />
           </div>
 
           <button
             onClick={handleVerifyOtp}
-            disabled={loading || otpDigits.join('').length !== 6}
+            disabled={loading || otpCode.trim().length < 6}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-sm bg-primary text-primary-foreground font-mono text-[11px] tracking-widest hover:bg-primary/90 disabled:opacity-50 transition-colors"
           >
             VERIFY

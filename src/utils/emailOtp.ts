@@ -174,7 +174,7 @@ export async function verifyEmailOtp(
     tokenLength: normalizedToken.length,
     tokenFormat: /^\d+$/.test(normalizedToken) ? 'numeric' : 'non-numeric',
     tokenSuffix: maskedToken,
-    verifyType: 'email',
+    verifyType: 'magiclink',
     elapsedSinceSendSeconds,
     originalLength: token.length,
     normalizedLength: normalizedToken.length,
@@ -182,17 +182,21 @@ export async function verifyEmailOtp(
     projectRef: getProjectRefFromUrl(import.meta.env.VITE_SUPABASE_URL),
   });
 
+  // Supabase's signInWithOtp issues a `magiclink` auth event whose token
+  // can be alphanumeric (currently 8 chars). The matching verify type is
+  // `magiclink`. Using `email` here returns "token has expired or is invalid"
+  // even for a fresh, correct token.
   const { error } = await supabase.auth.verifyOtp({
     email: normalizedEmail,
     token: normalizedToken,
-    type: 'email',
+    type: 'magiclink',
   });
 
   if (error) {
     console.warn('[AUTH/OTP] verifyEmailOtp failed', {
       email: maskEmail(normalizedEmail),
       timestamp: new Date().toISOString(),
-      verifyType: 'email',
+      verifyType: 'magiclink',
       elapsedSinceSendSeconds,
       tokenLength: normalizedToken.length,
       tokenFormat: /^\d+$/.test(normalizedToken) ? 'numeric' : 'non-numeric',
@@ -201,14 +205,14 @@ export async function verifyEmailOtp(
       code: (error as any)?.code ?? null,
       status: (error as any)?.status ?? null,
     });
-    console.warn('[AUTH/OTP] hard stop after type=email failure');
+    console.warn('[AUTH/OTP] hard stop after type=magiclink failure');
     return { error: error as Error };
   }
 
   console.log('[AUTH/OTP] verifyEmailOtp success', {
     email: maskEmail(normalizedEmail),
     timestamp: new Date().toISOString(),
-    verifyType: 'email',
+    verifyType: 'magiclink',
     elapsedSinceSendSeconds,
   });
   return { error: null };
