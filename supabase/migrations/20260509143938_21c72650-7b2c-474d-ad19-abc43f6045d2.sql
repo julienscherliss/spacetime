@@ -1,0 +1,1 @@
+ALTER TABLE public.invoice_style_settings ADD COLUMN IF NOT EXISTS default_currency text NOT NULL DEFAULT 'USD';
