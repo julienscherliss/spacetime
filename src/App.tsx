@@ -21,6 +21,8 @@ import Landing from "./pages/Landing.tsx";
 import ResetPassword from "./pages/ResetPassword.tsx";
 import AuthCallback from "./pages/AuthCallback.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import Privacy from "./pages/Privacy.tsx";
+import Terms from "./pages/Terms.tsx";
 import { LibraryDueDatePrompt } from "@/components/LibraryDueDatePrompt";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
@@ -228,6 +230,8 @@ const App = () => {
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/app" element={<AuthGuard><Index /></AuthGuard>} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
