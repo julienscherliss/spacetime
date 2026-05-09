@@ -394,11 +394,11 @@ export function AppNav() {
           )}
 
           {/* Active subscription — show countdown when ≤7 days until renewal */}
-          {subscription?.status === 'active' && subscription.current_period_end && (() => {
+          {subscription?.status === 'active' && subscription.current_period_end && !subscription.lifetime_access && (() => {
             const end = new Date(subscription.current_period_end);
             const now = new Date();
             const daysLeft = Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
-            if (daysLeft > 7) return null;
+            if (daysLeft > 7 || daysLeft <= 0) return null;
             return (
               <button
                 onClick={() => window.dispatchEvent(new CustomEvent('toggle-subscribe'))}

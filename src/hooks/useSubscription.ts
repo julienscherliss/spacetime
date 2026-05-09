@@ -54,6 +54,7 @@ export function useSubscription() {
   }, []);
 
   const hasAccess = (() => {
+    if (isAdmin) return true;
     if (!subscription) return false;
     if (subscription.lifetime_access) return true;
     if (subscription.status === 'active') return true;
