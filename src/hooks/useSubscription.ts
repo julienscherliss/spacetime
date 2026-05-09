@@ -25,22 +25,22 @@ export function useSubscription() {
   useEffect(() => {
     let cancelled = false;
 
-    async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user || cancelled) { setLoading(false); return; }
+    async function load(userId: string) {
+      if (cancelled) return;
+      setLoading(true);
 
       // Check subscription
       const { data: sub } = await supabase
         .from('subscriptions')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .maybeSingle();
 
       // Check admin role
       const { data: roles } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', user.id);
+        .eq('user_id', userId);
 
       if (!cancelled) {
         setSubscription(sub as Subscription | null);
@@ -49,8 +49,34 @@ export function useSubscription() {
       }
     }
 
-    load();
-    return () => { cancelled = true; };
+    // Initial load — wait for session so we don't settle with null user
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (cancelled) return;
+      if (session?.user) {
+        load(session.user.id);
+      } else {
+        setSubscription(null);
+        setIsAdmin(false);
+        setLoading(false);
+      }
+    });
+
+    // Re-run on any auth change (sign-in after mount, token refresh, sign-out)
+    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (cancelled) return;
+      if (session?.user) {
+        load(session.user.id);
+      } else {
+        setSubscription(null);
+        setIsAdmin(false);
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      authSub.unsubscribe();
+    };
   }, []);
 
   const hasAccess = (() => {
