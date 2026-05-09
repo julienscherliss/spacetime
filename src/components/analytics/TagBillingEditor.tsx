@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useBillingStore, type FlatLineItem } from '@/store/billingStore';
 import { useLibraryStore } from '@/store/libraryStore';
+import { useInvoiceStyleStore } from '@/store/invoiceStyleStore';
+import { currencySymbol } from '@/lib/billingFormat';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { ClientPicker } from './ClientPicker';
@@ -19,8 +21,12 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
   const hasSubtags = useLibraryStore(s =>
     s.categories.some(c => !c.archived && c.value.startsWith(tag + '/'))
   );
+  const styleLoaded = useInvoiceStyleStore(s => s.loaded);
+  const loadStyle = useInvoiceStyleStore(s => s.load);
+  const globalCurrency = useInvoiceStyleStore(s => s.style.defaultCurrency);
 
   useEffect(() => { if (!loaded) load(); }, [loaded, load]);
+  useEffect(() => { if (!styleLoaded) loadStyle(); }, [styleLoaded, loadStyle]);
 
   const [billable, setBillable] = useState(settings?.billable ?? false);
   const [parentOnly, setParentOnly] = useState(settings?.parentOnly ?? false);
@@ -29,7 +35,9 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
   const [flatRate, setFlatRate] = useState<string>(String(settings?.flatRate ?? ''));
   const [flatItems, setFlatItems] = useState<FlatLineItem[]>(settings?.flatItems ?? []);
   const [clientId, setClientId] = useState<string | null>(settings?.clientId ?? null);
-  const [currency, setCurrency] = useState(settings?.currency ?? 'USD');
+  // Currency is now a global setting (see Billing panel header).
+  const currency = globalCurrency || 'USD';
+  const symbol = currencySymbol(currency);
 
   // Sync local state when settings load
   useEffect(() => {
@@ -41,7 +49,6 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
       setFlatRate(String(settings.flatRate || ''));
       setFlatItems(settings.flatItems ?? []);
       setClientId(settings.clientId);
-      setCurrency(settings.currency);
     }
   }, [settings]);
 
@@ -155,6 +162,7 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
                 PER HOUR
               </label>
               <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                <span className="text-[11px] font-mono text-muted-foreground/60 tabular-nums shrink-0">{symbol}</span>
                 <input
                   type="number"
                   min={0}
@@ -164,33 +172,15 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
                   onBlur={() => save({ hourlyRate: parseFloat(hourlyRate) || 0 })}
                   className="input-compact flex-1 min-w-0 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50 tabular-nums"
                 />
-                <input
-                  type="text"
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value.toUpperCase().slice(0, 3))}
-                  onBlur={() => save({ currency: currency || 'USD' })}
-                  maxLength={3}
-                  className="input-compact w-14 shrink-0 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50 uppercase"
-                />
               </div>
             </div>
           ) : (
             <div className="space-y-1.5 min-w-0">
               <div className="flex items-center gap-2 min-w-0">
                 <label className="text-[9px] font-mono text-muted-foreground/50 tracking-wide w-16 shrink-0">FLAT FEE</label>
-                <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
-                  <span className="text-[10px] font-mono text-muted-foreground/60 tabular-nums truncate">
-                    {flatItems.length === 0 ? 'No items yet' : `${flatItems.length} item${flatItems.length === 1 ? '' : 's'} · ${flatTotal.toFixed(2)} ${currency}`}
-                  </span>
-                  <input
-                    type="text"
-                    value={currency}
-                    onChange={(e) => setCurrency(e.target.value.toUpperCase().slice(0, 3))}
-                    onBlur={() => save({ currency: currency || 'USD' })}
-                    maxLength={3}
-                    className="input-compact w-14 shrink-0 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50 uppercase"
-                  />
-                </div>
+                <span className="flex-1 min-w-0 text-[10px] font-mono text-muted-foreground/60 tabular-nums">
+                  {flatItems.length === 0 ? 'No items yet' : `${flatItems.length} item${flatItems.length === 1 ? '' : 's'} · ${symbol}${flatTotal.toFixed(2)}`}
+                </span>
               </div>
 
               <div className="pl-0 sm:pl-[72px] space-y-1.5 min-w-0">
@@ -220,6 +210,7 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
                       onBlur={() => commitFlatItems(flatItems)}
                       className="input-compact w-12 sm:w-14 shrink-0 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50 tabular-nums text-right"
                     />
+                    <span className="text-[11px] font-mono text-muted-foreground/60 tabular-nums shrink-0">{symbol}</span>
                     <input
                       type="number"
                       min={0}
