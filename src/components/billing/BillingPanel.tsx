@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Receipt } from 'lucide-react';
 import { BillingModule } from '@/components/analytics/BillingModule';
 import { useBillingStore } from '@/store/billingStore';
+import { useInvoiceStyleStore } from '@/store/invoiceStyleStore';
+import { currencySymbol } from '@/lib/billingFormat';
 import { BillableTimeBreakdown } from './BillableTimeBreakdown';
 
 interface Props {
@@ -13,8 +15,15 @@ interface Props {
 export function BillingPanel({ open, onClose }: Props) {
   const loaded = useBillingStore(s => s.loaded);
   const load = useBillingStore(s => s.load);
+  const styleLoaded = useInvoiceStyleStore(s => s.loaded);
+  const loadStyle = useInvoiceStyleStore(s => s.load);
+  const defaultCurrency = useInvoiceStyleStore(s => s.style.defaultCurrency);
+  const saveStyle = useInvoiceStyleStore(s => s.save);
 
   useEffect(() => { if (open && !loaded) load(); }, [open, loaded, load]);
+  useEffect(() => { if (open && !styleLoaded) loadStyle(); }, [open, styleLoaded, loadStyle]);
+
+  const CURRENCIES = ['USD','EUR','GBP','CAD','AUD','JPY','CHF','SEK','NOK','DKK','MXN','BRL','INR','SGD','HKD','NZD','ZAR','PLN','TRY'];
 
   return (
     <AnimatePresence>
@@ -47,6 +56,26 @@ export function BillingPanel({ open, onClose }: Props) {
             </div>
 
             <div className="border-t border-dashed border-border/30 mb-4" />
+
+            {/* Global settings */}
+            <div className="mb-4 flex items-center justify-between gap-2 px-3 py-2 border border-border/30 rounded-md bg-card/40">
+              <div className="flex flex-col">
+                <span className="text-[9px] font-mono text-muted-foreground/50 tracking-[0.15em]">CURRENCY</span>
+                <span className="text-[9px] font-mono text-muted-foreground/40">Used across all billable tags & invoices</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-mono text-muted-foreground tabular-nums">{currencySymbol(defaultCurrency)}</span>
+                <select
+                  value={defaultCurrency || 'USD'}
+                  onChange={(e) => saveStyle({ defaultCurrency: e.target.value })}
+                  className="bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
+                >
+                  {CURRENCIES.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
 
             {/* Time spent by billable tag — with date-range, staleness, archive & delete */}
             <BillableTimeBreakdown />

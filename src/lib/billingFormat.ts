@@ -11,6 +11,29 @@ export function formatCurrency(amount: number, currency = 'USD'): string {
   }
 }
 
+/**
+ * Return the symbol for a given ISO currency code, e.g. "USD" → "$".
+ * Falls back to the code itself for unknown currencies.
+ */
+export function currencySymbol(code = 'USD'): string {
+  const cc = (code || 'USD').toUpperCase();
+  const map: Record<string, string> = {
+    USD: '$', CAD: 'CA$', AUD: 'A$', NZD: 'NZ$',
+    EUR: '€', GBP: '£', JPY: '¥', CNY: '¥', KRW: '₩',
+    INR: '₹', CHF: 'CHF', SEK: 'kr', NOK: 'kr', DKK: 'kr',
+    MXN: 'MX$', BRL: 'R$', ZAR: 'R', SGD: 'S$', HKD: 'HK$',
+    PLN: 'zł', TRY: '₺', RUB: '₽', AED: 'د.إ',
+  };
+  if (map[cc]) return map[cc];
+  try {
+    const parts = new Intl.NumberFormat('en-US', { style: 'currency', currency: cc })
+      .formatToParts(0);
+    const sym = parts.find(p => p.type === 'currency')?.value;
+    if (sym) return sym;
+  } catch { /* ignore */ }
+  return cc;
+}
+
 export function formatHours(minutes: number): string {
   const h = minutes / 60;
   if (h === 0) return '0h';

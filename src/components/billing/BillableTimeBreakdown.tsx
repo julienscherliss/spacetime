@@ -6,6 +6,7 @@ import { useLibraryStore } from '@/store/libraryStore';
 import { useBillingStore } from '@/store/billingStore';
 import { findBillableAncestor } from '@/lib/billingInheritance';
 import { TagBillingEditor } from '@/components/analytics/TagBillingEditor';
+import { currencySymbol } from '@/lib/billingFormat';
 import {
   startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth,
   subDays, subWeeks, subMonths, parseISO, isWithinInterval, differenceInDays, format,
@@ -176,9 +177,10 @@ export function BillableTimeBreakdown() {
       ? direct
       : findBillableAncestor(tagValue, settings);
     if (!eff || eff.parentOnly) return '';
+    const sym = currencySymbol(eff.currency);
     return eff.rateType === 'hourly'
-      ? `${eff.hourlyRate} ${eff.currency}/h`
-      : `${eff.flatRate} ${eff.currency} flat`;
+      ? `${sym}${eff.hourlyRate}/h`
+      : `${sym}${eff.flatRate} flat`;
   };
 
   const rows: TagRow[] = useMemo(() => {

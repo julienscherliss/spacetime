@@ -347,6 +347,7 @@ export type Database = {
           business_email: string
           business_name: string
           created_at: string
+          default_currency: string
           footer_note: string
           heading_font: string
           id: string
@@ -363,6 +364,7 @@ export type Database = {
           business_email?: string
           business_name?: string
           created_at?: string
+          default_currency?: string
           footer_note?: string
           heading_font?: string
           id?: string
@@ -379,6 +381,7 @@ export type Database = {
           business_email?: string
           business_name?: string
           created_at?: string
+          default_currency?: string
           footer_note?: string
           heading_font?: string
           id?: string
