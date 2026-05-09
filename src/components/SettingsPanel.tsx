@@ -24,6 +24,8 @@ import {
 } from '@/utils/webNotificationService';
 import { useTaskStore } from '@/store/taskStore';
 import { useBillingStore } from '@/store/billingStore';
+import { useInvoiceStyleStore } from '@/store/invoiceStyleStore';
+import { currencySymbol } from '@/lib/billingFormat';
 
 interface SettingsPanelProps {
   open: boolean;
@@ -38,6 +40,12 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const hasBillableTag = billingSettings.some(s => s.billable);
   const billingEffectivelyOn = showBilling || hasBillableTag;
   useEffect(() => { if (open && !billingLoaded) loadBilling(); }, [open, billingLoaded, loadBilling]);
+  const styleLoaded = useInvoiceStyleStore(s => s.loaded);
+  const loadStyle = useInvoiceStyleStore(s => s.load);
+  const defaultCurrency = useInvoiceStyleStore(s => s.style.defaultCurrency);
+  const saveStyle = useInvoiceStyleStore(s => s.save);
+  useEffect(() => { if (open && !styleLoaded) loadStyle(); }, [open, styleLoaded, loadStyle]);
+  const CURRENCIES = ['USD','EUR','GBP','CAD','AUD','JPY','CHF','SEK','NOK','DKK','MXN','BRL','INR','SGD','HKD','NZD','ZAR','PLN','TRY'];
   const { connected, email, calendars, loading, checkStatus, startAuth, refreshCalendarData, toggleCalendar, disconnect } = useCalendarStore();
   const nativeRuntime = isNativePlatform();
   const [search, setSearch] = useState('');
@@ -615,6 +623,30 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 <div className="w-4 h-4 rounded-full bg-white shadow-sm" />
               </div>
             </button>
+
+            {/* Currency selector — only when billing is on */}
+            {billingEffectivelyOn && (
+              <div className="w-full flex items-center justify-between bg-muted/30 border border-border/50 rounded-sm p-3 min-h-[48px] mb-3">
+                <div className="text-left">
+                  <div className="text-[12px] font-mono text-foreground">Currency</div>
+                  <div className="text-[10px] font-mono text-muted-foreground/50 mt-0.5">
+                    Used across all billable tags & invoices
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[12px] font-mono text-muted-foreground tabular-nums">{currencySymbol(defaultCurrency)}</span>
+                  <select
+                    value={defaultCurrency || 'USD'}
+                    onChange={(e) => saveStyle({ defaultCurrency: e.target.value })}
+                    className="input-compact bg-background border border-border/50 rounded-sm px-2 py-1 text-[12px] font-mono text-foreground focus:outline-none focus:border-primary/50"
+                  >
+                    {CURRENCIES.map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
 
             {/* Comfort Mode toggle */}
             <button
