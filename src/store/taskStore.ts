@@ -10,6 +10,7 @@ import { getOccupiedSlots, findValidPosition } from '@/utils/collisionDetection'
 import { timeToMinutes, minutesToTime } from '@/hooks/useCurrentTime';
 import { rebalanceGroup as computeRebalance, MIN_CHILD_DURATION } from '@/utils/groupRebalance';
 import { toast } from 'sonner';
+import { logAudit } from '@/utils/auditLog';
 // Reflection prompt is now triggered from drop handlers (constraint violations),
 // not from inside taskStore. See src/store/reflectionStore.ts.
 
@@ -552,6 +553,12 @@ export const useTaskStore = create<TaskState>()(
         }
         task = enforceRecurringLinkInvariant(task);
         set((s) => ({ tasks: [...s.tasks, task] }));
+        logAudit({
+          action: task.isRoutine ? 'routine.toggled' : 'task.created',
+          objectType: task.isRoutine ? 'routine' : 'task',
+          objectId: task.id,
+          next: { title: task.title, date: task.date, time: task.time, duration: task.duration, priority: task.priority },
+        });
         return task.id;
       },
 
@@ -665,6 +672,7 @@ export const useTaskStore = create<TaskState>()(
         }));
         void cancelNotificationsForTask(id);
         cancelWebNotificationsForTask(id);
+        logAudit({ action: 'task.completed', objectType: 'task', objectId: id });
         const state = get();
         const today = new Date().toISOString().split('T')[0];
         const todayTasks = state.tasks.filter((t) => t.date === today && !t.archivedAt);
@@ -680,10 +688,12 @@ export const useTaskStore = create<TaskState>()(
             t.id === id ? { ...t, completed: false, archivedAt: null, archiveReason: null } : t
           ),
         }));
+        logAudit({ action: 'task.uncompleted', objectType: 'task', objectId: id });
       },
 
       deleteTask: (id) => {
         const now = new Date().toISOString();
+        const prev = get().tasks.find((t) => t.id === id);
         set((s) => ({
           tasks: s.tasks.map((t) =>
             t.id === id ? { ...t, archivedAt: now, archiveReason: 'deleted' as const } : t
@@ -692,6 +702,12 @@ export const useTaskStore = create<TaskState>()(
         }));
         void cancelNotificationsForTask(id);
         cancelWebNotificationsForTask(id);
+        logAudit({
+          action: 'task.deleted',
+          objectType: 'task',
+          objectId: id,
+          prev: prev ? { title: prev.title, date: prev.date, time: prev.time, priority: prev.priority } : undefined,
+        });
       },
 
       archiveTask: (id, reason) => {
@@ -705,11 +721,14 @@ export const useTaskStore = create<TaskState>()(
       },
 
       restoreTask: (id) =>
+      {
         set((s) => ({
           tasks: s.tasks.map((t) =>
             t.id === id ? { ...t, archivedAt: undefined, archiveReason: undefined, completed: false, inWaitingRoom: false } : t
           ),
-        })),
+        }));
+        logAudit({ action: 'task.restored', objectType: 'task', objectId: id });
+      },
 
       getArchivedTasks: () => get().tasks.filter((t) => !!t.archivedAt),
 
