@@ -15,6 +15,7 @@ export interface InvoiceStyle {
   paymentInstructions: string;
   termsText: string;
   footerNote: string;
+  defaultCurrency: string;
 }
 
 export const DEFAULT_STYLE: InvoiceStyle = {
@@ -28,6 +29,7 @@ export const DEFAULT_STYLE: InvoiceStyle = {
   paymentInstructions: '',
   termsText: '',
   footerNote: '',
+  defaultCurrency: 'USD',
 };
 
 interface State {
@@ -51,6 +53,7 @@ function rowToStyle(r: any): InvoiceStyle {
     paymentInstructions: r.payment_instructions || '',
     termsText: r.terms_text || '',
     footerNote: r.footer_note || '',
+    defaultCurrency: r.default_currency || 'USD',
   };
 }
 
@@ -67,6 +70,7 @@ function styleToRow(style: InvoiceStyle, userId: string) {
     payment_instructions: style.paymentInstructions,
     terms_text: style.termsText,
     footer_note: style.footerNote,
+    default_currency: style.defaultCurrency || 'USD',
   };
 }
 
