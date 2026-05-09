@@ -228,34 +228,36 @@ export default function Auth() {
               ENTER CODE
             </h1>
             <p className="text-[10px] font-mono text-muted-foreground/50 tracking-wide mt-2 leading-relaxed max-w-[240px] mx-auto">
-              We sent a 6-digit code to {email}. It expires in 10 minutes.
+              We sent a code to {email}. It expires in 10 minutes.
             </p>
             <p className="text-[9px] font-mono text-muted-foreground/40 tracking-wide mt-2 max-w-[240px] mx-auto">
               Use the newest code we sent. If you resend, all older codes stop working.
             </p>
           </div>
 
-          {/* 6-digit inputs */}
-          <div className="flex justify-center gap-2 mb-6">
-            {otpDigits.map((digit, i) => (
-              <input
-                key={i}
-                ref={(el) => { otpRefs.current[i] = el; }}
-                type="text"
-                inputMode="numeric"
-                maxLength={i === 0 ? 6 : 1}
-                value={digit}
-                onChange={(e) => handleOtpChange(i, e.target.value)}
-                onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                className="w-11 h-12 text-center text-lg font-mono font-bold bg-muted/40 border border-border rounded-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all"
-                autoComplete="one-time-code"
-              />
-            ))}
+          {/* Single alphanumeric code input — token from Supabase magiclink
+              flow is currently 8 chars, may include letters. */}
+          <div className="flex justify-center mb-6">
+            <input
+              ref={otpInputRef}
+              type="text"
+              inputMode="text"
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
+              maxLength={12}
+              value={otpCode}
+              onChange={(e) => handleOtpChange(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleVerifyOtp(); }}
+              placeholder="CODE"
+              className="w-full h-12 text-center text-lg font-mono font-bold tracking-[0.4em] bg-muted/40 border border-border rounded-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all"
+              autoComplete="one-time-code"
+            />
           </div>
 
           <button
             onClick={handleVerifyOtp}
-            disabled={loading || otpDigits.join('').length !== 6}
+            disabled={loading || otpCode.trim().length < 6}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-sm bg-primary text-primary-foreground font-mono text-[11px] tracking-widest hover:bg-primary/90 disabled:opacity-50 transition-colors"
           >
             VERIFY
