@@ -30,7 +30,7 @@ const queryClient = new QueryClient();
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
-  const { hasAccess, trialDaysLeft, loading: subLoading, refresh } = useSubscription();
+  const { hasAccess, trialDaysLeft, loading: subLoading, refresh } = useSubscription(user?.id ?? null, !authLoading);
   const [searchParams, setSearchParams] = useSearchParams();
   const [checkoutPolling, setCheckoutPolling] = useState(false);
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
