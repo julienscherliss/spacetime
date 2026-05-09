@@ -228,7 +228,7 @@ export default function Auth() {
               ENTER CODE
             </h1>
             <p className="text-[10px] font-mono text-muted-foreground/50 tracking-wide mt-2 leading-relaxed max-w-[240px] mx-auto">
-              We sent a code to {email}. It expires in 10 minutes.
+              Enter the code from your email sent to {email}. It expires in 10 minutes.
             </p>
             <p className="text-[9px] font-mono text-muted-foreground/40 tracking-wide mt-2 max-w-[240px] mx-auto">
               Use the newest code we sent. If you resend, all older codes stop working.
