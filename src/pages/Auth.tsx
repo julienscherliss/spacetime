@@ -23,12 +23,15 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const native = isNativePlatform();
 
-  // OTP state (mobile)
+  // OTP state (mobile + web)
+  // Supabase issues alphanumeric tokens (currently 8 chars) for the
+  // signInWithOtp / magiclink flow, so we accept the full token as a single
+  // string instead of constraining it to 6 numeric digits.
   const [step, setStep] = useState<Step>('entry');
-  const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
+  const [otpCode, setOtpCode] = useState('');
   const [otpAttempts, setOtpAttempts] = useState(0);
   const [resendCooldown, setResendCooldown] = useState(0);
-  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const otpInputRef = useRef<HTMLInputElement | null>(null);
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastOtpSendAtRef = useRef<number | null>(null);
 
@@ -50,10 +53,10 @@ export default function Auth() {
     return () => { if (cooldownRef.current) clearInterval(cooldownRef.current); };
   }, [resendCooldown > 0]);
 
-  // Auto-focus first OTP input
+  // Auto-focus OTP input
   useEffect(() => {
     if (step === 'otp') {
-      setTimeout(() => otpRefs.current[0]?.focus(), 100);
+      setTimeout(() => otpInputRef.current?.focus(), 100);
     }
   }, [step]);
 
@@ -88,7 +91,7 @@ export default function Auth() {
         return;
       }
       setStep('otp');
-      setOtpDigits(['', '', '', '', '', '']);
+      setOtpCode('');
       setOtpAttempts(0);
       setResendCooldown(OTP_RESEND_COOLDOWN_SECONDS);
       toast.success('Check your email — use the newest code we sent. Older codes no longer work.');
@@ -99,32 +102,16 @@ export default function Auth() {
     }
   }, [email, resendCooldown]);
 
-  const handleOtpChange = (index: number, value: string) => {
-    if (!/^\d*$/.test(value)) return;
-    const next = [...otpDigits];
-    if (value.length > 1) {
-      // Handle paste
-      const chars = value.slice(0, 6).split('');
-      chars.forEach((c, i) => { if (i + index < 6) next[i + index] = c; });
-      setOtpDigits(next);
-      const focusIdx = Math.min(index + chars.length, 5);
-      otpRefs.current[focusIdx]?.focus();
-      return;
-    }
-    next[index] = value;
-    setOtpDigits(next);
-    if (value && index < 5) otpRefs.current[index + 1]?.focus();
-  };
-
-  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
-      otpRefs.current[index - 1]?.focus();
-    }
+  const handleOtpChange = (value: string) => {
+    // Accept alphanumeric; strip whitespace. Do NOT uppercase/lowercase —
+    // pass token to Supabase exactly as received.
+    const cleaned = value.replace(/\s+/g, '').slice(0, 12);
+    setOtpCode(cleaned);
   };
 
   const handleVerifyOtp = async () => {
-    const token = otpDigits.join('');
-    if (token.length !== 6) { toast.error('Enter all 6 digits'); return; }
+    const token = otpCode.trim();
+    if (token.length < 6) { toast.error('Enter the full code from your email'); return; }
     if (otpAttempts >= 5) { toast.error('Too many attempts. Request a new code.'); return; }
 
     setLoading(true);
