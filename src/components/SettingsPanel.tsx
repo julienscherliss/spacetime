@@ -891,7 +891,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               ACCOUNT
             </div>
             <a
-              href="https://launchspacetime.com/privacy"
+              href="/privacy"
               target="_blank"
               rel="noopener noreferrer"
               className="w-full flex items-center justify-between bg-muted/20 border border-border/40 rounded-sm p-3 min-h-[44px] text-[12px] font-mono text-foreground hover:bg-muted/40 transition-colors"
@@ -900,7 +900,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               <span className="text-[10px] text-muted-foreground/50">↗</span>
             </a>
             <a
-              href="https://launchspacetime.com/terms"
+              href="/terms"
               target="_blank"
               rel="noopener noreferrer"
               className="w-full flex items-center justify-between bg-muted/20 border border-border/40 rounded-sm p-3 min-h-[44px] text-[12px] font-mono text-foreground hover:bg-muted/40 transition-colors"
