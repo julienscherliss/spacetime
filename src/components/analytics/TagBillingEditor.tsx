@@ -146,15 +146,14 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
             </div>
           </div>
 
-          {/* Rate type */}
-          <div className="flex items-center gap-2">
-            <label className="text-[9px] font-mono text-muted-foreground/50 tracking-wide w-16 shrink-0">TYPE</label>
-            <div className="flex gap-1">
+          {/* Rate type + amount */}
+          <div className="flex items-center gap-1.5 min-w-0">
+            <div className="flex gap-1 shrink-0">
               {(['hourly', 'flat'] as const).map(rt => (
                 <button
                   key={rt}
                   onClick={() => { setRateType(rt); save({ rateType: rt }); }}
-                  className={`px-2.5 py-1 rounded text-[10px] font-mono tracking-wide border transition-colors ${
+                  className={`px-2 py-1 rounded text-[9px] font-mono tracking-wide border transition-colors ${
                     rateType === rt
                       ? 'border-primary/60 bg-primary/10 text-primary'
                       : 'border-border/30 text-muted-foreground hover:text-foreground'
@@ -164,16 +163,9 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
                 </button>
               ))}
             </div>
-          </div>
-
-          {/* Rate */}
-          {rateType === 'hourly' ? (
-            <div className="flex items-center gap-2 min-w-0">
-              <label className="text-[9px] font-mono text-muted-foreground/50 tracking-wide w-16 shrink-0">
-                PER HOUR
-              </label>
-              <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                <span className="text-[11px] font-mono text-muted-foreground/60 tabular-nums shrink-0">{symbol}</span>
+            {rateType === 'hourly' && (
+              <div className="flex items-center flex-1 min-w-0 border border-border/30 rounded focus-within:border-primary/50">
+                <span className="text-[10px] font-mono text-muted-foreground/60 tabular-nums shrink-0 pl-2">{symbol}</span>
                 <input
                   type="number"
                   min={0}
@@ -181,15 +173,19 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
                   value={hourlyRate}
                   onChange={(e) => setHourlyRate(e.target.value)}
                   onBlur={() => save({ hourlyRate: parseFloat(hourlyRate) || 0 })}
-                  className="input-compact flex-1 min-w-0 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50 tabular-nums"
+                  className="input-compact flex-1 min-w-0 bg-transparent border-0 px-1.5 py-1 text-[10px] font-mono text-foreground focus:outline-none tabular-nums"
                 />
+                <span className="text-[10px] font-mono text-muted-foreground/40 tabular-nums shrink-0 pr-2">/hr</span>
               </div>
-            </div>
-          ) : (
+            )}
+          </div>
+
+          {/* Flat fee items */}
+          {rateType === 'flat' && (
             <div className="space-y-1.5 min-w-0">
               <div className="flex items-center gap-2 min-w-0">
                 <label className="text-[9px] font-mono text-muted-foreground/50 tracking-wide w-16 shrink-0">FLAT FEE</label>
-                <span className="flex-1 min-w-0 text-[10px] font-mono text-muted-foreground/60 tabular-nums">
+                <span className="flex-1 min-w-0 text-[9px] font-mono text-muted-foreground/60 tabular-nums">
                   {flatItems.length === 0 ? 'No items yet' : `${flatItems.length} item${flatItems.length === 1 ? '' : 's'} · ${symbol}${flatTotal.toFixed(2)}`}
                 </span>
               </div>
@@ -209,7 +205,7 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
                       value={it.description}
                       onChange={(e) => updateItem(idx, { description: e.target.value })}
                       onBlur={() => commitFlatItems(flatItems)}
-                      className="input-compact w-full sm:flex-1 sm:w-auto min-w-0 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
+                      className="input-compact w-full sm:flex-1 sm:w-auto min-w-0 bg-transparent border border-border/30 rounded px-2 py-1 text-[10px] font-mono text-foreground focus:outline-none focus:border-primary/50"
                     />
                     <input
                       type="number"
@@ -219,9 +215,9 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
                       value={Number.isFinite(it.quantity) && it.quantity ? it.quantity : 1}
                       onChange={(e) => updateItem(idx, { quantity: Math.max(1, parseInt(e.target.value, 10) || 1) })}
                       onBlur={() => commitFlatItems(flatItems)}
-                      className="input-compact w-12 sm:w-14 shrink-0 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50 tabular-nums text-right"
+                      className="input-compact w-12 sm:w-14 shrink-0 bg-transparent border border-border/30 rounded px-2 py-1 text-[10px] font-mono text-foreground focus:outline-none focus:border-primary/50 tabular-nums text-right"
                     />
-                    <span className="text-[11px] font-mono text-muted-foreground/60 tabular-nums shrink-0">{symbol}</span>
+                    <span className="text-[10px] font-mono text-muted-foreground/60 tabular-nums shrink-0">{symbol}</span>
                     <input
                       type="number"
                       min={0}
@@ -230,7 +226,7 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
                       value={Number.isFinite(it.amount) ? it.amount : 0}
                       onChange={(e) => updateItem(idx, { amount: parseFloat(e.target.value) || 0 })}
                       onBlur={() => commitFlatItems(flatItems)}
-                      className="input-compact flex-1 sm:flex-none sm:w-24 min-w-0 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50 tabular-nums text-right"
+                      className="input-compact flex-1 sm:flex-none sm:w-24 min-w-0 bg-transparent border border-border/30 rounded px-2 py-1 text-[10px] font-mono text-foreground focus:outline-none focus:border-primary/50 tabular-nums text-right"
                     />
                     <button
                       type="button"
