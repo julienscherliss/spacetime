@@ -9,6 +9,7 @@ import { HelpPanel } from './HelpPanel';
 import { ColorSchemePanel } from './ColorSchemePanel';
 import { AdminPanel } from './AdminPanel';
 import { DeleteAccountModal } from './DeleteAccountModal';
+import { DebugPanel } from './DebugPanel';
 import { isNativePlatform } from '@/utils/nativePlatform';
 import { useSubscription } from '@/hooks/useSubscription';
 import type { NotificationLevel } from '@/utils/notificationService';
@@ -55,6 +56,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const { isAdmin, subscription, trialDaysLeft, cancellingDaysLeft } = useSubscription();
   const [pwMode, setPwMode] = useState<'closed' | 'change' | 'reset'>('closed');
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
+  const [debugOpen, setDebugOpen] = useState(false);
   const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
@@ -922,6 +924,14 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
             >
               DELETE ACCOUNT
             </button>
+            {showAdvanced && (
+              <button
+                onClick={() => setDebugOpen(true)}
+                className="w-full flex items-center justify-center gap-2 bg-muted/20 border border-border/40 rounded-sm p-3 min-h-[44px] text-[11px] font-mono tracking-[0.15em] text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+              >
+                DEBUG · PRODUCTION READINESS
+              </button>
+            )}
           </div>
 
         </div>
@@ -931,6 +941,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
     <HelpPanel open={helpOpen} onClose={() => setHelpOpen(false)} />
     <AdminPanel open={adminOpen} onClose={() => setAdminOpen(false)} />
     <DeleteAccountModal open={deleteAccountOpen} onClose={() => setDeleteAccountOpen(false)} />
+    <DebugPanel open={debugOpen} onClose={() => setDebugOpen(false)} />
     </>
   );
 }
