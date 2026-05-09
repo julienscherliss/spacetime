@@ -6,6 +6,7 @@ import { useLibraryStore } from '@/store/libraryStore';
 import { useBillingStore } from '@/store/billingStore';
 import { findBillableAncestor } from '@/lib/billingInheritance';
 import { TagBillingEditor } from '@/components/analytics/TagBillingEditor';
+import { currencySymbol } from '@/lib/billingFormat';
 import {
   startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth,
   subDays, subWeeks, subMonths, parseISO, isWithinInterval, differenceInDays, format,
