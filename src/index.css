@@ -246,6 +246,11 @@
     [contenteditable="true"] {
       font-size: 16px !important;
     }
+    /* Opt-out for compact inputs (e.g. billing line items) */
+    input.input-compact,
+    textarea.input-compact {
+      font-size: 11px !important;
+    }
   }
 }
 
