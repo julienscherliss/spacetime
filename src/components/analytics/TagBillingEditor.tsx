@@ -3,6 +3,7 @@ import { useBillingStore, type FlatLineItem } from '@/store/billingStore';
 import { useLibraryStore } from '@/store/libraryStore';
 import { useInvoiceStyleStore } from '@/store/invoiceStyleStore';
 import { currencySymbol } from '@/lib/billingFormat';
+import { findBillableAncestor } from '@/lib/billingInheritance';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { ClientPicker } from './ClientPicker';
@@ -15,6 +16,7 @@ interface Props {
 
 export function TagBillingEditor({ tag, tagLabel }: Props) {
   const settings = useBillingStore(s => s.settings.find(x => x.tagValue === tag));
+  const allSettings = useBillingStore(s => s.settings);
   const upsertSettings = useBillingStore(s => s.upsertSettings);
   const loaded = useBillingStore(s => s.loaded);
   const load = useBillingStore(s => s.load);
@@ -28,7 +30,12 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
   useEffect(() => { if (!loaded) load(); }, [loaded, load]);
   useEffect(() => { if (!styleLoaded) loadStyle(); }, [styleLoaded, loadStyle]);
 
-  const [billable, setBillable] = useState(settings?.billable ?? false);
+  // Effective billable status: own row OR inherited from a parentOnly/billable ancestor.
+  const inheritedAncestor = findBillableAncestor(tag, allSettings.filter(s => s.tagValue !== tag));
+  const isInheritedBillable = !settings && !!inheritedAncestor;
+  const [billable, setBillable] = useState<boolean>(
+    settings ? settings.billable : isInheritedBillable
+  );
   const [parentOnly, setParentOnly] = useState(settings?.parentOnly ?? false);
   const [rateType, setRateType] = useState<'hourly' | 'flat'>(settings?.rateType ?? 'hourly');
   const [hourlyRate, setHourlyRate] = useState<string>(String(settings?.hourlyRate ?? ''));
@@ -49,8 +56,12 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
       setFlatRate(String(settings.flatRate || ''));
       setFlatItems(settings.flatItems ?? []);
       setClientId(settings.clientId);
+    } else {
+      // No own row — reflect inherited state so user can opt out clearly.
+      setBillable(isInheritedBillable);
+      setParentOnly(false);
     }
-  }, [settings]);
+  }, [settings, isInheritedBillable]);
 
   const save = (patch: Parameters<typeof upsertSettings>[1]) => {
     upsertSettings(tag, patch);
