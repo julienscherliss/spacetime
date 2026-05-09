@@ -112,18 +112,20 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
       </div>
 
       {billable && (
-        <div className="p-3 space-y-3">
+        <div className="p-3 space-y-3 min-w-0">
           {/* Client */}
-          <div className="flex items-center gap-2 relative">
+          <div className="flex items-center gap-2 relative min-w-0">
             <label className="text-[9px] font-mono text-muted-foreground/50 tracking-wide w-16 shrink-0">CLIENT</label>
-            <ClientPicker
+            <div className="flex-1 min-w-0">
+              <ClientPicker
               clientId={clientId}
               onChange={(c) => {
                 setClientId(c?.id ?? null);
                 save({ clientId: c?.id ?? null, clientName: c?.name ?? '' });
               }}
               allowEdit
-            />
+              />
+            </div>
           </div>
 
           {/* Rate type */}
@@ -148,11 +150,11 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
 
           {/* Rate */}
           {rateType === 'hourly' ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 min-w-0">
               <label className="text-[9px] font-mono text-muted-foreground/50 tracking-wide w-16 shrink-0">
                 PER HOUR
               </label>
-              <div className="flex items-center gap-1.5 flex-1">
+              <div className="flex items-center gap-1.5 flex-1 min-w-0">
                 <input
                   type="number"
                   min={0}
@@ -160,7 +162,7 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
                   value={hourlyRate}
                   onChange={(e) => setHourlyRate(e.target.value)}
                   onBlur={() => save({ hourlyRate: parseFloat(hourlyRate) || 0 })}
-                  className="w-24 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50 tabular-nums"
+                  className="flex-1 min-w-0 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50 tabular-nums"
                 />
                 <input
                   type="text"
@@ -168,16 +170,16 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
                   onChange={(e) => setCurrency(e.target.value.toUpperCase().slice(0, 3))}
                   onBlur={() => save({ currency: currency || 'USD' })}
                   maxLength={3}
-                  className="w-14 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50 uppercase"
+                  className="w-14 shrink-0 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50 uppercase"
                 />
               </div>
             </div>
           ) : (
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2">
+            <div className="space-y-1.5 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
                 <label className="text-[9px] font-mono text-muted-foreground/50 tracking-wide w-16 shrink-0">FLAT FEE</label>
-                <div className="flex-1 flex items-center justify-between">
-                  <span className="text-[10px] font-mono text-muted-foreground/60 tabular-nums">
+                <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
+                  <span className="text-[10px] font-mono text-muted-foreground/60 tabular-nums truncate">
                     {flatItems.length === 0 ? 'No items yet' : `${flatItems.length} item${flatItems.length === 1 ? '' : 's'} · ${flatTotal.toFixed(2)} ${currency}`}
                   </span>
                   <input
@@ -186,52 +188,52 @@ export function TagBillingEditor({ tag, tagLabel }: Props) {
                     onChange={(e) => setCurrency(e.target.value.toUpperCase().slice(0, 3))}
                     onBlur={() => save({ currency: currency || 'USD' })}
                     maxLength={3}
-                    className="w-14 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50 uppercase"
+                    className="w-14 shrink-0 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50 uppercase"
                   />
                 </div>
               </div>
 
-              <div className="pl-[72px] space-y-1.5">
-                <div className="flex items-center gap-1.5 px-1">
+              <div className="pl-0 sm:pl-[72px] space-y-1.5 min-w-0">
+                <div className="hidden sm:flex items-center gap-1.5 px-1">
                   <span className="flex-1 text-[8px] font-mono text-muted-foreground/40 tracking-[0.15em]">DESCRIPTION</span>
                   <span className="w-14 text-[8px] font-mono text-muted-foreground/40 tracking-[0.15em] text-right">QTY</span>
                   <span className="w-24 text-[8px] font-mono text-muted-foreground/40 tracking-[0.15em] text-right">AMOUNT</span>
                   <span className="w-5" />
                 </div>
                 {flatItems.map((it, idx) => (
-                  <div key={idx} className="flex items-center gap-1.5">
+                  <div key={idx} className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 min-w-0">
                     <input
                       type="text"
                       placeholder="Description"
                       value={it.description}
                       onChange={(e) => updateItem(idx, { description: e.target.value })}
                       onBlur={() => commitFlatItems(flatItems)}
-                      className="flex-1 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
+                      className="w-full sm:flex-1 sm:w-auto min-w-0 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50"
                     />
                     <input
                       type="number"
                       min={1}
                       step={1}
-                      placeholder="1"
+                      placeholder="QTY"
                       value={Number.isFinite(it.quantity) && it.quantity ? it.quantity : 1}
                       onChange={(e) => updateItem(idx, { quantity: Math.max(1, parseInt(e.target.value, 10) || 1) })}
                       onBlur={() => commitFlatItems(flatItems)}
-                      className="w-14 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50 tabular-nums text-right"
+                      className="w-12 sm:w-14 shrink-0 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50 tabular-nums text-right"
                     />
                     <input
                       type="number"
                       min={0}
                       step={10}
-                      placeholder="0"
+                      placeholder="AMT"
                       value={Number.isFinite(it.amount) ? it.amount : 0}
                       onChange={(e) => updateItem(idx, { amount: parseFloat(e.target.value) || 0 })}
                       onBlur={() => commitFlatItems(flatItems)}
-                      className="w-24 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50 tabular-nums text-right"
+                      className="flex-1 sm:flex-none sm:w-24 min-w-0 bg-transparent border border-border/30 rounded px-2 py-1 text-[11px] font-mono text-foreground focus:outline-none focus:border-primary/50 tabular-nums text-right"
                     />
                     <button
                       type="button"
                       onClick={() => commitFlatItems(flatItems.filter((_, i) => i !== idx))}
-                      className="p-1 text-muted-foreground/40 hover:text-foreground transition-colors"
+                      className="p-1 shrink-0 text-muted-foreground/40 hover:text-foreground transition-colors"
                       aria-label="Remove line"
                     >
                       <X className="w-3 h-3" />

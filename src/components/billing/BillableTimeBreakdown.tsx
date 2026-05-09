@@ -459,9 +459,9 @@ export function BillableTimeBreakdown() {
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.15 }}
               className="overflow-hidden"
-              style={{ paddingLeft: 4 + depth * 14 + 14 }}
+              style={{ paddingLeft: depth * 8 }}
             >
-              <div className="pt-2 pb-1 pr-2">
+              <div className="pt-2 pb-1 pr-1 sm:pr-2 min-w-0">
                 <TagBillingEditor tag={r.value} tagLabel={r.label} />
               </div>
             </motion.div>
