@@ -90,7 +90,7 @@ export default function AuthCallback() {
   })();
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 gap-6">
+    <div className="brand-blue min-h-screen bg-background flex flex-col items-center justify-center px-6 gap-6">
       {status === 'redirecting' && (
         <>
           <div className="text-[11px] font-mono text-muted-foreground/40 tracking-widest">

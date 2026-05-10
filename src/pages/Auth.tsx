@@ -202,7 +202,7 @@ export default function Auth() {
   if (step === 'otp') {
     return (
       <div
-        className="min-h-screen bg-background flex items-center justify-center px-4"
+        className="brand-blue min-h-screen bg-background flex items-center justify-center px-4"
         style={{
           paddingTop: 'max(4rem, calc(env(safe-area-inset-top, 0px) + 3rem))',
           paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))',
@@ -288,7 +288,7 @@ export default function Auth() {
   if (native && step === 'password-login') {
     return (
       <div
-        className="min-h-screen bg-background flex items-center justify-center px-4"
+        className="brand-blue min-h-screen bg-background flex items-center justify-center px-4"
         style={{
           paddingTop: 'max(4rem, calc(env(safe-area-inset-top, 0px) + 3rem))',
           paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))',
@@ -390,7 +390,7 @@ export default function Auth() {
   if (native && step === 'entry') {
     return (
       <div
-        className="min-h-screen bg-background flex items-center justify-center px-4"
+        className="brand-blue min-h-screen bg-background flex items-center justify-center px-4"
         style={{
           paddingTop: 'max(4rem, calc(env(safe-area-inset-top, 0px) + 3rem))',
           paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))',
@@ -449,7 +449,7 @@ export default function Auth() {
   // ─── Web (desktop) auth — unchanged ───
   return (
     <div
-      className="min-h-screen bg-background flex items-center justify-center px-4"
+      className="brand-blue min-h-screen bg-background flex items-center justify-center px-4"
       style={{
         paddingTop: 'max(4rem, calc(env(safe-area-inset-top, 0px) + 3rem))',
         paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))',

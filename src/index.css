@@ -276,6 +276,19 @@
   filter: saturate(0.4) brightness(0.97);
 }
 
+/* Brand-blue scope — used on landing + unauthenticated pages (Auth, AuthCallback, ResetPassword).
+   Overrides the orange accent with a blue while keeping the rest of the palette intact. */
+.brand-blue {
+  --primary: 217 91% 55%;
+  --primary-foreground: 0 0% 100%;
+  --accent: 217 91% 55%;
+  --accent-foreground: 0 0% 100%;
+  --ring: 217 91% 55%;
+  --sidebar-primary: 217 91% 55%;
+  --sidebar-ring: 217 91% 55%;
+  --fixed-fill: 217 91% 55%;
+}
+
 /* Scrollbar — minimal */
 ::-webkit-scrollbar {
   width: 3px;
