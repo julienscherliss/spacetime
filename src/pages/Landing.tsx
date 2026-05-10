@@ -24,7 +24,7 @@ export default function Landing() {
   const [activeFeature, setActiveFeature] = useState<number>(0);
 
   return (
-    <div className="min-h-screen bg-background text-foreground selection:bg-primary/20">
+    <div className="brand-blue min-h-screen bg-background text-foreground selection:bg-primary/20">
       {/* Nav — hidden in native mobile app */}
       {!isNativePlatform() && (
         <nav className="fixed top-0 inset-x-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/40">
