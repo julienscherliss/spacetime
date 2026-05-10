@@ -51,14 +51,14 @@ export default function ResetPassword() {
 
   if (!ready) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="brand-blue min-h-screen bg-background flex items-center justify-center">
         <div className="text-[11px] font-mono text-muted-foreground/40 tracking-widest">VERIFYING...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4">
+    <div className="brand-blue min-h-screen bg-background flex items-center justify-center px-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
