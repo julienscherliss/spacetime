@@ -353,7 +353,7 @@
   right: 0;
   height: env(safe-area-inset-top);
   background: hsl(var(--background));
-  z-index: 60;
+  z-index: 20;
   pointer-events: none;
 }
 
@@ -366,7 +366,7 @@
   right: 0;
   height: env(safe-area-inset-bottom);
   background: hsl(var(--background));
-  z-index: 39; /* below bottom nav (z-40) so nav still draws its own padding */
+  z-index: 10; /* below bottom nav (z-40) and modals (z-50+) */
   pointer-events: none;
 }
 
