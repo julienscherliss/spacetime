@@ -293,7 +293,7 @@ export function WeekListView() {
   return (
     <div className="max-w-3xl mx-auto px-3 sm:px-4">
       {/* Sticky week header */}
-      <div className="sticky top-0 sm:top-12 z-30 bg-background border-b border-border/30">
+      <div className="sticky top-[env(safe-area-inset-top)] sm:top-12 z-30 bg-background border-b border-border/30">
         <div className="pt-3 pb-2">
           <h2 className="text-lg sm:text-xl font-display font-bold text-foreground tracking-tight">
             {weekLabel}
