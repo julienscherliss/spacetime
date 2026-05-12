@@ -182,7 +182,7 @@ export function PaywallIOS({ trialDaysLeft, trialExpired, onAccessGranted, subsc
               disabled={purchaseLoading || restoreLoading}
               className="w-full py-3 bg-primary text-primary-foreground text-[11px] font-mono tracking-wider rounded-sm hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
-              {purchaseLoading ? 'PROCESSING...' : 'BEGIN YOUR TRIAL'}
+              {purchaseLoading ? 'PROCESSING...' : 'SUBSCRIBE'}
             </button>
 
             <button
