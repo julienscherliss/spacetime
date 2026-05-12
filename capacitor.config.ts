@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.9e3e0ce65e59410282833dbdc7dde026',
+  appId: 'com.spacetimelabs.spacetime',
   appName: 'Spacetime',
   webDir: 'dist',
   server: {

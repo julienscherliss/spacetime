@@ -4,7 +4,7 @@ import { App as CapApp } from '@capacitor/app';
 import { supabase } from '@/integrations/supabase/client'; // used in setupDeepLinkListener
 
 /** Custom URL scheme registered in iOS Info.plist */
-const NATIVE_SCHEME = 'com.spaacetime.app';
+const NATIVE_SCHEME = 'com.spacetimelabs.spacetime';
 const NATIVE_CALLBACK = `${NATIVE_SCHEME}://auth/callback`;
 
 /** HTTPS callback bridge for native handoff; `native=1` prevents Safari from consuming the login */
@@ -36,7 +36,7 @@ export async function nativeGoogleSignIn(): Promise<void> {
 
 /**
  * Listen for deep-link callbacks after the bridge page redirects
- * to com.spaacetime.app://auth/callback?code=...
+ * to com.spacetimelabs.spacetime://auth/callback?code=...
  *
  * Call once on app startup. Returns a cleanup function.
  */
