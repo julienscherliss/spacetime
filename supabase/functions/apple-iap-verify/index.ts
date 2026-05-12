@@ -1,6 +1,12 @@
 // Apple In-App Purchase: verify a signed StoreKit 2 transaction (JWS) and upsert subscription
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { verifyAppleJws, planForProductId, APPLE_PRODUCT_IDS } from "../_shared/appleJws.ts";
+import {
+  verifyAppleJws,
+  assertBundleId,
+  assertProductId,
+  assertEnvironment,
+  AppleJwsError,
+} from "../_shared/appleJws.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -45,29 +51,32 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "signedTransaction required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Full Apple JWS signature + chain verification — never trust unverified claims for entitlement.
+    // Full Apple JWS signature + chain verification — entitlement is NEVER granted from
+    // an unverified payload. verifyAppleJws() pins the chain to Apple Root CA - G3.
     let decoded: DecodedTx;
     try {
       decoded = await verifyAppleJws<DecodedTx>(signedTransaction);
     } catch (e) {
-      log("JWS verification failed", { msg: (e as Error).message });
-      return new Response(JSON.stringify({ error: "Invalid or untrusted signedTransaction" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const code = e instanceof AppleJwsError ? e.code : "verify_failed";
+      log("JWS verification failed", { code, msg: (e as Error).message, userId });
+      return new Response(JSON.stringify({ error: "Invalid or untrusted signedTransaction", code }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const expectedBundle = Deno.env.get("APPLE_BUNDLE_ID");
-    if (expectedBundle && decoded.bundleId && decoded.bundleId !== expectedBundle) {
-      log("bundle mismatch", { got: decoded.bundleId, expected: expectedBundle });
-      return new Response(JSON.stringify({ error: "Bundle ID mismatch" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-
-    const plan = planForProductId(decoded.productId);
-    if (!plan) {
-      log("unknown productId", { got: decoded.productId, allowed: Object.values(APPLE_PRODUCT_IDS) });
-      return new Response(JSON.stringify({ error: "Unsupported product" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    let plan: ReturnType<typeof assertProductId>;
+    let environment: ReturnType<typeof assertEnvironment>;
+    try {
+      assertBundleId(decoded.bundleId);
+      plan = assertProductId(decoded.productId);
+      environment = assertEnvironment(decoded.environment);
+    } catch (e) {
+      const code = e instanceof AppleJwsError ? e.code : "claims_invalid";
+      log("payload claims rejected", { code, msg: (e as Error).message, userId });
+      return new Response(JSON.stringify({ error: (e as Error).message, code }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const originalTx = decoded.originalTransactionId;
     if (!originalTx) {
+      log("missing originalTransactionId", { userId });
       return new Response(JSON.stringify({ error: "Missing originalTransactionId" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -101,7 +110,7 @@ Deno.serve(async (req) => {
       apple_original_transaction_id: originalTx,
       apple_latest_transaction_id: decoded.transactionId ?? null,
       apple_product_id: decoded.productId ?? null,
-      apple_environment: decoded.environment ?? null,
+      apple_environment: environment,
       apple_expires_at: expiresAt,
       apple_auto_renew: true,
       current_period_start: decoded.purchaseDate ? new Date(decoded.purchaseDate).toISOString() : null,
