@@ -27,7 +27,8 @@ export default function Auth() {
   // Supabase issues alphanumeric tokens (currently 8 chars) for the
   // signInWithOtp / magiclink flow, so we accept the full token as a single
   // string instead of constraining it to 6 numeric digits.
-  const [step, setStep] = useState<Step>('entry');
+  // On native (iOS) we land on the password screen by default; OTP is the secondary path.
+  const [step, setStep] = useState<Step>(native ? 'password-login' : 'entry');
   const [otpCode, setOtpCode] = useState('');
   const [otpAttempts, setOtpAttempts] = useState(0);
   const [resendCooldown, setResendCooldown] = useState(0);
