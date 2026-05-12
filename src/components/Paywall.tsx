@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import { Zap, Check, Tag, LogOut } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { isIOSNative } from '@/utils/nativePlatform';
+import { PaywallIOS } from './PaywallIOS';
 
 interface Props {
   trialDaysLeft: number;
@@ -13,6 +15,18 @@ interface Props {
 }
 
 export function Paywall({ trialDaysLeft, trialExpired, onAccessGranted, subscriptionStatus, cancellingDaysLeft }: Props) {
+  // App Store-compliant variant for iOS — no Stripe, uses Apple In-App Purchase
+  if (isIOSNative()) {
+    return (
+      <PaywallIOS
+        trialDaysLeft={trialDaysLeft}
+        trialExpired={trialExpired}
+        onAccessGranted={onAccessGranted}
+        subscriptionStatus={subscriptionStatus}
+      />
+    );
+  }
+
   const [promoCode, setPromoCode] = useState('');
   const [promoLoading, setPromoLoading] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
