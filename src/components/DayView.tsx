@@ -408,14 +408,16 @@ export function DayView() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4, scale: 0.98 }}
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="pointer-events-none fixed inset-x-0 top-1/2 -translate-y-1/2 z-20 flex justify-center px-6"
+          className="pointer-events-none fixed inset-x-0 top-1/2 -translate-y-1/2 z-20 flex justify-center px-12 sm:px-6"
           >
-            <div className="max-w-sm text-center">
-              <p className="font-display font-bold text-foreground tracking-tight text-2xl mb-3">
+            <div className="max-w-[18rem] sm:max-w-sm text-center">
+              <p className="font-display font-bold text-foreground tracking-tight text-xl sm:text-2xl mb-3">
                 Your day is empty
               </p>
-              <p className="font-mono text-muted-foreground text-sm leading-relaxed tracking-wide">
-                {isMobile ? 'Press' : 'Click'} and drag on the timeline to create a new task.
+              <p className="font-mono text-muted-foreground text-xs sm:text-sm leading-relaxed tracking-wide text-balance">
+                {isMobile
+                  ? 'Press for a moment then drag on the timeline to create a new task.'
+                  : 'Click and drag on the timeline to create a new task.'}
               </p>
             </div>
           </motion.div>
