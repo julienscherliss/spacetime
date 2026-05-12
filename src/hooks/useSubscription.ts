@@ -15,6 +15,12 @@ export interface Subscription {
   lifetime_access: boolean;
   created_at: string;
   updated_at: string;
+  payment_source?: 'stripe' | 'apple_iap' | 'promo' | 'admin' | null;
+  apple_original_transaction_id?: string | null;
+  apple_product_id?: string | null;
+  apple_environment?: string | null;
+  apple_expires_at?: string | null;
+  apple_auto_renew?: boolean | null;
 }
 
 export function useSubscription(userId?: string | null, authReady = true) {
