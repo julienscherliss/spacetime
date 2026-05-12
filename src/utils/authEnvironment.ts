@@ -16,7 +16,7 @@ const PRODUCTION_DOMAIN = 'https://launchspacetime.com';
 const LOVABLE_PROXY_DOMAIN = 'https://spaacetime.lovable.app';
 
 /** Custom URL scheme for native deep linking */
-const NATIVE_SCHEME_CALLBACK = 'com.spaacetime.app://auth/callback';
+const NATIVE_SCHEME_CALLBACK = 'com.spacetimelabs.spacetime://auth/callback';
 
 export type AuthEnv = 'production-web' | 'preview-web' | 'local-dev' | 'native-ios';
 

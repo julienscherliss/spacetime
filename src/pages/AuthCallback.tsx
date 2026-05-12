@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
-const NATIVE_SCHEME_CALLBACK = 'com.spaacetime.app://auth/callback';
+const NATIVE_SCHEME_CALLBACK = 'com.spacetimelabs.spacetime://auth/callback';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
