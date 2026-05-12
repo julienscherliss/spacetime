@@ -18,7 +18,7 @@ interface SubtaskListProps {
 export interface SubtaskListHandle {
   focus: () => void;
   setInputValue: (v: string) => void;
-  flushPendingInput: () => void;
+  flushPendingInput: () => Subtask[];
 }
 
 const generateId = () => Math.random().toString(36).substring(2, 8);
@@ -43,9 +43,11 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
       setInputValue: (v: string) => setInput(v),
       flushPendingInput: () => {
         const trimmed = input.trim();
-        if (!trimmed) return;
-        onChange([...subtasks, { id: generateId(), title: trimmed, completed: false }]);
+        if (!trimmed) return subtasks;
+        const next = [...subtasks, { id: generateId(), title: trimmed, completed: false }];
+        onChange(next);
         setInput('');
+        return next;
       },
     }));
 
