@@ -19,7 +19,25 @@ interface SubscriptionsPlugin {
 export const Subscriptions = registerPlugin<SubscriptionsPlugin>('Subscriptions');
 
 export function isIAPAvailable() {
-  return Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'ios';
+  if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== 'ios') return false;
+  // Capacitor exposes registered native plugins on Capacitor.Plugins.
+  // If the native side isn't built/synced with the Subscriptions plugin,
+  // this entry will be undefined and we should NOT show the IAP UI.
+  try {
+    const plugins = (Capacitor as any).Plugins ?? {};
+    return typeof plugins.Subscriptions !== 'undefined'
+      && typeof plugins.Subscriptions.purchaseProduct === 'function';
+  } catch {
+    return false;
+  }
+}
+
+function ensureAvailable() {
+  if (!isIAPAvailable()) {
+    throw new Error(
+      'In-App Purchases are not available in this build. Please update the app from the App Store.',
+    );
+  }
 }
 
 /** POST a signed Apple JWS transaction to our verifier edge function. */
@@ -45,6 +63,7 @@ export async function verifyAppleTransaction(signedTransaction: string) {
 
 /** Trigger StoreKit purchase + verify with our backend. */
 export async function purchasePlan(plan: IapPlan) {
+  ensureAvailable();
   const productIdentifier = IAP_PRODUCT_IDS[plan];
   const result = await Subscriptions.purchaseProduct({ productIdentifier });
   // responseCode 0 == success per plugin convention
@@ -56,6 +75,7 @@ export async function purchasePlan(plan: IapPlan) {
 
 /** Restore: ask StoreKit for current entitlements, send each to verifier. */
 export async function restorePurchases() {
+  ensureAvailable();
   const result = await Subscriptions.getCurrentEntitlements();
   if (result.responseCode !== 0) {
     throw new Error(result.responseMessage || 'Could not load purchases');
