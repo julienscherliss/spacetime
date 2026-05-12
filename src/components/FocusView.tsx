@@ -292,7 +292,11 @@ export function FocusView() {
     <div
       ref={focusContainerRef}
       className="relative overflow-hidden"
-      style={{ height: 'calc(100svh - env(safe-area-inset-bottom, 0px) - 64px)', maxHeight: 'calc(100dvh - 64px)' }}
+      style={{
+        height: 'calc(100svh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 64px)',
+        maxHeight: 'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 64px)',
+        marginTop: 'env(safe-area-inset-top, 0px)',
+      }}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
