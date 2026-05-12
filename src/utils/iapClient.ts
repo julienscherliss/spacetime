@@ -1,4 +1,5 @@
-import { Capacitor, registerPlugin } from '@capacitor/core';
+import { Capacitor } from '@capacitor/core';
+import { NativePurchases, PURCHASE_TYPE } from '@capgo/native-purchases';
 import { supabase } from '@/integrations/supabase/client';
 
 /** Apple subscription products configured in App Store Connect. */
@@ -8,25 +9,11 @@ export const IAP_PRODUCT_IDS = {
 } as const;
 export type IapPlan = keyof typeof IAP_PRODUCT_IDS;
 
-// The plugin only loads on native; on web we get a no-op shim.
-interface SubscriptionsPlugin {
-  getProductDetails(opts: { productIdentifier: string }): Promise<{ data?: any; responseCode: number; responseMessage?: string }>;
-  purchaseProduct(opts: { productIdentifier: string }): Promise<{ data?: { transactionId?: string; transactionReceipt?: string }; responseCode: number; responseMessage?: string }>;
-  getCurrentEntitlements(): Promise<{ data?: any[]; responseCode: number; responseMessage?: string }>;
-  getLatestTransaction(opts: { productIdentifier: string }): Promise<{ data?: { transactionId?: string; transactionReceipt?: string }; responseCode: number; responseMessage?: string }>;
-}
-
-export const Subscriptions = registerPlugin<SubscriptionsPlugin>('Subscriptions');
-
-export function isIAPAvailable() {
+/** True only on iOS native builds where the StoreKit plugin is registered. */
+export function isIAPAvailable(): boolean {
   if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== 'ios') return false;
-  // Capacitor exposes registered native plugins on Capacitor.Plugins.
-  // If the native side isn't built/synced with the Subscriptions plugin,
-  // this entry will be undefined and we should NOT show the IAP UI.
   try {
-    const plugins = (Capacitor as any).Plugins ?? {};
-    return typeof plugins.Subscriptions !== 'undefined'
-      && typeof plugins.Subscriptions.purchaseProduct === 'function';
+    return Capacitor.isPluginAvailable('NativePurchases');
   } catch {
     return false;
   }
@@ -61,32 +48,43 @@ export async function verifyAppleTransaction(signedTransaction: string) {
   return json as { ok: true; expiresAt: string | null; status: string };
 }
 
+/** Pick the signed JWS payload (StoreKit 2). Falls back to legacy receipt. */
+function extractSignedPayload(tx: any): string | null {
+  return (
+    tx?.jwsRepresentation ||
+    tx?.signedTransaction ||
+    tx?.receipt ||
+    tx?.transactionReceipt ||
+    null
+  );
+}
+
 /** Trigger StoreKit purchase + verify with our backend. */
 export async function purchasePlan(plan: IapPlan) {
   ensureAvailable();
   const productIdentifier = IAP_PRODUCT_IDS[plan];
-  const result = await Subscriptions.purchaseProduct({ productIdentifier });
-  // responseCode 0 == success per plugin convention
-  if (result.responseCode !== 0 || !result.data?.transactionReceipt) {
-    throw new Error(result.responseMessage || 'Purchase did not complete');
-  }
-  return verifyAppleTransaction(result.data.transactionReceipt);
+  const tx = await NativePurchases.purchaseProduct({
+    productIdentifier,
+    productType: PURCHASE_TYPE.SUBS,
+    quantity: 1,
+  });
+  const signed = extractSignedPayload(tx);
+  if (!signed) throw new Error('Purchase did not return a signed transaction');
+  return verifyAppleTransaction(signed);
 }
 
-/** Restore: ask StoreKit for current entitlements, send each to verifier. */
+/** Restore: replay historical transactions and send each to verifier. */
 export async function restorePurchases() {
   ensureAvailable();
-  const result = await Subscriptions.getCurrentEntitlements();
-  if (result.responseCode !== 0) {
-    throw new Error(result.responseMessage || 'Could not load purchases');
-  }
-  const entitlements = (result.data ?? []) as any[];
-  if (entitlements.length === 0) {
+  await NativePurchases.restorePurchases();
+  const result: any = await NativePurchases.getPurchases();
+  const purchases: any[] = result?.purchases ?? result?.transactions ?? [];
+  if (!Array.isArray(purchases) || purchases.length === 0) {
     return { restored: 0 as const };
   }
   let restored = 0;
-  for (const ent of entitlements) {
-    const signed = ent?.transactionReceipt || ent?.signedTransaction || ent?.jwsRepresentation;
+  for (const p of purchases) {
+    const signed = extractSignedPayload(p);
     if (!signed) continue;
     try {
       await verifyAppleTransaction(signed);
@@ -96,4 +94,31 @@ export async function restorePurchases() {
     }
   }
   return { restored };
+}
+
+/**
+ * StoreKit 2 transaction listener — pushes any out-of-band updates
+ * (renewals, refunds, ask-to-buy approvals) to the backend.
+ * Safe no-op when the plugin isn't available.
+ */
+export function startTransactionListener() {
+  if (!isIAPAvailable()) return () => {};
+  let active = true;
+  const subPromise = NativePurchases.addListener(
+    'transactionUpdated',
+    async (tx: any) => {
+      if (!active) return;
+      const signed = extractSignedPayload(tx);
+      if (!signed) return;
+      try {
+        await verifyAppleTransaction(signed);
+      } catch (err) {
+        console.error('[IAP listener] verify failed', err);
+      }
+    },
+  );
+  return () => {
+    active = false;
+    subPromise.then((sub: any) => sub?.remove?.()).catch(() => {});
+  };
 }
