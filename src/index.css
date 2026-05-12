@@ -331,9 +331,8 @@
 
 /* ── Capacitor native overrides ── */
 .capacitor-native body {
-  /* Ensure content fits inside safe areas */
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
+  /* Horizontal safe-area only; vertical insets handled per-surface so that
+     sticky headers, modals, and scrollers respect the notch consistently. */
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
   -webkit-text-size-adjust: 100%;
@@ -342,13 +341,48 @@
   overscroll-behavior: none;
 }
 
-/* Full-screen overlay panels need their own safe-area inset on native */
+/* Status-bar mask: a fixed bar matching the top safe-area inset, painted in
+   the app background. Sits above scrolling content but below modals so that
+   nothing ever bleeds under the iOS status bar / Dynamic Island. */
+.capacitor-native::before { content: none; }
+.capacitor-native body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: env(safe-area-inset-top);
+  background: hsl(var(--background));
+  z-index: 60;
+  pointer-events: none;
+}
+
+/* Bottom safe-area mask for home-indicator clearance under fixed bottom UI. */
+.capacitor-native body::after {
+  content: '';
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: env(safe-area-inset-bottom);
+  background: hsl(var(--background));
+  z-index: 39; /* below bottom nav (z-40) so nav still draws its own padding */
+  pointer-events: none;
+}
+
+/* Reusable safe-area helpers (work on web too — env() is 0 there) */
+.safe-pt { padding-top: env(safe-area-inset-top); }
+.safe-pb { padding-bottom: env(safe-area-inset-bottom); }
+.safe-top { top: env(safe-area-inset-top); }
+
+/* Full-screen overlay panels (modals/sheets) need their own safe-area inset
+   on native so headers and close buttons clear the status bar. */
 .capacitor-native .fixed.inset-0 {
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* Adjust full-height containers to account for safe-area body padding */
+/* Adjust full-height containers to account for safe-area insets. */
 .capacitor-native [style*="calc(100vh"] {
   height: calc(100vh - 48px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) !important;
 }
