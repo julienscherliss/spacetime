@@ -203,6 +203,7 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
         tag: orig.tag,
         description: orig.description === baseLabel ? `${baseLabel} (cont.)` : orig.description,
         hours: remainder,
+        unitAmount: orig.unitAmount,
       });
       return next;
     });
