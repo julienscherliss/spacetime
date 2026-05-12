@@ -442,6 +442,15 @@ export default function Auth() {
           >
             SIGN IN WITH PASSWORD
           </button>
+
+          <div className="text-center mt-6 flex items-center justify-center gap-4">
+            <a href="/privacy" className="text-[9px] font-mono text-muted-foreground/30 tracking-wider hover:text-foreground transition-colors">
+              PRIVACY
+            </a>
+            <a href="/terms" className="text-[9px] font-mono text-muted-foreground/30 tracking-wider hover:text-foreground transition-colors">
+              TERMS
+            </a>
+          </div>
         </motion.div>
       </div>
     );
@@ -570,6 +579,15 @@ export default function Auth() {
             {mode === 'login' ? 'Sign up' : 'Sign in'}
           </button>
         </p>
+
+        <div className="text-center mt-6 flex items-center justify-center gap-4">
+          <a href="/privacy" className="text-[9px] font-mono text-muted-foreground/30 tracking-wider hover:text-foreground transition-colors">
+            PRIVACY
+          </a>
+          <a href="/terms" className="text-[9px] font-mono text-muted-foreground/30 tracking-wider hover:text-foreground transition-colors">
+            TERMS
+          </a>
+        </div>
       </motion.div>
     </div>
   );
