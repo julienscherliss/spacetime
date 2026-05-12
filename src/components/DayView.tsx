@@ -262,16 +262,17 @@ export function DayView() {
   const completedCount = dayTasks.filter((t) => t.completed).length;
   const isToday = selectedDate === today;
 
-  // Helper: has the user scheduled anything in the past 7 days (relative to today)?
+  // Helper: has the user *completed* anything in the past 7 days (relative to today)?
+  // Deleting tasks does not count — only completions suppress the helper.
   const sevenDaysAgo = (() => {
     const d = new Date(today + 'T12:00:00');
     d.setDate(d.getDate() - 7);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   })();
-  const hasRecentSchedule = tasks.some(
-    (t) => !!t.date && t.date >= sevenDaysAgo && t.date <= today
+  const hasRecentCompletion = tasks.some(
+    (t) => t.completed && !!t.date && t.date >= sevenDaysAgo && t.date <= today
   );
-  const showFirstTimeHelper = dayTasks.length === 0 && !hasRecentSchedule;
+  const showFirstTimeHelper = dayTasks.length === 0 && !hasRecentCompletion;
 
   return (
     <div
