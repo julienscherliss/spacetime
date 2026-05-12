@@ -817,11 +817,22 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 <div className="space-y-2">
                   <div className="bg-muted/30 border border-border/50 rounded-sm p-3">
                     <div className="text-[12px] font-mono text-foreground font-medium">
-                      {sub.plan === 'yearly' ? 'YEARLY' : 'MONTHLY'} PLAN
+                      {sub.payment_source === 'apple_iap'
+                        ? 'MONTHLY PLAN · APPLE'
+                        : (sub.plan === 'yearly' ? 'YEARLY' : 'MONTHLY') + ' PLAN'}
                     </div>
                     <div className="text-[10px] font-mono text-muted-foreground/50 mt-0.5">Active subscription</div>
                   </div>
-                  <ManageSubscriptionButton />
+                  {sub.payment_source === 'apple_iap' ? (
+                    <ManageAppleButton />
+                  ) : iosNative ? (
+                    // Stripe-managed sub viewed inside the iOS app — no portal link
+                    <div className="text-[10px] font-mono text-muted-foreground/50 px-1">
+                      Manage this subscription on the web at launchspacetime.com
+                    </div>
+                  ) : (
+                    <ManageSubscriptionButton />
+                  )}
                 </div>
               );
               if (sub.status === 'cancelling') return (
