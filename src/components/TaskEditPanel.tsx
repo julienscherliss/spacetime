@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Priority, RecurrencePattern, CustomUnit, NthWeekday, NthWeek } from '@/store/taskStore';
-import { SubtaskList, Subtask } from '@/components/SubtaskList';
+import { SubtaskList, Subtask, SubtaskListHandle } from '@/components/SubtaskList';
 import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar, Inbox, CalendarCheck, XCircle, Paperclip, ExternalLink, Check, AlertTriangle, Tag, Upload, FileText, Bell, PauseCircle, Layers } from 'lucide-react';
 import { GroupNamePrompt } from '@/components/GroupNamePrompt';
 import { AttachmentLightbox } from '@/components/AttachmentLightbox';
@@ -202,6 +202,7 @@ export function TaskEditPanel() {
   
   const titleInputRef = useRef<HTMLInputElement>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const subtaskListRef = useRef<SubtaskListHandle>(null);
 
   const isRecurring = !!(task?.recurrence || task?.isRecurrenceInstance) && recurrenceType !== 'none';
 
@@ -281,14 +282,16 @@ export function TaskEditPanel() {
     }
   };
 
-  const getUpdates = () => {
+  const getUpdates = (overrideSubtasks?: Subtask[]) => {
     const recurrence = buildRecurrence();
     const parentId = task?.recurrenceParentId || task?.id;
     const seriesId = task?.seriesId || parentId;
+    const finalSubtasks = overrideSubtasks ?? subtasks;
     return {
       title,
       description: description || undefined,
-      subtasks: subtasks.length > 0 ? subtasks : undefined,
+      // Always send the array (even empty) so a stale `undefined` can never wipe persisted subtasks.
+      subtasks: finalSubtasks,
       priority,
       recurrence,
       type: recurrence ? 'recurring' as const : 'one-time' as const,
@@ -327,7 +330,9 @@ export function TaskEditPanel() {
 
   const handleSave = () => {
     if (!task) return;
-    const updates = getUpdates();
+    // Flush any text the user typed in the "add subtask" field but never pressed Enter on.
+    const flushed = subtaskListRef.current?.flushPendingInput();
+    const updates = getUpdates(flushed);
 
     if (isRecurring && task.linked !== isLinked) {
       linkSeriesFromDate(task.id, task.date, isLinked);
@@ -985,7 +990,7 @@ export function TaskEditPanel() {
 
               {/* ─── Subtasks ─── */}
               <div className="mb-4">
-                <SubtaskList subtasks={subtasks} onChange={setSubtasks} />
+                <SubtaskList ref={subtaskListRef} subtasks={subtasks} onChange={setSubtasks} />
               </div>
 
               {/* ─── Attachments ─── */}
