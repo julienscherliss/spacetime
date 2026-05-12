@@ -152,13 +152,28 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
         } else {
           const label = formatTagLabel(categories.find(c => c.value === tag)?.label || tag);
           const isFlat = cfg.rateType === 'flat';
-          const defaultQty = isFlat ? 1 : availableHoursForTag(tag);
-          next.push({
-            id: `${tag}-${Math.random().toString(36).slice(2, 8)}`,
-            tag,
-            description: label,
-            hours: defaultQty,
-          });
+          if (isFlat && cfg.flatItems && cfg.flatItems.length > 0) {
+            // Expand each saved flat line item into its own invoice line so
+            // sub-itemized flat fees (e.g. "DP x 2", "Prep", "Gear Rental")
+            // appear individually on the invoice.
+            cfg.flatItems.forEach((fi, idx) => {
+              next.push({
+                id: `${tag}-${idx}-${Math.random().toString(36).slice(2, 8)}`,
+                tag,
+                description: fi.description || label,
+                hours: fi.quantity != null ? Number(fi.quantity) || 1 : 1,
+                unitAmount: Number(fi.amount) || 0,
+              });
+            });
+          } else {
+            const defaultQty = isFlat ? 1 : availableHoursForTag(tag);
+            next.push({
+              id: `${tag}-${Math.random().toString(36).slice(2, 8)}`,
+              tag,
+              description: label,
+              hours: defaultQty,
+            });
+          }
         }
       }
       return next;
