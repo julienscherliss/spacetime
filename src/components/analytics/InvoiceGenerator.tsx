@@ -27,6 +27,13 @@ interface LineItem {
   tag: string;
   description: string;
   hours: number;
+  /**
+   * For flat-rate tags that have explicit `flatItems` defined in their billing
+   * settings, each flat item becomes its own invoice line and carries its own
+   * per-unit amount. When set, line amount = hours (quantity) × unitAmount.
+   * Falls back to cfg.flatRate when undefined (legacy single-line flat tags).
+   */
+  unitAmount?: number;
 }
 
 export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
