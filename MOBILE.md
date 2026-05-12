@@ -43,7 +43,7 @@ To preview live changes from the Lovable sandbox on your device, edit `capacitor
 | App lifecycle | `@capacitor/app` |
 | Browser (OAuth) | `@capacitor/browser` |
 | Local Notifications | `@capacitor/local-notifications` |
-| In-App Purchases (StoreKit 2) | `@squareetlabs/capacitor-subscriptions` |
+| In-App Purchases (StoreKit 2) | `@capgo/native-purchases` |
 
 ## Troubleshooting
 
