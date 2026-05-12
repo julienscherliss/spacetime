@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Zap, Check, Tag, LogOut, RotateCcw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { purchasePlan, restorePurchases, type IapPlan } from '@/utils/iapClient';
+import { purchasePlan, restorePurchases, isIAPAvailable, type IapPlan } from '@/utils/iapClient';
 
 interface Props {
   trialDaysLeft: number;
@@ -20,6 +20,7 @@ const APPLE_TERMS =
 
 export function PaywallIOS({ trialDaysLeft, trialExpired, onAccessGranted, subscriptionStatus }: Props) {
   const [selectedPlan, setSelectedPlan] = useState<IapPlan>('yearly');
+  const iapAvailable = isIAPAvailable();
   const [promoCode, setPromoCode] = useState('');
   const [promoLoading, setPromoLoading] = useState(false);
   const [purchaseLoading, setPurchaseLoading] = useState(false);
@@ -174,22 +175,34 @@ export function PaywallIOS({ trialDaysLeft, trialExpired, onAccessGranted, subsc
           </button>
         </div>
 
-        <button
-          onClick={handlePurchase}
-          disabled={purchaseLoading || restoreLoading}
-          className="w-full py-3 bg-primary text-primary-foreground text-[11px] font-mono tracking-wider rounded-sm hover:bg-primary/90 disabled:opacity-50 transition-colors"
-        >
-          {purchaseLoading ? 'PROCESSING...' : 'BEGIN YOUR TRIAL'}
-        </button>
+        {iapAvailable ? (
+          <>
+            <button
+              onClick={handlePurchase}
+              disabled={purchaseLoading || restoreLoading}
+              className="w-full py-3 bg-primary text-primary-foreground text-[11px] font-mono tracking-wider rounded-sm hover:bg-primary/90 disabled:opacity-50 transition-colors"
+            >
+              {purchaseLoading ? 'PROCESSING...' : 'BEGIN YOUR TRIAL'}
+            </button>
 
-        <button
-          onClick={handleRestore}
-          disabled={purchaseLoading || restoreLoading}
-          className="w-full mt-2 py-2.5 flex items-center justify-center gap-1.5 border border-border/50 text-[10px] font-mono tracking-wider text-foreground/80 hover:text-foreground hover:border-foreground/40 rounded-sm disabled:opacity-50 transition-colors"
-        >
-          <RotateCcw size={11} />
-          {restoreLoading ? 'RESTORING...' : 'RESTORE PURCHASES'}
-        </button>
+            <button
+              onClick={handleRestore}
+              disabled={purchaseLoading || restoreLoading}
+              className="w-full mt-2 py-2.5 flex items-center justify-center gap-1.5 border border-border/50 text-[10px] font-mono tracking-wider text-foreground/80 hover:text-foreground hover:border-foreground/40 rounded-sm disabled:opacity-50 transition-colors"
+            >
+              <RotateCcw size={11} />
+              {restoreLoading ? 'RESTORING...' : 'RESTORE PURCHASES'}
+            </button>
+          </>
+        ) : (
+          <div className="w-full py-3 px-4 border border-border/50 rounded-sm text-center">
+            <p className="text-[10px] font-mono text-muted-foreground/70 tracking-wide leading-relaxed">
+              IN-APP PURCHASES UNAVAILABLE IN THIS BUILD.
+              <br />PLEASE UPDATE THE APP FROM THE APP STORE,
+              <br />OR USE A PROMO CODE BELOW.
+            </p>
+          </div>
+        )}
 
         {/* Required Apple disclosure */}
         <p className="text-[10px] font-mono text-muted-foreground/60 leading-relaxed mt-4 mb-6 px-1">
