@@ -16,7 +16,7 @@ interface Props {
 export function LegalLayout({ title, updated, children }: Props) {
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-10 bg-background/90 backdrop-blur border-b border-border/40">
+      <header className="sticky top-[env(safe-area-inset-top)] z-10 bg-background/90 backdrop-blur border-b border-border/40">
         <div className="max-w-2xl mx-auto px-5 py-3 flex items-center justify-between">
           <Link
             to="/"

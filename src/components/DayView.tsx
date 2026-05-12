@@ -270,7 +270,7 @@ export function DayView() {
       onTouchEnd={handleTouchEnd}
     >
       {/* Sticky header: title + controls pinned together */}
-      <div className="sticky top-0 sm:top-12 z-30 bg-background border-b border-border/30">
+      <div className="sticky top-[env(safe-area-inset-top)] sm:top-12 z-30 bg-background border-b border-border/30">
         <div className="pt-1 pb-0.5">
           <h2 className="font-display font-bold text-foreground tracking-tight" style={{ fontSize: 'var(--ui-text-3xl)' }}>
             {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', {
