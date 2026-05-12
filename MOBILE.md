@@ -45,6 +45,22 @@ To preview live changes from the Lovable sandbox on your device, edit `capacitor
 | Local Notifications | `@capacitor/local-notifications` |
 | In-App Purchases (StoreKit 2) | `@capgo/native-purchases` |
 
+## ⚠️ iOS IAP Plugin Policy (DO NOT CHANGE)
+
+**Do NOT use `@squareetlabs/capacitor-subscriptions`.**
+It is incompatible with Capacitor 8 and breaks native iOS StoreKit integration
+(its peer dependency only allows `@capacitor/core ^6 || ^7`).
+
+**Use `@capgo/native-purchases` exclusively** for all iOS In-App Purchase /
+StoreKit 2 functionality. This applies to:
+- `package.json` dependencies
+- `ios/App/CapApp-SPM/Package.swift` SPM packages and target products
+- `src/utils/iapClient.ts` and any other IAP wrapper modules
+- Any future AI-generated edits — do not reintroduce the squareetlabs plugin.
+
+If `npx cap sync ios` ever lists `@squareetlabs/capacitor-subscriptions`,
+that is a regression and must be removed immediately.
+
 ## Troubleshooting
 
 - **Git conflicts in `ios/`**: Run `git checkout -- ios/App/App/public ios/App/App/capacitor.config.json ios/App/App/config.xml` — these are generated files and safe to discard.
