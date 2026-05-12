@@ -1,7 +1,14 @@
 // Apple App Store Server Notifications V2 webhook
 // Configure URL in App Store Connect: App Information → App Store Server Notifications → Production / Sandbox URL
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { verifyAppleJws, planForProductId } from "../_shared/appleJws.ts";
+import {
+  verifyAppleJws,
+  planForProductId,
+  assertBundleId,
+  assertEnvironment,
+  AppleJwsError,
+  ALLOWED_PRODUCT_IDS,
+} from "../_shared/appleJws.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -54,31 +61,60 @@ Deno.serve(async (req) => {
     try {
       payload = await verifyAppleJws<NotificationPayload>(signedPayload);
     } catch (e) {
-      log("notification JWS verification failed", { msg: (e as Error).message });
-      return new Response(JSON.stringify({ error: "Invalid signedPayload" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const code = e instanceof AppleJwsError ? e.code : "verify_failed";
+      log("notification JWS verification failed", { code, msg: (e as Error).message });
+      // 400 — Apple will not retry on 4xx, which is what we want for an untrusted payload.
+      return new Response(JSON.stringify({ error: "Invalid signedPayload", code }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     const notificationType = payload.notificationType ?? "";
     const subtype = payload.subtype ?? "";
     log("incoming", { notificationType, subtype, uuid: payload.notificationUUID });
 
-    const expectedBundle = Deno.env.get("APPLE_BUNDLE_ID");
-    if (expectedBundle && payload.data?.bundleId && payload.data.bundleId !== expectedBundle) {
-      log("bundle mismatch", { got: payload.data.bundleId, expected: expectedBundle });
-      return new Response(JSON.stringify({ error: "Bundle ID mismatch" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    try {
+      assertBundleId(payload.data?.bundleId);
+    } catch (e) {
+      const code = e instanceof AppleJwsError ? e.code : "bundle_invalid";
+      log("bundle rejected", { code, msg: (e as Error).message });
+      return new Response(JSON.stringify({ error: (e as Error).message, code }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const tx = payload.data?.signedTransactionInfo
-      ? await verifyAppleJws<DecodedTx>(payload.data.signedTransactionInfo).catch((e) => {
-          log("tx verify failed", { msg: (e as Error).message });
-          return null;
-        })
-      : null;
-    const renewal = payload.data?.signedRenewalInfo
-      ? await verifyAppleJws<DecodedRenewal>(payload.data.signedRenewalInfo).catch((e) => {
-          log("renewal verify failed", { msg: (e as Error).message });
-          return null;
-        })
-      : null;
+    // Both inner JWS objects must be verified the same way as the outer one.
+    let tx: DecodedTx | null = null;
+    if (payload.data?.signedTransactionInfo) {
+      try {
+        tx = await verifyAppleJws<DecodedTx>(payload.data.signedTransactionInfo);
+      } catch (e) {
+        const code = e instanceof AppleJwsError ? e.code : "tx_verify_failed";
+        log("inner tx verification failed", { code, msg: (e as Error).message });
+        return new Response(JSON.stringify({ error: "Invalid signedTransactionInfo", code }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+    let renewal: DecodedRenewal | null = null;
+    if (payload.data?.signedRenewalInfo) {
+      try {
+        renewal = await verifyAppleJws<DecodedRenewal>(payload.data.signedRenewalInfo);
+      } catch (e) {
+        const code = e instanceof AppleJwsError ? e.code : "renewal_verify_failed";
+        log("inner renewal verification failed", { code, msg: (e as Error).message });
+        return new Response(JSON.stringify({ error: "Invalid signedRenewalInfo", code }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+
+    // Validate environment + product if we have a transaction.
+    if (tx) {
+      try {
+        assertEnvironment(tx.environment);
+      } catch (e) {
+        const code = e instanceof AppleJwsError ? e.code : "env_invalid";
+        log("environment rejected", { code, msg: (e as Error).message });
+        return new Response(JSON.stringify({ error: (e as Error).message, code }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      if (tx.productId && !ALLOWED_PRODUCT_IDS.includes(tx.productId)) {
+        log("ignoring unknown productId", { productId: tx.productId });
+        // ACK so Apple doesn't keep retrying — but do not touch any subscription row.
+        return new Response(JSON.stringify({ ok: true, ignored: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
 
     const originalTx = tx?.originalTransactionId ?? renewal?.originalTransactionId;
     if (!originalTx) {
