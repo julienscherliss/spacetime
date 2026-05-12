@@ -1,52 +1,116 @@
-## Goal
+# App Store-Compliant Subscriptions
 
-1. Make **schedule (timeline) view** the default for **Day view** on both desktop and mobile.
-2. Make **schedule view** the default for **Week view** on desktop only; keep **list view** the default for Week on mobile / iOS.
-3. In Day view, when the selected day has 0 tasks **and** the user has no scheduled tasks anywhere in the past 7 days, show a centered helper prompt explaining how to create a task (click-and-drag on desktop, press-and-drag on mobile) instead of the current small `NO TASKS` label.
+Goal: Keep Stripe on web/desktop, switch iOS to Apple In-App Purchase, unify access checks behind a single entitlement.
 
-## Changes
+## 1. Database — unified entitlement
 
-### 1. `src/pages/Index.tsx` — entry-effect that forces sub-modes
-Currently this effect always coerces both sub-modes to `'list'` on app entry:
-```
-if (s.daySubMode !== 'list') s.setDaySubMode('list');
-if (s.weekSubMode !== 'list') s.setWeekSubMode('list');
-```
-Replace with platform-aware defaults using `useIsMobile()` (or a one-shot `window.innerWidth < 768` check at the top of the effect, since this only runs once on mount):
-- Day → always `'timeline'`.
-- Week → `'timeline'` on desktop, `'list'` on mobile.
+Add to `subscriptions` (don't break existing rows):
+- `payment_source TEXT` — `'stripe' | 'apple_iap' | 'promo' | 'admin'`
+- `apple_original_transaction_id TEXT UNIQUE` — Apple's stable subscription ID
+- `apple_product_id TEXT`
+- `apple_environment TEXT` — `'Sandbox' | 'Production'`
+- `apple_latest_transaction_id TEXT`
+- `apple_expires_at TIMESTAMPTZ`
+- `apple_auto_renew BOOLEAN`
 
-The user can still toggle to list/timeline manually via `AppNav`; we only set the *initial* mode on each app entry, matching the current "always coerce" behavior.
+Backfill existing rows: `payment_source = 'stripe'` where `stripe_subscription_id IS NOT NULL`, `'admin'` where `lifetime_access`, else leave null (still on trial).
 
-### 2. `src/store/taskStore.ts` — initial persisted defaults
-Update the persisted defaults so first-time users (and reloads before the entry effect runs) get the right view:
-- `daySubMode: 'timeline'` (was `'list'`).
-- `weekSubMode`: leave as `'list'` (mobile-friendly default; desktop is corrected by the entry effect).
+`hasAccess` logic in `useSubscription` already handles `status` + `current_period_end` + `lifetime_access`; Apple renewals will write to those same fields, so the hook needs no logic change. Just expose `payment_source` so the UI can show the right "manage" affordance.
 
-### 3. `src/components/DayView.tsx` — empty-state helper
-Replace the existing block:
-```
-{dayTasks.length === 0 && (
-  <div className="text-center py-20">
-    <p className="...">NO TASKS</p>
-  </div>
-)}
-```
-with a smarter empty state. Compute once per render:
-- `hasRecentSchedule = tasks.some(t => t.date && t.date >= sevenDaysAgo && t.date <= today)` (date strings already in `YYYY-MM-DD` lexicographically comparable form, mirroring existing usage in the file).
-- `isMobile` is already available via `useIsMobile()`.
+## 2. Platform detection
 
-Render logic:
-- If `dayTasks.length === 0 && !hasRecentSchedule` → show the **centered helper card**: short headline "Your day is empty" + body copy:
-  - Desktop: `Click and drag on the timeline to create a new task.`
-  - Mobile / iOS: `Press and drag on the timeline to create a new task.`
-  - Styled with semantic tokens (`text-muted-foreground`, `font-mono` meta, `font-display` headline) consistent with the existing light-industrial aesthetic. Positioned absolutely over the timeline, vertically centered in the viewport (e.g. `fixed inset-x-0 top-1/2 -translate-y-1/2 pointer-events-none` inside a relatively-positioned wrapper, or absolutely centered within the timeline area). Front-and-center, no background chrome beyond a subtle border/padding.
-- If `dayTasks.length === 0 && hasRecentSchedule` → keep the existing small `NO TASKS` label (user already knows the gesture).
+Reuse `isNativePlatform()` from `src/utils/nativePlatform.ts`. Add `isIOSNative()` helper (`Capacitor.getPlatform() === 'ios' && isNativePlatform()`). Use it to gate Stripe vs Apple paywall everywhere.
 
-No business-logic, store-shape, or routing changes beyond the two lines in the entry effect and the one default value in the store. Week view rendering, AppNav toggles, and all other behaviour are untouched.
+## 3. iOS IAP plugin
 
-## Technical notes
+Add `@squareetlabs/capacitor-subscriptions` (StoreKit 2 wrapper, MIT, actively maintained). Wraps:
+- `getProductDetails(productId)`
+- `purchaseProduct(productId)`
+- `getCurrentEntitlements()` → for restore
+- `getLatestTransaction(productId)` → returns signed JWS transaction we send to server
 
-- `useIsMobile()` returns `false` on the very first render (state starts `undefined` → coerced to `false`); the entry effect runs after mount when the value is correct, so platform-aware defaulting works on hydration.
-- Helper-text "recent schedule" check looks at `task.date` for any task in `tasks` (already includes generated recurring instances and user-scheduled items). Library / waiting-room items have no `date`, so they correctly don't count.
-- Helper text uses semantic tokens only; no hardcoded colors.
+Configure single product in App Store Connect:
+- Product ID: `com.spacetimelabs.spacetime.monthly`
+- Price: $2/month
+- Introductory offer: 30-day free trial (one-time, new subscribers)
+
+User must create the product in App Store Connect — document this in `MOBILE.md`.
+
+## 4. Paywall split
+
+`src/components/Paywall.tsx` — branch on `isIOSNative()`:
+
+**iOS variant** (`PaywallIOS.tsx`, new file):
+- Single plan card: "30-day free trial, then $2/month"
+- "Start Free Trial" button → `purchaseProduct` → POST signed JWS to `apple-iap-verify` edge function → on success, `onAccessGranted()`
+- "Restore Purchases" button → `getCurrentEntitlements` → POST to same verify function
+- Required disclosure text verbatim:
+  > 30-day free trial, then $2/month. Payment will be charged to your Apple ID. Subscription renews automatically unless canceled at least 24 hours before the end of the current period. Manage or cancel anytime in Apple Subscriptions.
+- Promo code input stays (server-validated, no IAP involvement)
+- NO mention of Stripe, web, external links, monthly/yearly grid
+
+**Web/desktop variant**: existing UI unchanged.
+
+## 5. Settings panel
+
+`src/components/SettingsPanel.tsx`:
+- On iOS: hide "Manage Subscription" (Stripe customer portal) button. Replace with "Manage in Apple Subscriptions" link → `window.open('https://apps.apple.com/account/subscriptions', '_blank')`. Hide Stripe upgrade buttons; show same iOS paywall block when no access.
+- On web/desktop: unchanged.
+- If user's `payment_source === 'apple_iap'` while on web: show read-only status + "Manage in Apple Subscriptions" deep link, no portal button.
+
+## 6. Edge functions
+
+### `apple-iap-verify` (new)
+POST `{ signedTransaction: string, signedRenewalInfo?: string }` from app.
+- Verify JWS signature against Apple's public keys (use `jose` lib + Apple root CAs bundled in function)
+- Extract `originalTransactionId`, `productId`, `expiresDate`, `environment`, `transactionId`
+- Look up user from JWT auth header
+- Upsert into `subscriptions` for that `user_id`:
+  - `status = 'active'` if `expiresDate > now`, else `'expired'`
+  - `payment_source = 'apple_iap'`
+  - `current_period_end = expiresDate`
+  - `apple_*` fields populated
+- Return `{ ok: true, expiresAt }`
+
+### `apple-iap-notifications` (new) — App Store Server Notifications V2 webhook
+- Public endpoint (`verify_jwt = false` in `supabase/config.toml`)
+- Receives `signedPayload`, verifies JWS, decodes `notificationType` + `data.signedTransactionInfo` + `signedRenewalInfo`
+- Look up subscription row by `apple_original_transaction_id`
+- Map notification types:
+  - `SUBSCRIBED`, `DID_RENEW`, `OFFER_REDEEMED` → `status='active'`, update `current_period_end`
+  - `DID_CHANGE_RENEWAL_STATUS` → update `apple_auto_renew`; if off and expired → `status='cancelling'`
+  - `EXPIRED`, `GRACE_PERIOD_EXPIRED` → `status='expired'`
+  - `REFUND`, `REVOKE` → `status='expired'`, clear access
+  - `DID_FAIL_TO_RENEW` → keep `active` until `current_period_end` passes (Apple grace)
+- URL goes into App Store Connect → App Information → App Store Server Notifications (production + sandbox)
+
+### Stripe functions
+Unchanged. Add safety: `stripe-checkout` keeps working from web; iOS just never calls it.
+
+## 7. Secrets
+
+Add via `add_secret`:
+- `APPLE_BUNDLE_ID` = `com.spacetimelabs.spacetime`
+- `APPLE_IAP_SHARED_SECRET` (from App Store Connect → App → App-Specific Shared Secret) — used as fallback for legacy verifyReceipt if needed
+- `APPLE_ISSUER_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` (App Store Server API key, .p8 contents) — needed for server-to-server lookups (e.g. on restore when client only has originalTransactionId)
+
+Will request these via `add_secret` after plan approval.
+
+## 8. iOS native setup (user does once after pulling)
+
+Document in `MOBILE.md`:
+1. In Xcode → Signing & Capabilities → add **In-App Purchase** capability
+2. App Store Connect → create subscription group "Spacetime", add product `com.spacetimelabs.spacetime.monthly` at $2/mo with 30-day intro offer
+3. Add tester to Sandbox; sign in via Settings → App Store → Sandbox Account
+4. `npm i && npx cap sync ios`
+
+## 9. Testing path
+
+- Web: existing Stripe flow untouched (regression check: subscribe still works)
+- iOS sandbox: purchase → verify webhook hits → `subscriptions.status='active'` with `payment_source='apple_iap'`; restore button works after reinstall; cancel in sandbox account → `EXPIRED` notification flips status
+
+## Out of scope
+
+- Yearly plan on iOS (spec says $2/mo only)
+- Migrating existing Stripe subs to Apple (not possible per Apple rules; users keep Stripe sub, both honored)
+- Family sharing

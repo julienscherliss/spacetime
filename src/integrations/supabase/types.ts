@@ -666,11 +666,18 @@ export type Database = {
       }
       subscriptions: {
         Row: {
+          apple_auto_renew: boolean | null
+          apple_environment: string | null
+          apple_expires_at: string | null
+          apple_latest_transaction_id: string | null
+          apple_original_transaction_id: string | null
+          apple_product_id: string | null
           created_at: string
           current_period_end: string | null
           current_period_start: string | null
           id: string
           lifetime_access: boolean
+          payment_source: string | null
           plan: string | null
           status: string
           stripe_customer_id: string | null
@@ -681,11 +688,18 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          apple_auto_renew?: boolean | null
+          apple_environment?: string | null
+          apple_expires_at?: string | null
+          apple_latest_transaction_id?: string | null
+          apple_original_transaction_id?: string | null
+          apple_product_id?: string | null
           created_at?: string
           current_period_end?: string | null
           current_period_start?: string | null
           id?: string
           lifetime_access?: boolean
+          payment_source?: string | null
           plan?: string | null
           status?: string
           stripe_customer_id?: string | null
@@ -696,11 +710,18 @@ export type Database = {
           user_id: string
         }
         Update: {
+          apple_auto_renew?: boolean | null
+          apple_environment?: string | null
+          apple_expires_at?: string | null
+          apple_latest_transaction_id?: string | null
+          apple_original_transaction_id?: string | null
+          apple_product_id?: string | null
           created_at?: string
           current_period_end?: string | null
           current_period_start?: string | null
           id?: string
           lifetime_access?: boolean
+          payment_source?: string | null
           plan?: string | null
           status?: string
           stripe_customer_id?: string | null
