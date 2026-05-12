@@ -1,7 +1,7 @@
 // Apple App Store Server Notifications V2 webhook
 // Configure URL in App Store Connect: App Information → App Store Server Notifications → Production / Sandbox URL
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { decodeJwt } from "npm:jose@5";
+import { verifyAppleJws, planForProductId } from "../_shared/appleJws.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -50,7 +50,13 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "signedPayload required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const payload = decodeJwt(signedPayload) as unknown as NotificationPayload;
+    let payload: NotificationPayload;
+    try {
+      payload = await verifyAppleJws<NotificationPayload>(signedPayload);
+    } catch (e) {
+      log("notification JWS verification failed", { msg: (e as Error).message });
+      return new Response(JSON.stringify({ error: "Invalid signedPayload" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     const notificationType = payload.notificationType ?? "";
     const subtype = payload.subtype ?? "";
     log("incoming", { notificationType, subtype, uuid: payload.notificationUUID });
@@ -62,10 +68,16 @@ Deno.serve(async (req) => {
     }
 
     const tx = payload.data?.signedTransactionInfo
-      ? (decodeJwt(payload.data.signedTransactionInfo) as unknown as DecodedTx)
+      ? await verifyAppleJws<DecodedTx>(payload.data.signedTransactionInfo).catch((e) => {
+          log("tx verify failed", { msg: (e as Error).message });
+          return null;
+        })
       : null;
     const renewal = payload.data?.signedRenewalInfo
-      ? (decodeJwt(payload.data.signedRenewalInfo) as unknown as DecodedRenewal)
+      ? await verifyAppleJws<DecodedRenewal>(payload.data.signedRenewalInfo).catch((e) => {
+          log("renewal verify failed", { msg: (e as Error).message });
+          return null;
+        })
       : null;
 
     const originalTx = tx?.originalTransactionId ?? renewal?.originalTransactionId;
@@ -128,6 +140,8 @@ Deno.serve(async (req) => {
       apple_environment: tx?.environment ?? undefined,
       updated_at: new Date().toISOString(),
     };
+    const planFromTx = planForProductId(tx?.productId);
+    if (planFromTx) update.plan = planFromTx;
     if (expiresAt) {
       update.apple_expires_at = expiresAt;
       update.current_period_end = expiresAt;

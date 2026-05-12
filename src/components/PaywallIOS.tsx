@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Zap, Check, Tag, LogOut, RotateCcw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { purchaseMonthly, restorePurchases } from '@/utils/iapClient';
+import { purchasePlan, restorePurchases, type IapPlan } from '@/utils/iapClient';
 
 interface Props {
   trialDaysLeft: number;
@@ -13,11 +13,13 @@ interface Props {
 }
 
 const APPLE_TERMS =
-  '30-day free trial, then $2/month. Payment will be charged to your Apple ID. ' +
+  '30-day free trial, then $3/month or $24/year depending on the selected plan. ' +
+  'Payment will be charged to your Apple ID. ' +
   'Subscription renews automatically unless canceled at least 24 hours before the end of the current period. ' +
   'Manage or cancel anytime in Apple Subscriptions.';
 
 export function PaywallIOS({ trialDaysLeft, trialExpired, onAccessGranted, subscriptionStatus }: Props) {
+  const [selectedPlan, setSelectedPlan] = useState<IapPlan>('yearly');
   const [promoCode, setPromoCode] = useState('');
   const [promoLoading, setPromoLoading] = useState(false);
   const [purchaseLoading, setPurchaseLoading] = useState(false);
@@ -26,7 +28,7 @@ export function PaywallIOS({ trialDaysLeft, trialExpired, onAccessGranted, subsc
   const handlePurchase = async () => {
     setPurchaseLoading(true);
     try {
-      await purchaseMonthly();
+      await purchasePlan(selectedPlan);
       toast.success('Subscription active');
       onAccessGranted();
     } catch (err: any) {
@@ -118,43 +120,79 @@ export function PaywallIOS({ trialDaysLeft, trialExpired, onAccessGranted, subsc
           <p className="text-[10px] font-mono text-muted-foreground/40 mt-1">SUBSCRIBE TO CONTINUE USING SPACETIME</p>
         </div>
 
-        {/* Single plan card */}
-        <div className="border border-primary/30 rounded-md p-5 mb-4 bg-card/60">
-          <div className="text-[9px] font-mono text-muted-foreground/50 tracking-widest mb-2">SPACETIME</div>
-          <div className="flex items-baseline gap-2">
-            <div className="text-3xl font-display font-bold text-foreground">$2</div>
-            <div className="text-[11px] font-mono text-muted-foreground/60">/ month</div>
-          </div>
-          <div className="text-[10px] font-mono text-primary/80 mt-1">30-day free trial</div>
-          <div className="mt-4 space-y-1.5">
-            {['Full access', 'All features', 'Cancel anytime in Apple Subscriptions'].map(f => (
-              <div key={f} className="flex items-center gap-1.5">
-                <Check size={11} className="text-primary/60" />
-                <span className="text-[10px] font-mono text-muted-foreground/70">{f}</span>
-              </div>
-            ))}
-          </div>
-
+        {/* Two plan cards — yearly default */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          {/* Monthly */}
           <button
-            onClick={handlePurchase}
+            type="button"
+            onClick={() => setSelectedPlan('monthly')}
             disabled={purchaseLoading || restoreLoading}
-            className="w-full mt-5 py-3 bg-primary text-primary-foreground text-[11px] font-mono tracking-wider rounded-sm hover:bg-primary/90 disabled:opacity-50 transition-colors"
+            className={`border rounded-md p-4 text-left transition-all ${
+              selectedPlan === 'monthly'
+                ? 'border-primary/60 bg-card/70'
+                : 'border-border/50 hover:border-foreground/30'
+            }`}
           >
-            {purchaseLoading ? 'PROCESSING...' : 'START FREE TRIAL'}
+            <div className="text-[9px] font-mono text-muted-foreground/50 tracking-widest mb-2">MONTHLY</div>
+            <div className="text-xl font-display font-bold text-foreground">$3</div>
+            <div className="text-[10px] font-mono text-muted-foreground/50 mt-0.5">/ month</div>
+            <div className="mt-3 space-y-1">
+              {['Full access', 'All features', 'Cancel anytime'].map((f) => (
+                <div key={f} className="flex items-center gap-1.5">
+                  <Check size={10} className="text-primary/60" />
+                  <span className="text-[9px] font-mono text-muted-foreground/60">{f}</span>
+                </div>
+              ))}
+            </div>
           </button>
 
+          {/* Yearly */}
           <button
-            onClick={handleRestore}
+            type="button"
+            onClick={() => setSelectedPlan('yearly')}
             disabled={purchaseLoading || restoreLoading}
-            className="w-full mt-2 py-2.5 flex items-center justify-center gap-1.5 border border-border/50 text-[10px] font-mono tracking-wider text-foreground/80 hover:text-foreground hover:border-foreground/40 rounded-sm disabled:opacity-50 transition-colors"
+            className={`border rounded-md p-4 text-left transition-all relative ${
+              selectedPlan === 'yearly'
+                ? 'border-primary/60 bg-card/70'
+                : 'border-primary/30 hover:border-primary/60'
+            }`}
           >
-            <RotateCcw size={11} />
-            {restoreLoading ? 'RESTORING...' : 'RESTORE PURCHASES'}
+            <div className="absolute -top-2 right-3 px-2 py-0.5 bg-primary text-primary-foreground text-[8px] font-mono tracking-wider rounded-full">
+              SAVE 33%
+            </div>
+            <div className="text-[9px] font-mono text-muted-foreground/50 tracking-widest mb-2">YEARLY</div>
+            <div className="text-xl font-display font-bold text-foreground">$2</div>
+            <div className="text-[10px] font-mono text-muted-foreground/50 mt-0.5">/ month · $24/yr</div>
+            <div className="mt-3 space-y-1">
+              {['Full access', 'All features', 'Best value'].map((f) => (
+                <div key={f} className="flex items-center gap-1.5">
+                  <Check size={10} className="text-primary/60" />
+                  <span className="text-[9px] font-mono text-muted-foreground/60">{f}</span>
+                </div>
+              ))}
+            </div>
           </button>
         </div>
 
+        <button
+          onClick={handlePurchase}
+          disabled={purchaseLoading || restoreLoading}
+          className="w-full py-3 bg-primary text-primary-foreground text-[11px] font-mono tracking-wider rounded-sm hover:bg-primary/90 disabled:opacity-50 transition-colors"
+        >
+          {purchaseLoading ? 'PROCESSING...' : 'BEGIN YOUR TRIAL'}
+        </button>
+
+        <button
+          onClick={handleRestore}
+          disabled={purchaseLoading || restoreLoading}
+          className="w-full mt-2 py-2.5 flex items-center justify-center gap-1.5 border border-border/50 text-[10px] font-mono tracking-wider text-foreground/80 hover:text-foreground hover:border-foreground/40 rounded-sm disabled:opacity-50 transition-colors"
+        >
+          <RotateCcw size={11} />
+          {restoreLoading ? 'RESTORING...' : 'RESTORE PURCHASES'}
+        </button>
+
         {/* Required Apple disclosure */}
-        <p className="text-[10px] font-mono text-muted-foreground/60 leading-relaxed mb-6 px-1">
+        <p className="text-[10px] font-mono text-muted-foreground/60 leading-relaxed mt-4 mb-6 px-1">
           {APPLE_TERMS}
         </p>
 

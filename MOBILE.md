@@ -58,12 +58,18 @@ The iOS app uses Apple In-App Purchase for subscriptions instead of Stripe (App 
 
 1. Create the app record (Bundle ID `com.spacetimelabs.spacetime`) if not already.
 2. **Features → Subscriptions** → create subscription group "Spacetime".
-3. Add subscription product:
-   - **Product ID**: `com.spacetimelabs.spacetime.monthly`
-   - **Reference Name**: Spacetime Monthly
-   - **Subscription Duration**: 1 Month
-   - **Price**: $1.99 (Tier 2) — closest to the $2/mo target
-4. Add an **Introductory Offer**:
+3. Add two subscription products in the same group:
+   - **Monthly**
+     - Product ID: `spacetime_monthly`
+     - Reference Name: Spacetime Monthly
+     - Duration: 1 Month
+     - Price: $2.99 (Tier 3) — billed as $3/mo
+   - **Yearly**
+     - Product ID: `spacetime_yearly`
+     - Reference Name: Spacetime Yearly
+     - Duration: 1 Year
+     - Price: $23.99 (Tier 24) — billed as $24/yr
+4. Add an **Introductory Offer** to BOTH products:
    - Type: **Free**, Duration: **1 Month**, Eligibility: **New Subscribers**
 5. Fill in the localized display name + description (App Review will reject without these).
 6. App Information → **App Store Server Notifications**:
