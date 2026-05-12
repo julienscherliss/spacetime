@@ -1003,3 +1003,19 @@ function ManageSubscriptionButton() {
     </button>
   );
 }
+
+function ManageAppleButton() {
+  const handleClick = () => {
+    // Apple's universal subscription management deep link.
+    // Opens the App Store Subscriptions screen on iOS, or the web equivalent elsewhere.
+    window.open('https://apps.apple.com/account/subscriptions', '_blank');
+  };
+  return (
+    <button
+      onClick={handleClick}
+      className="w-full flex items-center justify-center gap-2 bg-muted/30 border border-border/50 rounded-sm p-3 min-h-[48px] text-[12px] font-mono tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+    >
+      MANAGE IN APPLE SUBSCRIPTIONS
+    </button>
+  );
+}
