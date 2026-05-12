@@ -1156,7 +1156,7 @@ export function LibraryPanel() {
                     inputRef.current?.focus();
                     inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                   }}
-                  className="fixed bottom-20 sm:bottom-6 right-6 z-40 w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center active:scale-95 transition-transform"
+                  className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] sm:bottom-6 right-6 z-40 w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center active:scale-95 transition-transform"
                   aria-label="Add library item"
                 >
                   <Plus size={22} strokeWidth={2} />
