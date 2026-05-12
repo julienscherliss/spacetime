@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTrackpadSwipe } from '@/hooks/useTrackpadSwipe';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
 import { useTimezoneStore } from '@/store/timezoneStore';
 import { shouldShowScheduledTask } from '@/utils/taskVisibility';
@@ -31,6 +31,7 @@ export function DayView() {
   const isMobile = useIsMobile();
   const { minutes: nowMinutes, dateStr: today } = useCurrentTime(15000);
   const [selectedDate, _setSelectedDate] = useState(navigateToDate || currentDate || today);
+  const [helperDismissed, setHelperDismissed] = useState(false);
 
   const setSelectedDate = useCallback((dateOrFn: string | ((prev: string) => string)) => {
     _setSelectedDate(prev => {
@@ -360,6 +361,15 @@ export function DayView() {
       {/* Calendar grid — flows naturally, no inner scroll */}
       <div
         ref={scrollRef}
+        onPointerDown={(e) => {
+          if (showFirstTimeHelper && !helperDismissed) {
+            // Only dismiss when interacting with empty timeline space, not chrome
+            const target = e.target as HTMLElement;
+            if (!target.closest('button, input, textarea, a')) {
+              setHelperDismissed(true);
+            }
+          }
+        }}
         style={{
           transform: swiping ? `translateX(${swipeOffset * 0.3}px)` : 'none',
           overflow: 'hidden',
@@ -382,18 +392,27 @@ export function DayView() {
         </div>
       )}
 
-      {showFirstTimeHelper && (
-        <div className="pointer-events-none fixed inset-x-0 top-1/2 -translate-y-1/2 z-20 flex justify-center px-6">
-          <div className="max-w-sm text-center">
-            <p className="font-display font-bold text-foreground tracking-tight text-2xl mb-3">
-              Your day is empty
-            </p>
-            <p className="font-mono text-muted-foreground text-sm leading-relaxed tracking-wide">
-              {isMobile ? 'Press' : 'Click'} and drag on the timeline to create a new task.
-            </p>
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {showFirstTimeHelper && !helperDismissed && (
+          <motion.div
+            key="first-time-helper"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4, scale: 0.98 }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+            className="pointer-events-none fixed inset-x-0 top-1/2 -translate-y-1/2 z-20 flex justify-center px-6"
+          >
+            <div className="max-w-sm text-center">
+              <p className="font-display font-bold text-foreground tracking-tight text-2xl mb-3">
+                Your day is empty
+              </p>
+              <p className="font-mono text-muted-foreground text-sm leading-relaxed tracking-wide">
+                {isMobile ? 'Press' : 'Click'} and drag on the timeline to create a new task.
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <BlockedModal taskId="" open={false} onClose={() => {}} />
     </div>
