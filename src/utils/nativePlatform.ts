@@ -5,6 +5,11 @@ export function isNativePlatform() {
   return Capacitor.isNativePlatform();
 }
 
+/** True when running inside the Capacitor iOS shell specifically. */
+export function isIOSNative() {
+  return Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'ios';
+}
+
 /**
  * Apply native-only viewport and scaling fixes.
  * Call once at app startup (e.g. in main.tsx).

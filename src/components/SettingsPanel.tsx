@@ -10,7 +10,7 @@ import { ColorSchemePanel } from './ColorSchemePanel';
 import { AdminPanel } from './AdminPanel';
 import { DeleteAccountModal } from './DeleteAccountModal';
 import { DebugPanel } from './DebugPanel';
-import { isNativePlatform } from '@/utils/nativePlatform';
+import { isNativePlatform, isIOSNative } from '@/utils/nativePlatform';
 import { useSubscription } from '@/hooks/useSubscription';
 import type { NotificationLevel } from '@/utils/notificationService';
 import {
@@ -50,6 +50,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const CURRENCIES = ['USD','EUR','GBP','CAD','AUD','JPY','CHF','SEK','NOK','DKK','MXN','BRL','INR','SGD','HKD','NZD','ZAR','PLN','TRY'];
   const { connected, email, calendars, loading, checkStatus, startAuth, refreshCalendarData, toggleCalendar, disconnect } = useCalendarStore();
   const nativeRuntime = isNativePlatform();
+  const iosNative = isIOSNative();
   const [search, setSearch] = useState('');
   const [helpOpen, setHelpOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
@@ -816,11 +817,22 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 <div className="space-y-2">
                   <div className="bg-muted/30 border border-border/50 rounded-sm p-3">
                     <div className="text-[12px] font-mono text-foreground font-medium">
-                      {sub.plan === 'yearly' ? 'YEARLY' : 'MONTHLY'} PLAN
+                      {sub.payment_source === 'apple_iap'
+                        ? 'MONTHLY PLAN · APPLE'
+                        : (sub.plan === 'yearly' ? 'YEARLY' : 'MONTHLY') + ' PLAN'}
                     </div>
                     <div className="text-[10px] font-mono text-muted-foreground/50 mt-0.5">Active subscription</div>
                   </div>
-                  <ManageSubscriptionButton />
+                  {sub.payment_source === 'apple_iap' ? (
+                    <ManageAppleButton />
+                  ) : iosNative ? (
+                    // Stripe-managed sub viewed inside the iOS app — no portal link
+                    <div className="text-[10px] font-mono text-muted-foreground/50 px-1">
+                      Manage this subscription on the web at launchspacetime.com
+                    </div>
+                  ) : (
+                    <ManageSubscriptionButton />
+                  )}
                 </div>
               );
               if (sub.status === 'cancelling') return (
@@ -988,6 +1000,22 @@ function ManageSubscriptionButton() {
       className="w-full flex items-center justify-center gap-2 bg-muted/30 border border-border/50 rounded-sm p-3 min-h-[48px] text-[12px] font-mono tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-50"
     >
       {loading ? 'LOADING...' : 'MANAGE SUBSCRIPTION'}
+    </button>
+  );
+}
+
+function ManageAppleButton() {
+  const handleClick = () => {
+    // Apple's universal subscription management deep link.
+    // Opens the App Store Subscriptions screen on iOS, or the web equivalent elsewhere.
+    window.open('https://apps.apple.com/account/subscriptions', '_blank');
+  };
+  return (
+    <button
+      onClick={handleClick}
+      className="w-full flex items-center justify-center gap-2 bg-muted/30 border border-border/50 rounded-sm p-3 min-h-[48px] text-[12px] font-mono tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+    >
+      MANAGE IN APPLE SUBSCRIPTIONS
     </button>
   );
 }
