@@ -229,16 +229,22 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
       if (cfg.rateType === 'hourly') {
         amount = li.hours * cfg.hourlyRate;
       } else {
-        // Flat fee: hours field acts as quantity. Each unit = full flat rate.
+        // Flat fee: hours field acts as quantity. If this line was seeded
+        // from a sub-itemized flat entry, use its per-unit amount; otherwise
+        // fall back to the tag's overall flat rate.
         const qty = li.hours > 0 ? li.hours : 1;
-        amount = cfg.flatRate * qty;
+        const unit = li.unitAmount != null ? li.unitAmount : cfg.flatRate;
+        amount = unit * qty;
       }
       return {
         ...li,
         cfg,
         amount,
         rateType: cfg.rateType,
-        rate: cfg.rateType === 'hourly' ? cfg.hourlyRate : cfg.flatRate,
+        rate:
+          cfg.rateType === 'hourly'
+            ? cfg.hourlyRate
+            : (li.unitAmount != null ? li.unitAmount : cfg.flatRate),
       };
     });
   }, [lineItems, settings]);
