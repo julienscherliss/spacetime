@@ -1,8 +1,12 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { supabase } from '@/integrations/supabase/client';
 
-/** Apple subscription product configured in App Store Connect. */
-export const IAP_MONTHLY_PRODUCT_ID = 'com.spacetimelabs.spacetime.monthly';
+/** Apple subscription products configured in App Store Connect. */
+export const IAP_PRODUCT_IDS = {
+  monthly: 'spacetime_monthly',
+  yearly: 'spacetime_yearly',
+} as const;
+export type IapPlan = keyof typeof IAP_PRODUCT_IDS;
 
 // The plugin only loads on native; on web we get a no-op shim.
 interface SubscriptionsPlugin {
@@ -40,8 +44,9 @@ export async function verifyAppleTransaction(signedTransaction: string) {
 }
 
 /** Trigger StoreKit purchase + verify with our backend. */
-export async function purchaseMonthly() {
-  const result = await Subscriptions.purchaseProduct({ productIdentifier: IAP_MONTHLY_PRODUCT_ID });
+export async function purchasePlan(plan: IapPlan) {
+  const productIdentifier = IAP_PRODUCT_IDS[plan];
+  const result = await Subscriptions.purchaseProduct({ productIdentifier });
   // responseCode 0 == success per plugin convention
   if (result.responseCode !== 0 || !result.data?.transactionReceipt) {
     throw new Error(result.responseMessage || 'Purchase did not complete');
