@@ -10,7 +10,7 @@ import { ColorSchemePanel } from './ColorSchemePanel';
 import { AdminPanel } from './AdminPanel';
 import { DeleteAccountModal } from './DeleteAccountModal';
 import { DebugPanel } from './DebugPanel';
-import { isNativePlatform } from '@/utils/nativePlatform';
+import { isNativePlatform, isIOSNative } from '@/utils/nativePlatform';
 import { useSubscription } from '@/hooks/useSubscription';
 import type { NotificationLevel } from '@/utils/notificationService';
 import {
@@ -50,6 +50,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const CURRENCIES = ['USD','EUR','GBP','CAD','AUD','JPY','CHF','SEK','NOK','DKK','MXN','BRL','INR','SGD','HKD','NZD','ZAR','PLN','TRY'];
   const { connected, email, calendars, loading, checkStatus, startAuth, refreshCalendarData, toggleCalendar, disconnect } = useCalendarStore();
   const nativeRuntime = isNativePlatform();
+  const iosNative = isIOSNative();
   const [search, setSearch] = useState('');
   const [helpOpen, setHelpOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
