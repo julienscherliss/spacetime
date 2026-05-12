@@ -156,8 +156,8 @@ export default function Terms() {
       <h2 className="text-base font-medium mt-8 mb-2 text-foreground">Contact</h2>
       <p>
         Questions about these Terms? Email{' '}
-        <a href="mailto:hello@launchspacetime.com" className="underline">
-          hello@launchspacetime.com
+        <a href="mailto:support@launchspacetime.com" className="underline">
+          support@launchspacetime.com
         </a>
         .
       </p>

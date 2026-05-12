@@ -257,16 +257,24 @@ export default function Landing() {
 
       {/* Footer */}
       <footer className="border-t border-border/40 py-8 px-6">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <img src={faviconUrl} alt="Spacetime" className="w-3 h-3 opacity-40" />
             <span className="text-[10px] font-mono text-muted-foreground/40 tracking-wider">
               SPACETIME © {new Date().getFullYear()}
             </span>
           </div>
-          <span className="text-[9px] font-mono text-muted-foreground/30 tracking-wider">
-            BUILT WITH INTENTION
-          </span>
+          <div className="flex items-center gap-4">
+            <a href="/privacy" className="text-[9px] font-mono text-muted-foreground/30 tracking-wider hover:text-foreground transition-colors">
+              PRIVACY
+            </a>
+            <a href="/terms" className="text-[9px] font-mono text-muted-foreground/30 tracking-wider hover:text-foreground transition-colors">
+              TERMS
+            </a>
+            <span className="text-[9px] font-mono text-muted-foreground/30 tracking-wider">
+              BUILT WITH INTENTION
+            </span>
+          </div>
         </div>
       </footer>
     </div>

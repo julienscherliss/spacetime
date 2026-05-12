@@ -38,7 +38,7 @@ export function LegalLayout({ title, updated, children }: Props) {
         <footer className="mt-16 pt-6 border-t border-border/30 flex items-center justify-between text-[10px] font-mono tracking-[0.18em] text-muted-foreground/60">
           <Link to="/privacy" className="hover:text-foreground">PRIVACY</Link>
           <Link to="/terms" className="hover:text-foreground">TERMS</Link>
-          <a href="mailto:hello@launchspacetime.com" className="hover:text-foreground">CONTACT</a>
+          <a href="mailto:support@launchspacetime.com" className="hover:text-foreground">CONTACT</a>
         </footer>
       </main>
     </div>
