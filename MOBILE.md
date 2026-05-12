@@ -43,6 +43,7 @@ To preview live changes from the Lovable sandbox on your device, edit `capacitor
 | App lifecycle | `@capacitor/app` |
 | Browser (OAuth) | `@capacitor/browser` |
 | Local Notifications | `@capacitor/local-notifications` |
+| In-App Purchases (StoreKit 2) | `@squareetlabs/capacitor-subscriptions` |
 
 ## Troubleshooting
 
@@ -90,6 +91,8 @@ The iOS app uses Apple In-App Purchase for subscriptions instead of Stripe (App 
 npm install
 npm run build
 npx cap sync ios
+cd ios/App && pod install && cd ../..
+npx cap open ios
 ```
 
 ### Testing
