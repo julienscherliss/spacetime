@@ -536,8 +536,7 @@ export function DayListView() {
       {/* FAB — positioned above bottom nav on mobile */}
       <button
         onClick={handleAddTask}
-        className="fixed right-6 z-40 w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center active:scale-95 transition-transform sm:bottom-6"
-        style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}
+        className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] sm:bottom-6 right-6 z-40 w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center active:scale-95 transition-transform"
       >
         <Plus size={22} strokeWidth={2} />
       </button>
