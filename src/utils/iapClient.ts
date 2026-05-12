@@ -2,6 +2,10 @@ import { Capacitor } from '@capacitor/core';
 import { NativePurchases, PURCHASE_TYPE } from '@capgo/native-purchases';
 import { supabase } from '@/integrations/supabase/client';
 
+// ⚠️ iOS IAP plugin policy: use ONLY @capgo/native-purchases.
+// Do NOT add or import @squareetlabs/capacitor-subscriptions — it is
+// incompatible with Capacitor 8 and breaks native StoreKit. See MOBILE.md.
+
 /** Apple subscription products configured in App Store Connect. */
 export const IAP_PRODUCT_IDS = {
   monthly: 'spacetime_monthly',
