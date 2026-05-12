@@ -79,8 +79,12 @@ const Index = () => {
   // The main viewMode (day/week/calendar) is preserved from last session.
   useEffect(() => {
     const s = useTaskStore.getState();
-    if (s.daySubMode !== 'list') s.setDaySubMode('list');
-    if (s.weekSubMode !== 'list') s.setWeekSubMode('list');
+    const isMobileViewport = typeof window !== 'undefined' && window.innerWidth < 768;
+    // Day always defaults to schedule (timeline). Week defaults to schedule on
+    // desktop, list on mobile.
+    if (s.daySubMode !== 'timeline') s.setDaySubMode('timeline');
+    const desiredWeek = isMobileViewport ? 'list' : 'timeline';
+    if (s.weekSubMode !== desiredWeek) s.setWeekSubMode(desiredWeek);
     if (s.viewMode === 'focus') s.setViewMode('day');
   }, []);
 

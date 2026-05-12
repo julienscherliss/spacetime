@@ -261,6 +261,17 @@ export function DayView() {
   const completedCount = dayTasks.filter((t) => t.completed).length;
   const isToday = selectedDate === today;
 
+  // Helper: has the user scheduled anything in the past 7 days (relative to today)?
+  const sevenDaysAgo = (() => {
+    const d = new Date(today + 'T12:00:00');
+    d.setDate(d.getDate() - 7);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
+  const hasRecentSchedule = tasks.some(
+    (t) => !!t.date && t.date >= sevenDaysAgo && t.date <= today
+  );
+  const showFirstTimeHelper = dayTasks.length === 0 && !hasRecentSchedule;
+
   return (
     <div
       ref={dayContainerRef}
@@ -365,9 +376,22 @@ export function DayView() {
         />
       </div>
 
-      {dayTasks.length === 0 && (
+      {dayTasks.length === 0 && !showFirstTimeHelper && (
         <div className="text-center py-20">
           <p className="text-muted-foreground/30 font-mono text-sm tracking-wider">NO TASKS</p>
+        </div>
+      )}
+
+      {showFirstTimeHelper && (
+        <div className="pointer-events-none fixed inset-x-0 top-1/2 -translate-y-1/2 z-20 flex justify-center px-6">
+          <div className="max-w-sm text-center">
+            <p className="font-display font-bold text-foreground tracking-tight text-2xl mb-3">
+              Your day is empty
+            </p>
+            <p className="font-mono text-muted-foreground text-sm leading-relaxed tracking-wide">
+              {isMobile ? 'Press' : 'Click'} and drag on the timeline to create a new task.
+            </p>
+          </div>
         </div>
       )}
 

@@ -511,7 +511,7 @@ export const useTaskStore = create<TaskState>()(
     (set, get) => ({
       tasks: [],
       viewMode: 'day',
-      daySubMode: 'list',
+      daySubMode: 'timeline',
       weekSubMode: 'list',
       routinesEnabled: true,
       focusTaskId: null,
