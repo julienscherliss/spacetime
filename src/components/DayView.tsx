@@ -32,6 +32,13 @@ export function DayView() {
   const { minutes: nowMinutes, dateStr: today } = useCurrentTime(15000);
   const [selectedDate, _setSelectedDate] = useState(navigateToDate || currentDate || today);
   const [helperDismissed, setHelperDismissed] = useState(false);
+  // Avoid flashing the empty-state helper while task data is still loading from
+  // localStorage / remote sync on initial mount.
+  const [helperReady, setHelperReady] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setHelperReady(true), 800);
+    return () => clearTimeout(t);
+  }, []);
 
   const setSelectedDate = useCallback((dateOrFn: string | ((prev: string) => string)) => {
     _setSelectedDate(prev => {
@@ -272,7 +279,7 @@ export function DayView() {
   const hasRecentCompletion = tasks.some(
     (t) => t.completed && !!t.date && t.date >= sevenDaysAgo && t.date <= today
   );
-  const showFirstTimeHelper = dayTasks.length === 0 && !hasRecentCompletion;
+  const showFirstTimeHelper = helperReady && dayTasks.length === 0 && !hasRecentCompletion;
 
   return (
     <div
