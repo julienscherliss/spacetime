@@ -27,6 +27,13 @@ interface LineItem {
   tag: string;
   description: string;
   hours: number;
+  /**
+   * For flat-rate tags that have explicit `flatItems` defined in their billing
+   * settings, each flat item becomes its own invoice line and carries its own
+   * per-unit amount. When set, line amount = hours (quantity) × unitAmount.
+   * Falls back to cfg.flatRate when undefined (legacy single-line flat tags).
+   */
+  unitAmount?: number;
 }
 
 export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
@@ -145,13 +152,28 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
         } else {
           const label = formatTagLabel(categories.find(c => c.value === tag)?.label || tag);
           const isFlat = cfg.rateType === 'flat';
-          const defaultQty = isFlat ? 1 : availableHoursForTag(tag);
-          next.push({
-            id: `${tag}-${Math.random().toString(36).slice(2, 8)}`,
-            tag,
-            description: label,
-            hours: defaultQty,
-          });
+          if (isFlat && cfg.flatItems && cfg.flatItems.length > 0) {
+            // Expand each saved flat line item into its own invoice line so
+            // sub-itemized flat fees (e.g. "DP x 2", "Prep", "Gear Rental")
+            // appear individually on the invoice.
+            cfg.flatItems.forEach((fi, idx) => {
+              next.push({
+                id: `${tag}-${idx}-${Math.random().toString(36).slice(2, 8)}`,
+                tag,
+                description: fi.description || label,
+                hours: fi.quantity != null ? Number(fi.quantity) || 1 : 1,
+                unitAmount: Number(fi.amount) || 0,
+              });
+            });
+          } else {
+            const defaultQty = isFlat ? 1 : availableHoursForTag(tag);
+            next.push({
+              id: `${tag}-${Math.random().toString(36).slice(2, 8)}`,
+              tag,
+              description: label,
+              hours: defaultQty,
+            });
+          }
         }
       }
       return next;
@@ -181,6 +203,7 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
         tag: orig.tag,
         description: orig.description === baseLabel ? `${baseLabel} (cont.)` : orig.description,
         hours: remainder,
+        unitAmount: orig.unitAmount,
       });
       return next;
     });
@@ -207,16 +230,22 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
       if (cfg.rateType === 'hourly') {
         amount = li.hours * cfg.hourlyRate;
       } else {
-        // Flat fee: hours field acts as quantity. Each unit = full flat rate.
+        // Flat fee: hours field acts as quantity. If this line was seeded
+        // from a sub-itemized flat entry, use its per-unit amount; otherwise
+        // fall back to the tag's overall flat rate.
         const qty = li.hours > 0 ? li.hours : 1;
-        amount = cfg.flatRate * qty;
+        const unit = li.unitAmount != null ? li.unitAmount : cfg.flatRate;
+        amount = unit * qty;
       }
       return {
         ...li,
         cfg,
         amount,
         rateType: cfg.rateType,
-        rate: cfg.rateType === 'hourly' ? cfg.hourlyRate : cfg.flatRate,
+        rate:
+          cfg.rateType === 'hourly'
+            ? cfg.hourlyRate
+            : (li.unitAmount != null ? li.unitAmount : cfg.flatRate),
       };
     });
   }, [lineItems, settings]);
@@ -724,7 +753,9 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
                     <div key={it.id} className="flex items-baseline gap-2 text-[11px] font-mono">
                       <span className="text-foreground/80 flex-1 truncate">{it.description}</span>
                       <span className="text-muted-foreground/60 tabular-nums w-20 text-right">
-                        {it.rateType === 'hourly' ? `${it.hours.toFixed(2)}h` : '1 × flat'}
+                        {it.rateType === 'hourly'
+                          ? `${it.hours.toFixed(2)}h`
+                          : `${(it.hours || 1)} × ${formatCurrency(it.rate, it.cfg?.currency || currency)}`}
                       </span>
                       <span className="text-foreground tabular-nums w-24 text-right">
                         {formatCurrency(it.amount, it.cfg?.currency || currency)}
