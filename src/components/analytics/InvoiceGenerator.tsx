@@ -753,7 +753,9 @@ export function InvoiceGenerator({ open, onClose, initialTags }: Props) {
                     <div key={it.id} className="flex items-baseline gap-2 text-[11px] font-mono">
                       <span className="text-foreground/80 flex-1 truncate">{it.description}</span>
                       <span className="text-muted-foreground/60 tabular-nums w-20 text-right">
-                        {it.rateType === 'hourly' ? `${it.hours.toFixed(2)}h` : '1 × flat'}
+                        {it.rateType === 'hourly'
+                          ? `${it.hours.toFixed(2)}h`
+                          : `${(it.hours || 1)} × ${formatCurrency(it.rate, it.cfg?.currency || currency)}`}
                       </span>
                       <span className="text-foreground tabular-nums w-24 text-right">
                         {formatCurrency(it.amount, it.cfg?.currency || currency)}
