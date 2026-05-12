@@ -67,11 +67,42 @@ function extractSignedPayload(tx: any): string | null {
 export async function purchasePlan(plan: IapPlan) {
   ensureAvailable();
   const productIdentifier = IAP_PRODUCT_IDS[plan];
-  const tx = await NativePurchases.purchaseProduct({
-    productIdentifier,
-    productType: PURCHASE_TYPE.SUBS,
-    quantity: 1,
-  });
+  console.log('[IAP] purchasePlan requesting productIdentifier:', productIdentifier);
+
+  // Best-effort: log the products StoreKit can actually see, to diagnose
+  // App Store Connect propagation / capability / agreement issues.
+  try {
+    const anyNP = NativePurchases as any;
+    if (typeof anyNP.getProducts === 'function') {
+      const probe = await anyNP.getProducts({
+        productIdentifiers: [IAP_PRODUCT_IDS.monthly, IAP_PRODUCT_IDS.yearly],
+      });
+      console.log('[IAP] StoreKit returned products:', probe);
+    }
+  } catch (probeErr) {
+    console.warn('[IAP] getProducts probe failed (non-fatal):', probeErr);
+  }
+
+  let tx: any;
+  try {
+    tx = await NativePurchases.purchaseProduct({
+      productIdentifier,
+      productType: PURCHASE_TYPE.SUBS,
+      quantity: 1,
+    });
+  } catch (err: any) {
+    const raw = err?.message || err?.errorMessage || String(err);
+    console.error('[IAP] purchaseProduct failed for', productIdentifier, raw);
+    if (/cannot find product/i.test(raw)) {
+      throw new Error(
+        'This subscription is temporarily unavailable. Apple may still be ' +
+        'processing the product — please try again in a few minutes, or ' +
+        'make sure the app was installed from TestFlight or the App Store.',
+      );
+    }
+    throw err;
+  }
+  console.log('[IAP] purchaseProduct succeeded:', { productIdentifier, hasJws: !!tx?.jwsRepresentation });
   const signed = extractSignedPayload(tx);
   if (!signed) throw new Error('Purchase did not return a signed transaction');
   return verifyAppleTransaction(signed);
