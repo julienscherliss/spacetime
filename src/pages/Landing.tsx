@@ -161,26 +161,20 @@ export default function Landing() {
                   href={IOS_TESTFLIGHT_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group text-left border border-border/60 bg-background/40 backdrop-blur-sm rounded-md p-5 hover:border-foreground/40 transition-colors"
+                  className="group flex items-center justify-between gap-3 border border-border/60 bg-background/40 backdrop-blur-sm rounded-md px-5 py-4 hover:border-foreground/40 transition-colors"
                 >
-                  <div className="text-[9px] font-mono text-muted-foreground/50 tracking-[0.2em] mb-2">iOS</div>
-                  <div className="font-display text-lg font-bold tracking-tight mb-1">Try the beta on TestFlight</div>
-                  <div className="mt-3 inline-flex items-center gap-2 text-[11px] font-mono tracking-widest text-foreground">
-                    JOIN iOS BETA
-                    <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
-                  </div>
+                  <span className="text-[11px] font-mono tracking-widest text-foreground">JOIN iOS BETA</span>
+                  <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
                 </a>
                 <a
                   href="#"
                   onClick={handleDesktopDownload}
-                  className="group text-left border border-border/60 bg-background/40 backdrop-blur-sm rounded-md p-5 hover:border-foreground/40 transition-colors"
+                  className="group flex items-center justify-between gap-3 border border-border/60 bg-background/40 backdrop-blur-sm rounded-md px-5 py-4 hover:border-foreground/40 transition-colors"
                 >
-                  <div className="text-[9px] font-mono text-muted-foreground/50 tracking-[0.2em] mb-2">DESKTOP</div>
-                  <div className="font-display text-lg font-bold tracking-tight mb-1">Download the latest desktop build</div>
-                  <div className="mt-3 inline-flex items-center gap-2 text-[11px] font-mono tracking-widest text-foreground">
-                    {downloading ? 'PREPARING DOWNLOAD…' : 'DOWNLOAD FOR MAC'}
-                    <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
-                  </div>
+                  <span className="text-[11px] font-mono tracking-widest text-foreground">
+                    {downloading ? 'PREPARING…' : 'DOWNLOAD FOR MAC'}
+                  </span>
+                  <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
                 </a>
               </div>
             )}
