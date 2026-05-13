@@ -25,6 +25,7 @@ import Privacy from "./pages/Privacy.tsx";
 import Terms from "./pages/Terms.tsx";
 import { LibraryDueDatePrompt } from "@/components/LibraryDueDatePrompt";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { isElectron } from "@/utils/nativePlatform";
 
 const queryClient = new QueryClient();
 
@@ -216,28 +217,32 @@ const App = () => {
     };
   }, []);
 
+  const platform = isElectron() ? 'electron' : undefined;
+
   return (
-  <ErrorBoundary>
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <LibraryDueDatePrompt />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<LandingRedirect />} />
-          <Route path="/auth" element={<AuthRedirect />} />
-          <Route path="/auth/callback" element={<AuthCallback />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/app" element={<AuthGuard><Index /></AuthGuard>} />
-          <Route path="/privacy" element={<Privacy />} />
-          <Route path="/terms" element={<Terms />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-  </ErrorBoundary>
+    <div data-platform={platform}>
+      <ErrorBoundary>
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <LibraryDueDatePrompt />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<LandingRedirect />} />
+                <Route path="/auth" element={<AuthRedirect />} />
+                <Route path="/auth/callback" element={<AuthCallback />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/app" element={<AuthGuard><Index /></AuthGuard>} />
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
+        </QueryClientProvider>
+      </ErrorBoundary>
+    </div>
   );
 };
 
