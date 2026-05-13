@@ -1,12 +1,12 @@
 import type { CapacitorElectronConfig } from '@capacitor-community/electron';
-import { screen,
+import {
   CapElectronEventEmitter,
   CapacitorSplashScreen,
   setupCapacitorElectronPlugins,
 } from '@capacitor-community/electron';
 import chokidar from 'chokidar';
 import type { MenuItemConstructorOptions } from 'electron';
-import { app, BrowserWindow, Menu, MenuItem, nativeImage, Tray, session, screen} from "electron";
+import {app, BrowserWindow, Menu, MenuItem, nativeImage, Tray, session, screen} from "electron";
 import electronIsDev from 'electron-is-dev';
 import electronServe from 'electron-serve';
 import windowStateKeeper from 'electron-window-state';
