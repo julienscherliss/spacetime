@@ -1,5 +1,14 @@
 import { Capacitor } from '@capacitor/core';
 
+declare global {
+  interface Window {
+    CapacitorCustomPlatform?: {
+      name?: string;
+    };
+    electron?: unknown;
+  }
+}
+
 /** True when running inside a Capacitor native shell (iOS / Android). */
 export function isNativePlatform() {
   return Capacitor.isNativePlatform();
@@ -14,8 +23,11 @@ export function isIOSNative() {
 export function isElectron() {
   if (typeof window === 'undefined') return false;
   const ua = window.navigator?.userAgent || '';
+  const customPlatformName = window.CapacitorCustomPlatform?.name;
   if (ua.toLowerCase().includes('electron')) return true;
-  if ((window as any).electron) return true;
+  if (window.location.protocol === 'capacitor-electron:') return true;
+  if (customPlatformName === 'electron') return true;
+  if (window.electron) return true;
   if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'electron') return true;
   return false;
 }
@@ -63,6 +75,10 @@ export function applyNativeFixes() {
  */
 export function applyElectronChrome() {
   if (!isElectron()) return;
+
   document.documentElement.classList.add('is-electron');
   document.body.classList.add('is-electron');
+  document.documentElement.setAttribute('data-platform', 'electron');
+  document.body.setAttribute('data-platform', 'electron');
+  document.getElementById('root')?.setAttribute('data-platform', 'electron');
 }
