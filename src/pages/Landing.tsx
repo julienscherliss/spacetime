@@ -8,6 +8,10 @@ import { LandingFeatureGrid } from '@/components/landing/LandingFeatureGrid';
 import { isNativePlatform } from '@/utils/nativePlatform';
 import faviconUrl from '/favicon.png';
 
+// TODO: Replace with the latest GitHub Release DMG URL after publishing desktop build.
+const DESKTOP_DOWNLOAD_URL = "PLACEHOLDER_DESKTOP_DOWNLOAD_URL";
+const IOS_TESTFLIGHT_URL = "https://testflight.apple.com/join/XMMVkKVW";
+
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
   visible: (i: number) => ({
@@ -94,26 +98,50 @@ export default function Landing() {
             variants={fadeUp}
             className="flex flex-col items-center justify-center gap-3"
           >
-            <div className="flex items-center justify-center gap-2">
-              {isNativePlatform() && (
+            {isNativePlatform() ? (
+              <div className="flex items-center justify-center gap-2">
                 <button
                   onClick={() => navigate('/auth')}
                   className="px-5 py-3 bg-card text-foreground border border-border text-[11px] font-mono tracking-widest rounded-sm hover:bg-card/80 transition-colors"
                 >
                   SIGN IN
                 </button>
-              )}
-              <button
-                onClick={() => navigate('/auth', { state: { plan: 'yearly' } })}
-                className="group flex items-center gap-2 px-6 py-3 bg-foreground text-background text-[11px] font-mono tracking-widest rounded-sm hover:bg-foreground/90 transition-colors"
-              >
-                START FREE TRIAL
-                <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
-              </button>
-            </div>
-            <span className="text-[9px] font-mono text-muted-foreground/40 tracking-wider">
-              30 DAYS FREE · THEN $2/MO
-            </span>
+                <button
+                  onClick={() => navigate('/auth', { state: { plan: 'yearly' } })}
+                  className="group flex items-center gap-2 px-6 py-3 bg-foreground text-background text-[11px] font-mono tracking-widest rounded-sm hover:bg-foreground/90 transition-colors"
+                >
+                  START FREE TRIAL
+                  <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-xl mx-auto">
+                <a
+                  href={IOS_TESTFLIGHT_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group text-left border border-border/60 bg-background/40 backdrop-blur-sm rounded-md p-5 hover:border-foreground/40 transition-colors"
+                >
+                  <div className="text-[9px] font-mono text-muted-foreground/50 tracking-[0.2em] mb-2">iOS</div>
+                  <div className="font-display text-lg font-bold tracking-tight mb-1">Try the beta on TestFlight</div>
+                  <div className="mt-3 inline-flex items-center gap-2 text-[11px] font-mono tracking-widest text-foreground">
+                    JOIN iOS BETA
+                    <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                </a>
+                <a
+                  href={DESKTOP_DOWNLOAD_URL}
+                  className="group text-left border border-border/60 bg-background/40 backdrop-blur-sm rounded-md p-5 hover:border-foreground/40 transition-colors"
+                >
+                  <div className="text-[9px] font-mono text-muted-foreground/50 tracking-[0.2em] mb-2">DESKTOP</div>
+                  <div className="font-display text-lg font-bold tracking-tight mb-1">Download the latest desktop build</div>
+                  <div className="mt-3 inline-flex items-center gap-2 text-[11px] font-mono tracking-widest text-foreground">
+                    DOWNLOAD FOR MAC
+                    <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                </a>
+              </div>
+            )}
           </motion.div>
         </div>
       </section>
