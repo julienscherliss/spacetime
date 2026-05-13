@@ -169,7 +169,7 @@ export default function Landing() {
                 <a
                   href="#"
                   onClick={handleDesktopDownload}
-                  className="group flex items-center justify-between gap-3 border border-border/60 bg-background/40 backdrop-blur-sm rounded-md px-5 py-4 hover:border-foreground/40 transition-colors"
+                  className="group flex items-center justify-between gap-3 border border-border/60 bg-background/40 backdrop-blur-sm rounded-md px-5 py-4 shadow-sm hover:border-foreground/40 transition-colors"
                 >
                   <span className="text-[11px] font-mono tracking-widest text-foreground">
                     {downloading ? 'PREPARING…' : 'DOWNLOAD FOR MAC'}
