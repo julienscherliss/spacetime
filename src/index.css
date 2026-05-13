@@ -444,6 +444,7 @@
 /* ── Electron desktop chrome ── */
 /* Hide only the top-left SPACE/TIME logo so it doesn't conflict with the
    macOS traffic-light buttons. No layout shifting, no spacers. */
+[data-platform="electron"] [data-electron-hide="logo"],
 html.is-electron [data-electron-hide="logo"] {
   display: none !important;
 }
