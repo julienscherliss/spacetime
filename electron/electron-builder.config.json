@@ -24,10 +24,11 @@
     "icon": "assets/appIcon.ico"
   },
   "mac": {
-    "category": "public.app-category.productivity",
-    "target": [
-      "dmg",
-      "zip"
-    ]
-  }
+  "category": "public.app-category.productivity",
+  "target": [
+    "dmg",
+    "zip"
+  ],
+  "icon": "assets/appIcon.icns"
+}
 }

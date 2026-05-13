@@ -110,7 +110,17 @@ export class ElectronCapacitorApp {
     this.MainWindow = new BrowserWindow({
   icon,
   show: false,
+
+  titleBarStyle: 'hidden',
+  trafficLightPosition: { x: 18, y: 18 },
+
   autoHideMenuBar: true,
+
+  backgroundColor: '#0f0f10',
+
+  vibrancy: 'sidebar',
+  visualEffectState: 'active',
+
   x: this.mainWindowState.x,
   y: this.mainWindowState.y,
   width: this.mainWindowState.width,
