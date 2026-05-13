@@ -442,18 +442,8 @@
 }
 
 /* ── Electron desktop chrome ── */
-/* Reserve space at top-left for macOS traffic-light buttons. */
-html.is-electron {
-  --electron-titlebar-h: 32px;
-  --electron-traffic-light-w: 80px;
-}
-html.is-electron body {
-  padding-top: var(--electron-titlebar-h);
-}
-/* Push top navigation/header surfaces clear of the traffic lights. */
-html.is-electron nav.sticky,
-html.is-electron header.sticky,
-html.is-electron nav.fixed,
-html.is-electron header.fixed {
-  padding-left: calc(var(--electron-traffic-light-w) + 12px);
+/* Hide only the top-left SPACE/TIME logo so it doesn't conflict with the
+   macOS traffic-light buttons. No layout shifting, no spacers. */
+html.is-electron [data-electron-hide="logo"] {
+  display: none !important;
 }
