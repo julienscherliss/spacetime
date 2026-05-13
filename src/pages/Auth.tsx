@@ -359,7 +359,7 @@ export default function Auth() {
                 <button
                   type="button"
                   onClick={() => { setStep('entry'); void sendOtp('password-login-inline-link'); }}
-                  disabled={loading || !email}
+                  disabled={loading}
                   className="text-[9px] font-mono text-primary/60 hover:text-primary hover:underline transition-colors disabled:opacity-50"
                 >
                   FORGOT? EMAIL ME A CODE
@@ -544,7 +544,7 @@ export default function Auth() {
               <button
                 type="button"
                 onClick={() => void sendOtp('password-login-text-link')}
-                disabled={loading || !email}
+                disabled={loading}
                 className="text-[9px] font-mono text-primary/60 hover:text-primary hover:underline transition-colors disabled:opacity-50"
               >
                 FORGOT? EMAIL ME A CODE
@@ -566,7 +566,7 @@ export default function Auth() {
           <button
             type="button"
             onClick={() => sendOtp('entry-secondary-button')}
-            disabled={loading || !email}
+            disabled={loading}
             className="w-full mt-3 py-2.5 rounded-sm border border-border text-muted-foreground hover:text-foreground font-mono text-[10px] tracking-widest hover:bg-muted/30 transition-colors disabled:opacity-50"
           >
             EMAIL ME A CODE INSTEAD
