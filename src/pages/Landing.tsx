@@ -104,7 +104,7 @@ export default function Landing() {
             variants={fadeUp}
             className="mb-8"
           >
-            <div className="inline-block px-3 py-1 border border-border/60 rounded-full bg-background/40 backdrop-blur-sm">
+            <div className="inline-block px-3 py-1 border border-border/60 rounded-full bg-background/40 backdrop-blur-sm shadow-sm">
               <span className="text-[9px] font-mono text-muted-foreground/60 tracking-[0.2em]">
                 TIME MANAGEMENT · REIMAGINED
               </span>
@@ -161,7 +161,7 @@ export default function Landing() {
                   href={IOS_TESTFLIGHT_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group flex items-center justify-between gap-3 border border-border/60 bg-background/40 backdrop-blur-sm rounded-md px-5 py-4 hover:border-foreground/40 transition-colors"
+                  className="group flex items-center justify-between gap-3 border border-border/60 bg-background/40 backdrop-blur-sm rounded-md px-5 py-4 shadow-sm hover:border-foreground/40 transition-colors"
                 >
                   <span className="text-[11px] font-mono tracking-widest text-foreground">JOIN iOS BETA</span>
                   <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
@@ -169,7 +169,7 @@ export default function Landing() {
                 <a
                   href="#"
                   onClick={handleDesktopDownload}
-                  className="group flex items-center justify-between gap-3 border border-border/60 bg-background/40 backdrop-blur-sm rounded-md px-5 py-4 hover:border-foreground/40 transition-colors"
+                  className="group flex items-center justify-between gap-3 border border-border/60 bg-background/40 backdrop-blur-sm rounded-md px-5 py-4 shadow-sm hover:border-foreground/40 transition-colors"
                 >
                   <span className="text-[11px] font-mono tracking-widest text-foreground">
                     {downloading ? 'PREPARING…' : 'DOWNLOAD FOR MAC'}
@@ -271,7 +271,7 @@ export default function Landing() {
           >
             <button
               onClick={() => setSelectedPlan('monthly')}
-              className={`border rounded-md p-5 text-left transition-all ${
+              className={`border rounded-md p-5 text-left shadow-sm transition-all ${
                 selectedPlan === 'monthly'
                   ? 'border-foreground/40 bg-muted/20'
                   : 'border-border/50 hover:border-foreground/20'
@@ -283,7 +283,7 @@ export default function Landing() {
             </button>
             <button
               onClick={() => setSelectedPlan('yearly')}
-              className={`border rounded-md p-5 relative text-left transition-all ${
+              className={`border rounded-md p-5 relative text-left shadow-sm transition-all ${
                 selectedPlan === 'yearly'
                   ? 'border-primary/50 bg-primary/5'
                   : 'border-primary/20 hover:border-primary/40'
