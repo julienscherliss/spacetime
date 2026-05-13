@@ -271,7 +271,7 @@ export default function Landing() {
           >
             <button
               onClick={() => setSelectedPlan('monthly')}
-              className={`border rounded-md p-5 text-left transition-all ${
+              className={`border rounded-md p-5 text-left shadow-sm transition-all ${
                 selectedPlan === 'monthly'
                   ? 'border-foreground/40 bg-muted/20'
                   : 'border-border/50 hover:border-foreground/20'
