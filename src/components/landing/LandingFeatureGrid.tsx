@@ -69,7 +69,7 @@ export function LandingFeatureGrid({ activeIndex, onSelect }: LandingFeatureGrid
             <button
               type="button"
               onClick={() => onSelect?.(index)}
-              className={`relative w-full overflow-hidden rounded-md border text-left transition-colors ${
+              className={`relative w-full overflow-hidden rounded-md border text-left shadow-sm transition-colors ${
                 isActive
                   ? 'border-primary/60'
                   : 'border-border/40 hover:border-foreground/20'
