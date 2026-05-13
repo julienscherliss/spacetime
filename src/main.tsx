@@ -7,10 +7,11 @@ import "@fontsource/jetbrains-mono/400.css";
 import "@fontsource/jetbrains-mono/500.css";
 import App from "./App.tsx";
 import "./index.css";
-import { applyNativeFixes } from "./utils/nativePlatform";
+import { applyNativeFixes, applyElectronChrome } from "./utils/nativePlatform";
 import { initColorScheme } from "./store/colorSchemeStore";
 
 applyNativeFixes();
+applyElectronChrome();
 initColorScheme();
 
 createRoot(document.getElementById("root")!).render(<App />);
