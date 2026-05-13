@@ -450,7 +450,9 @@ html.is-electron {
 html.is-electron body {
   padding-top: var(--electron-titlebar-h);
 }
-/* Push fixed top-left navs/headers clear of the traffic lights. */
+/* Push top navigation/header surfaces clear of the traffic lights. */
+html.is-electron nav.sticky,
+html.is-electron header.sticky,
 html.is-electron nav.fixed,
 html.is-electron header.fixed {
   padding-left: calc(var(--electron-traffic-light-w) + 12px);
