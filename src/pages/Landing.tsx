@@ -8,8 +8,9 @@ import { LandingFeatureGrid } from '@/components/landing/LandingFeatureGrid';
 import { isNativePlatform } from '@/utils/nativePlatform';
 import faviconUrl from '/favicon.png';
 
-// TODO: Replace with the latest GitHub Release DMG URL after publishing desktop build.
-const DESKTOP_DOWNLOAD_URL = "PLACEHOLDER_DESKTOP_DOWNLOAD_URL";
+// Resolved at click-time from the latest GitHub Release of this repo.
+const GITHUB_RELEASES_API = "https://api.github.com/repos/julienscherliss/spacetime/releases/latest";
+const GITHUB_RELEASES_PAGE = "https://github.com/julienscherliss/spacetime/releases/latest";
 const IOS_TESTFLIGHT_URL = "https://testflight.apple.com/join/XMMVkKVW";
 
 const fadeUp = {
@@ -26,6 +27,34 @@ export default function Landing() {
 
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
   const [activeFeature, setActiveFeature] = useState<number>(0);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDesktopDownload = async (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      const res = await fetch(GITHUB_RELEASES_API, {
+        headers: { Accept: 'application/vnd.github+json' },
+      });
+      if (!res.ok) throw new Error('release fetch failed');
+      const data = await res.json();
+      const assets: Array<{ name: string; browser_download_url: string }> = data.assets || [];
+      // Prefer .dmg, then .zip for macOS
+      const dmg = assets.find((a) => a.name.toLowerCase().endsWith('.dmg'));
+      const zip = assets.find((a) => /mac|darwin|osx/i.test(a.name) && a.name.toLowerCase().endsWith('.zip'));
+      const target = dmg?.browser_download_url || zip?.browser_download_url;
+      if (target) {
+        window.location.href = target;
+      } else {
+        window.open(GITHUB_RELEASES_PAGE, '_blank', 'noopener,noreferrer');
+      }
+    } catch {
+      window.open(GITHUB_RELEASES_PAGE, '_blank', 'noopener,noreferrer');
+    } finally {
+      setTimeout(() => setDownloading(false), 1500);
+    }
+  };
 
   return (
     <div className="brand-blue min-h-screen bg-background text-foreground selection:bg-primary/20">
@@ -130,13 +159,14 @@ export default function Landing() {
                   </div>
                 </a>
                 <a
-                  href={DESKTOP_DOWNLOAD_URL}
+                  href={GITHUB_RELEASES_PAGE}
+                  onClick={handleDesktopDownload}
                   className="group text-left border border-border/60 bg-background/40 backdrop-blur-sm rounded-md p-5 hover:border-foreground/40 transition-colors"
                 >
                   <div className="text-[9px] font-mono text-muted-foreground/50 tracking-[0.2em] mb-2">DESKTOP</div>
                   <div className="font-display text-lg font-bold tracking-tight mb-1">Download the latest desktop build</div>
                   <div className="mt-3 inline-flex items-center gap-2 text-[11px] font-mono tracking-widest text-foreground">
-                    DOWNLOAD FOR MAC
+                    {downloading ? 'PREPARING DOWNLOAD…' : 'DOWNLOAD FOR MAC'}
                     <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
                   </div>
                 </a>
