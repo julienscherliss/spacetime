@@ -6,11 +6,11 @@ import { ArrowRight } from 'lucide-react';
 import { GravityCanvas } from '@/components/GravityCanvas';
 import { LandingFeatureGrid } from '@/components/landing/LandingFeatureGrid';
 import { isNativePlatform } from '@/utils/nativePlatform';
+import { toast } from 'sonner';
 import faviconUrl from '/favicon.png';
 
 // Resolved at click-time from the latest GitHub Release of this repo.
 const GITHUB_RELEASES_API = "https://api.github.com/repos/julienscherliss/spacetime/releases/latest";
-const GITHUB_RELEASES_PAGE = "https://github.com/julienscherliss/spacetime/releases/latest";
 const IOS_TESTFLIGHT_URL = "https://testflight.apple.com/join/XMMVkKVW";
 
 const fadeUp = {
@@ -29,6 +29,18 @@ export default function Landing() {
   const [activeFeature, setActiveFeature] = useState<number>(0);
   const [downloading, setDownloading] = useState(false);
 
+  const triggerDownload = (url: string, filename: string) => {
+    // Use a hidden anchor with `download` so the browser saves the file in
+    // place instead of navigating away from the homepage.
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
   const handleDesktopDownload = async (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     if (downloading) return;
@@ -40,17 +52,17 @@ export default function Landing() {
       if (!res.ok) throw new Error('release fetch failed');
       const data = await res.json();
       const assets: Array<{ name: string; browser_download_url: string }> = data.assets || [];
-      // Prefer .dmg, then .zip for macOS
       const dmg = assets.find((a) => a.name.toLowerCase().endsWith('.dmg'));
       const zip = assets.find((a) => /mac|darwin|osx/i.test(a.name) && a.name.toLowerCase().endsWith('.zip'));
-      const target = dmg?.browser_download_url || zip?.browser_download_url;
-      if (target) {
-        window.location.href = target;
+      const asset = dmg || zip;
+      if (asset) {
+        triggerDownload(asset.browser_download_url, asset.name);
+        toast.success(`Downloading ${asset.name}`);
       } else {
-        window.open(GITHUB_RELEASES_PAGE, '_blank', 'noopener,noreferrer');
+        toast.error('No macOS build available in the latest release yet.');
       }
     } catch {
-      window.open(GITHUB_RELEASES_PAGE, '_blank', 'noopener,noreferrer');
+      toast.error('Could not start download. Please try again.');
     } finally {
       setTimeout(() => setDownloading(false), 1500);
     }
@@ -159,7 +171,7 @@ export default function Landing() {
                   </div>
                 </a>
                 <a
-                  href={GITHUB_RELEASES_PAGE}
+                  href="#"
                   onClick={handleDesktopDownload}
                   className="group text-left border border-border/60 bg-background/40 backdrop-blur-sm rounded-md p-5 hover:border-foreground/40 transition-colors"
                 >
