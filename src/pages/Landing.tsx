@@ -161,7 +161,7 @@ export default function Landing() {
                   href={IOS_TESTFLIGHT_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group flex items-center justify-between gap-3 border border-border/60 bg-background/40 backdrop-blur-sm rounded-md px-5 py-4 hover:border-foreground/40 transition-colors"
+                  className="group flex items-center justify-between gap-3 border border-border/60 bg-background/40 backdrop-blur-sm rounded-md px-5 py-4 shadow-sm hover:border-foreground/40 transition-colors"
                 >
                   <span className="text-[11px] font-mono tracking-widest text-foreground">JOIN iOS BETA</span>
                   <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
