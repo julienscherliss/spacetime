@@ -1,12 +1,12 @@
 import type { CapacitorElectronConfig } from '@capacitor-community/electron';
-import {
+import { screen,
   CapElectronEventEmitter,
   CapacitorSplashScreen,
   setupCapacitorElectronPlugins,
 } from '@capacitor-community/electron';
 import chokidar from 'chokidar';
 import type { MenuItemConstructorOptions } from 'electron';
-import { app, BrowserWindow, Menu, MenuItem, nativeImage, Tray, session } from 'electron';
+import { app, BrowserWindow, Menu, MenuItem, nativeImage, Tray, session, screen} from "electron";
 import electronIsDev from 'electron-is-dev';
 import electronServe from 'electron-serve';
 import windowStateKeeper from 'electron-window-state';
@@ -133,6 +133,42 @@ export class ElectronCapacitorApp {
         preload: preloadPath,
       },
     });
+
+    // Traffic lights hover reveal
+    if (process.platform === "darwin" && this.MainWindow) {
+      let trafficLightsVisible = true;
+
+      const setTrafficLightsVisible = (visible: boolean) => {
+        if (!this.MainWindow || this.MainWindow.isDestroyed()) return;
+        if (trafficLightsVisible === visible) return;
+
+        trafficLightsVisible = visible;
+        this.MainWindow.setWindowButtonVisibility(visible);
+        console.log(`[traffic-lights] ${visible ? "shown" : "hidden"}`);
+      };
+
+      this.MainWindow.once("ready-to-show", () => {
+        setTrafficLightsVisible(false);
+
+        setInterval(() => {
+          if (!this.MainWindow || this.MainWindow.isDestroyed()) return;
+
+          const bounds = this.MainWindow.getBounds();
+          const point = screen.getCursorScreenPoint();
+
+          const isOverTrafficLightArea =
+            point.x >= bounds.x &&
+            point.x <= bounds.x + 220 &&
+            point.y >= bounds.y &&
+            point.y <= bounds.y + 120;
+
+          setTrafficLightsVisible(isOverTrafficLightArea);
+        }, 80);
+      });
+    }
+    // End traffic lights hover reveal
+
+
     this.MainWindow.setMenuBarVisibility(false);
     this.mainWindowState.manage(this.MainWindow);
 
