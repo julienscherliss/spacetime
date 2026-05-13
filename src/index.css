@@ -440,3 +440,18 @@
 .comfort .text-xl {
   font-size: var(--ui-text-heading) !important;
 }
+
+/* ── Electron desktop chrome ── */
+/* Reserve space at top-left for macOS traffic-light buttons. */
+html.is-electron {
+  --electron-titlebar-h: 32px;
+  --electron-traffic-light-w: 80px;
+}
+html.is-electron body {
+  padding-top: var(--electron-titlebar-h);
+}
+/* Push fixed top-left navs/headers clear of the traffic lights. */
+html.is-electron nav.fixed,
+html.is-electron header.fixed {
+  padding-left: calc(var(--electron-traffic-light-w) + 12px);
+}
