@@ -10,6 +10,16 @@ export function isIOSNative() {
   return Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'ios';
 }
 
+/** True when running inside an Electron desktop shell. */
+export function isElectron() {
+  if (typeof window === 'undefined') return false;
+  const ua = window.navigator?.userAgent || '';
+  if (ua.toLowerCase().includes('electron')) return true;
+  if ((window as any).electron) return true;
+  if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'electron') return true;
+  return false;
+}
+
 /**
  * Apply native-only viewport and scaling fixes.
  * Call once at app startup (e.g. in main.tsx).
@@ -45,4 +55,14 @@ export function applyNativeFixes() {
     },
     { passive: true },
   );
+}
+
+/**
+ * Apply Electron-only desktop chrome adjustments (e.g. macOS traffic-light spacing).
+ * Safe no-op on web/iOS/Android.
+ */
+export function applyElectronChrome() {
+  if (!isElectron()) return;
+  document.documentElement.classList.add('is-electron');
+  document.body.classList.add('is-electron');
 }
