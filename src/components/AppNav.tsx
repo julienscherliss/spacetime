@@ -256,7 +256,7 @@ export function AppNav() {
     <nav className="sticky top-[env(safe-area-inset-top)] z-40 bg-background border-b border-border/30 overflow-x-auto overflow-y-hidden scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
       <div className="flex items-center px-5 sm:px-6 gap-4 min-w-max" style={{ height: 'var(--ui-nav-h)' }}>
         {/* Logo */}
-        <h1 className="flex flex-col leading-[0.85] font-display font-bold uppercase shrink-0" style={{ fontSize: 'var(--ui-text-lg)' }}>
+        <h1 data-electron-hide="logo" className="flex flex-col leading-[0.85] font-display font-bold uppercase shrink-0" style={{ fontSize: 'var(--ui-text-lg)' }}>
           <span className="text-foreground tracking-[0.14em]">space</span>
           <span className="text-muted-foreground/45 tracking-[0.38em]">time</span>
         </h1>
