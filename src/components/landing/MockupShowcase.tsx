@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react';
 import {
   motion,
-  AnimatePresence,
   useMotionValueEvent,
   useScroll,
   useTransform,
@@ -45,6 +44,7 @@ function Slide({
   index,
   total,
   progress,
+  isActive,
   src,
   label,
   title,
@@ -53,6 +53,7 @@ function Slide({
   index: number;
   total: number;
   progress: MotionValue<number>;
+  isActive: boolean;
   src: string;
   label: string;
   title: string;
@@ -67,11 +68,11 @@ function Slide({
 
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      animate={{ opacity: isActive ? 1 : 0 }}
       transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
       className="absolute inset-0 flex flex-col lg:flex-row items-center justify-center gap-10 lg:gap-24 px-6 lg:px-16"
+      style={{ pointerEvents: isActive ? 'auto' : 'none' }}
+      aria-hidden={!isActive}
     >
       <motion.div
         style={{ y }}
@@ -138,8 +139,6 @@ export function MockupShowcase() {
     setActiveIndex((current) => (current === nextIndex ? current : nextIndex));
   });
 
-  const activeSlide = slides[activeIndex];
-
   return (
     <section
       ref={sectionRef}
@@ -163,18 +162,19 @@ export function MockupShowcase() {
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-background to-transparent pointer-events-none z-20" />
 
         <div className="absolute inset-0">
-          <AnimatePresence mode="wait">
+          {slides.map((slide, index) => (
             <Slide
-              key={activeIndex}
-              index={activeIndex}
+              key={slide.label}
+              index={index}
               total={total}
               progress={scrollYProgress}
-              src={activeSlide.src}
-              label={activeSlide.label}
-              title={activeSlide.title}
-              caption={activeSlide.caption}
+              isActive={index === activeIndex}
+              src={slide.src}
+              label={slide.label}
+              title={slide.title}
+              caption={slide.caption}
             />
-          </AnimatePresence>
+          ))}
         </div>
 
         <ProgressRail progress={scrollYProgress} total={total} />
