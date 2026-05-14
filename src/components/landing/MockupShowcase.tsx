@@ -57,11 +57,17 @@ function Slide({
   const end = (index + 1) / total;
   const mid = (start + end) / 2;
   const span = 1 / total;
+  const clamp = (v: number) => Math.min(1, Math.max(0, v));
 
   // Phone: travels in from below-right, settles, exits up-left
   const opacity = useTransform(
     progress,
-    [start - 0.02, mid - span * 0.35, mid + span * 0.35, end + 0.02],
+    [
+      clamp(start - 0.02),
+      clamp(mid - span * 0.35),
+      clamp(mid + span * 0.35),
+      clamp(end + 0.02),
+    ],
     [0, 1, 1, 0],
   );
   const scale = useTransform(progress, [start, mid, end], [0.85, 1, 0.92]);
