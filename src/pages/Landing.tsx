@@ -5,7 +5,8 @@ import { FeatureCarousel } from '@/components/FeatureCarousel';
 import { ArrowRight } from 'lucide-react';
 import { GravityCanvas } from '@/components/GravityCanvas';
 import { LandingFeatureGrid } from '@/components/landing/LandingFeatureGrid';
-import { isNativePlatform } from '@/utils/nativePlatform';
+import { isNativePlatform, isIOSNative } from '@/utils/nativePlatform';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 import faviconUrl from '/favicon.png';
 
