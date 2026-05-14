@@ -68,11 +68,11 @@ function Slide({
     <motion.div
       animate={{ opacity: isActive ? 1 : 0 }}
       transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-      className="absolute inset-0 flex flex-col lg:flex-row items-center justify-center gap-10 lg:gap-24 px-6 lg:px-16"
+      className="absolute inset-0 flex flex-col lg:grid lg:grid-cols-2 items-center justify-items-center gap-10 px-6 lg:px-16 lg:max-w-6xl lg:mx-auto"
       style={{ pointerEvents: isActive ? 'auto' : 'none' }}
       aria-hidden={!isActive}
     >
-      <motion.div className="order-1 max-w-md text-center lg:text-left">
+      <motion.div className="order-1 w-full max-w-md text-center lg:text-left lg:justify-self-end">
         <div className="text-[10px] font-mono text-muted-foreground/50 tracking-[0.3em] mb-3">
           {String(index + 1).padStart(2, '0')} / {String(total).padStart(2, '0')} · {label}
         </div>
@@ -84,7 +84,7 @@ function Slide({
         </p>
       </motion.div>
 
-      <motion.div style={{ scale }} className="order-2 relative">
+      <motion.div style={{ scale }} className="order-2 relative lg:justify-self-start">
         <img
           src={src}
           alt={`${label} screen`}
