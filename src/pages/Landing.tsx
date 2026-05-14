@@ -167,26 +167,47 @@ export default function Landing() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-xl mx-auto">
-                <a
-                  href={IOS_TESTFLIGHT_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group flex items-center justify-between gap-3 border border-border/60 bg-background/40 backdrop-blur-sm rounded-md px-5 py-4 shadow-[0_8px_30px_-4px_rgba(0,0,0,0.12),0_2px_8px_-2px_rgba(0,0,0,0.06)] hover:border-foreground/40 transition-colors"
-                >
-                  <span className="text-[11px] font-mono tracking-widest text-foreground">{isMobile ? 'GET STARTED' : 'JOIN iOS BETA'}</span>
-                  <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
-                </a>
-                {!isMobile && (
-                  <a
-                    href="#"
-                    onClick={handleDesktopDownload}
-                    className="group flex items-center justify-between gap-3 border border-border/60 bg-background/40 backdrop-blur-sm rounded-md px-5 py-4 shadow-[0_8px_30px_-4px_rgba(0,0,0,0.12),0_2px_8px_-2px_rgba(0,0,0,0.06)] hover:border-foreground/40 transition-colors"
-                  >
-                    <span className="text-[11px] font-mono tracking-widest text-foreground">
-                      {downloading ? 'PREPARING…' : 'DOWNLOAD FOR MAC'}
-                    </span>
-                    <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
-                  </a>
+                {isMobile ? (
+                  <>
+                    <button
+                      onClick={() => navigate('/auth')}
+                      className="group flex items-center justify-between gap-3 border border-border/60 bg-background/40 backdrop-blur-sm rounded-md px-5 py-4 shadow-[0_8px_30px_-4px_rgba(0,0,0,0.12),0_2px_8px_-2px_rgba(0,0,0,0.06)] hover:border-foreground/40 transition-colors text-left"
+                    >
+                      <span className="text-[11px] font-mono tracking-widest text-foreground">GET STARTED</span>
+                      <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                    <a
+                      href={IOS_TESTFLIGHT_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group flex items-center justify-between gap-3 border border-border/60 bg-background/40 backdrop-blur-sm rounded-md px-5 py-4 shadow-[0_8px_30px_-4px_rgba(0,0,0,0.12),0_2px_8px_-2px_rgba(0,0,0,0.06)] hover:border-foreground/40 transition-colors"
+                    >
+                      <span className="text-[11px] font-mono tracking-widest text-foreground">JOIN iOS BETA</span>
+                      <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                    </a>
+                  </>
+                ) : (
+                  <>
+                    <a
+                      href={IOS_TESTFLIGHT_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group flex items-center justify-between gap-3 border border-border/60 bg-background/40 backdrop-blur-sm rounded-md px-5 py-4 shadow-[0_8px_30px_-4px_rgba(0,0,0,0.12),0_2px_8px_-2px_rgba(0,0,0,0.06)] hover:border-foreground/40 transition-colors"
+                    >
+                      <span className="text-[11px] font-mono tracking-widest text-foreground">JOIN iOS BETA</span>
+                      <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                    </a>
+                    <a
+                      href="#"
+                      onClick={handleDesktopDownload}
+                      className="group flex items-center justify-between gap-3 border border-border/60 bg-background/40 backdrop-blur-sm rounded-md px-5 py-4 shadow-[0_8px_30px_-4px_rgba(0,0,0,0.12),0_2px_8px_-2px_rgba(0,0,0,0.06)] hover:border-foreground/40 transition-colors"
+                    >
+                      <span className="text-[11px] font-mono tracking-widest text-foreground">
+                        {downloading ? 'PREPARING…' : 'DOWNLOAD FOR MAC'}
+                      </span>
+                      <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                    </a>
+                  </>
                 )}
               </div>
             )}
