@@ -68,7 +68,7 @@ function Slide({
     <motion.div
       animate={{ opacity: isActive ? 1 : 0 }}
       transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-      className="absolute inset-0 flex flex-col lg:grid lg:grid-cols-2 items-center justify-items-center gap-10 px-6 lg:px-16 lg:max-w-6xl lg:mx-auto"
+      className="absolute inset-0 flex flex-col lg:grid lg:grid-cols-2 items-center justify-center justify-items-center gap-5 lg:gap-10 px-6 lg:px-16 pt-20 pb-10 lg:py-0 lg:max-w-6xl lg:mx-auto"
       style={{ pointerEvents: isActive ? 'auto' : 'none' }}
       aria-hidden={!isActive}
     >
@@ -76,10 +76,10 @@ function Slide({
         <div className="text-[10px] font-mono text-muted-foreground/50 tracking-[0.3em] mb-3">
           {String(index + 1).padStart(2, '0')} / {String(total).padStart(2, '0')} · {label}
         </div>
-        <h3 className="font-display text-2xl sm:text-3xl lg:text-5xl font-bold tracking-tight leading-[1.05] mb-3 lg:mb-5">
+        <h3 className="font-display text-xl sm:text-3xl lg:text-5xl font-bold tracking-tight leading-[1.05] mb-2 lg:mb-5">
           {title}
         </h3>
-        <p className="text-[12px] sm:text-sm font-mono text-muted-foreground/70 leading-relaxed max-w-sm mx-auto lg:mx-0">
+        <p className="text-[11px] sm:text-sm font-mono text-muted-foreground/70 leading-relaxed max-w-sm mx-auto lg:mx-0">
           {caption}
         </p>
       </motion.div>
@@ -88,7 +88,7 @@ function Slide({
         <img
           src={src}
           alt={`${label} screen`}
-          className="relative z-10 max-h-[55vh] sm:max-h-[65vh] lg:max-h-[78vh] w-auto object-contain
+          className="relative z-10 max-h-[50vh] sm:max-h-[60vh] lg:max-h-[78vh] w-auto object-contain
                      [filter:drop-shadow(0_2px_3px_rgba(0,0,0,0.06))_drop-shadow(0_30px_60px_rgba(0,0,0,0.16))]"
           draggable={false}
         />
