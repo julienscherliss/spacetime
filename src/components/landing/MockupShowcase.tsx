@@ -75,6 +75,20 @@ function Slide({
   );
 }
 
+function Dot({ index, total, progress }: { index: number; total: number; progress: MotionValue<number> }) {
+  const start = index / total;
+  const end = (index + 1) / total;
+  const mid = (start + end) / 2;
+  const opacity = useTransform(progress, [start, mid, end], [0.25, 1, 0.25]);
+  const scale = useTransform(progress, [start, mid, end], [1, 1.6, 1]);
+  return (
+    <motion.span
+      style={{ opacity, scale }}
+      className="block w-1.5 h-1.5 rounded-full bg-foreground"
+    />
+  );
+}
+
 export function MockupShowcase() {
   const sectionRef = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({
@@ -115,28 +129,9 @@ export function MockupShowcase() {
         </div>
         {/* Progress dots */}
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2">
-          {slides.map((s, i) => {
-            const start = i / total;
-            const end = (i + 1) / total;
-            const mid = (start + end) / 2;
-            const dotOpacity = useTransform(
-              scrollYProgress,
-              [start, mid, end],
-              [0.25, 1, 0.25],
-            );
-            const dotScale = useTransform(
-              scrollYProgress,
-              [start, mid, end],
-              [1, 1.6, 1],
-            );
-            return (
-              <motion.span
-                key={s.label}
-                style={{ opacity: dotOpacity, scale: dotScale }}
-                className="block w-1.5 h-1.5 rounded-full bg-foreground"
-              />
-            );
-          })}
+          {slides.map((s, i) => (
+            <Dot key={s.label} index={i} total={total} progress={scrollYProgress} />
+          ))}
         </div>
       </div>
     </section>
