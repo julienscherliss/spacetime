@@ -256,9 +256,9 @@ export default function Landing() {
             <h2 className="font-display text-2xl font-bold tracking-tight mb-2">
               Fully featured. 30 days free.
             </h2>
-            <p className="text-[12px] font-mono text-muted-foreground/50 mb-8">
-              30-day free trial · No credit card required
-            </p>
+             <p className="text-[12px] font-mono text-muted-foreground/50 mb-8">
+               No credit card required
+             </p>
           </motion.div>
 
           <motion.div
@@ -305,16 +305,16 @@ export default function Landing() {
             custom={2}
             variants={fadeUp}
           >
-            <button
-              onClick={() => navigate('/auth', { state: { plan: selectedPlan } })}
-              className="group flex items-center gap-2 mx-auto px-6 py-3 bg-foreground text-background text-[11px] font-mono tracking-widest rounded-sm hover:bg-foreground/90 transition-colors"
-            >
-              BEGIN YOUR TRIAL
-              <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
-            </button>
-            <p className="text-[9px] font-mono text-muted-foreground/40 mt-3">
-              {selectedPlan === 'yearly' ? '$24 BILLED ANNUALLY AFTER TRIAL' : '$3 BILLED MONTHLY AFTER TRIAL'}
-            </p>
+             <button
+               onClick={() => navigate('/auth', { state: { plan: selectedPlan } })}
+               className="group flex items-center gap-2 mx-auto px-6 py-3 bg-foreground text-background text-[11px] font-mono tracking-widest rounded-sm hover:bg-foreground/90 transition-colors"
+             >
+               GET STARTED&nbsp;
+               <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+             </button>
+             <p className="text-[9px] font-mono text-muted-foreground/40 mt-3">
+               {"\n"}
+             </p>
           </motion.div>
         </div>
       </section>
