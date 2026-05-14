@@ -59,12 +59,10 @@ function Slide({
   title: string;
   caption: string;
 }) {
-  const span = 1 / total;
-  const start = index * span;
-  const end = start + span;
-  const localProgress = useTransform(progress, [start, end], [0, 1]);
-  const y = useTransform(localProgress, [0, 1], [18, -18]);
-  const scale = useTransform(localProgress, [0, 1], [0.985, 1.01]);
+  // Continuous scale across the entire scroll so every slide picks up
+  // exactly where the previous one left off — the crossfade then never
+  // jumps in size or position.
+  const scale = useTransform(progress, [0, 1], [0.96, 1.12]);
 
   return (
     <motion.div
@@ -74,10 +72,7 @@ function Slide({
       style={{ pointerEvents: isActive ? 'auto' : 'none' }}
       aria-hidden={!isActive}
     >
-      <motion.div
-        style={{ y }}
-        className="order-1 max-w-md text-center lg:text-left"
-      >
+      <motion.div className="order-1 max-w-md text-center lg:text-left">
         <div className="text-[10px] font-mono text-muted-foreground/50 tracking-[0.3em] mb-3">
           {String(index + 1).padStart(2, '0')} / {String(total).padStart(2, '0')} · {label}
         </div>
@@ -89,7 +84,7 @@ function Slide({
         </p>
       </motion.div>
 
-      <motion.div style={{ scale, y }} className="order-2 relative">
+      <motion.div style={{ scale }} className="order-2 relative">
         <img
           src={src}
           alt={`${label} screen`}
