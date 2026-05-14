@@ -25,6 +25,7 @@ const fadeUp = {
 
 export default function Landing() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
   const [activeFeature, setActiveFeature] = useState<number>(0);
