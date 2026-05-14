@@ -44,6 +44,7 @@ function Slide({
   index,
   total,
   progress,
+  isActive,
   src,
   label,
   title,
@@ -52,6 +53,7 @@ function Slide({
   index: number;
   total: number;
   progress: MotionValue<number>;
+  isActive: boolean;
   src: string;
   label: string;
   title: string;
@@ -65,7 +67,13 @@ function Slide({
   const scale = useTransform(localProgress, [0, 1], [0.985, 1.01]);
 
   return (
-    <div className="absolute inset-0 flex flex-col lg:flex-row items-center justify-center gap-10 lg:gap-24 px-6 lg:px-16">
+    <motion.div
+      animate={{ opacity: isActive ? 1 : 0 }}
+      transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+      className="absolute inset-0 flex flex-col lg:flex-row items-center justify-center gap-10 lg:gap-24 px-6 lg:px-16"
+      style={{ pointerEvents: isActive ? 'auto' : 'none' }}
+      aria-hidden={!isActive}
+    >
       <motion.div
         style={{ y }}
         className="order-1 max-w-md text-center lg:text-left"
@@ -90,7 +98,7 @@ function Slide({
           draggable={false}
         />
       </motion.div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -131,8 +139,6 @@ export function MockupShowcase() {
     setActiveIndex((current) => (current === nextIndex ? current : nextIndex));
   });
 
-  const activeSlide = slides[activeIndex];
-
   return (
     <section
       ref={sectionRef}
@@ -156,15 +162,19 @@ export function MockupShowcase() {
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-background to-transparent pointer-events-none z-20" />
 
         <div className="absolute inset-0">
-          <Slide
-            index={activeIndex}
-            total={total}
-            progress={scrollYProgress}
-            src={activeSlide.src}
-            label={activeSlide.label}
-            title={activeSlide.title}
-            caption={activeSlide.caption}
-          />
+          {slides.map((slide, index) => (
+            <Slide
+              key={slide.label}
+              index={index}
+              total={total}
+              progress={scrollYProgress}
+              isActive={index === activeIndex}
+              src={slide.src}
+              label={slide.label}
+              title={slide.title}
+              caption={slide.caption}
+            />
+          ))}
         </div>
 
         <ProgressRail progress={scrollYProgress} total={total} />
