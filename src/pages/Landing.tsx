@@ -144,7 +144,7 @@ export default function Landing() {
           >
             {isIOSNative() ? (
               <button
-                onClick={() => navigate('/auth')}
+                onClick={() => navigate('/auth', { state: { plan: 'yearly' } })}
                 className="group flex items-center gap-2 px-6 py-3 bg-foreground text-background text-[11px] font-mono tracking-widest rounded-sm hover:bg-foreground/90 transition-colors"
               >
                 GET STARTED
@@ -171,7 +171,7 @@ export default function Landing() {
                 {isMobile ? (
                   <>
                     <button
-                      onClick={() => navigate('/auth')}
+                      onClick={() => navigate('/auth', { state: { plan: 'yearly' } })}
                       className="group flex items-center justify-between gap-3 border border-border/60 bg-background/40 backdrop-blur-sm rounded-md px-5 py-4 shadow-[0_8px_30px_-4px_rgba(0,0,0,0.12),0_2px_8px_-2px_rgba(0,0,0,0.06)] hover:border-foreground/40 transition-colors text-left"
                     >
                       <span className="text-[11px] font-mono tracking-widest text-foreground">GET STARTED</span>
