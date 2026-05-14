@@ -5,6 +5,7 @@ import { FeatureCarousel } from '@/components/FeatureCarousel';
 import { ArrowRight } from 'lucide-react';
 import { GravityCanvas } from '@/components/GravityCanvas';
 import { LandingFeatureGrid } from '@/components/landing/LandingFeatureGrid';
+import { MockupShowcase } from '@/components/landing/MockupShowcase';
 import { isNativePlatform, isIOSNative } from '@/utils/nativePlatform';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
@@ -214,6 +215,9 @@ export default function Landing() {
           </motion.div>
         </div>
       </section>
+
+      {/* Product mockup showcase */}
+      <MockupShowcase />
 
       {/* Features */}
       <section className="py-20 px-6">
