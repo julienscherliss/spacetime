@@ -1,5 +1,12 @@
-import { useRef } from 'react';
-import { motion, useScroll, useTransform, MotionValue } from 'framer-motion';
+import { useRef, useState } from 'react';
+import {
+  AnimatePresence,
+  motion,
+  useMotionValueEvent,
+  useScroll,
+  useTransform,
+  MotionValue,
+} from 'framer-motion';
 import mockupTimer from '@/assets/mockup-focus-timer.png';
 import mockupDetail from '@/assets/mockup-focus-detail.png';
 import mockupDay from '@/assets/mockup-day-view.png';
@@ -32,7 +39,7 @@ const slides = [
   },
 ];
 
-const clamp = (v: number) => Math.min(1, Math.max(0, v));
+const clampIndex = (value: number, total: number) => Math.min(total - 1, Math.max(0, value));
 
 function Slide({
   index,
@@ -54,30 +61,16 @@ function Slide({
   const span = 1 / total;
   const start = index * span;
   const end = start + span;
-  // Tight crossfade band — 12% of one slide's window. Outside that, the
-  // active slide is fully visible and others are fully hidden, so two slides
-  // are never visible at the same time.
-  const fade = span * 0.12;
-
-  // Plateau opacity: 0 → 1 over [start, start+fade], hold at 1, 1 → 0 over [end-fade, end]
-  const opacity = useTransform(
-    progress,
-    [
-      clamp(start - 0.001),
-      clamp(start + fade),
-      clamp(end - fade),
-      clamp(end + 0.001),
-    ],
-    [0, 1, 1, 0],
-  );
-
-  // Single subtle motion: gentle lift + scale, no rotation or horizontal drift
-  const y = useTransform(progress, [start, end], [24, -24]);
-  const scale = useTransform(progress, [start, end], [0.98, 1.02]);
+  const localProgress = useTransform(progress, [start, end], [0, 1]);
+  const y = useTransform(localProgress, [0, 1], [18, -18]);
+  const scale = useTransform(localProgress, [0, 1], [0.985, 1.01]);
 
   return (
     <motion.div
-      style={{ opacity }}
+      initial={{ opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -18 }}
+      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       className="absolute inset-0 flex flex-col lg:flex-row items-center justify-center gap-10 lg:gap-24 px-6 lg:px-16"
     >
       <motion.div
@@ -137,8 +130,15 @@ export function MockupShowcase() {
     target: sectionRef,
     offset: ['start start', 'end end'],
   });
-
   const total = slides.length;
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useMotionValueEvent(scrollYProgress, 'change', (value) => {
+    const nextIndex = clampIndex(Math.floor(value * total), total);
+    setActiveIndex((current) => (current === nextIndex ? current : nextIndex));
+  });
+
+  const activeSlide = slides[activeIndex];
 
   return (
     <section
@@ -163,18 +163,18 @@ export function MockupShowcase() {
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-background to-transparent pointer-events-none z-20" />
 
         <div className="absolute inset-0">
-          {slides.map((s, i) => (
+          <AnimatePresence initial={false} mode="wait">
             <Slide
-              key={s.label}
-              index={i}
+              key={activeSlide.label}
+              index={activeIndex}
               total={total}
               progress={scrollYProgress}
-              src={s.src}
-              label={s.label}
-              title={s.title}
-              caption={s.caption}
+              src={activeSlide.src}
+              label={activeSlide.label}
+              title={activeSlide.title}
+              caption={activeSlide.caption}
             />
-          ))}
+          </AnimatePresence>
         </div>
 
         <ProgressRail progress={scrollYProgress} total={total} />
