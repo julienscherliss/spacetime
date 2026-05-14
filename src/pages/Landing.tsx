@@ -5,7 +5,8 @@ import { FeatureCarousel } from '@/components/FeatureCarousel';
 import { ArrowRight } from 'lucide-react';
 import { GravityCanvas } from '@/components/GravityCanvas';
 import { LandingFeatureGrid } from '@/components/landing/LandingFeatureGrid';
-import { isNativePlatform } from '@/utils/nativePlatform';
+import { isNativePlatform, isIOSNative } from '@/utils/nativePlatform';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 import faviconUrl from '/favicon.png';
 
@@ -24,6 +25,7 @@ const fadeUp = {
 
 export default function Landing() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
   const [activeFeature, setActiveFeature] = useState<number>(0);
@@ -139,7 +141,15 @@ export default function Landing() {
             variants={fadeUp}
             className="flex flex-col items-center justify-center gap-3"
           >
-            {isNativePlatform() ? (
+            {isIOSNative() ? (
+              <button
+                onClick={() => navigate('/auth')}
+                className="group flex items-center gap-2 px-6 py-3 bg-foreground text-background text-[11px] font-mono tracking-widest rounded-sm hover:bg-foreground/90 transition-colors"
+              >
+                GET STARTED
+                <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            ) : isNativePlatform() ? (
               <div className="flex items-center justify-center gap-2">
                 <button
                   onClick={() => navigate('/auth')}
@@ -163,19 +173,21 @@ export default function Landing() {
                   rel="noopener noreferrer"
                   className="group flex items-center justify-between gap-3 border border-border/60 bg-background/40 backdrop-blur-sm rounded-md px-5 py-4 shadow-[0_8px_30px_-4px_rgba(0,0,0,0.12),0_2px_8px_-2px_rgba(0,0,0,0.06)] hover:border-foreground/40 transition-colors"
                 >
-                  <span className="text-[11px] font-mono tracking-widest text-foreground">JOIN iOS BETA</span>
+                  <span className="text-[11px] font-mono tracking-widest text-foreground">{isMobile ? 'GET STARTED' : 'JOIN iOS BETA'}</span>
                   <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
                 </a>
-                <a
-                  href="#"
-                  onClick={handleDesktopDownload}
-                  className="group flex items-center justify-between gap-3 border border-border/60 bg-background/40 backdrop-blur-sm rounded-md px-5 py-4 shadow-[0_8px_30px_-4px_rgba(0,0,0,0.12),0_2px_8px_-2px_rgba(0,0,0,0.06)] hover:border-foreground/40 transition-colors"
-                >
-                  <span className="text-[11px] font-mono tracking-widest text-foreground">
-                    {downloading ? 'PREPARING…' : 'DOWNLOAD FOR MAC'}
-                  </span>
-                  <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
-                </a>
+                {!isMobile && (
+                  <a
+                    href="#"
+                    onClick={handleDesktopDownload}
+                    className="group flex items-center justify-between gap-3 border border-border/60 bg-background/40 backdrop-blur-sm rounded-md px-5 py-4 shadow-[0_8px_30px_-4px_rgba(0,0,0,0.12),0_2px_8px_-2px_rgba(0,0,0,0.06)] hover:border-foreground/40 transition-colors"
+                  >
+                    <span className="text-[11px] font-mono tracking-widest text-foreground">
+                      {downloading ? 'PREPARING…' : 'DOWNLOAD FOR MAC'}
+                    </span>
+                    <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                  </a>
+                )}
               </div>
             )}
           </motion.div>
