@@ -1,5 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useRef, useState } from 'react';
+import {
+  motion,
+  useMotionValueEvent,
+  useScroll,
+  useTransform,
+  MotionValue,
+} from 'framer-motion';
 import mockupTimer from '@/assets/mockup-focus-timer.png';
 import mockupDetail from '@/assets/mockup-focus-detail.png';
 import mockupDay from '@/assets/mockup-day-view.png';
@@ -37,6 +43,7 @@ const clampIndex = (value: number, total: number) => Math.min(total - 1, Math.ma
 function Slide({
   index,
   total,
+  progress,
   src,
   label,
   title,
@@ -44,24 +51,23 @@ function Slide({
 }: {
   index: number;
   total: number;
+  progress: MotionValue<number>;
   src: string;
   label: string;
   title: string;
   caption: string;
 }) {
+  const span = 1 / total;
+  const start = index * span;
+  const end = start + span;
+  const localProgress = useTransform(progress, [start, end], [0, 1]);
+  const y = useTransform(localProgress, [0, 1], [18, -18]);
+  const scale = useTransform(localProgress, [0, 1], [0.985, 1.01]);
+
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className="absolute inset-0 flex flex-col lg:flex-row items-center justify-center gap-10 lg:gap-24 px-6 lg:px-16"
-    >
+    <div className="absolute inset-0 flex flex-col lg:flex-row items-center justify-center gap-10 lg:gap-24 px-6 lg:px-16">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -20 }}
-        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        style={{ y }}
         className="order-1 max-w-md text-center lg:text-left"
       >
         <div className="text-[10px] font-mono text-muted-foreground/50 tracking-[0.3em] mb-3">
@@ -75,13 +81,7 @@ function Slide({
         </p>
       </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0, scale: 0.96, y: 24 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 1.02, y: -24 }}
-        transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-        className="order-2 relative"
-      >
+      <motion.div style={{ scale, y }} className="order-2 relative">
         <img
           src={src}
           alt={`${label} screen`}
@@ -90,23 +90,23 @@ function Slide({
           draggable={false}
         />
       </motion.div>
-    </motion.div>
+    </div>
   );
 }
 
 function ProgressRail({
-  activeIndex,
+  progress,
   total,
 }: {
-  activeIndex: number;
+  progress: MotionValue<number>;
   total: number;
 }) {
+  const height = useTransform(progress, [0, 1], ['0%', '100%']);
   return (
     <div className="absolute right-6 top-1/2 -translate-y-1/2 hidden md:flex flex-col items-center gap-3">
       <div className="relative w-px h-48 bg-foreground/10 overflow-hidden">
         <motion.div
-          animate={{ height: `${((activeIndex + 1) / total) * 100}%` }}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          style={{ height }}
           className="absolute top-0 left-0 w-full bg-foreground/60"
         />
       </div>
@@ -119,28 +119,17 @@ function ProgressRail({
 
 export function MockupShowcase() {
   const sectionRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ['start start', 'end end'],
+  });
   const total = slides.length;
   const [activeIndex, setActiveIndex] = useState(0);
 
-  useEffect(() => {
-    const update = () => {
-      const el = sectionRef.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const scrollable = rect.height - window.innerHeight;
-      if (scrollable <= 0) return;
-      const progress = Math.min(1, Math.max(0, -rect.top / scrollable));
-      const next = clampIndex(Math.floor(progress * total), total);
-      setActiveIndex((current) => (current === next ? current : next));
-    };
-    update();
-    window.addEventListener('scroll', update, { passive: true });
-    window.addEventListener('resize', update);
-    return () => {
-      window.removeEventListener('scroll', update);
-      window.removeEventListener('resize', update);
-    };
-  }, [total]);
+  useMotionValueEvent(scrollYProgress, 'change', (value) => {
+    const nextIndex = clampIndex(Math.floor(value * total), total);
+    setActiveIndex((current) => (current === nextIndex ? current : nextIndex));
+  });
 
   const activeSlide = slides[activeIndex];
 
@@ -167,20 +156,18 @@ export function MockupShowcase() {
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-background to-transparent pointer-events-none z-20" />
 
         <div className="absolute inset-0">
-          <AnimatePresence mode="wait">
-            <Slide
-              key={activeIndex}
-              index={activeIndex}
-              total={total}
-              src={activeSlide.src}
-              label={activeSlide.label}
-              title={activeSlide.title}
-              caption={activeSlide.caption}
-            />
-          </AnimatePresence>
+          <Slide
+            index={activeIndex}
+            total={total}
+            progress={scrollYProgress}
+            src={activeSlide.src}
+            label={activeSlide.label}
+            title={activeSlide.title}
+            caption={activeSlide.caption}
+          />
         </div>
 
-        <ProgressRail activeIndex={activeIndex} total={total} />
+        <ProgressRail progress={scrollYProgress} total={total} />
 
         <div className="absolute top-8 left-1/2 -translate-x-1/2 z-30">
           <span className="text-[9px] font-mono text-muted-foreground/40 tracking-[0.3em]">
