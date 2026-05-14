@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useState, useRef } from 'react';
 import useEmblaCarousel from 'embla-carousel-react';
+import Autoplay from 'embla-carousel-autoplay';
 
 import featureTimeline from '@/assets/feature-timeline.mp4';
 import featurePriority from '@/assets/feature-priority.mp4';
@@ -23,7 +24,10 @@ interface FeatureCarouselProps {
 }
 
 export function FeatureCarousel({ activeIndex = null, onSlideChange }: FeatureCarouselProps) {
-  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, align: 'center' });
+  const [emblaRef, emblaApi] = useEmblaCarousel(
+    { loop: true, align: 'center' },
+    [Autoplay({ delay: 5000, stopOnInteraction: true, stopOnMouseEnter: true })]
+  );
   const [selectedIndex, setSelectedIndex] = useState(0);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
 
@@ -50,7 +54,6 @@ export function FeatureCarousel({ activeIndex = null, onSlideChange }: FeatureCa
         v.play().catch(() => {});
       } else {
         v.pause();
-        v.currentTime = 0;
       }
     });
   }, [selectedIndex]);
@@ -71,10 +74,10 @@ export function FeatureCarousel({ activeIndex = null, onSlideChange }: FeatureCa
                 ref={(el) => { videoRefs.current[i] = el; }}
                 src={slide.src}
                 muted
+                loop
                 playsInline
                 preload="metadata"
                 aria-label={slide.key}
-                onEnded={() => emblaApi?.scrollNext()}
                 style={
                   slide.key === 'LIBRARY'
                     ? { objectPosition: 'center top' }
