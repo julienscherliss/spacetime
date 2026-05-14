@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import {
   motion,
+  AnimatePresence,
   useMotionValueEvent,
   useScroll,
   useTransform,
@@ -65,7 +66,13 @@ function Slide({
   const scale = useTransform(localProgress, [0, 1], [0.985, 1.01]);
 
   return (
-    <div className="absolute inset-0 flex flex-col lg:flex-row items-center justify-center gap-10 lg:gap-24 px-6 lg:px-16">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+      className="absolute inset-0 flex flex-col lg:flex-row items-center justify-center gap-10 lg:gap-24 px-6 lg:px-16"
+    >
       <motion.div
         style={{ y }}
         className="order-1 max-w-md text-center lg:text-left"
@@ -90,7 +97,7 @@ function Slide({
           draggable={false}
         />
       </motion.div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -156,15 +163,18 @@ export function MockupShowcase() {
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-background to-transparent pointer-events-none z-20" />
 
         <div className="absolute inset-0">
-          <Slide
-            index={activeIndex}
-            total={total}
-            progress={scrollYProgress}
-            src={activeSlide.src}
-            label={activeSlide.label}
-            title={activeSlide.title}
-            caption={activeSlide.caption}
-          />
+          <AnimatePresence mode="wait">
+            <Slide
+              key={activeIndex}
+              index={activeIndex}
+              total={total}
+              progress={scrollYProgress}
+              src={activeSlide.src}
+              label={activeSlide.label}
+              title={activeSlide.title}
+              caption={activeSlide.caption}
+            />
+          </AnimatePresence>
         </div>
 
         <ProgressRail progress={scrollYProgress} total={total} />
