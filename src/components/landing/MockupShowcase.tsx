@@ -163,15 +163,18 @@ export function MockupShowcase() {
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-background to-transparent pointer-events-none z-20" />
 
         <div className="absolute inset-0">
-          <Slide
-            index={activeIndex}
-            total={total}
-            progress={scrollYProgress}
-            src={activeSlide.src}
-            label={activeSlide.label}
-            title={activeSlide.title}
-            caption={activeSlide.caption}
-          />
+          <AnimatePresence mode="wait">
+            <Slide
+              key={activeIndex}
+              index={activeIndex}
+              total={total}
+              progress={scrollYProgress}
+              src={activeSlide.src}
+              label={activeSlide.label}
+              title={activeSlide.title}
+              caption={activeSlide.caption}
+            />
+          </AnimatePresence>
         </div>
 
         <ProgressRail progress={scrollYProgress} total={total} />
