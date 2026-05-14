@@ -1,6 +1,5 @@
 import { useEffect, useCallback, useState, useRef } from 'react';
 import useEmblaCarousel from 'embla-carousel-react';
-import Autoplay from 'embla-carousel-autoplay';
 
 import featureTimeline from '@/assets/feature-timeline.mp4';
 import featurePriority from '@/assets/feature-priority.mp4';
