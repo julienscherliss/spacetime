@@ -26,6 +26,7 @@ import Terms from "./pages/Terms.tsx";
 import { LibraryDueDatePrompt } from "@/components/LibraryDueDatePrompt";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { isElectron } from "@/utils/nativePlatform";
+import { ElectronDragRegion } from "@/components/ElectronDragRegion";
 
 const queryClient = new QueryClient();
 
