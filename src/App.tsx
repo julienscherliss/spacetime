@@ -222,6 +222,7 @@ const App = () => {
 
   return (
     <div data-platform={platform}>
+      <ElectronDragRegion />
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>
