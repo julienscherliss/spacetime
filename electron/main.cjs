@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, session } = require('electron');
+const { app, BrowserWindow, Menu, session, protocol } = require('electron');
 const path = require('path');
 
 const SUPABASE_REF = 'rhguyvbysqmcwzeuqipr';
