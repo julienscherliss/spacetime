@@ -1,4 +1,4 @@
-const { app, BrowserWindow, session, protocol } = require('electron');
+const { app, BrowserWindow, Menu, session } = require('electron');
 const path = require('path');
 
 const SUPABASE_REF = 'rhguyvbysqmcwzeuqipr';
@@ -13,6 +13,94 @@ const CSP = [
   "font-src 'self' data:",
   `connect-src 'self' ${SUPABASE_ORIGIN} ${SUPABASE_WS} https: wss:`,
 ].join('; ');
+
+const isMac = process.platform === 'darwin';
+
+function buildAppMenu() {
+  const template = [
+    ...(isMac
+      ? [{
+          label: app.name,
+          submenu: [
+            { role: 'about' },
+            { type: 'separator' },
+            { role: 'services' },
+            { type: 'separator' },
+            { role: 'hide' },
+            { role: 'hideOthers' },
+            { role: 'unhide' },
+            { type: 'separator' },
+            { role: 'quit' },
+          ],
+        }]
+      : []),
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        ...(isMac
+          ? [
+              { role: 'pasteAndMatchStyle' },
+              { role: 'delete' },
+              { role: 'selectAll' },
+            ]
+          : [
+              { role: 'delete' },
+              { type: 'separator' },
+              { role: 'selectAll' },
+            ]),
+      ],
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'forceReload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' },
+      ],
+    },
+    {
+      label: 'Window',
+      submenu: [
+        { role: 'minimize' },
+        { role: 'zoom' },
+        ...(isMac ? [{ type: 'separator' }, { role: 'front' }] : [{ role: 'close' }]),
+      ],
+    },
+  ];
+
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
+function attachContextMenu(win) {
+  win.webContents.on('context-menu', (_event, params) => {
+    const { isEditable, selectionText, editFlags } = params;
+    if (!isEditable) return;
+
+    const hasSelection = !!(selectionText && selectionText.trim().length);
+
+    const menu = Menu.buildFromTemplate([
+      { label: 'Cut', role: 'cut', enabled: editFlags.canCut && hasSelection },
+      { label: 'Copy', role: 'copy', enabled: editFlags.canCopy && hasSelection },
+      { label: 'Paste', role: 'paste', enabled: editFlags.canPaste },
+      { type: 'separator' },
+      { label: 'Select All', role: 'selectAll', enabled: editFlags.canSelectAll },
+    ]);
+
+    menu.popup({ window: win });
+  });
+}
 
 function createWindow() {
   // Register CSP override BEFORE creating the window so it catches every
@@ -36,13 +124,17 @@ function createWindow() {
     },
   });
 
+  attachContextMenu(win);
   win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  buildAppMenu();
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
+  if (!isMac) app.quit();
 });
 
 app.on('activate', () => {
