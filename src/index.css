@@ -448,3 +448,34 @@
 html.is-electron [data-electron-hide="logo"] {
   display: none !important;
 }
+
+/* Invisible top-center drag region for frameless window dragging.
+   Clears the macOS traffic-light area (left ~80px) and stays below
+   all positioned UI (nav z-40, modals z-50+, etc.) so interactive
+   elements above it remain fully clickable. */
+.is-electron .electron-drag-region {
+  position: fixed;
+  top: 0;
+  left: 80px;
+  right: 80px;
+  height: 30px;
+  z-index: 1;
+  -webkit-app-region: drag;
+  opacity: 0;
+  user-select: none;
+  cursor: default;
+}
+
+/* Ensure every interactive element opts out of drag so clicks
+   pass through naturally even when under the drag region. */
+.is-electron button,
+.is-electron [role="button"],
+.is-electron input,
+.is-electron textarea,
+.is-electron select,
+.is-electron a,
+.is-electron [contenteditable="true"],
+.is-electron [data-radix-popper-content-wrapper],
+.is-electron [data-radix-portal] {
+  -webkit-app-region: no-drag;
+}

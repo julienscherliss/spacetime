@@ -26,6 +26,7 @@ import Terms from "./pages/Terms.tsx";
 import { LibraryDueDatePrompt } from "@/components/LibraryDueDatePrompt";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { isElectron } from "@/utils/nativePlatform";
+import { ElectronDragRegion } from "@/components/ElectronDragRegion";
 
 const queryClient = new QueryClient();
 
@@ -221,6 +222,7 @@ const App = () => {
 
   return (
     <div data-platform={platform}>
+      <ElectronDragRegion />
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>
