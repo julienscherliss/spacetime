@@ -102,6 +102,60 @@ function attachContextMenu(win) {
   });
 }
 
+function attachEditShortcuts(win) {
+  win.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown') return;
+
+    const mod = isMac ? input.meta : input.control;
+    if (!mod) return;
+
+    const key = input.key.toLowerCase();
+    const wc = win.webContents;
+
+    switch (key) {
+      case 'v':
+        console.log('Electron shortcut paste fired');
+        wc.paste();
+        event.preventDefault();
+        break;
+      case 'c':
+        console.log('Electron shortcut copy fired');
+        wc.copy();
+        event.preventDefault();
+        break;
+      case 'x':
+        console.log('Electron shortcut cut fired');
+        wc.cut();
+        event.preventDefault();
+        break;
+      case 'a':
+        console.log('Electron shortcut selectAll fired');
+        wc.selectAll();
+        event.preventDefault();
+        break;
+      case 'z':
+        if (input.shift) {
+          console.log('Electron shortcut redo fired');
+          wc.redo();
+        } else {
+          console.log('Electron shortcut undo fired');
+          wc.undo();
+        }
+        event.preventDefault();
+        break;
+      case 'y':
+        if (!isMac) {
+          console.log('Electron shortcut redo fired');
+          wc.redo();
+          event.preventDefault();
+        }
+        break;
+      default:
+        break;
+    }
+  });
+}
+
 function createWindow() {
   // Register CSP override BEFORE creating the window so it catches every
   // response including the initial file:// HTML load (Capacitor Electron
@@ -125,6 +179,7 @@ function createWindow() {
   });
 
   attachContextMenu(win);
+  attachEditShortcuts(win);
   win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
 }
 
