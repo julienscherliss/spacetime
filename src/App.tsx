@@ -179,7 +179,12 @@ function LandingRedirect() {
       </div>
     );
   }
-  if (user) return <Navigate to="/app" replace />;
+  if (user) {
+    // Preserve query params (e.g. ?code= from Google Calendar OAuth callback)
+    // so Index can complete the auth exchange.
+    const search = typeof window !== 'undefined' ? window.location.search : '';
+    return <Navigate to={`/app${search}`} replace />;
+  }
   return <Landing />;
 }
 
