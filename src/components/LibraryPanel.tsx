@@ -183,7 +183,11 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
       <button
         onPointerDown={(e) => e.stopPropagation()}
         onPointerUp={(e) => e.stopPropagation()}
-        onClick={(e) => { e.stopPropagation(); deleteItem(item.id); }}
+        onClick={(e) => {
+          e.stopPropagation();
+          deleteItem(item.id);
+          window.dispatchEvent(new CustomEvent('tutorial:task-completed'));
+        }}
         data-touch-ignore
         className={`p-1.5 text-muted-foreground/30 hover:text-primary transition-colors ${isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
       >
