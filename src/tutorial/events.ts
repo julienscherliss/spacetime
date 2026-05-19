@@ -6,6 +6,7 @@ export type TutorialEvent =
   | 'tutorial:library-closed'
   | 'tutorial:archive-opened'
   | 'tutorial:task-created'
+  | 'tutorial:task-scheduled'
   | 'tutorial:task-completed';
 
 export function emitTutorial(name: TutorialEvent, detail?: unknown) {
