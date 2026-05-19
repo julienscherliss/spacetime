@@ -684,7 +684,7 @@ export function TaskEditPanel() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="fixed inset-0 z-[80] flex items-center justify-center"
+                  className="fixed inset-0 z-[10001] flex items-center justify-center"
                 >
                   <div className="absolute inset-0 bg-black/30" onClick={() => setShowReminderModal(false)} />
                   <motion.div
