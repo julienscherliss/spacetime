@@ -137,7 +137,7 @@ export function LibraryDueDatePrompt() {
         </PopoverAnchor>
       )}
       <PopoverContent
-        className="w-auto p-0 z-[9999] [&]:data-[date-autocomplete]"
+        className="w-auto p-0 z-[9999]"
         data-date-autocomplete
         align={pending?.align ?? 'end'}
         side={pending?.side ?? 'top'}
