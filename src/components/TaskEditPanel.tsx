@@ -481,7 +481,7 @@ export function TaskEditPanel() {
                     {dueInfo ? dueInfo.relative : 'Due'}
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 z-[70]" align="start" onClick={(e) => e.stopPropagation()}>
+                <PopoverContent data-date-autocomplete className="w-auto p-0 z-[9999]" align="start" onClick={(e) => e.stopPropagation()}>
                   <CalendarPicker
                     mode="single"
                     selected={dueDate ? new Date(dueDate + 'T12:00:00') : undefined}
