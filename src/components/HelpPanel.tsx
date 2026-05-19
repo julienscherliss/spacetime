@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { InteractiveTutorial } from './InteractiveTutorial';
+import { useTutorialStore } from '@/tutorial/tutorialStore';
 import {
   X, Search, Mouse, GripVertical, Focus, List,
   CalendarDays, Grid3X3, Archive, Clock, BarChart3, Repeat,
@@ -291,7 +291,10 @@ export function HelpPanel({ open, onClose, initialSection }: HelpPanelProps) {
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [tutorialOpen, setTutorialOpen] = useState(false);
+  const replayTutorial = () => {
+    useTutorialStore.getState().reset();
+    onClose();
+  };
 
   // Auto-expand a section when opened with initialSection
   useEffect(() => {
@@ -362,7 +365,7 @@ export function HelpPanel({ open, onClose, initialSection }: HelpPanelProps) {
             {/* Tutorial button */}
             <div className="px-4 pt-3 pb-1">
               <button
-                onClick={() => setTutorialOpen(true)}
+                onClick={replayTutorial}
                 className="w-full flex items-center justify-center gap-2 bg-primary/10 border border-primary/20 rounded-sm p-3 min-h-[44px] text-[12px] font-mono tracking-wider text-primary hover:bg-primary/15 transition-colors"
               >
                 <Hand size={14} strokeWidth={1.5} />
@@ -448,7 +451,6 @@ export function HelpPanel({ open, onClose, initialSection }: HelpPanelProps) {
         </motion.div>
       )}
     </AnimatePresence>
-    <InteractiveTutorial open={tutorialOpen} onClose={() => setTutorialOpen(false)} />
     </>
   );
 }
