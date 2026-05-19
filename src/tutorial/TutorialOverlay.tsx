@@ -18,6 +18,8 @@ const PAD = 8;
 const RADIUS = 8;
 const TOOLTIP_W = 320;
 const TOOLTIP_GAP = 16;
+const TOOLTIP_H_EST = 200; // conservative estimate for placement math
+const SAFE_MARGIN = 16;
 
 export function TutorialOverlay({
   step,
@@ -53,22 +55,60 @@ export function TutorialOverlay({
   // Centered (no anchor) modal or anchored tooltip card.
   const isCentered = !step.anchor || !rect;
 
-  // Position the tooltip near the anchor, preferring below, falling back above
-  // or beside depending on space.
   let tooltipStyle: React.CSSProperties = {
     top: viewport.h / 2 - 80,
     left: viewport.w / 2 - TOOLTIP_W / 2,
     width: TOOLTIP_W,
   };
   if (!isCentered && rect) {
-    const spaceBelow = viewport.h - (rect.top + rect.height);
-    const placeBelow = spaceBelow > 200;
-    const top = placeBelow
-      ? rect.top + rect.height + TOOLTIP_GAP
-      : Math.max(16, rect.top - TOOLTIP_GAP - 160);
-    let left = rect.left + rect.width / 2 - TOOLTIP_W / 2;
-    left = Math.max(16, Math.min(viewport.w - TOOLTIP_W - 16, left));
-    tooltipStyle = { top, left, width: TOOLTIP_W };
+    // Try each side; pick the first that fits without overlapping the anchor
+    // (including its highlight padding). Falls back to the side with the
+    // most space if none fit cleanly.
+    const anchorPadded = {
+      top: rect.top - PAD,
+      left: rect.left - PAD,
+      right: rect.left + rect.width + PAD,
+      bottom: rect.top + rect.height + PAD,
+    };
+    const spaceBelow = viewport.h - anchorPadded.bottom - SAFE_MARGIN;
+    const spaceAbove = anchorPadded.top - SAFE_MARGIN;
+    const spaceRight = viewport.w - anchorPadded.right - SAFE_MARGIN;
+    const spaceLeft = anchorPadded.left - SAFE_MARGIN;
+
+    const candidates: Array<{ side: string; fits: boolean; space: number; top: number; left: number }> = [];
+
+    // Below
+    {
+      const top = anchorPadded.bottom + TOOLTIP_GAP;
+      let left = rect.left + rect.width / 2 - TOOLTIP_W / 2;
+      left = Math.max(SAFE_MARGIN, Math.min(viewport.w - TOOLTIP_W - SAFE_MARGIN, left));
+      candidates.push({ side: 'below', fits: spaceBelow >= TOOLTIP_H_EST, space: spaceBelow, top, left });
+    }
+    // Above
+    {
+      const top = anchorPadded.top - TOOLTIP_GAP - TOOLTIP_H_EST;
+      let left = rect.left + rect.width / 2 - TOOLTIP_W / 2;
+      left = Math.max(SAFE_MARGIN, Math.min(viewport.w - TOOLTIP_W - SAFE_MARGIN, left));
+      candidates.push({ side: 'above', fits: spaceAbove >= TOOLTIP_H_EST, space: spaceAbove, top, left });
+    }
+    // Right
+    {
+      const left = anchorPadded.right + TOOLTIP_GAP;
+      let top = rect.top + rect.height / 2 - TOOLTIP_H_EST / 2;
+      top = Math.max(SAFE_MARGIN, Math.min(viewport.h - TOOLTIP_H_EST - SAFE_MARGIN, top));
+      candidates.push({ side: 'right', fits: spaceRight >= TOOLTIP_W, space: spaceRight, top, left });
+    }
+    // Left
+    {
+      const left = anchorPadded.left - TOOLTIP_GAP - TOOLTIP_W;
+      let top = rect.top + rect.height / 2 - TOOLTIP_H_EST / 2;
+      top = Math.max(SAFE_MARGIN, Math.min(viewport.h - TOOLTIP_H_EST - SAFE_MARGIN, top));
+      candidates.push({ side: 'left', fits: spaceLeft >= TOOLTIP_W, space: spaceLeft, top, left });
+    }
+
+    const fitting = candidates.filter((c) => c.fits);
+    const pick = (fitting.length ? fitting : candidates).sort((a, b) => b.space - a.space)[0];
+    tooltipStyle = { top: pick.top, left: pick.left, width: TOOLTIP_W };
   }
 
   const advance = () => {
