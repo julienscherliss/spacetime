@@ -368,6 +368,7 @@ export function AppNav() {
             )}
           </button>
           <button
+            data-tutorial="archive-trigger"
             onClick={() => window.dispatchEvent(new CustomEvent('toggle-archive'))}
             className={`${navItemBase} ${navItemInactive}`}
           >
