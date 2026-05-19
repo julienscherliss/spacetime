@@ -74,6 +74,19 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
     }
   }, [showAdvanced]);
 
+  // Close nested Help panel when tutorial / external code dispatches close-settings
+  useEffect(() => {
+    const close = () => {
+      setHelpOpen(false);
+      setAdminOpen(false);
+      setDebugOpen(false);
+      setDeleteAccountOpen(false);
+      setPwMode('closed');
+    };
+    window.addEventListener('close-settings', close);
+    return () => window.removeEventListener('close-settings', close);
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     supabase.auth.getUser().then(({ data: { user } }) => {
