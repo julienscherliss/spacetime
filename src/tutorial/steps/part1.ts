@@ -65,6 +65,23 @@ export const part1Steps: TutorialStep[] = [
     awaitEvent: 'tutorial:task-completed',
   },
   {
+    id: 'schedule-drag',
+    anchor: 'library-list',
+    dimExclude: 'library-panel',
+    body:
+      'Tasks live in your schedule too. Press and hold a Library task, then drag it onto your schedule.',
+    cta: null,
+    awaitEvent: 'tutorial:task-scheduled',
+  },
+  {
+    id: 'schedule-complete',
+    anchor: null,
+    body:
+      'Nice — your task is on the schedule. Double-tap the block to mark it complete.',
+    cta: null,
+    awaitEvent: 'tutorial:task-completed',
+  },
+  {
     id: 'archive',
     anchor: 'archive-trigger',
     body: 'Completed tasks are not deleted forever.',
