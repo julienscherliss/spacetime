@@ -89,6 +89,16 @@ export function TutorialRoot() {
     prevCompletedCount.current = c;
   }, [tasks]);
 
+  // When the archive step begins, close the Library panel so the
+  // archive-trigger in the bottom nav is reachable on mobile (and visible
+  // on desktop too).
+  useEffect(() => {
+    if (!active || !step) return;
+    if (step.id === 'archive') {
+      useLibraryStore.getState().setPanelOpen(false);
+    }
+  }, [active, step?.id]);
+
   if (!active || !step) return null;
 
   const handleAdvance = () => {
