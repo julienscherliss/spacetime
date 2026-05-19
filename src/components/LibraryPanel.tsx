@@ -310,7 +310,7 @@ function QuickDuePicker({ dueDate, setDueDate }: { dueDate: string; setDueDate: 
           <CalendarDays size={16} />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0 z-[60]" align="end" side="top">
+      <PopoverContent data-date-autocomplete className="w-auto p-0 z-[60]" align="end" side="top">
         <Calendar
           mode="single"
           selected={dueDate ? new Date(dueDate + 'T12:00:00') : undefined}
