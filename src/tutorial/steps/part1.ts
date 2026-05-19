@@ -78,6 +78,7 @@ export const part1Steps: TutorialStep[] = [
   {
     id: 'schedule-complete',
     anchor: null,
+    noDim: true,
     body:
       'Nice — your task is on the schedule. Double-tap the block to mark it complete.',
     cta: null,
