@@ -288,7 +288,7 @@ export function TutorialOverlay({
             strokeWidth={1}
           />
         )}
-      </svg>
+      </svg>}
 
       {/* Tooltip card */}
       <AnimatePresence mode="wait">
