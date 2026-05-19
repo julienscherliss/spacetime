@@ -391,6 +391,7 @@ export function LibraryPanel() {
   useEffect(() => {
     if (panelOpen && !prevPanelOpen.current) {
       setSidebarMode(viewMode === 'day' || viewMode === 'week');
+      window.dispatchEvent(new CustomEvent('tutorial:library-opened'));
     }
     prevPanelOpen.current = panelOpen;
   }, [panelOpen, viewMode]);
