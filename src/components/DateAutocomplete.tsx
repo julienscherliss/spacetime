@@ -108,7 +108,7 @@ export function DateAutocomplete({ inputValue, inputRef, onSelectDate, onSubmitA
 
   if (showCalendar) {
     return (
-      <div ref={menuRef} data-date-autocomplete className="absolute left-0 right-0 top-full mt-1 z-[60] bg-card border border-border rounded-md shadow-lg">
+      <div ref={menuRef} data-date-autocomplete className="absolute left-0 right-0 top-full mt-1 z-[9999] bg-card border border-border rounded-md shadow-lg">
         <Calendar
           mode="single"
           onSelect={(d) => {
@@ -130,7 +130,7 @@ export function DateAutocomplete({ inputValue, inputRef, onSelectDate, onSubmitA
   }
 
   return (
-    <div ref={menuRef} data-date-autocomplete className="absolute left-0 right-0 top-full mt-1 z-[60] bg-card border border-border rounded-md shadow-lg py-1 max-h-64 overflow-y-auto">
+    <div ref={menuRef} data-date-autocomplete className="absolute left-0 right-0 top-full mt-1 z-[9999] bg-card border border-border rounded-md shadow-lg py-1 max-h-64 overflow-y-auto">
       {options.map((opt, i) => (
         <button
           key={opt.date}
