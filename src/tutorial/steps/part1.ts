@@ -96,7 +96,7 @@ export const part1Steps: TutorialStep[] = [
     noDim: true,
     dockBottom: true,
     body:
-      'Nice — your task is on the schedule. Double-tap the block to mark it complete.',
+      'Now try finishing one — double-tap the block to mark it complete.',
     cta: null,
     awaitEvent: 'tutorial:task-completed',
   },
