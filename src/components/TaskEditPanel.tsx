@@ -427,7 +427,7 @@ export function TaskEditPanel() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
-          className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-background/60 backdrop-blur-[2px]"
+          className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-background/60 backdrop-blur-[2px]"
           onClick={(e) => {
             if (e.target === e.currentTarget) handleClose();
           }}
@@ -534,7 +534,7 @@ export function TaskEditPanel() {
                     {taskCategory ? (useLibraryStore.getState().categories.find(c => c.value === taskCategory)?.label || taskCategory) : 'Tag'}
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-44 p-1 z-[70]" align="start" onClick={(e) => e.stopPropagation()}>
+                <PopoverContent className="w-44 p-1 z-[10000]" align="start" onClick={(e) => e.stopPropagation()}>
                   <TagPickerMenu
                     value={taskCategory}
                     onChange={(v) => setTaskCategory(v)}
@@ -557,7 +557,7 @@ export function TaskEditPanel() {
                     <ChevronDown size={10} strokeWidth={1.5} />
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-32 p-1 z-[70]" align="start" onClick={(e) => e.stopPropagation()}>
+                <PopoverContent className="w-32 p-1 z-[10000]" align="start" onClick={(e) => e.stopPropagation()}>
                   {([0, 1, 2, 3] as Priority[]).map((p) => {
                     const mobilityMode = useTimezoneStore.getState().mobilityMode;
                     const isElite = mobilityMode === 'elite';
@@ -684,7 +684,7 @@ export function TaskEditPanel() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="fixed inset-0 z-[80] flex items-center justify-center"
+                  className="fixed inset-0 z-[10001] flex items-center justify-center"
                 >
                   <div className="absolute inset-0 bg-black/30" onClick={() => setShowReminderModal(false)} />
                   <motion.div

@@ -201,7 +201,7 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.15 }}
-      className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-background/60 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-background/60 backdrop-blur-[2px]"
       onClick={handleSave}
     >
       <motion.div
@@ -243,7 +243,7 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
                 {formatDuration(duration)}
               </button>
             </PopoverTrigger>
-            <PopoverContent className="w-56 p-3 z-[70]" align="start" onClick={(e) => e.stopPropagation()}>
+            <PopoverContent className="w-56 p-3 z-[10000]" align="start" onClick={(e) => e.stopPropagation()}>
               <DurationPicker duration={duration} onChange={setDuration} />
             </PopoverContent>
           </Popover>
@@ -316,7 +316,7 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
                 {catLabel || 'Tag'}
               </button>
             </PopoverTrigger>
-            <PopoverContent className="w-44 p-1 z-[70]" align="start" onClick={(e) => e.stopPropagation()}>
+            <PopoverContent className="w-44 p-1 z-[10000]" align="start" onClick={(e) => e.stopPropagation()}>
               <TagPickerMenu
                 value={category}
                 onChange={(v) => setCategory(v)}
