@@ -484,7 +484,10 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
                             key={task.id}
                             task={task}
                             onRevive={handleRevive}
-                            onEdit={setEditingTask}
+                            onEdit={(id) => {
+                              if (id.startsWith('lib:')) return;
+                              setEditingTask(id);
+                            }}
                             expandAll={expandAll}
                             invoiced={invoicedTaskIds.has(task.id)}
                           />
