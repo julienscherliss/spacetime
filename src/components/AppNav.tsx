@@ -126,14 +126,6 @@ export function AppNav() {
                   onClick={() => { toggleRoutines(); }}
                 />
                 <OverflowItem
-                  icon={<Archive size={18} strokeWidth={1.5} />}
-                  label="Library"
-                  badge={libUrgentCount > 0 ? String(libUrgentCount) : (libCount > 0 ? String(libCount) : undefined)}
-                  destructive={false}
-                  active={libPanelOpen}
-                  onClick={() => { setLibPanelOpen(!libPanelOpen); setMoreOpen(false); }}
-                />
-                <OverflowItem
                   icon={<PauseCircle size={18} strokeWidth={1.5} />}
                   label="Limbo"
                   badge={waitingCount > 0 ? String(waitingCount) : undefined}
@@ -191,7 +183,7 @@ export function AppNav() {
             {viewMode !== 'focus' && viewMode !== 'calendar'
               && !(viewMode === 'day' && daySubMode === 'list')
               && !(viewMode === 'week' && weekSubMode === 'list')
-              ? <ScanButton /> : <div className="w-[44px]" />}
+              ? <ScanButton /> : <div className="w-[40px]" />}
 
             {/* View tabs — primary action */}
             <div className="flex items-center bg-muted/50 rounded-md p-0.5 gap-0.5">
@@ -209,7 +201,7 @@ export function AppNav() {
                     }
                     setViewMode(mode);
                   }}
-                  className={`relative flex flex-col items-center justify-center min-w-[48px] h-[44px] rounded-md transition-colors ${
+                  className={`relative flex flex-col items-center justify-center min-w-[44px] h-[44px] rounded-md transition-colors ${
                     viewMode === mode ? 'text-foreground' : 'text-muted-foreground'
                   }`}
                 >
@@ -226,6 +218,31 @@ export function AppNav() {
                   </span>
                 </button>
               ))}
+              {/* Library tab — sits alongside view tabs */}
+              <button
+                data-library-nav-btn
+                onClick={() => setLibPanelOpen(!libPanelOpen)}
+                className={`relative flex flex-col items-center justify-center min-w-[44px] h-[44px] rounded-md transition-colors ${
+                  libPanelOpen ? 'text-foreground' : 'text-muted-foreground'
+                }`}
+              >
+                {libPanelOpen && (
+                  <motion.div
+                    layoutId="activeView"
+                    className="absolute inset-0 bg-card rounded-md border border-border/50 shadow-sm"
+                    transition={{ type: 'spring', bounce: 0.08, duration: 0.4 }}
+                  />
+                )}
+                <span className="relative z-10 flex flex-col items-center gap-0.5">
+                  <Archive size={18} strokeWidth={libPanelOpen ? 2 : 1.5} />
+                  <span className="text-[8px] font-mono tracking-[0.08em] leading-none">LIBRARY</span>
+                </span>
+                {libUrgentCount > 0 && (
+                  <span className="absolute top-0.5 right-0.5 min-w-[14px] h-[14px] rounded-full bg-primary text-primary-foreground text-[8px] font-mono flex items-center justify-center z-10">
+                    {libUrgentCount}
+                  </span>
+                )}
+              </button>
             </div>
 
             {/* More button */}
@@ -547,25 +564,9 @@ function ScanButton() {
         onClick={(e) => e.preventDefault()}
         onContextMenu={(e) => e.preventDefault()}
         className="relative flex items-center justify-center w-[40px] h-[44px] rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors touch-none select-none"
-        title="Fit tasks (double-tap to focus)"
+        title="Fit tasks (double-tap to focus, long-press for more)"
       >
         <Scan size={18} strokeWidth={1.5} />
-        <span className="absolute inset-0 flex items-center justify-center text-[8px] font-mono font-bold leading-none pointer-events-none" style={{ marginTop: '0.5px' }}>
-          T
-        </span>
-      </button>
-
-      {/* Frame All — Scan + "A" */}
-      <button
-        onClick={() => window.dispatchEvent(new CustomEvent('frame-all'))}
-        onContextMenu={(e) => e.preventDefault()}
-        className="relative flex items-center justify-center w-[40px] h-[44px] rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors touch-none select-none"
-        title="Frame all hours"
-      >
-        <Scan size={18} strokeWidth={1.5} />
-        <span className="absolute inset-0 flex items-center justify-center text-[8px] font-mono font-bold leading-none pointer-events-none" style={{ marginTop: '0.5px' }}>
-          A
-        </span>
       </button>
 
       {/* Long-press popover */}
