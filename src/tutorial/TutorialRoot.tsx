@@ -99,6 +99,13 @@ export function TutorialRoot() {
     }
   }, [active, step?.id]);
 
+  // When the tutorial activates (e.g. replayed from Help inside Settings),
+  // close obstructing overlays so the user sees the actual app surface.
+  useEffect(() => {
+    if (!active) return;
+    window.dispatchEvent(new CustomEvent('close-settings'));
+  }, [active]);
+
   if (!active || !step) return null;
 
   const handleAdvance = () => {
