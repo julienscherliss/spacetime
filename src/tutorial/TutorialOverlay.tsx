@@ -89,6 +89,8 @@ export function TutorialOverlay({
   );
   const isLastBody = subIdx >= bodies.length - 1;
   const currentBody = bodies[subIdx] ?? step.body;
+  const requiresAction = !!step.awaitEvent;
+  const shouldDim = !step.noDim && !(requiresAction && !step.anchor && !step.dimExclude);
 
   const viewport = useMemo(
     () => ({
@@ -204,14 +206,13 @@ export function TutorialOverlay({
   // manual advance button on the final body — the user must actually
   // perform the action. Earlier sub-bodies still get a "Next" to page
   // through the explanatory text.
-  const requiresAction = !!step.awaitEvent;
   const showContinue = !isLastBody || (step.cta !== null && !requiresAction);
   const ctaLabel = !isLastBody ? 'Next' : step.cta ?? 'Continue';
 
   const overlay = (
     <div className="fixed inset-0 z-[9998] pointer-events-none">
       {/* Dim mask with cutout */}
-      {!step.noDim && <svg
+      {shouldDim && <svg
         className="absolute inset-0 w-full h-full pointer-events-none"
         style={{ background: 'transparent' }}
       >
