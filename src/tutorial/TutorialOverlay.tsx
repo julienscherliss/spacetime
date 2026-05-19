@@ -219,14 +219,14 @@ export function TutorialOverlay({
                 fill="black"
               />
             )}
-            {avoidRect && (
+            {paddedAvoidRect && (
               <motion.rect
                 initial={false}
                 animate={{
-                  x: avoidRect.left,
-                  y: avoidRect.top,
-                  width: avoidRect.width,
-                  height: avoidRect.height,
+                  x: paddedAvoidRect.left,
+                  y: paddedAvoidRect.top,
+                  width: paddedAvoidRect.width,
+                  height: paddedAvoidRect.height,
                 }}
                 transition={{ duration: 0.24, ease: EASE }}
                 rx={RADIUS}
