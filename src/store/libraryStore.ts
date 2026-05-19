@@ -37,6 +37,7 @@ export interface LibraryTask {
   attachments?: LibraryAttachment[];
   completed?: boolean;
   completedAt?: string | null;
+  deletedAt?: string | null;
   // Legacy compat
   urgency?: TaskUrgency;
 }
