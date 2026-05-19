@@ -123,8 +123,13 @@ const Index = () => {
   // Listen for settings toggle from nav
   useEffect(() => {
     const handler = () => setSettingsOpen((o) => !o);
+    const close = () => setSettingsOpen(false);
     window.addEventListener('toggle-settings', handler);
-    return () => window.removeEventListener('toggle-settings', handler);
+    window.addEventListener('close-settings', close);
+    return () => {
+      window.removeEventListener('toggle-settings', handler);
+      window.removeEventListener('close-settings', close);
+    };
   }, []);
 
   // Listen for archive toggle from nav
