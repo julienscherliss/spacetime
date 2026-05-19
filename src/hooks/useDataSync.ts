@@ -93,6 +93,9 @@ function rowToLibraryItem(row: any): LibraryTask {
     dueDate: row.due_date ?? null,
     subtasks: row.subtasks ?? [],
     attachments: row.attachments ?? [],
+    completed: row.completed ?? false,
+    completedAt: row.completed_at ?? null,
+    deletedAt: row.deleted_at ?? null,
   };
 }
 
@@ -109,6 +112,9 @@ function libraryItemToRow(item: LibraryTask, userId: string) {
     due_date: item.dueDate ?? null,
     subtasks: item.subtasks ?? [],
     attachments: item.attachments ?? [],
+    completed: item.completed ?? false,
+    completed_at: item.completedAt ?? null,
+    deleted_at: item.deletedAt ?? null,
   };
 }
 

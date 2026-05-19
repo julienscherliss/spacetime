@@ -531,8 +531,11 @@ export type Database = {
         Row: {
           attachments: Json
           category: string | null
+          completed: boolean
+          completed_at: string | null
           created_at: string
           default_duration: number | null
+          deleted_at: string | null
           due_date: string | null
           id: string
           is_important: boolean
@@ -545,8 +548,11 @@ export type Database = {
         Insert: {
           attachments?: Json
           category?: string | null
+          completed?: boolean
+          completed_at?: string | null
           created_at?: string
           default_duration?: number | null
+          deleted_at?: string | null
           due_date?: string | null
           id?: string
           is_important?: boolean
@@ -559,8 +565,11 @@ export type Database = {
         Update: {
           attachments?: Json
           category?: string | null
+          completed?: boolean
+          completed_at?: string | null
           created_at?: string
           default_duration?: number | null
+          deleted_at?: string | null
           due_date?: string | null
           id?: string
           is_important?: boolean
