@@ -29,7 +29,9 @@ export function TutorialOverlay({
   onAdvance,
 }: Props) {
   const rect = useAnchorRect(step.anchor);
-  const excludeRect = useAnchorRect(step.dimExclude ?? null);
+  const excludeRect = useAnchorRect(step.dimExclude ?? null, {
+    skipCenterVisibilityCheck: true,
+  });
   const [subIdx, setSubIdx] = useState(0); // 0..N for body/body2/body3
   // Track any open date-picker popover so the tooltip doesn't sit on top of it.
   const [avoidRect, setAvoidRect] = useState<{top:number;left:number;width:number;height:number} | null>(null);
