@@ -210,7 +210,7 @@ export function TutorialOverlay({
   const overlay = (
     <div className="fixed inset-0 z-[9998] pointer-events-none">
       {/* Dim mask with cutout */}
-      <svg
+      {!step.noDim && <svg
         className="absolute inset-0 w-full h-full pointer-events-none"
         style={{ background: 'transparent' }}
       >
