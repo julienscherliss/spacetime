@@ -39,8 +39,7 @@ export const part1Steps: TutorialStep[] = [
     id: 'create-tasks',
     anchor: 'library-add',
     title: 'Add three real tasks',
-    body:
-      'Add something for today, something for this week, and something for sometime this year. Type a task, give it a due date, hit enter.',
+    body: '',
     checklist: ['Today', 'This week', 'This year'],
     cta: null,
   },

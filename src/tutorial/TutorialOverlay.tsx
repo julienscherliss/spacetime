@@ -10,7 +10,6 @@ interface Props {
   totalSteps: number;
   checklistProgress?: boolean[];
   onAdvance: () => void;
-  onSkip: () => void;
 }
 
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
@@ -27,7 +26,6 @@ export function TutorialOverlay({
   totalSteps,
   checklistProgress,
   onAdvance,
-  onSkip,
 }: Props) {
   const rect = useAnchorRect(step.anchor);
   const [subIdx, setSubIdx] = useState(0); // 0..N for body/body2/body3
@@ -240,12 +238,6 @@ export function TutorialOverlay({
                   Awaiting action
                 </span>
               )}
-              <button
-                onClick={onSkip}
-                className="text-[10px] tracking-[0.18em] text-muted-foreground/60 hover:text-foreground uppercase transition-colors"
-              >
-                Skip
-              </button>
               {showContinue && (
                 <button
                   onClick={advance}
