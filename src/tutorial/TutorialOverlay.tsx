@@ -19,6 +19,7 @@ const TOOLTIP_W = 320;
 const TOOLTIP_GAP = 16;
 const TOOLTIP_H_EST = 200; // conservative estimate for placement math
 const SAFE_MARGIN = 16;
+const POPOVER_PAD = 10;
 
 export function TutorialOverlay({
   step,
@@ -35,7 +36,16 @@ export function TutorialOverlay({
   useEffect(() => {
     let raf = 0;
     const tick = () => {
-      const el = document.querySelector<HTMLElement>('[data-date-autocomplete]');
+      const nodes = Array.from(document.querySelectorAll<HTMLElement>('[data-date-autocomplete]'));
+      const el = nodes.find((node) => {
+        const r = node.getBoundingClientRect();
+        if (r.width <= 0 || r.height <= 0) return false;
+        const cx = r.left + r.width / 2;
+        const cy = r.top + r.height / 2;
+        const top = document.elementFromPoint(cx, cy);
+        if (!top) return false;
+        return node === top || node.contains(top) || top.contains(node);
+      }) ?? null;
       if (!el) {
         setAvoidRect((p) => (p ? null : p));
       } else {
@@ -50,6 +60,19 @@ export function TutorialOverlay({
     raf = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(raf);
   }, []);
+
+  const paddedAvoidRect = useMemo(
+    () =>
+      avoidRect
+        ? {
+            top: avoidRect.top - POPOVER_PAD,
+            left: avoidRect.left - POPOVER_PAD,
+            width: avoidRect.width + POPOVER_PAD * 2,
+            height: avoidRect.height + POPOVER_PAD * 2,
+          }
+        : null,
+    [avoidRect]
+  );
 
   // Reset sub-tooltip index whenever the step changes.
   useEffect(() => {
@@ -82,12 +105,12 @@ export function TutorialOverlay({
   if (!isCentered && rect) {
     // Combine the anchor with any active avoid-rect (e.g. open date picker)
     // so the tooltip never lands on top of an interactive popover.
-    const union = avoidRect
+    const union = paddedAvoidRect
       ? {
-          top: Math.min(rect.top, avoidRect.top),
-          left: Math.min(rect.left, avoidRect.left),
-          right: Math.max(rect.left + rect.width, avoidRect.left + avoidRect.width),
-          bottom: Math.max(rect.top + rect.height, avoidRect.top + avoidRect.height),
+          top: Math.min(rect.top, paddedAvoidRect.top),
+          left: Math.min(rect.left, paddedAvoidRect.left),
+          right: Math.max(rect.left + rect.width, paddedAvoidRect.left + paddedAvoidRect.width),
+          bottom: Math.max(rect.top + rect.height, paddedAvoidRect.top + paddedAvoidRect.height),
         }
       : {
           top: rect.top,
