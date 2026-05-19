@@ -64,7 +64,7 @@ export function incrementPlaceCount() {
 }
 
 function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: boolean; onEdit: () => void }) {
-  const { deleteItem } = useLibraryStore();
+  const { completeItem } = useLibraryStore();
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFired = useRef(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -185,7 +185,7 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
         onPointerUp={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.stopPropagation();
-          deleteItem(item.id);
+          completeItem(item.id);
           window.dispatchEvent(new CustomEvent('tutorial:task-completed'));
         }}
         data-touch-ignore
