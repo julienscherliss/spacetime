@@ -28,6 +28,7 @@ export function TutorialOverlay({
   onAdvance,
 }: Props) {
   const rect = useAnchorRect(step.anchor);
+  const excludeRect = useAnchorRect(step.dimExclude ?? null);
   const [subIdx, setSubIdx] = useState(0); // 0..N for body/body2/body3
 
   // Reset sub-tooltip index whenever the step changes.
@@ -147,6 +148,19 @@ export function TutorialOverlay({
                 transition={{ duration: 0.24, ease: EASE }}
                 rx={RADIUS}
                 ry={RADIUS}
+                fill="black"
+              />
+            )}
+            {excludeRect && (
+              <motion.rect
+                initial={false}
+                animate={{
+                  x: excludeRect.left,
+                  y: excludeRect.top,
+                  width: excludeRect.width,
+                  height: excludeRect.height,
+                }}
+                transition={{ duration: 0.24, ease: EASE }}
                 fill="black"
               />
             )}

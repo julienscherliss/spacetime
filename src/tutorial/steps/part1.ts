@@ -4,6 +4,8 @@ export interface TutorialStep {
   id: string;
   /** data-tutorial attribute value, or null for a centered modal */
   anchor: string | null;
+  /** Additional anchor to exclude from the dim mask (no highlight ring). */
+  dimExclude?: string;
   title?: string;
   body: string;
   /** Optional secondary tooltip body, shown sequentially after Continue */
@@ -38,6 +40,7 @@ export const part1Steps: TutorialStep[] = [
   {
     id: 'create-tasks',
     anchor: 'library-add',
+    dimExclude: 'library-panel',
     title: 'Add three real tasks',
     body: '',
     checklist: ['Today', 'This week', 'This year'],
@@ -46,6 +49,7 @@ export const part1Steps: TutorialStep[] = [
   {
     id: 'urgency',
     anchor: 'library-list',
+    dimExclude: 'library-panel',
     body:
       'As tasks approach their due date, they become more visually emphasized.',
     body2: 'Spacetime quietly surfaces what deserves your attention.',
@@ -54,6 +58,7 @@ export const part1Steps: TutorialStep[] = [
   {
     id: 'completion',
     anchor: 'library-list',
+    dimExclude: 'library-panel',
     body:
       'When a task is finished, mark it complete. Spacetime will remember it for you.',
     cta: null,
