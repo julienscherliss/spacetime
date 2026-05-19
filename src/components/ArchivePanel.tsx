@@ -38,6 +38,15 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
   const allLibItems = useLibraryStore((s) => s.items);
   const unarchiveCategory = useLibraryStore((s) => s.unarchiveCategory);
   const billingSettings = useBillingStore((s) => s.settings);
+
+  // Tutorial hook — emit when archive opens so the tutorial can advance,
+  // and remember that the user has seen it (adaptive shortening).
+  useEffect(() => {
+    if (open) {
+      try { localStorage.setItem('archive-visited', '1'); } catch {}
+      window.dispatchEvent(new CustomEvent('tutorial:archive-opened'));
+    }
+  }, [open]);
   const billingInvoices = useBillingStore((s) => s.invoices);
   const billingLoaded = useBillingStore((s) => s.loaded);
   const loadBilling = useBillingStore((s) => s.load);

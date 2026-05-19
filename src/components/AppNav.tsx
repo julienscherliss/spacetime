@@ -221,6 +221,7 @@ export function AppNav() {
               {/* Library tab — sits alongside view tabs */}
               <button
                 data-library-nav-btn
+                data-tutorial="library-button"
                 onClick={() => setLibPanelOpen(!libPanelOpen)}
                 className={`relative flex flex-col items-center justify-center min-w-[44px] h-[44px] rounded-md transition-colors ${
                   libPanelOpen ? 'text-foreground' : 'text-muted-foreground'
@@ -247,6 +248,7 @@ export function AppNav() {
 
             {/* More button */}
             <button
+              data-tutorial="archive-trigger"
               onClick={() => setMoreOpen((o) => !o)}
               className={`relative flex items-center justify-center w-[44px] h-[44px] rounded-md transition-colors ${
                 moreOpen ? 'bg-muted text-foreground' : 'text-muted-foreground'
@@ -334,6 +336,7 @@ export function AppNav() {
           </button>
           <button
             data-library-nav-btn
+            data-tutorial="library-button"
             onClick={() => setLibPanelOpen(!libPanelOpen)}
             className={`${navItemBase} ${
               libPanelOpen
@@ -365,6 +368,7 @@ export function AppNav() {
             )}
           </button>
           <button
+            data-tutorial="archive-trigger"
             onClick={() => window.dispatchEvent(new CustomEvent('toggle-archive'))}
             className={`${navItemBase} ${navItemInactive}`}
           >
