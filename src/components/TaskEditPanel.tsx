@@ -534,7 +534,7 @@ export function TaskEditPanel() {
                     {taskCategory ? (useLibraryStore.getState().categories.find(c => c.value === taskCategory)?.label || taskCategory) : 'Tag'}
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-44 p-1 z-[70]" align="start" onClick={(e) => e.stopPropagation()}>
+                <PopoverContent className="w-44 p-1 z-[10000]" align="start" onClick={(e) => e.stopPropagation()}>
                   <TagPickerMenu
                     value={taskCategory}
                     onChange={(v) => setTaskCategory(v)}
@@ -557,7 +557,7 @@ export function TaskEditPanel() {
                     <ChevronDown size={10} strokeWidth={1.5} />
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-32 p-1 z-[70]" align="start" onClick={(e) => e.stopPropagation()}>
+                <PopoverContent className="w-32 p-1 z-[10000]" align="start" onClick={(e) => e.stopPropagation()}>
                   {([0, 1, 2, 3] as Priority[]).map((p) => {
                     const mobilityMode = useTimezoneStore.getState().mobilityMode;
                     const isElite = mobilityMode === 'elite';
