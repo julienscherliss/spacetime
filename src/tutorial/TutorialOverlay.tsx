@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { useAnchorRect } from './useAnchorRect';
@@ -15,9 +15,8 @@ interface Props {
 const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1];
 const PAD = 8;
 const RADIUS = 8;
-const TOOLTIP_W = 320;
+const TOOLTIP_W_DESKTOP = 320;
 const TOOLTIP_GAP = 16;
-const TOOLTIP_H_EST = 200; // conservative estimate for placement math
 const SAFE_MARGIN = 16;
 const POPOVER_PAD = 10;
 
@@ -33,6 +32,8 @@ export function TutorialOverlay({
     skipCenterVisibilityCheck: true,
   });
   const [subIdx, setSubIdx] = useState(0); // 0..N for body/body2/body3
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
+  const [tooltipH, setTooltipH] = useState(200); // measured tooltip height
   // Track any open date-picker popover so the tooltip doesn't sit on top of it.
   const [avoidRect, setAvoidRect] = useState<{top:number;left:number;width:number;height:number} | null>(null);
   useEffect(() => {
@@ -93,14 +94,26 @@ export function TutorialOverlay({
       w: typeof window !== 'undefined' ? window.innerWidth : 1024,
       h: typeof window !== 'undefined' ? window.innerHeight : 768,
     }),
-    [rect?.top, rect?.left, rect?.width, rect?.height]
+    [rect?.top, rect?.left, rect?.width, rect?.height, tooltipH]
   );
+
+  // Responsive tooltip width: never exceed the viewport on mobile.
+  const TOOLTIP_W = Math.min(TOOLTIP_W_DESKTOP, viewport.w - SAFE_MARGIN * 2);
+  const isNarrow = viewport.w < 640;
+
+  // Measure actual tooltip height so placement math doesn't push it
+  // off-screen on mobile when content is long (checklist + multi-body).
+  useLayoutEffect(() => {
+    if (!tooltipRef.current) return;
+    const h = tooltipRef.current.getBoundingClientRect().height;
+    if (Math.abs(h - tooltipH) > 1) setTooltipH(h);
+  });
 
   // Centered (no anchor) modal or anchored tooltip card.
   const isCentered = !step.anchor || !rect;
 
   let tooltipStyle: React.CSSProperties = {
-    top: viewport.h / 2 - 80,
+    top: Math.max(SAFE_MARGIN, viewport.h / 2 - tooltipH / 2),
     left: viewport.w / 2 - TOOLTIP_W / 2,
     width: TOOLTIP_W,
   };
@@ -138,33 +151,44 @@ export function TutorialOverlay({
       const top = anchorPadded.bottom + TOOLTIP_GAP;
       let left = (anchorPadded.left + anchorPadded.right) / 2 - TOOLTIP_W / 2;
       left = Math.max(SAFE_MARGIN, Math.min(viewport.w - TOOLTIP_W - SAFE_MARGIN, left));
-      candidates.push({ side: 'below', fits: spaceBelow >= TOOLTIP_H_EST, space: spaceBelow, top, left });
+      candidates.push({ side: 'below', fits: spaceBelow >= tooltipH, space: spaceBelow, top, left });
     }
     // Above
     {
-      const top = anchorPadded.top - TOOLTIP_GAP - TOOLTIP_H_EST;
+      const top = anchorPadded.top - TOOLTIP_GAP - tooltipH;
       let left = (anchorPadded.left + anchorPadded.right) / 2 - TOOLTIP_W / 2;
       left = Math.max(SAFE_MARGIN, Math.min(viewport.w - TOOLTIP_W - SAFE_MARGIN, left));
-      candidates.push({ side: 'above', fits: spaceAbove >= TOOLTIP_H_EST, space: spaceAbove, top, left });
+      candidates.push({ side: 'above', fits: spaceAbove >= tooltipH, space: spaceAbove, top, left });
     }
-    // Right
-    {
-      const left = anchorPadded.right + TOOLTIP_GAP;
-      let top = (anchorPadded.top + anchorPadded.bottom) / 2 - TOOLTIP_H_EST / 2;
-      top = Math.max(SAFE_MARGIN, Math.min(viewport.h - TOOLTIP_H_EST - SAFE_MARGIN, top));
-      candidates.push({ side: 'right', fits: spaceRight >= TOOLTIP_W, space: spaceRight, top, left });
-    }
-    // Left
-    {
-      const left = anchorPadded.left - TOOLTIP_GAP - TOOLTIP_W;
-      let top = (anchorPadded.top + anchorPadded.bottom) / 2 - TOOLTIP_H_EST / 2;
-      top = Math.max(SAFE_MARGIN, Math.min(viewport.h - TOOLTIP_H_EST - SAFE_MARGIN, top));
-      candidates.push({ side: 'left', fits: spaceLeft >= TOOLTIP_W, space: spaceLeft, top, left });
+    // Side placements only make sense on roomy desktops.
+    if (!isNarrow) {
+      {
+        const left = anchorPadded.right + TOOLTIP_GAP;
+        let top = (anchorPadded.top + anchorPadded.bottom) / 2 - tooltipH / 2;
+        top = Math.max(SAFE_MARGIN, Math.min(viewport.h - tooltipH - SAFE_MARGIN, top));
+        candidates.push({ side: 'right', fits: spaceRight >= TOOLTIP_W, space: spaceRight, top, left });
+      }
+      {
+        const left = anchorPadded.left - TOOLTIP_GAP - TOOLTIP_W;
+        let top = (anchorPadded.top + anchorPadded.bottom) / 2 - tooltipH / 2;
+        top = Math.max(SAFE_MARGIN, Math.min(viewport.h - tooltipH - SAFE_MARGIN, top));
+        candidates.push({ side: 'left', fits: spaceLeft >= TOOLTIP_W, space: spaceLeft, top, left });
+      }
     }
 
     const fitting = candidates.filter((c) => c.fits);
-    const pick = (fitting.length ? fitting : candidates).sort((a, b) => b.space - a.space)[0];
-    tooltipStyle = { top: pick.top, left: pick.left, width: TOOLTIP_W };
+    let pick = (fitting.length ? fitting : candidates).sort((a, b) => b.space - a.space)[0];
+    // Mobile fallback: if nothing fits, dock the tooltip to the bottom of
+    // the viewport as a sheet — never let it spill off-screen.
+    if (!fitting.length && isNarrow) {
+      const top = viewport.h - tooltipH - SAFE_MARGIN;
+      const left = (viewport.w - TOOLTIP_W) / 2;
+      pick = { side: 'sheet', fits: true, space: 0, top, left };
+    }
+    // Final safety clamp.
+    const safeTop = Math.max(SAFE_MARGIN, Math.min(pick.top, viewport.h - tooltipH - SAFE_MARGIN));
+    const safeLeft = Math.max(SAFE_MARGIN, Math.min(pick.left, viewport.w - TOOLTIP_W - SAFE_MARGIN));
+    tooltipStyle = { top: safeTop, left: safeLeft, width: TOOLTIP_W };
   }
 
   const advance = () => {
@@ -270,6 +294,7 @@ export function TutorialOverlay({
       <AnimatePresence mode="wait">
         <motion.div
           key={`${step.id}-${subIdx}`}
+          ref={tooltipRef}
           initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -2 }}
