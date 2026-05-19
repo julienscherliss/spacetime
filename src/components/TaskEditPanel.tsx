@@ -427,7 +427,7 @@ export function TaskEditPanel() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
-          className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-background/60 backdrop-blur-[2px]"
+          className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-background/60 backdrop-blur-[2px]"
           onClick={(e) => {
             if (e.target === e.currentTarget) handleClose();
           }}
