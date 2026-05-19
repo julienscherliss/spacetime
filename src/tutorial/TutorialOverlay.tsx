@@ -196,6 +196,21 @@ export function TutorialOverlay({
                 fill="black"
               />
             )}
+            {avoidRect && (
+              <motion.rect
+                initial={false}
+                animate={{
+                  x: avoidRect.left,
+                  y: avoidRect.top,
+                  width: avoidRect.width,
+                  height: avoidRect.height,
+                }}
+                transition={{ duration: 0.24, ease: EASE }}
+                rx={RADIUS}
+                ry={RADIUS}
+                fill="black"
+              />
+            )}
           </mask>
         </defs>
         <rect
