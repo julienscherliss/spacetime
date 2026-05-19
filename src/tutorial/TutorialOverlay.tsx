@@ -122,7 +122,11 @@ export function TutorialOverlay({
     left: viewport.w / 2 - TOOLTIP_W / 2,
     width: TOOLTIP_W,
   };
-  if (!isCentered && rect) {
+  if (step.dockBottom && isNarrow) {
+    const top = Math.max(SAFE_MARGIN, viewport.h - tooltipH - SAFE_MARGIN);
+    const left = (viewport.w - TOOLTIP_W) / 2;
+    tooltipStyle = { top, left, width: TOOLTIP_W };
+  } else if (!isCentered && rect) {
     // Combine the anchor with any active avoid-rect (e.g. open date picker)
     // so the tooltip never lands on top of an interactive popover.
     const union = paddedAvoidRect
