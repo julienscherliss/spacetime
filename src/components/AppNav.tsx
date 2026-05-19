@@ -618,6 +618,7 @@ function OverflowItem({
   badge,
   active,
   destructive,
+  dataTutorial,
   onClick,
 }: {
   icon: React.ReactNode;
@@ -625,10 +626,12 @@ function OverflowItem({
   badge?: string;
   active?: boolean;
   destructive?: boolean;
+  dataTutorial?: string;
   onClick: () => void;
 }) {
   return (
     <button
+      data-tutorial={dataTutorial}
       onClick={onClick}
       className={`flex items-center gap-3 w-full px-4 py-3 text-sm font-mono tracking-wide transition-colors text-left ${
         destructive
