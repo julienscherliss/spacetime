@@ -30,6 +30,26 @@ export function TutorialOverlay({
   const rect = useAnchorRect(step.anchor);
   const excludeRect = useAnchorRect(step.dimExclude ?? null);
   const [subIdx, setSubIdx] = useState(0); // 0..N for body/body2/body3
+  // Track any open date-picker popover so the tooltip doesn't sit on top of it.
+  const [avoidRect, setAvoidRect] = useState<{top:number;left:number;width:number;height:number} | null>(null);
+  useEffect(() => {
+    let raf = 0;
+    const tick = () => {
+      const el = document.querySelector<HTMLElement>('[data-date-autocomplete]');
+      if (!el) {
+        setAvoidRect((p) => (p ? null : p));
+      } else {
+        const r = el.getBoundingClientRect();
+        setAvoidRect((p) => {
+          if (p && Math.abs(p.top-r.top)<0.5 && Math.abs(p.left-r.left)<0.5 && Math.abs(p.width-r.width)<0.5 && Math.abs(p.height-r.height)<0.5) return p;
+          return { top: r.top, left: r.left, width: r.width, height: r.height };
+        });
+      }
+      raf = window.requestAnimationFrame(tick);
+    };
+    raf = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(raf);
+  }, []);
 
   // Reset sub-tooltip index whenever the step changes.
   useEffect(() => {
@@ -60,14 +80,26 @@ export function TutorialOverlay({
     width: TOOLTIP_W,
   };
   if (!isCentered && rect) {
-    // Try each side; pick the first that fits without overlapping the anchor
-    // (including its highlight padding). Falls back to the side with the
-    // most space if none fit cleanly.
+    // Combine the anchor with any active avoid-rect (e.g. open date picker)
+    // so the tooltip never lands on top of an interactive popover.
+    const union = avoidRect
+      ? {
+          top: Math.min(rect.top, avoidRect.top),
+          left: Math.min(rect.left, avoidRect.left),
+          right: Math.max(rect.left + rect.width, avoidRect.left + avoidRect.width),
+          bottom: Math.max(rect.top + rect.height, avoidRect.top + avoidRect.height),
+        }
+      : {
+          top: rect.top,
+          left: rect.left,
+          right: rect.left + rect.width,
+          bottom: rect.top + rect.height,
+        };
     const anchorPadded = {
-      top: rect.top - PAD,
-      left: rect.left - PAD,
-      right: rect.left + rect.width + PAD,
-      bottom: rect.top + rect.height + PAD,
+      top: union.top - PAD,
+      left: union.left - PAD,
+      right: union.right + PAD,
+      bottom: union.bottom + PAD,
     };
     const spaceBelow = viewport.h - anchorPadded.bottom - SAFE_MARGIN;
     const spaceAbove = anchorPadded.top - SAFE_MARGIN;
@@ -79,28 +111,28 @@ export function TutorialOverlay({
     // Below
     {
       const top = anchorPadded.bottom + TOOLTIP_GAP;
-      let left = rect.left + rect.width / 2 - TOOLTIP_W / 2;
+      let left = (anchorPadded.left + anchorPadded.right) / 2 - TOOLTIP_W / 2;
       left = Math.max(SAFE_MARGIN, Math.min(viewport.w - TOOLTIP_W - SAFE_MARGIN, left));
       candidates.push({ side: 'below', fits: spaceBelow >= TOOLTIP_H_EST, space: spaceBelow, top, left });
     }
     // Above
     {
       const top = anchorPadded.top - TOOLTIP_GAP - TOOLTIP_H_EST;
-      let left = rect.left + rect.width / 2 - TOOLTIP_W / 2;
+      let left = (anchorPadded.left + anchorPadded.right) / 2 - TOOLTIP_W / 2;
       left = Math.max(SAFE_MARGIN, Math.min(viewport.w - TOOLTIP_W - SAFE_MARGIN, left));
       candidates.push({ side: 'above', fits: spaceAbove >= TOOLTIP_H_EST, space: spaceAbove, top, left });
     }
     // Right
     {
       const left = anchorPadded.right + TOOLTIP_GAP;
-      let top = rect.top + rect.height / 2 - TOOLTIP_H_EST / 2;
+      let top = (anchorPadded.top + anchorPadded.bottom) / 2 - TOOLTIP_H_EST / 2;
       top = Math.max(SAFE_MARGIN, Math.min(viewport.h - TOOLTIP_H_EST - SAFE_MARGIN, top));
       candidates.push({ side: 'right', fits: spaceRight >= TOOLTIP_W, space: spaceRight, top, left });
     }
     // Left
     {
       const left = anchorPadded.left - TOOLTIP_GAP - TOOLTIP_W;
-      let top = rect.top + rect.height / 2 - TOOLTIP_H_EST / 2;
+      let top = (anchorPadded.top + anchorPadded.bottom) / 2 - TOOLTIP_H_EST / 2;
       top = Math.max(SAFE_MARGIN, Math.min(viewport.h - TOOLTIP_H_EST - SAFE_MARGIN, top));
       candidates.push({ side: 'left', fits: spaceLeft >= TOOLTIP_W, space: spaceLeft, top, left });
     }
