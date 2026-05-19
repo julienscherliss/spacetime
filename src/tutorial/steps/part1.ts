@@ -99,4 +99,12 @@ export const part1Steps: TutorialStep[] = [
       'Add tasks when they enter your life. Let time determine what deserves attention.',
     cta: 'Finish',
   },
+  {
+    id: 'help',
+    anchor: null,
+    title: 'One more thing',
+    body:
+      'Anytime you need a refresher, Help & Tips has guides for every feature in Spacetime.',
+    cta: 'Open Help',
+  },
 ];

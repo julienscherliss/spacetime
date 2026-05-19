@@ -116,6 +116,7 @@ export function TutorialRoot() {
 
   const handleAdvance = () => {
     if (isFinal) {
+      window.dispatchEvent(new CustomEvent('open-help'));
       finishPart('part1');
       return;
     }
