@@ -738,7 +738,7 @@ export function LibraryPanel() {
                               if (e.key === 'Enter' && !input.match(/#\S+$/) && !input.match(/@\S*$/)) handleAdd();
                             }}
                             placeholder={entryHint ? `Add to library… (${entryHint})` : 'Add to library…'}
-                            className="w-full bg-transparent font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none min-h-[44px] text-[14px]"
+                            className="w-full bg-transparent font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none min-h-[44px] text-[14px] placeholder:text-[12px]"
                           />
                           <TagAutocomplete
                             inputValue={input}
@@ -868,7 +868,7 @@ export function LibraryPanel() {
                           if (e.key === 'Enter' && !input.match(/#\S+$/) && !input.match(/@\S*$/)) handleAdd();
                         }}
                         placeholder={entryHint ? `Add to library… (${entryHint})` : 'Add to library…'}
-                        className="w-full bg-transparent font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none min-h-[44px] text-[14px]"
+                        className="w-full bg-transparent font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none min-h-[44px] text-[14px] placeholder:text-[12px]"
                       />
                       <TagAutocomplete
                         inputValue={input}
