@@ -31,17 +31,18 @@ export function TutorialRoot() {
   const isFinal = stepIndex >= part1Steps.length - 1;
 
   // Auto-start the tutorial for empty accounts: no library items and no
-  // future-scheduled (incomplete, non-archived) tasks. Skips if the user
-  // already completed or paused the tutorial. Waits briefly after mount so
+  // future-scheduled (incomplete, non-archived) tasks. Re-triggers even for
+  // users who previously completed the tutorial — if they're empty again,
+  // they get re-onboarded. Only skipped when the user explicitly paused
+  // (dismissed) in the current session. Waits briefly after mount so the
   // initial sync from the backend can populate stores first.
   useEffect(() => {
     if (active) return;
     if (dismissed) return;
-    if (completedParts.part1) return;
 
     const timer = setTimeout(() => {
       const state = useTutorialStore.getState();
-      if (state.active || state.dismissed || state.completedParts.part1) return;
+      if (state.active || state.dismissed) return;
 
       const libCount = useLibraryStore
         .getState()
@@ -59,7 +60,7 @@ export function TutorialRoot() {
     }, 1500);
 
     return () => clearTimeout(timer);
-  }, [active, dismissed, completedParts.part1, start]);
+  }, [active, dismissed, start]);
 
   // Compute checklist progress for the create-tasks step from real library state.
   const checklistProgress = useMemo(() => {
