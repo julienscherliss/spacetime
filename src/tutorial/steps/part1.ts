@@ -85,7 +85,7 @@ export const part1Steps: TutorialStep[] = [
     noDim: true,
     dockBottom: true,
     body:
-      'Once a task is on your schedule, press and hold to move it to a new time.',
+      'Once a task is on your schedule, drag or press and hold to move it to a new time.',
     body2:
       'To change how long it takes, drag the right top or bottom corner of the block to resize it.',
     cta: 'Got it',
