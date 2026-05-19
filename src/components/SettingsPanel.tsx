@@ -146,7 +146,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
           <div className="space-y-2">
             <button
               onClick={() => setHelpOpen(true)}
-              className="w-full flex items-center justify-center gap-2 bg-muted/30 border border-border/50 rounded-sm p-3 min-h-[48px] text-[12px] font-mono tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+              className="hidden sm:flex w-full items-center justify-center gap-2 bg-muted/30 border border-border/50 rounded-sm p-3 min-h-[48px] text-[12px] font-mono tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
             >
               <HelpCircle size={14} strokeWidth={1.5} />
               <span>HELP & TIPS</span>

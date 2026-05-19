@@ -10,7 +10,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import {
   Focus, List, CalendarDays, Grid3X3, Repeat,
-  Archive, Clock, LogOut, Settings, MoreHorizontal, X, ArchiveRestore, BarChart3, Scan, Maximize, PauseCircle, MessageSquarePlus, Receipt
+  Archive, Clock, LogOut, Settings, MoreHorizontal, X, ArchiveRestore, BarChart3, Scan, Maximize, PauseCircle, MessageSquarePlus, Receipt, HelpCircle
 } from 'lucide-react';
 import { useBillingStore } from '@/store/billingStore';
 
@@ -158,6 +158,11 @@ export function AppNav() {
                   icon={<MessageSquarePlus size={18} strokeWidth={1.5} />}
                   label="Send feedback"
                   onClick={() => { window.dispatchEvent(new CustomEvent('toggle-feedback')); setMoreOpen(false); }}
+                />
+                <OverflowItem
+                  icon={<HelpCircle size={18} strokeWidth={1.5} />}
+                  label="Help & tips"
+                  onClick={() => { window.dispatchEvent(new CustomEvent('open-help')); setMoreOpen(false); }}
                 />
                 <OverflowItem
                   icon={<Settings size={18} strokeWidth={1.5} />}
