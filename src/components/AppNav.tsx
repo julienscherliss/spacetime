@@ -136,6 +136,7 @@ export function AppNav() {
                 <OverflowItem
                   icon={<ArchiveRestore size={18} strokeWidth={1.5} />}
                   label="Archive"
+                  dataTutorial="archive-trigger"
                   onClick={() => { window.dispatchEvent(new CustomEvent('toggle-archive')); setMoreOpen(false); }}
                 />
                 <OverflowItem
@@ -617,6 +618,7 @@ function OverflowItem({
   badge,
   active,
   destructive,
+  dataTutorial,
   onClick,
 }: {
   icon: React.ReactNode;
@@ -624,10 +626,12 @@ function OverflowItem({
   badge?: string;
   active?: boolean;
   destructive?: boolean;
+  dataTutorial?: string;
   onClick: () => void;
 }) {
   return (
     <button
+      data-tutorial={dataTutorial}
       onClick={onClick}
       className={`flex items-center gap-3 w-full px-4 py-3 text-sm font-mono tracking-wide transition-colors text-left ${
         destructive
