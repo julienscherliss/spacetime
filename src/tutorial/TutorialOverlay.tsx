@@ -116,7 +116,9 @@ export function TutorialOverlay({
   const isCentered = !step.anchor || !rect;
 
   let tooltipStyle: React.CSSProperties = {
-    top: Math.max(SAFE_MARGIN, viewport.h / 2 - tooltipH / 2),
+    top: step.dockBottom
+      ? Math.max(SAFE_MARGIN, viewport.h - tooltipH - SAFE_MARGIN)
+      : Math.max(SAFE_MARGIN, viewport.h / 2 - tooltipH / 2),
     left: viewport.w / 2 - TOOLTIP_W / 2,
     width: TOOLTIP_W,
   };
