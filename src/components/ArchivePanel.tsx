@@ -37,6 +37,7 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
   const allCategories = useLibraryStore((s) => s.categories);
   const allLibItems = useLibraryStore((s) => s.items);
   const unarchiveCategory = useLibraryStore((s) => s.unarchiveCategory);
+  const uncompleteItem = useLibraryStore((s) => s.uncompleteItem);
   const billingSettings = useBillingStore((s) => s.settings);
 
   // Tutorial hook — emit when archive opens so the tutorial can advance,
@@ -102,7 +103,23 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
   const drilldownSubs = drilldownParent ? (archivedSubTagsByRoot[drilldownParent] || []) : [];
 
   const archived = useMemo(() => {
-    return tasks
+    // Adapt completed library items into Task-shaped rows so they appear
+    // in the archive alongside scheduled tasks. Prefix the id with `lib:`
+    // so revive/edit can route back to the library store.
+    const libAsTasks: Task[] = allLibItems
+      .filter((i) => i.completed && i.completedAt)
+      .map((i) => ({
+        id: `lib:${i.id}`,
+        title: i.title,
+        description: i.note || '',
+        category: i.category || '',
+        duration: i.defaultDuration || 0,
+        subtasks: (i.subtasks || []) as any,
+        archivedAt: i.completedAt!,
+        archiveReason: 'completed' as const,
+      } as unknown as Task));
+
+    return [...tasks, ...libAsTasks]
       .filter((t) => !!t.archivedAt)
       .filter((t) => {
         if (filter === 'completed') return t.archiveReason === 'completed';
@@ -115,7 +132,7 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
         return t.category === tagFilter || (t.category && t.category.startsWith(tagFilter + '/'));
       })
       .sort((a, b) => new Date(b.archivedAt!).getTime() - new Date(a.archivedAt!).getTime());
-  }, [tasks, filter, tagFilter]);
+  }, [tasks, allLibItems, filter, tagFilter]);
 
   // ─── Billing rollup for the currently filtered tag ──────────────────────────
   // A tag is "active for billing" when the user has narrowed to a single billable
@@ -197,7 +214,11 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
   }, [archived]);
 
   const handleRevive = (id: string) => {
-    restoreTask(id);
+    if (id.startsWith('lib:')) {
+      uncompleteItem(id.slice(4));
+    } else {
+      restoreTask(id);
+    }
   };
 
   const filters: { key: ArchiveFilter; label: string }[] = [
@@ -463,7 +484,10 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
                             key={task.id}
                             task={task}
                             onRevive={handleRevive}
-                            onEdit={setEditingTask}
+                            onEdit={(id) => {
+                              if (id.startsWith('lib:')) return;
+                              setEditingTask(id);
+                            }}
                             expandAll={expandAll}
                             invoiced={invoicedTaskIds.has(task.id)}
                           />
