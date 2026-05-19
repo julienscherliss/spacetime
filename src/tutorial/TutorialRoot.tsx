@@ -97,6 +97,12 @@ export function TutorialRoot() {
     if (step.id === 'archive') {
       useLibraryStore.getState().setPanelOpen(false);
     }
+    if (step.id === 'schedule-drag') {
+      useLibraryStore.getState().setPanelOpen(true);
+    }
+    if (step.id === 'schedule-complete') {
+      useLibraryStore.getState().setPanelOpen(false);
+    }
   }, [active, step?.id]);
 
   // When the tutorial activates (e.g. replayed from Help inside Settings),
