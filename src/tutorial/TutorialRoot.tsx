@@ -34,6 +34,7 @@ export function TutorialRoot() {
     if (!step || step.id !== 'create-tasks') return undefined;
     const hit = [false, false, false];
     for (const it of libItems) {
+      if (it.completed || it.deletedAt) continue;
       const h = horizonOf(it.dueDate);
       if (h !== null) hit[h] = true;
     }
