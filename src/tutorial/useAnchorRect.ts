@@ -7,12 +7,19 @@ export interface AnchorRect {
   height: number;
 }
 
+interface UseAnchorRectOptions {
+  skipCenterVisibilityCheck?: boolean;
+}
+
 /**
  * Track a DOM element matching `[data-tutorial="<id>"]` (or null for centered).
  * Re-measures on resize, scroll, and a polling interval so it tracks layout
  * changes (panel slide-ins, etc) without requiring callers to know about it.
  */
-export function useAnchorRect(anchorId: string | null): AnchorRect | null {
+export function useAnchorRect(
+  anchorId: string | null,
+  options?: UseAnchorRectOptions
+): AnchorRect | null {
   const [rect, setRect] = useState<AnchorRect | null>(null);
 
   useEffect(() => {
@@ -32,6 +39,7 @@ export function useAnchorRect(anchorId: string | null): AnchorRect | null {
       const el = nodes.find((n) => {
         const r = n.getBoundingClientRect();
         if (r.width <= 0 || r.height <= 0) return false;
+        if (options?.skipCenterVisibilityCheck) return true;
         // Reject if the element (or a descendant) is not what's actually
         // painted at its center — i.e. something like a Settings/Archive
         // panel is covering it. This prevents the spotlight from outlining
@@ -72,7 +80,7 @@ export function useAnchorRect(anchorId: string | null): AnchorRect | null {
       window.removeEventListener('resize', measure);
       window.removeEventListener('scroll', measure, true);
     };
-  }, [anchorId]);
+  }, [anchorId, options?.skipCenterVisibilityCheck]);
 
   return rect;
 }
