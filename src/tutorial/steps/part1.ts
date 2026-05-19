@@ -19,6 +19,8 @@ export interface TutorialStep {
   checklist?: string[];
   /** If true, no dim mask is rendered (tooltip only). */
   noDim?: boolean;
+  /** If true and centered, dock tooltip to the bottom of the viewport. */
+  dockBottom?: boolean;
 }
 
 export const part1Steps: TutorialStep[] = [
@@ -70,6 +72,7 @@ export const part1Steps: TutorialStep[] = [
     id: 'schedule-drag',
     anchor: null,
     noDim: true,
+    dockBottom: true,
     body:
       'Tasks can be moved to your schedule too. Press and hold a Library task, then click onto your schedule to place it.',
     cta: null,
@@ -79,6 +82,7 @@ export const part1Steps: TutorialStep[] = [
     id: 'schedule-complete',
     anchor: null,
     noDim: true,
+    dockBottom: true,
     body:
       'Nice — your task is on the schedule. Double-tap the block to mark it complete.',
     cta: null,
