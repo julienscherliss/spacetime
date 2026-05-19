@@ -22,7 +22,7 @@ function horizonOf(dueDate: string | null | undefined): number | null {
 }
 
 export function TutorialRoot() {
-  const { active, stepIndex, advance, dismiss, finishPart } = useTutorialStore();
+  const { active, stepIndex, advance, finishPart } = useTutorialStore();
   const libItems = useLibraryStore((s) => s.items);
   const tasks = useTaskStore((s) => s.tasks);
 
@@ -40,15 +40,13 @@ export function TutorialRoot() {
     return hit;
   }, [step?.id, libItems]);
 
-  // Smart adaptive: auto-advance when conditions for the current step are
-  // already met (e.g. user has already created 3 tasks across horizons, or
-  // already has a completed task).
+  // Auto-advance when conditions for the current step are fully met.
   useEffect(() => {
     if (!active || !step) return;
     if (step.id === 'create-tasks' && checklistProgress) {
-      const hit = checklistProgress.filter(Boolean).length;
-      if (hit >= 2) {
-        const t = setTimeout(() => advance(), 600);
+      const allHit = checklistProgress.every(Boolean);
+      if (allHit) {
+        const t = setTimeout(() => advance(), 700);
         return () => clearTimeout(t);
       }
     }
@@ -101,14 +99,31 @@ export function TutorialRoot() {
     advance();
   };
 
+  // For the guided create-tasks step, rewrite the body so it asks for the
+  // NEXT missing horizon one at a time — turning a single ambiguous prompt
+  // into a sequence of concrete actions.
+  let displayStep = step;
+  if (step.id === 'create-tasks' && checklistProgress) {
+    const prompts = [
+      'Add a task that is due today. Type a name, set the date to today, and hit enter.',
+      'Nice. Now add a task that is due later this week. Pick a date within the next 7 days.',
+      'One more — add a task due later this year. Pick a date more than a week out.',
+    ];
+    const nextIdx = checklistProgress.findIndex((v) => !v);
+    const body =
+      nextIdx === -1
+        ? 'All three added. Nicely done.'
+        : prompts[nextIdx];
+    displayStep = { ...step, body };
+  }
+
   return (
     <TutorialOverlay
-      step={step}
+      step={displayStep}
       stepNumber={stepIndex + 1}
       totalSteps={part1Steps.length}
       checklistProgress={checklistProgress}
       onAdvance={handleAdvance}
-      onSkip={dismiss}
     />
   );
 }
