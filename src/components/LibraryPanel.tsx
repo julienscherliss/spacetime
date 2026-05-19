@@ -720,7 +720,7 @@ export function LibraryPanel() {
                   {/* ── MIDDLE: Add input + Task list ── */}
                   <div className="flex-1 flex flex-col min-w-0">
                     {/* Add input */}
-                    <div className="px-4 py-3 border-b border-border/40">
+                    <div data-tutorial="library-add" className="px-4 py-3 border-b border-border/40">
                       <div className="relative flex items-center gap-2.5">
                         <button onClick={handleAdd} className="p-1 text-muted-foreground/40 hover:text-foreground transition-colors shrink-0"><Plus size={16} /></button>
                         <div className="relative flex-1">
@@ -850,7 +850,7 @@ export function LibraryPanel() {
                 </div>
 
                 {/* Add input */}
-                <div className="px-4 py-3 border-b border-border/40">
+                <div data-tutorial="library-add" className="px-4 py-3 border-b border-border/40">
                   <div className="relative flex items-center gap-2.5">
                     <button onClick={handleAdd} className="p-1 text-muted-foreground/40 hover:text-foreground transition-colors shrink-0"><Plus size={16} /></button>
                     <div className="relative flex-1">
