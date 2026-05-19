@@ -17,6 +17,8 @@ export interface TutorialStep {
   awaitEvent?: TutorialEvent;
   /** Optional checklist labels (purely visual) for guided creation. */
   checklist?: string[];
+  /** If true, no dim mask is rendered (tooltip only). */
+  noDim?: boolean;
 }
 
 export const part1Steps: TutorialStep[] = [
@@ -66,10 +68,10 @@ export const part1Steps: TutorialStep[] = [
   },
   {
     id: 'schedule-drag',
-    anchor: 'library-list',
-    dimExclude: 'library-panel',
+    anchor: null,
+    noDim: true,
     body:
-      'Tasks live in your schedule too. Press and hold a Library task, then drag it onto your schedule.',
+      'Tasks can be moved to your schedule too. Press and hold a Library task, then click onto your schedule to place it.',
     cta: null,
     awaitEvent: 'tutorial:task-scheduled',
   },
