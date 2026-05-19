@@ -123,7 +123,11 @@ export function TutorialOverlay({
     width: TOOLTIP_W,
   };
   if (step.dockBottom && isNarrow) {
-    const top = Math.max(SAFE_MARGIN, viewport.h - tooltipH - SAFE_MARGIN);
+    // Leave generous bottom clearance so the tooltip sits above the FAB
+    // and doesn't get clipped by the home indicator / browser chrome on
+    // small phones.
+    const bottomGap = Math.max(SAFE_MARGIN, Math.round(viewport.h * 0.12));
+    const top = Math.max(SAFE_MARGIN, viewport.h - tooltipH - bottomGap);
     const left = (viewport.w - TOOLTIP_W) / 2;
     tooltipStyle = { top, left, width: TOOLTIP_W };
   } else if (!isCentered && rect) {
