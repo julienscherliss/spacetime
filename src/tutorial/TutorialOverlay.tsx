@@ -43,11 +43,12 @@ export function TutorialOverlay({
       const el = nodes.find((node) => {
         const r = node.getBoundingClientRect();
         if (r.width <= 0 || r.height <= 0) return false;
-        const cx = r.left + r.width / 2;
-        const cy = r.top + r.height / 2;
-        const top = document.elementFromPoint(cx, cy);
-        if (!top) return false;
-        return node === top || node.contains(top) || top.contains(node);
+        // Just require the popover to be visible. Don't use elementFromPoint
+        // here — once the tooltip overlaps the popover, it would shadow it
+        // and we'd stop avoiding, creating a feedback loop.
+        const style = window.getComputedStyle(node);
+        if (style.visibility === 'hidden' || style.display === 'none') return false;
+        return true;
       }) ?? null;
       if (!el) {
         setAvoidRect((p) => (p ? null : p));
