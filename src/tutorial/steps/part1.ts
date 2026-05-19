@@ -49,6 +49,7 @@ export const part1Steps: TutorialStep[] = [
     body: '',
     checklist: ['Today', 'This week', 'This year'],
     cta: null,
+    dockBottom: true,
   },
   {
     id: 'urgency',
