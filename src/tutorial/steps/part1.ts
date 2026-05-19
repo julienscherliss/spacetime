@@ -80,6 +80,17 @@ export const part1Steps: TutorialStep[] = [
     awaitEvent: 'tutorial:task-scheduled',
   },
   {
+    id: 'schedule-adjust',
+    anchor: null,
+    noDim: true,
+    dockBottom: true,
+    body:
+      'Once a task is on your schedule, press and hold to move it to a new time.',
+    body2:
+      'To change how long it takes, drag the top or bottom edge of the block to resize it.',
+    cta: 'Got it',
+  },
+  {
     id: 'schedule-complete',
     anchor: null,
     noDim: true,
@@ -88,6 +99,15 @@ export const part1Steps: TutorialStep[] = [
       'Nice — your task is on the schedule. Double-tap the block to mark it complete.',
     cta: null,
     awaitEvent: 'tutorial:task-completed',
+  },
+  {
+    id: 'schedule-restore',
+    anchor: null,
+    noDim: true,
+    dockBottom: true,
+    body:
+      'Completed by accident? No problem — double-tap a completed task to restore it.',
+    cta: 'Got it',
   },
   {
     id: 'archive',
