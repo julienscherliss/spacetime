@@ -22,12 +22,44 @@ function horizonOf(dueDate: string | null | undefined): number | null {
 }
 
 export function TutorialRoot() {
-  const { active, stepIndex, advance, finishPart } = useTutorialStore();
+  const { active, stepIndex, advance, finishPart, start, dismissed, completedParts } =
+    useTutorialStore();
   const libItems = useLibraryStore((s) => s.items);
   const tasks = useTaskStore((s) => s.tasks);
 
   const step = part1Steps[stepIndex];
   const isFinal = stepIndex >= part1Steps.length - 1;
+
+  // Auto-start the tutorial for empty accounts: no library items and no
+  // future-scheduled (incomplete, non-archived) tasks. Skips if the user
+  // already completed or paused the tutorial. Waits briefly after mount so
+  // initial sync from the backend can populate stores first.
+  useEffect(() => {
+    if (active) return;
+    if (dismissed) return;
+    if (completedParts.part1) return;
+
+    const timer = setTimeout(() => {
+      const state = useTutorialStore.getState();
+      if (state.active || state.dismissed || state.completedParts.part1) return;
+
+      const libCount = useLibraryStore
+        .getState()
+        .items.filter((i) => !i.deletedAt && !i.completed).length;
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const hasFutureTask = useTaskStore
+        .getState()
+        .tasks.some(
+          (t) => !t.completed && !t.archivedAt && t.date && t.date >= todayStr
+        );
+
+      if (libCount === 0 && !hasFutureTask) {
+        start('part1');
+      }
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [active, dismissed, completedParts.part1, start]);
 
   // Compute checklist progress for the create-tasks step from real library state.
   const checklistProgress = useMemo(() => {
