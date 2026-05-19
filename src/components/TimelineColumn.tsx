@@ -910,7 +910,7 @@ export function TimelineColumn({
         } : {}),
       } as any);
       // Remove from library after placing on schedule
-      useLibraryStore.getState().deleteItem(dropped.libraryItemId);
+      useLibraryStore.getState().removeItem(dropped.libraryItemId);
     } else if (dropped.fromWaitingRoom) {
       const { updateTask } = useTaskStore.getState();
       updateTask(dropped.taskId, {

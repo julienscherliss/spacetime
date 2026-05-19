@@ -107,17 +107,20 @@ export function ArchivePanel({ open, onClose }: ArchivePanelProps) {
     // in the archive alongside scheduled tasks. Prefix the id with `lib:`
     // so revive/edit can route back to the library store.
     const libAsTasks: Task[] = allLibItems
-      .filter((i) => i.completed && i.completedAt)
-      .map((i) => ({
-        id: `lib:${i.id}`,
-        title: i.title,
-        description: i.note || '',
-        category: i.category || '',
-        duration: i.defaultDuration || 0,
-        subtasks: (i.subtasks || []) as any,
-        archivedAt: i.completedAt!,
-        archiveReason: 'completed' as const,
-      } as unknown as Task));
+      .filter((i) => (i.completed && i.completedAt) || i.deletedAt)
+      .map((i) => {
+        const isDeleted = !!i.deletedAt;
+        return {
+          id: `lib:${i.id}`,
+          title: i.title,
+          description: i.note || '',
+          category: i.category || '',
+          duration: i.defaultDuration || 0,
+          subtasks: (i.subtasks || []) as any,
+          archivedAt: (isDeleted ? i.deletedAt : i.completedAt)!,
+          archiveReason: (isDeleted ? 'deleted' : 'completed') as 'deleted' | 'completed',
+        } as unknown as Task;
+      });
 
     return [...tasks, ...libAsTasks]
       .filter((t) => !!t.archivedAt)
