@@ -911,6 +911,7 @@ export function TimelineColumn({
       } as any);
       // Remove from library after placing on schedule
       useLibraryStore.getState().removeItem(dropped.libraryItemId);
+      window.dispatchEvent(new CustomEvent('tutorial:task-scheduled'));
     } else if (dropped.fromWaitingRoom) {
       const { updateTask } = useTaskStore.getState();
       updateTask(dropped.taskId, {
