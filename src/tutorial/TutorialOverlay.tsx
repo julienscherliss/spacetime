@@ -79,22 +79,20 @@ export function TutorialOverlay({
     onAdvance();
   };
 
-  const showContinue = step.cta !== null && (isLastBody || step.cta == null);
-  // If awaitEvent + cta != null, show CTA on the *last* body too — the CTA
-  // is a hint, the event still drives advance. Clicking CTA does nothing
-  // destructive; it tries to advance manually too.
-  const ctaLabel = step.cta ?? 'Continue';
+  // If the step waits for a real user action (awaitEvent), do NOT show a
+  // manual advance button on the final body — the user must actually
+  // perform the action. Earlier sub-bodies still get a "Next" to page
+  // through the explanatory text.
+  const requiresAction = !!step.awaitEvent;
+  const showContinue = !isLastBody || (step.cta !== null && !requiresAction);
+  const ctaLabel = !isLastBody ? 'Next' : step.cta ?? 'Continue';
 
   const overlay = (
     <div className="fixed inset-0 z-[9998] pointer-events-none">
       {/* Dim mask with cutout */}
       <svg
-        className="absolute inset-0 w-full h-full pointer-events-auto"
+        className="absolute inset-0 w-full h-full pointer-events-none"
         style={{ background: 'transparent' }}
-        onClick={(e) => {
-          // Click outside the cutout does nothing — keeps focus on tutorial.
-          e.stopPropagation();
-        }}
       >
         <defs>
           <mask id="tutorial-mask">
@@ -197,6 +195,11 @@ export function TutorialOverlay({
               {String(stepNumber).padStart(2, '0')} / {String(totalSteps).padStart(2, '0')}
             </span>
             <div className="flex items-center gap-2">
+              {isLastBody && requiresAction && (
+                <span className="text-[10px] tracking-[0.18em] text-primary/80 uppercase animate-pulse">
+                  Awaiting action
+                </span>
+              )}
               <button
                 onClick={onSkip}
                 className="text-[10px] tracking-[0.18em] text-muted-foreground/60 hover:text-foreground uppercase transition-colors"
@@ -208,15 +211,7 @@ export function TutorialOverlay({
                   onClick={advance}
                   className="text-[11px] tracking-[0.14em] uppercase bg-foreground text-background px-3 py-1.5 rounded-sm hover:bg-foreground/90 transition-colors"
                 >
-                  {!isLastBody ? 'Next' : ctaLabel}
-                </button>
-              )}
-              {!showContinue && !isLastBody && (
-                <button
-                  onClick={advance}
-                  className="text-[11px] tracking-[0.14em] uppercase bg-foreground text-background px-3 py-1.5 rounded-sm hover:bg-foreground/90 transition-colors"
-                >
-                  Next
+                  {ctaLabel}
                 </button>
               )}
             </div>

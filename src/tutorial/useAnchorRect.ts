@@ -31,7 +31,16 @@ export function useAnchorRect(anchorId: string | null): AnchorRect | null {
       );
       const el = nodes.find((n) => {
         const r = n.getBoundingClientRect();
-        return r.width > 0 && r.height > 0;
+        if (r.width <= 0 || r.height <= 0) return false;
+        // Reject if the element (or a descendant) is not what's actually
+        // painted at its center — i.e. something like a Settings/Archive
+        // panel is covering it. This prevents the spotlight from outlining
+        // a blank patch of an overlay panel.
+        const cx = r.left + r.width / 2;
+        const cy = r.top + r.height / 2;
+        const top = document.elementFromPoint(cx, cy);
+        if (!top) return false;
+        return n === top || n.contains(top) || top.contains(n);
       });
       if (!el) {
         setRect(null);
