@@ -136,6 +136,7 @@ export function AppNav() {
                 <OverflowItem
                   icon={<ArchiveRestore size={18} strokeWidth={1.5} />}
                   label="Archive"
+                  dataTutorial="archive-trigger"
                   onClick={() => { window.dispatchEvent(new CustomEvent('toggle-archive')); setMoreOpen(false); }}
                 />
                 <OverflowItem
