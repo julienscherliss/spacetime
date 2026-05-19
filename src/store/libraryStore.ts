@@ -35,6 +35,8 @@ export interface LibraryTask {
   dueDate: string | null;
   subtasks: LibrarySubtask[];
   attachments?: LibraryAttachment[];
+  completed?: boolean;
+  completedAt?: string | null;
   // Legacy compat
   urgency?: TaskUrgency;
 }
@@ -78,6 +80,8 @@ interface LibraryState {
   addItem: (title: string, category?: LibraryCategory, dueDate?: string | null) => void;
   updateItem: (id: string, updates: Partial<Pick<LibraryTask, 'title' | 'note' | 'category' | 'defaultDuration' | 'isUrgent' | 'isImportant' | 'dueDate' | 'subtasks' | 'attachments'>>) => void;
   deleteItem: (id: string) => void;
+  completeItem: (id: string) => void;
+  uncompleteItem: (id: string) => void;
   removeItem: (id: string) => void;
   addFromSchedule: (source: LibraryScheduleSource, duration?: number) => void;
   getFilteredItems: () => LibraryTask[];
@@ -193,6 +197,20 @@ export const useLibraryStore = create<LibraryState>()(
       deleteItem: (id) =>
         set((s) => ({ items: s.items.filter((i) => i.id !== id) })),
 
+      completeItem: (id) =>
+        set((s) => ({
+          items: s.items.map((i) =>
+            i.id === id ? { ...i, completed: true, completedAt: new Date().toISOString() } : i
+          ),
+        })),
+
+      uncompleteItem: (id) =>
+        set((s) => ({
+          items: s.items.map((i) =>
+            i.id === id ? { ...i, completed: false, completedAt: null } : i
+          ),
+        })),
+
       removeItem: (id) =>
         set((s) => ({ items: s.items.filter((i) => i.id !== id) })),
 
@@ -258,7 +276,7 @@ export const useLibraryStore = create<LibraryState>()(
 
       getFilteredItems: () => {
         const { items, sortMode, filters } = get();
-        let filtered = items;
+        let filtered = items.filter((i) => !i.completed);
 
         // Category filter
         if (filters.category === 'none') {
