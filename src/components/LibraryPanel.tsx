@@ -786,7 +786,7 @@ export function LibraryPanel() {
                     </div>
 
                     {/* Task list */}
-                    <div className="flex-1 overflow-y-auto px-3 py-2" style={{ WebkitOverflowScrolling: 'touch' }}>
+                    <div data-tutorial="library-list" className="flex-1 overflow-y-auto px-3 py-2" style={{ WebkitOverflowScrolling: 'touch' }}>
                       {items.length === 0 ? (
                         <div className="text-center py-16 px-6">
                           <CalendarClock size={28} className="mx-auto text-muted-foreground/15 mb-4" />
@@ -1143,7 +1143,7 @@ export function LibraryPanel() {
                       )}
                     </div>
                   ) : (
-                    <div className="space-y-1.5">
+                    <div data-tutorial="library-list" className="space-y-1.5">
                       {items.map((item) => (
                         <LibraryItem key={item.id} item={item} isMobile={isMobile} onEdit={() => setEditingItem(item)} />
                       ))}
