@@ -87,7 +87,7 @@ export const part1Steps: TutorialStep[] = [
     body:
       'Once a task is on your schedule, press and hold to move it to a new time.',
     body2:
-      'To change how long it takes, drag the top or bottom edge of the block to resize it.',
+      'To change how long it takes, drag the right top or bottom corner of the block to resize it.',
     cta: 'Got it',
   },
   {
