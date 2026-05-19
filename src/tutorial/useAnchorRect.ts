@@ -22,9 +22,17 @@ export function useAnchorRect(anchorId: string | null): AnchorRect | null {
     }
     let raf = 0;
     const measure = () => {
-      const el = document.querySelector<HTMLElement>(
+      // Pick the first visible match — components may render the same anchor
+      // id in both mobile and desktop layouts; only one is on screen.
+      const nodes = Array.from(
+        document.querySelectorAll<HTMLElement>(
         `[data-tutorial="${anchorId}"]`
+        )
       );
+      const el = nodes.find((n) => {
+        const r = n.getBoundingClientRect();
+        return r.width > 0 && r.height > 0;
+      });
       if (!el) {
         setRect(null);
         return;
