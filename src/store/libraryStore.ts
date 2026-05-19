@@ -197,6 +197,20 @@ export const useLibraryStore = create<LibraryState>()(
       deleteItem: (id) =>
         set((s) => ({ items: s.items.filter((i) => i.id !== id) })),
 
+      completeItem: (id) =>
+        set((s) => ({
+          items: s.items.map((i) =>
+            i.id === id ? { ...i, completed: true, completedAt: new Date().toISOString() } : i
+          ),
+        })),
+
+      uncompleteItem: (id) =>
+        set((s) => ({
+          items: s.items.map((i) =>
+            i.id === id ? { ...i, completed: false, completedAt: null } : i
+          ),
+        })),
+
       removeItem: (id) =>
         set((s) => ({ items: s.items.filter((i) => i.id !== id) })),
 
@@ -262,7 +276,7 @@ export const useLibraryStore = create<LibraryState>()(
 
       getFilteredItems: () => {
         const { items, sortMode, filters } = get();
-        let filtered = items;
+        let filtered = items.filter((i) => !i.completed);
 
         // Category filter
         if (filters.category === 'none') {
