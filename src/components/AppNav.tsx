@@ -49,6 +49,7 @@ export function AppNav() {
       if (dow !== 0 && dow !== 6) remaining--;
     }
     return s.items.filter((i) => {
+      if (i.completed || i.deletedAt) return false;
       if (!i.dueDate) return false;
       const due = new Date(i.dueDate + 'T12:00:00');
       due.setHours(0, 0, 0, 0);
