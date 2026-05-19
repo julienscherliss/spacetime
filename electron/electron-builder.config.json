@@ -24,11 +24,16 @@
     "icon": "assets/appIcon.ico"
   },
   "mac": {
-  "category": "public.app-category.productivity",
-  "target": [
-    "dmg",
-    "zip"
-  ],
-  "icon": "assets/appIcon.icns"
-}
+    "category": "public.app-category.productivity",
+    "target": [
+      "dmg",
+      "zip"
+    ],
+    "icon": "assets/appIcon.icns",
+    "identity": "Julien Scherliss (Z78U44P95V)",
+    "hardenedRuntime": true,
+    "gatekeeperAssess": false,
+    "artifactName": "Spacetime-${version}-${arch}.${ext}"
+  },
+  "afterSign": "scripts/notarize.js"
 }

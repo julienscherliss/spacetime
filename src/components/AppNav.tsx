@@ -575,11 +575,12 @@ function ScanButton() {
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
         onClick={(e) => e.preventDefault()}
-        onContextMenu={(e) => e.preventDefault()}
+        
         className="relative flex items-center justify-center w-[40px] h-[44px] rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors touch-none select-none"
         title="Fit tasks (double-tap to focus, long-press for more)"
       >
         <Scan size={18} strokeWidth={1.5} />
+
       </button>
 
       {/* Long-press popover */}

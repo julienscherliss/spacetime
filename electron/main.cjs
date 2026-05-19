@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, session, protocol } = require('electron');
+const { app, BrowserWindow, Menu, session, protocol, clipboard } = require('electron');
 const path = require('path');
 
 const SUPABASE_REF = 'rhguyvbysqmcwzeuqipr';
@@ -93,7 +93,7 @@ function attachContextMenu(win) {
     const menu = Menu.buildFromTemplate([
       { label: 'Cut', role: 'cut', enabled: editFlags.canCut && hasSelection },
       { label: 'Copy', role: 'copy', enabled: editFlags.canCopy && hasSelection },
-      { label: 'Paste', role: 'paste', enabled: editFlags.canPaste },
+      { label: 'Paste', enabled: editFlags.canPaste, click: () => { const text = clipboard.readText(); if (text) win.webContents.insertText(text); } },
       { type: 'separator' },
       { label: 'Select All', role: 'selectAll', enabled: editFlags.canSelectAll },
     ]);
@@ -115,7 +115,8 @@ function attachEditShortcuts(win) {
     switch (key) {
       case 'v':
         console.log('Electron shortcut paste fired');
-        wc.paste();
+        const text = clipboard.readText();
+        if (text) wc.insertText(text);
         event.preventDefault();
         break;
       case 'c':
@@ -173,6 +174,8 @@ function createWindow() {
     width: 1200,
     height: 800,
     webPreferences: {
+      spellcheck: true,
+      sandbox: false,
       contextIsolation: true,
       nodeIntegration: false,
     },

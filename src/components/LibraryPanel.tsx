@@ -127,7 +127,7 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
 
   return (
     <div
-      onContextMenu={(e) => e.preventDefault()}
+      
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerMove={handlePointerMove}

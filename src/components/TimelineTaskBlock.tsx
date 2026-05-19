@@ -487,7 +487,7 @@ export function TimelineTaskBlock({
       data-task-block
       onPointerDown={handlePointerDown}
       onTouchStart={handleTouchStartMulti}
-      onContextMenu={(e) => e.preventDefault()}
+      
       className={`absolute right-1 group select-none transition-[opacity,box-shadow] duration-200 ${
         isLocked
           ? 'cursor-default'

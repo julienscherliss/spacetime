@@ -1,6 +1,6 @@
 {
   "name": "Spacetime",
-  "version": "1.0.7",
+  "version": "1.0.10",
   "description": "An Amazing Capacitor App",
   "author": {
     "name": "",
@@ -15,7 +15,7 @@
   "scripts": {
     "build": "tsc && electron-rebuild",
     "electron:start-live": "node ./live-runner.js",
-    "electron:start": "npm run build && electron --inspect=5858 ./",
+    "electron:start": "npm run build && electron ./",
     "electron:pack": "npm run build && electron-builder build --dir -c ./electron-builder.config.json",
     "electron:make": "npm run build && electron-builder build -c ./electron-builder.config.json -p always"
   },
@@ -29,6 +29,7 @@
     "electron-window-state": "^5.0.3"
   },
   "devDependencies": {
+    "@electron/notarize": "^3.1.1",
     "electron": "^26.2.2",
     "electron-builder": "~23.6.0",
     "electron-rebuild": "^3.2.9",

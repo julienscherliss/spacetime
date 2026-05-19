@@ -52,8 +52,52 @@ export class ElectronCapacitorApp {
     new MenuItem({ label: 'Quit App', role: 'quit' }),
   ];
   private AppMenuBarMenuTemplate: (MenuItem | MenuItemConstructorOptions)[] = [
-    { role: process.platform === 'darwin' ? 'appMenu' : 'fileMenu' },
-    { role: 'viewMenu' },
+    ...(process.platform === 'darwin'
+      ? [{ role: 'appMenu' as const }]
+      : [{ role: 'fileMenu' as const }]),
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' as const },
+        { role: 'redo' as const },
+        { type: 'separator' as const },
+        { role: 'cut' as const },
+        { role: 'copy' as const },
+        { role: 'paste' as const },
+        { role: 'pasteAndMatchStyle' as const },
+        { role: 'delete' as const },
+        { type: 'separator' as const },
+        { role: 'selectAll' as const },
+      ],
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'resetZoom' as const },
+        { role: 'zoomIn' as const },
+        { role: 'zoomOut' as const },
+        { type: 'separator' as const },
+        { role: 'togglefullscreen' as const },
+        ...(electronIsDev
+          ? [
+              { type: 'separator' as const },
+              { role: 'reload' as const },
+              { role: 'forceReload' as const },
+              { role: 'toggleDevTools' as const },
+            ]
+          : []),
+      ],
+    },
+    {
+      label: 'Window',
+      submenu: [
+        { role: 'minimize' as const },
+        { role: 'zoom' as const },
+        ...(process.platform === 'darwin'
+          ? [{ type: 'separator' as const }, { role: 'front' as const }]
+          : [{ role: 'close' as const }]),
+      ],
+    },
   ];
   private mainWindowState;
   private loadWebApp;
@@ -170,6 +214,75 @@ export class ElectronCapacitorApp {
 
 
     this.MainWindow.setMenuBarVisibility(false);
+
+    // Native desktop edit shortcuts + context menu
+    this.MainWindow.webContents.on('before-input-event', (event, input) => {
+      console.log(
+        'KEY EVENT:',
+        input.key,
+        'meta:',
+        input.meta,
+        'ctrl:',
+        input.control,
+        'type:',
+        input.type
+      );
+
+      const isMac = process.platform === 'darwin';
+      const cmdOrCtrl = isMac ? input.meta : input.control;
+
+      if (input.type === 'keyDown' && cmdOrCtrl) {
+        const key = input.key.toLowerCase();
+
+        // BLOCK_PRODUCTION_RELOAD
+        if (!electronIsDev && (key === 'r' || key === 'f5')) {
+          event.preventDefault();
+          return;
+        }
+
+        if (key === 'x') {
+          this.MainWindow.webContents.cut();
+          event.preventDefault();
+        } else if (key === 'c') {
+          this.MainWindow.webContents.copy();
+          event.preventDefault();
+        } else if (key === 'v') {
+          this.MainWindow.webContents.paste();
+          event.preventDefault();
+        } else if (key === 'a') {
+          this.MainWindow.webContents.selectAll();
+          event.preventDefault();
+        } else if (key === 'z' && input.shift) {
+          this.MainWindow.webContents.redo();
+          event.preventDefault();
+        } else if (key === 'z') {
+          this.MainWindow.webContents.undo();
+          event.preventDefault();
+        } else if (!isMac && key === 'y') {
+          this.MainWindow.webContents.redo();
+          event.preventDefault();
+        }
+      }
+    });
+
+    this.MainWindow.webContents.on('context-menu', (_event, params) => {
+      if (!params.isEditable) return;
+
+      const menu = Menu.buildFromTemplate([
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { type: 'separator' },
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'selectAll' },
+      ]);
+
+      menu.popup();
+    });
+
+
     this.mainWindowState.manage(this.MainWindow);
 
     if (this.CapacitorFileConfig.backgroundColor) {
