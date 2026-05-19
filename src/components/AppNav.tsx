@@ -34,7 +34,9 @@ export function AppNav() {
   useEffect(() => { if (!billingLoaded) loadBilling(); }, [billingLoaded, loadBilling]);
   const hasBillableTag = billingSettings.some(s => s.billable);
   const showBilling = showBillingPref || hasBillableTag;
-  const libCount = useLibraryStore((s) => s.items.length);
+  const libCount = useLibraryStore(
+    (s) => s.items.filter((i) => !i.completed && !i.deletedAt).length
+  );
   const libUrgentCount = useLibraryStore((s) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);

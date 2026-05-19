@@ -402,7 +402,7 @@ export function LibraryPanel() {
 
   const items = getFilteredItems();
   const allItems = useLibraryStore((s) => s.items);
-  const totalCount = allItems.length;
+  const totalCount = allItems.filter((i) => !i.completed && !i.deletedAt).length;
 
   const activeFilterCount = [
     filters.category !== 'all',
