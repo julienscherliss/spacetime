@@ -322,7 +322,10 @@ function presetsForMode(dark: boolean) {
 
 function defaultIdForMode(dark: boolean, dot?: boolean) {
   if (dot) return 'minimal-archive';
-  return dark ? 'dark-citrus' : 'cobalt';
+  // Default to ARCHIVE for both modes — minimal mode is the default UX,
+  // so the underlying active id should also point at archive so the
+  // Color Scheme panel reflects the actual rendered scheme.
+  return 'minimal-archive';
 }
 
 function nowIso() {
@@ -500,8 +503,8 @@ export function chooseAuthoritativeThemeState(local: PersistedThemeState, remote
 export const useColorSchemeStore = create<ColorSchemeState>()(
   persist(
     (set, get) => ({
-      activeLightSchemeId: 'cobalt',
-      activeDarkSchemeId: 'dark-citrus',
+      activeLightSchemeId: 'minimal-archive',
+      activeDarkSchemeId: 'minimal-archive',
       isDark: false,
       customSchemes: [],
       lastLocalChangeAt: '',
