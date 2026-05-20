@@ -40,7 +40,7 @@ export function TutorialRoot() {
     if (active) return;
     if (dismissed) return;
 
-    const timer = setTimeout(() => {
+    const check = () => {
       const state = useTutorialStore.getState();
       if (state.active || state.dismissed) return;
 
@@ -57,9 +57,23 @@ export function TutorialRoot() {
       if (libCount === 0 && !hasFutureTask) {
         start('part1');
       }
-    }, 1500);
+    };
 
-    return () => clearTimeout(timer);
+    // Wait for initial backend sync before deciding the account is empty —
+    // otherwise we'd auto-start the tutorial for users whose data hasn't
+    // loaded yet. Fallback to a generous timeout in case the event never
+    // fires (e.g. signed-out / offline).
+    const onLoaded = () => {
+      // small delay to let stores commit
+      setTimeout(check, 300);
+    };
+    window.addEventListener('data-sync:initial-loaded', onLoaded);
+    const fallback = setTimeout(check, 6000);
+
+    return () => {
+      window.removeEventListener('data-sync:initial-loaded', onLoaded);
+      clearTimeout(fallback);
+    };
   }, [active, dismissed, start]);
 
   // Compute checklist progress for the create-tasks step from real library state.

@@ -497,6 +497,7 @@ export function useDataSync(user: User | null) {
     loadFromDB(user.id).then((ok) => {
       if (ok && userIdRef.current === user.id) {
         initialLoadDone.current = true;
+        try { window.dispatchEvent(new CustomEvent('data-sync:initial-loaded')); } catch {}
 
         // If DB had zero tasks but localStorage had some (first-time migration),
         // push them up. This only matters on the very first login.
