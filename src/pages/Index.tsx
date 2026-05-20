@@ -52,13 +52,6 @@ const Index = () => {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const { trialDaysLeft, cancellingDaysLeft, subscription, refresh: refreshSub } = useSubscription();
   const [helpSection, setHelpSection] = useState<string | undefined>();
-  // Auto-start Part 1 for users who haven't completed it yet.
-  useEffect(() => {
-    const s = useTutorialStore.getState();
-    if (!s.completedParts.part1 && !s.dismissed && !s.active) {
-      s.start('part1');
-    }
-  }, []);
 
   // Handle Google Calendar OAuth callback
   useEffect(() => {
