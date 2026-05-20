@@ -252,7 +252,7 @@ export function LibraryDetailPane({ item, onClose }: LibraryDetailPaneProps) {
                 mode="single"
                 selected={dueDate ? new Date(dueDate + 'T12:00:00') : undefined}
                 onSelect={(d) => {
-                  if (d) setDueDate(d.toISOString().split('T')[0]);
+                  if (d) setDueDate(toLocalDateStr(d));
                   else setDueDate('');
                   setTimeout(() => setShowDuePicker(false), 0);
                 }}
@@ -271,7 +271,7 @@ export function LibraryDetailPane({ item, onClose }: LibraryDetailPaneProps) {
                       e.stopPropagation();
                       const d = new Date();
                       d.setDate(d.getDate() + opt.days);
-                      setDueDate(d.toISOString().split('T')[0]);
+                      setDueDate(toLocalDateStr(d));
                       setTimeout(() => setShowDuePicker(false), 0);
                     }}
                     className="px-2.5 py-1 rounded-sm text-[10px] font-mono tracking-wider text-muted-foreground/60 bg-muted/30 hover:bg-muted/60 hover:text-foreground/70 transition-colors"
