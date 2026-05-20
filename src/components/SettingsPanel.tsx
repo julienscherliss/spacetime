@@ -702,6 +702,32 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
 
             {pwMode === 'closed' && (
               <div className="space-y-2">
+                {!emailConfirmed && authProvider === 'email' && (
+                  <div className="bg-muted/20 border border-border/50 rounded-sm p-3 space-y-2">
+                    <div className="text-[11px] font-mono text-foreground leading-relaxed">
+                      Verify your email for password recovery and account security.
+                    </div>
+                    <button
+                      onClick={async () => {
+                        if (!userEmail) return;
+                        setVerifySending(true);
+                        try {
+                          const { error } = await supabase.auth.resend({ type: 'signup', email: userEmail });
+                          if (error) throw error;
+                          toast.success('Verification email sent');
+                        } catch (err: any) {
+                          toast.error(err.message || 'Failed to send verification');
+                        } finally {
+                          setVerifySending(false);
+                        }
+                      }}
+                      disabled={verifySending}
+                      className="w-full py-2 rounded-sm border border-primary/30 text-[10px] font-mono tracking-wider text-primary hover:bg-primary/5 transition-colors disabled:opacity-50"
+                    >
+                      {verifySending ? 'SENDING...' : 'SEND VERIFICATION EMAIL'}
+                    </button>
+                  </div>
+                )}
                 <button
                   onClick={() => setPwMode('change')}
                   className="w-full flex items-center justify-center gap-2 bg-muted/30 border border-border/50 rounded-sm p-3 min-h-[48px] text-[12px] font-mono tracking-wider text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
