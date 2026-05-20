@@ -319,7 +319,9 @@ function QuickDuePicker({ dueDate, setDueDate }: { dueDate: string; setDueDate: 
               const y = d.getFullYear();
               const m = String(d.getMonth() + 1).padStart(2, '0');
               const day = String(d.getDate()).padStart(2, '0');
-              setDueDate(`${y}-${m}-${day}`);
+              const dateStr = `${y}-${m}-${day}`;
+              console.log('[QuickDuePicker] clicked', { raw: d.toString(), iso: d.toISOString(), local: dateStr, todayLocal: new Date().toString() });
+              setDueDate(dateStr);
             }
           }}
           className="p-3 pointer-events-auto"
@@ -779,6 +781,7 @@ export function LibraryPanel() {
                               const d = new Date(quickDueDate + 'T12:00:00');
                               const today = new Date(); today.setHours(0,0,0,0);
                               const diff = Math.round((d.getTime() - today.getTime()) / 86400000);
+                              console.log('[badge-desktop]', { quickDueDate, dParsed: d.toString(), today: today.toString(), diff });
                               if (diff === 0) return 'Today';
                               if (diff === 1) return 'Tomorrow';
                               return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
