@@ -35,6 +35,13 @@ function getDueBadge(dueDate: string): { text: string; overdue: boolean } {
   return { text: `${diff}d`, overdue: false };
 }
 
+function toLocalDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 interface LibraryEditModalProps {
   item: LibraryTask;
   onClose: () => void;
@@ -273,7 +280,7 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
                 mode="single"
                 selected={dueDate ? new Date(dueDate + 'T12:00:00') : undefined}
                 onSelect={(d) => {
-                  if (d) setDueDate(d.toISOString().split('T')[0]);
+                  if (d) setDueDate(toLocalDateStr(d));
                   else setDueDate('');
                   setTimeout(() => setShowDuePicker(false), 0);
                 }}
@@ -292,7 +299,7 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
                       e.stopPropagation();
                       const d = new Date();
                       d.setDate(d.getDate() + opt.days);
-                      setDueDate(d.toISOString().split('T')[0]);
+                      setDueDate(toLocalDateStr(d));
                       setTimeout(() => setShowDuePicker(false), 0);
                     }}
                     className="px-2.5 py-1 rounded-sm text-[10px] font-mono tracking-wider text-muted-foreground/60 bg-muted/30 hover:bg-muted/60 hover:text-foreground/70 transition-colors"
