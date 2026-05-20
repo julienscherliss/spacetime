@@ -30,6 +30,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { formatLocalDate, getLocalDayDiff, parseLocalDate } from '@/lib/dateOnly';
 
 function UrgencyIcons({ item }: { item: LibraryTask }) {
   return (
@@ -42,36 +43,16 @@ function UrgencyIcons({ item }: { item: LibraryTask }) {
 
 function getDueBadge(dueDate?: string | null): { text: string; urgent: boolean } | null {
   if (!dueDate) return null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const due = new Date(dueDate + 'T12:00:00');
-  due.setHours(0, 0, 0, 0);
-  const diffMs = due.getTime() - today.getTime();
-  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+  const diffDays = getLocalDayDiff(dueDate);
   if (diffDays < 0) return { text: 'Overdue', urgent: true };
   if (diffDays === 0) return { text: 'Due today', urgent: true };
   if (diffDays === 1) return { text: 'Tomorrow', urgent: false };
   return { text: `${diffDays}d`, urgent: false };
 }
 
-function parseLocalDate(dateStr: string): Date {
-  const [year, month, day] = dateStr.split('-').map(Number);
-  return new Date(year, month - 1, day, 12, 0, 0, 0);
-}
-
-function formatLocalDate(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
 function getRelativeQuickDueLabel(dateStr: string): string {
   const due = parseLocalDate(dateStr);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  due.setHours(0, 0, 0, 0);
-  const diff = Math.round((due.getTime() - today.getTime()) / 86400000);
+  const diff = getLocalDayDiff(dateStr);
 
   if (diff === 0) return 'Today';
   if (diff === 1) return 'Tomorrow';
@@ -133,10 +114,9 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
     if (!item.dueDate) return 'border-border/30 opacity-60';
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const due = new Date(item.dueDate + 'T12:00:00');
+    const due = parseLocalDate(item.dueDate);
     due.setHours(0, 0, 0, 0);
-    const diffMs = due.getTime() - today.getTime();
-    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+    const diffDays = getLocalDayDiff(item.dueDate);
     if (diffDays < 0) return 'border-destructive/60';
     let bizDays = 0;
     const d = new Date(today);
