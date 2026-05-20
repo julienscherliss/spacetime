@@ -34,6 +34,13 @@ function getDueBadge(dueDate: string): { text: string; overdue: boolean } {
   return { text: `${diff}d`, overdue: false };
 }
 
+function toLocalDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function SubtaskRow({ subtask, onToggle, onDelete, onChange }: {
   subtask: LibrarySubtask;
   onToggle: () => void;
