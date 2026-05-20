@@ -63,6 +63,9 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const [confirmPw, setConfirmPw] = useState('');
   const [pwLoading, setPwLoading] = useState(false);
   const [authProvider, setAuthProvider] = useState<'email' | 'google' | 'unknown'>('unknown');
+  const [emailConfirmed, setEmailConfirmed] = useState<boolean>(true);
+  const [userEmail, setUserEmail] = useState<string>('');
+  const [verifySending, setVerifySending] = useState(false);
   const [notificationLoading, setNotificationLoading] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
@@ -93,6 +96,8 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
       if (!user) return;
       const provider = user.app_metadata?.provider;
       setAuthProvider(provider === 'google' ? 'google' : 'email');
+      setEmailConfirmed(Boolean((user as any).email_confirmed_at || (user as any).confirmed_at));
+      setUserEmail(user.email || '');
     });
   }, [open]);
 
