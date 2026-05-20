@@ -104,9 +104,13 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
   const newSubtaskRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isMobile = useIsMobile();
-
-  useEffect(() => { if (!isMobile) titleRef.current?.focus(); }, [isMobile]);
+  useEffect(() => {
+    const isTouch =
+      typeof window !== 'undefined' &&
+      (window.matchMedia?.('(pointer: coarse)').matches ||
+        window.innerWidth < 768);
+    if (!isTouch) titleRef.current?.focus();
+  }, []);
   useEffect(() => {
     if (noteRef.current) {
       noteRef.current.style.height = 'auto';
