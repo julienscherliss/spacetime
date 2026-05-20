@@ -16,6 +16,8 @@ interface CarryState {
   carried: CarryPayload | null;
   /** Timestamp of last scroll end — used for cooldown */
   lastScrollEnd: number;
+  /** Timestamp of last carry drop — used to suppress accidental create-task taps */
+  lastDropAt: number;
   pickup: (payload: CarryPayload) => void;
   drop: () => CarryPayload | null;
   cancel: () => void;
@@ -27,6 +29,7 @@ const CARRY_TIMEOUT_MS = 60_000;
 export const useCarryStore = create<CarryState>((set, get) => ({
   carried: null,
   lastScrollEnd: 0,
+  lastDropAt: 0,
 
   pickup: (payload) => {
     // If already carrying, return current task first (handled by caller)
@@ -44,7 +47,7 @@ export const useCarryStore = create<CarryState>((set, get) => ({
 
   drop: () => {
     const carried = get().carried;
-    set({ carried: null });
+    set({ carried: null, lastDropAt: carried ? Date.now() : get().lastDropAt });
     return carried;
   },
 
@@ -57,6 +60,12 @@ export const useCarryStore = create<CarryState>((set, get) => ({
 export function isInScrollCooldown(): boolean {
   const COOLDOWN_MS = 200;
   return Date.now() - useCarryStore.getState().lastScrollEnd < COOLDOWN_MS;
+}
+
+/** Returns true if a tap should be blocked because a carry was just dropped */
+export function isInDropCooldown(): boolean {
+  const COOLDOWN_MS = 200;
+  return Date.now() - useCarryStore.getState().lastDropAt < COOLDOWN_MS;
 }
 
 /**
