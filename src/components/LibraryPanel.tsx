@@ -319,7 +319,9 @@ function QuickDuePicker({ dueDate, setDueDate }: { dueDate: string; setDueDate: 
               const y = d.getFullYear();
               const m = String(d.getMonth() + 1).padStart(2, '0');
               const day = String(d.getDate()).padStart(2, '0');
-              setDueDate(`${y}-${m}-${day}`);
+              const dateStr = `${y}-${m}-${day}`;
+              console.log('[QuickDuePicker] clicked', { raw: d.toString(), iso: d.toISOString(), local: dateStr, todayLocal: new Date().toString() });
+              setDueDate(dateStr);
             }
           }}
           className="p-3 pointer-events-auto"
