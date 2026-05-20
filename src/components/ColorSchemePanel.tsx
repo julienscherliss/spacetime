@@ -82,7 +82,10 @@ export function ColorSchemePanel() {
 
   const activeSchemeId = isDark ? activeDarkSchemeId : activeLightSchemeId;
   const schemes = allSchemes();
-  const active = schemes.find(s => s.id === activeSchemeId) || schemes[0];
+  const active =
+    schemes.find(s => s.id === activeSchemeId) ||
+    schemes.find(s => s.id === 'minimal-archive') ||
+    schemes[0];
 
   const [expanded, setExpanded] = useState(false);
   const [editingName, setEditingName] = useState(false);
