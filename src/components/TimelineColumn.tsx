@@ -639,6 +639,7 @@ export function TimelineColumn({
       const target = e.target as HTMLElement;
       if (target.closest('[data-task-block]') || target.closest('[data-cluster-block]') || target.closest('input') || target.closest('button')) return;
       if (useCarryStore.getState().carried) return;
+      if (isInDropCooldown()) return;
       const touch = e.touches[0];
       // Offset touch point upward slightly — iOS reports contact below visual tap point
       const mins = getMinutes(touch.clientY - 8);
