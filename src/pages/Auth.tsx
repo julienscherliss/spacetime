@@ -162,7 +162,15 @@ export default function Auth() {
           setMode('login');
           return;
         }
-        toast.success('Check your email to verify your account');
+        // Email verification is no longer required — auto-confirm is on at
+        // the backend, so signUp returns an active session. If for any
+        // reason no session came back (e.g. backend toggled), fall back to
+        // an immediate password sign-in so the user lands inside the app.
+        if (!data.session) {
+          const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+          if (signInErr) throw signInErr;
+        }
+        toast.success('Welcome to Spacetime');
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
