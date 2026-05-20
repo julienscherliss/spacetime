@@ -781,6 +781,7 @@ export function LibraryPanel() {
                               const d = new Date(quickDueDate + 'T12:00:00');
                               const today = new Date(); today.setHours(0,0,0,0);
                               const diff = Math.round((d.getTime() - today.getTime()) / 86400000);
+                              console.log('[badge-desktop]', { quickDueDate, dParsed: d.toString(), today: today.toString(), diff });
                               if (diff === 0) return 'Today';
                               if (diff === 1) return 'Tomorrow';
                               return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
