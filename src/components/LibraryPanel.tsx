@@ -781,10 +781,9 @@ export function LibraryPanel() {
                               const d = new Date(quickDueDate + 'T12:00:00');
                               const today = new Date(); today.setHours(0,0,0,0);
                               const diff = Math.round((d.getTime() - today.getTime()) / 86400000);
-                              console.log('[badge-desktop]', { quickDueDate, dParsed: d.toString(), today: today.toString(), diff });
-                              if (diff === 0) return 'Today';
-                              if (diff === 1) return 'Tomorrow';
-                              return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                              const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                              const label = diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                              return `${label} [stored=${quickDueDate} todayLocal=${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')} tz=${tz} diff=${diff}]`;
                             })()}
                             <X size={8} />
                           </button>
