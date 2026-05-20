@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import { DescriptionWithLinks } from '@/components/DescriptionWithLinks';
 import { autosizeTextarea } from '@/lib/autosizeTextarea';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 function formatDuration(m: number): string {
   const h = Math.floor(m / 60);
@@ -103,8 +104,9 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
   const newSubtaskRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMobile = useIsMobile();
 
-  useEffect(() => { titleRef.current?.focus(); }, []);
+  useEffect(() => { if (!isMobile) titleRef.current?.focus(); }, [isMobile]);
   useEffect(() => {
     if (noteRef.current) {
       noteRef.current.style.height = 'auto';

@@ -12,6 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import { DescriptionWithLinks } from '@/components/DescriptionWithLinks';
 import { autosizeTextarea } from '@/lib/autosizeTextarea';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 function formatDuration(m: number): string {
   const h = Math.floor(m / 60);
@@ -114,7 +115,8 @@ export function LibraryDetailPane({ item, onClose }: LibraryDetailPaneProps) {
     setLightboxIndex(null);
   }, [item.id]);
 
-  useEffect(() => { titleRef.current?.focus(); }, [item.id]);
+  const isMobile = useIsMobile();
+  useEffect(() => { if (!isMobile) titleRef.current?.focus(); }, [item.id, isMobile]);
   useEffect(() => () => { if (autoSaveRef.current) clearTimeout(autoSaveRef.current); }, []);
 
   // Auto-save on changes

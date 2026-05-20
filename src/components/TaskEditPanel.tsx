@@ -18,6 +18,7 @@ import { format } from 'date-fns';
 import { DescriptionWithLinks } from '@/components/DescriptionWithLinks';
 import { toast } from 'sonner';
 import { useColorSchemeStore } from '@/store/colorSchemeStore';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const PRIORITY_LABELS = ['Flex', 'Semi', 'Fixed', 'Lock'] as const;
 
@@ -147,6 +148,7 @@ export function TaskEditPanel() {
   // We need to render nothing here, but we MUST keep all hooks running in
   // order — so the gate is applied at the JSX level, not as an early return.
   const isGroup = task?.type === 'group';
+  const isMobile = useIsMobile();
 
   const [title, setTitle] = useState(task?.title || '');
   const [description, setDescription] = useState(task?.description || '');
@@ -246,10 +248,10 @@ export function TaskEditPanel() {
   }, [task?.id]);
 
   useEffect(() => {
-    if (task && !task.title.trim() && titleInputRef.current) {
+    if (task && !task.title.trim() && titleInputRef.current && !isMobile) {
       titleInputRef.current.focus();
     }
-  }, [task?.id]);
+  }, [task?.id, isMobile]);
 
   const buildRecurrence = (): RecurrencePattern | undefined => {
     const taskDay = task?.date ? new Date(task.date + 'T12:00:00').getDay() : new Date().getDay();
