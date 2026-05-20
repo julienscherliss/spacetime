@@ -115,8 +115,17 @@ export function LibraryDetailPane({ item, onClose }: LibraryDetailPaneProps) {
     setLightboxIndex(null);
   }, [item.id]);
 
-  const isMobile = useIsMobile();
-  useEffect(() => { if (!isMobile) titleRef.current?.focus(); }, [item.id, isMobile]);
+  useEffect(() => {
+    // Skip auto-focus on touch/mobile devices so the keyboard doesn't pop
+    // up and cover the edit panel as it animates in. useIsMobile relies on
+    // a useEffect-driven state that's still `false` on first render, so we
+    // check the viewport / pointer capability directly here.
+    const isTouch =
+      typeof window !== 'undefined' &&
+      (window.matchMedia?.('(pointer: coarse)').matches ||
+        window.innerWidth < 768);
+    if (!isTouch) titleRef.current?.focus();
+  }, [item.id]);
   useEffect(() => () => { if (autoSaveRef.current) clearTimeout(autoSaveRef.current); }, []);
 
   // Auto-save on changes
