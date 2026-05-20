@@ -54,6 +54,30 @@ function getDueBadge(dueDate?: string | null): { text: string; urgent: boolean }
   return { text: `${diffDays}d`, urgent: false };
 }
 
+function parseLocalDate(dateStr: string): Date {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day, 12, 0, 0, 0);
+}
+
+function formatLocalDate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function getRelativeQuickDueLabel(dateStr: string): string {
+  const due = parseLocalDate(dateStr);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  due.setHours(0, 0, 0, 0);
+  const diff = Math.round((due.getTime() - today.getTime()) / 86400000);
+
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Tomorrow';
+  return due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
 export function getPlaceCount(): number {
   return parseInt(localStorage.getItem('spacetime-place-count') || '0', 10);
 }
@@ -313,15 +337,10 @@ function QuickDuePicker({ dueDate, setDueDate }: { dueDate: string; setDueDate: 
       <PopoverContent data-date-autocomplete className="w-auto p-0 z-[60]" align="end" side="top">
         <Calendar
           mode="single"
-          selected={dueDate ? new Date(dueDate + 'T12:00:00') : undefined}
+          selected={dueDate ? parseLocalDate(dueDate) : undefined}
           onSelect={(d) => {
             if (d) {
-              const y = d.getFullYear();
-              const m = String(d.getMonth() + 1).padStart(2, '0');
-              const day = String(d.getDate()).padStart(2, '0');
-              const dateStr = `${y}-${m}-${day}`;
-              console.log('[QuickDuePicker] clicked', { raw: d.toString(), iso: d.toISOString(), local: dateStr, todayLocal: new Date().toString() });
-              setDueDate(dateStr);
+              setDueDate(formatLocalDate(d));
             }
           }}
           className="p-3 pointer-events-auto"
@@ -777,14 +796,7 @@ export function LibraryPanel() {
                             className="flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-mono tracking-wider text-foreground/60 bg-muted/50 border border-border/40 shrink-0"
                           >
                             <CalendarDays size={8} />
-                            {(() => {
-                              const d = new Date(quickDueDate + 'T12:00:00');
-                              const today = new Date(); today.setHours(0,0,0,0);
-                              const diff = Math.round((d.getTime() - today.getTime()) / 86400000);
-                              const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-                              const label = diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                              return `${label} [stored=${quickDueDate} todayLocal=${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')} tz=${tz} diff=${diff}]`;
-                            })()}
+                            {getRelativeQuickDueLabel(quickDueDate)}
                             <X size={8} />
                           </button>
                         )}
@@ -907,14 +919,7 @@ export function LibraryPanel() {
                         className="flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-mono tracking-wider text-foreground/60 bg-muted/50 border border-border/40 shrink-0"
                       >
                         <CalendarDays size={8} />
-                        {(() => {
-                          const d = new Date(quickDueDate + 'T12:00:00');
-                          const today = new Date(); today.setHours(0,0,0,0);
-                          const diff = Math.round((d.getTime() - today.getTime()) / 86400000);
-                          const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-                          const label = diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                          return `${label} [stored=${quickDueDate} todayLocal=${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')} tz=${tz} diff=${diff}]`;
-                        })()}
+                        {getRelativeQuickDueLabel(quickDueDate)}
                         <X size={8} />
                       </button>
                     )}
