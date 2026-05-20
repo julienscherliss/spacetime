@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useTutorialStore } from './tutorialStore';
 import { useLibraryStore } from '@/store/libraryStore';
 import { useTaskStore } from '@/store/taskStore';
+import { isInitialSyncComplete } from '@/hooks/useDataSync';
 import { part1Steps } from './steps/part1';
 import { TutorialOverlay } from './TutorialOverlay';
 import { differenceInCalendarDays, parseISO } from 'date-fns';
@@ -43,36 +44,43 @@ export function TutorialRoot() {
     const check = () => {
       const state = useTutorialStore.getState();
       if (state.active || state.dismissed) return;
+      // Never auto-start before backend sync has populated the stores.
+      if (!isInitialSyncComplete()) return;
 
-      const libCount = useLibraryStore
-        .getState()
-        .items.filter((i) => !i.deletedAt && !i.completed).length;
-      const todayStr = new Date().toISOString().slice(0, 10);
-      const hasFutureTask = useTaskStore
-        .getState()
-        .tasks.some(
-          (t) => !t.completed && !t.archivedAt && t.date && t.date >= todayStr
-        );
+      // Treat the account as "empty" only if there are zero library items
+      // AND zero scheduled tasks of any kind (past, future, completed,
+      // archived — all count as prior usage).
+      const hasAnyLibrary = useLibraryStore.getState().items.some(
+        (i) => !i.deletedAt,
+      );
+      const hasAnyTask = useTaskStore.getState().tasks.length > 0;
 
-      if (libCount === 0 && !hasFutureTask) {
+      if (!hasAnyLibrary && !hasAnyTask) {
         start('part1');
       }
     };
 
-    // Wait for initial backend sync before deciding the account is empty —
-    // otherwise we'd auto-start the tutorial for users whose data hasn't
-    // loaded yet. Fallback to a generous timeout in case the event never
-    // fires (e.g. signed-out / offline).
-    const onLoaded = () => {
-      // small delay to let stores commit
-      setTimeout(check, 300);
-    };
+    // The sync event may fire before TutorialRoot mounts. Cover both cases:
+    // listen for the event AND poll the sync flag for a short window in
+    // case we missed it.
+    const onLoaded = () => setTimeout(check, 300);
     window.addEventListener('data-sync:initial-loaded', onLoaded);
-    const fallback = setTimeout(check, 6000);
+
+    let elapsed = 0;
+    const poll = setInterval(() => {
+      elapsed += 500;
+      if (isInitialSyncComplete()) {
+        clearInterval(poll);
+        check();
+      } else if (elapsed >= 10000) {
+        // Give up polling; do NOT auto-start if sync never completed.
+        clearInterval(poll);
+      }
+    }, 500);
 
     return () => {
       window.removeEventListener('data-sync:initial-loaded', onLoaded);
-      clearTimeout(fallback);
+      clearInterval(poll);
     };
   }, [active, dismissed, start]);
 

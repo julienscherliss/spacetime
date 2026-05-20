@@ -421,6 +421,12 @@ export async function loadFromDB(
 
 // ─── Hook ──────────────────────────────────────────────
 
+/** Module-level flag flipped to true once initial backend sync completes. */
+let initialSyncComplete = false;
+export function isInitialSyncComplete() {
+  return initialSyncComplete;
+}
+
 export function useDataSync(user: User | null) {
   const initialLoadDone = useRef(false);
   const userIdRef = useRef<string | null>(null);
@@ -497,6 +503,7 @@ export function useDataSync(user: User | null) {
     loadFromDB(user.id).then((ok) => {
       if (ok && userIdRef.current === user.id) {
         initialLoadDone.current = true;
+        initialSyncComplete = true;
         try { window.dispatchEvent(new CustomEvent('data-sync:initial-loaded')); } catch {}
 
         // If DB had zero tasks but localStorage had some (first-time migration),
