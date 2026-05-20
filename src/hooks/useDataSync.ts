@@ -482,6 +482,7 @@ export function useDataSync(user: User | null) {
     if (!user) {
       clearAllUserState();
       initialLoadDone.current = false;
+      initialSyncComplete = false;
       userIdRef.current = null;
       prevUserIdRef.current = null;
       return;
@@ -490,10 +491,12 @@ export function useDataSync(user: User | null) {
     if (prevUserIdRef.current && prevUserIdRef.current !== user.id) {
       clearAllUserState();
       initialLoadDone.current = false;
+      initialSyncComplete = false;
     }
 
     userIdRef.current = user.id;
     prevUserIdRef.current = user.id;
+    initialSyncComplete = false;
 
     // Clear localStorage-cached data BEFORE loading from DB
     // This prevents stale local data from flashing or being pushed back
