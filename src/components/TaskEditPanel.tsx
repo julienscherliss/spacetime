@@ -18,6 +18,7 @@ import { format } from 'date-fns';
 import { DescriptionWithLinks } from '@/components/DescriptionWithLinks';
 import { toast } from 'sonner';
 import { useColorSchemeStore } from '@/store/colorSchemeStore';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const PRIORITY_LABELS = ['Flex', 'Semi', 'Fixed', 'Lock'] as const;
 
@@ -246,7 +247,7 @@ export function TaskEditPanel() {
   }, [task?.id]);
 
   useEffect(() => {
-    if (task && !task.title.trim() && titleInputRef.current) {
+    if (task && !task.title.trim() && titleInputRef.current && !isMobileRef.current) {
       titleInputRef.current.focus();
     }
   }, [task?.id]);
