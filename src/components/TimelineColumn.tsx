@@ -9,7 +9,7 @@ import { useLibraryStore } from '@/store/libraryStore';
 import { useTouchDragStore } from '@/store/touchDragStore';
 import { useTimezoneStore, getTodayInTz } from '@/store/timezoneStore';
 import { useScheduledDragStore } from '@/store/scheduledDragStore';
-import { useCarryStore, isInScrollCooldown, roundCarriedDuration } from '@/store/carryStore';
+import { useCarryStore, isInScrollCooldown, isInDropCooldown, roundCarriedDuration } from '@/store/carryStore';
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { TimelineTaskBlock } from '@/components/TimelineTaskBlock';
 import { GroupTimelineBlock } from '@/components/GroupTimelineBlock';
@@ -590,6 +590,7 @@ export function TimelineColumn({
     if ((e.target as HTMLElement).closest('[data-task-block]') || (e.target as HTMLElement).closest('[data-cluster-block]')) return;
     if (newTaskInput) return;
     if (useCarryStore.getState().carried) return;
+    if (isInDropCooldown()) return;
     const mins = getMinutesFromY(e.clientY);
     const snapped = snapTo15(mins);
     setCreating({ startMin: snapped, currentMin: snapped });
