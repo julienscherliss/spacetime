@@ -14,6 +14,7 @@ import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import { DescriptionWithLinks } from '@/components/DescriptionWithLinks';
 import { autosizeTextarea } from '@/lib/autosizeTextarea';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { formatLocalDate, getLocalDayDiff, parseLocalDate } from '@/lib/dateOnly';
 
 function formatDuration(m: number): string {
   const h = Math.floor(m / 60);
@@ -24,22 +25,11 @@ function formatDuration(m: number): string {
 }
 
 function getDueBadge(dueDate: string): { text: string; overdue: boolean } {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const due = new Date(dueDate + 'T12:00:00');
-  due.setHours(0, 0, 0, 0);
-  const diff = Math.round((due.getTime() - today.getTime()) / 86400000);
+  const diff = getLocalDayDiff(dueDate);
   if (diff < 0) return { text: 'Overdue', overdue: true };
   if (diff === 0) return { text: 'Today', overdue: false };
   if (diff === 1) return { text: 'Tomorrow', overdue: false };
   return { text: `${diff}d`, overdue: false };
-}
-
-function toLocalDateStr(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
 }
 
 interface LibraryEditModalProps {
@@ -278,9 +268,9 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
             <PopoverContent data-date-autocomplete className="w-auto p-0 z-[9999]" align="start" onClick={(e) => e.stopPropagation()} onPointerDownOutside={(e) => e.preventDefault()}>
               <CalendarPicker
                 mode="single"
-                selected={dueDate ? new Date(dueDate + 'T12:00:00') : undefined}
+                selected={dueDate ? parseLocalDate(dueDate) : undefined}
                 onSelect={(d) => {
-                  if (d) setDueDate(toLocalDateStr(d));
+                  if (d) setDueDate(formatLocalDate(d));
                   else setDueDate('');
                   setTimeout(() => setShowDuePicker(false), 0);
                 }}
@@ -299,7 +289,7 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
                       e.stopPropagation();
                       const d = new Date();
                       d.setDate(d.getDate() + opt.days);
-                      setDueDate(toLocalDateStr(d));
+                      setDueDate(formatLocalDate(d));
                       setTimeout(() => setShowDuePicker(false), 0);
                     }}
                     className="px-2.5 py-1 rounded-sm text-[10px] font-mono tracking-wider text-muted-foreground/60 bg-muted/30 hover:bg-muted/60 hover:text-foreground/70 transition-colors"
