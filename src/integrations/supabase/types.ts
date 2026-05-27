@@ -302,32 +302,35 @@ export type Database = {
         Row: {
           access_token: string
           created_at: string | null
-          device_id: string
+          device_id: string | null
           email: string | null
           id: string
           refresh_token: string | null
           token_expires_at: string | null
           updated_at: string | null
+          user_id: string | null
         }
         Insert: {
           access_token: string
           created_at?: string | null
-          device_id: string
+          device_id?: string | null
           email?: string | null
           id?: string
           refresh_token?: string | null
           token_expires_at?: string | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
           access_token?: string
           created_at?: string | null
-          device_id?: string
+          device_id?: string | null
           email?: string | null
           id?: string
           refresh_token?: string | null
           token_expires_at?: string | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }

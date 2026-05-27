@@ -1,75 +1,64 @@
-# Spacetime Guided Tutorial — Part 1: The Library
+# Why it's broken today
 
-Replace the standalone `InteractiveTutorial` demo with a contextual coach-mark system that drives users through the **real** app UI, listens to real state, and persists progress.
+Google Calendar is keyed by **`device_id`**, not by user.
 
-## Scope of this plan
+- `google_connections.device_id` is a random UUID stored in each browser/app's `localStorage` (`do-device-id`).
+- iOS Capacitor has its own `localStorage` (separate from desktop Safari/Chrome) → a different `device_id` → the edge function's `status` action returns `connected: false` even though the same user already linked Google on desktop.
+- `fetchCalendars` / `fetchEvents` look up by `device_id` too, so even if we faked status, the iOS device would have no calendars or events.
 
-Part 1 only — Library, due dates, urgency, completion, Archive. Scheduling is intentionally deferred to a future Part 2. The architecture is built to support additional parts later without rework.
+The OAuth flow itself only works on web (correctly blocked on native in `calendarStore.startAuth`) — that part is fine. What's missing is making the *stored* connection visible to the same user on any device.
 
-## Architecture
+# The fix: scope the connection to `auth.uid()`
 
-A small reusable tutorial engine, then a Part-1 script that uses it.
+The edge function already validates the JWT and has `userId` available but never uses it. We switch the storage key from device to user.
+
+## 1. Database migration
 
 ```text
-src/tutorial/
-  tutorialStore.ts        zustand store: currentPart, currentStep, completedSteps,
-                          dismissed, skipped, advance(), skip(), reset()
-  useTutorialAnchor.ts    hook: registerAnchor(id, ref) -> measured DOMRect (resize/scroll aware)
-  TutorialOverlay.tsx     full-screen SVG mask that dims everything except the anchor rect,
-                          renders a tooltip card anchored to it, handles "Continue"/"Skip"
-  TutorialRoot.tsx        mounted once in App; reads tutorialStore + current step config,
-                          renders TutorialOverlay, wires event listeners that auto-advance
-  steps/part1.ts          ordered step definitions for Part 1 (see below)
-  events.ts               typed event bus: tutorial:library-opened, task-created,
-                          task-completed, archive-opened
+alter table public.google_connections
+  add column user_id uuid;
+
+-- Backfill: best-effort — for each device_id, look up the most recent
+-- authenticated user that called the function. Since we don't have that
+-- history, leave nulls and let users re-link if needed (one-time cost).
+-- Optional: try to match by email against auth.users.
+
+create unique index google_connections_user_id_key
+  on public.google_connections(user_id)
+  where user_id is not null;
+
+-- Keep device_id for now (nullable) for backwards-compat during rollout,
+-- drop in a later migration.
 ```
 
-Anchor registration: components that need to be highlightable expose a `data-tutorial="library-button"` attribute (or call `useTutorialAnchor("library-button", ref)`). The overlay queries by data attribute, so no component needs to import the tutorial.
+`google_calendars` already FKs `connection_id`, so no change needed there.
 
-Persistence: `tutorialStore` persists to localStorage immediately, and (best-effort) mirrors `tutorial_state` JSON to `profiles` via a new `tutorial_state jsonb` column so progress follows the user across devices.
+## 2. Edge function (`supabase/functions/google-calendar/index.ts`)
 
-## Part 1 step script
+- Replace every `.eq("device_id", deviceId)` with `.eq("user_id", userId)`.
+- `exchangeCode` upserts on `user_id` (not `device_id`); still stores `device_id` for diagnostics.
+- `getStatus`, `fetchCalendars`, `fetchEvents`, `disconnect`, `toggleCalendar` all take `userId` from the JWT instead of `deviceId` from the body. The `deviceId` param becomes ignored/optional.
+- `get_auth_url`: keep `state` = `userId` (or a short signed token) instead of `deviceId`, so the redirect back binds the tokens to the right user.
 
-| # | Step | Anchor | Advance condition |
-|---|------|--------|-------------------|
-| 1 | Welcome modal — "Welcome to Spacetime" | centered | Continue |
-| 2 | Highlight Library button + 2-tooltip sequence | `data-tutorial="library-button"` | user opens Library |
-| 3 | Guided creation — "Add 3 tasks: today / this week / this year" | `data-tutorial="library-add"` | 3 library items exist spanning ≥2 of the 3 horizons (today, ≤7d, >30d). Live checklist in tooltip. |
-| 4 | Urgency explanation — spotlight one of the user's real new items, point at its urgency styling | dynamic anchor to a real library row | Continue |
-| 5 | Completion — point at the real complete checkbox on a row | `data-tutorial="library-complete"` on first row | one library item completed |
-| 6 | Archive — highlight Archive nav entry, 3 sequential tooltips | `data-tutorial="archive-button"` | user opens Archive |
-| 7 | Completion overlay — "You're ready" + Finish / Continue to Part 2 (disabled placeholder) | centered | Finish |
+## 3. Client (`src/store/calendarStore.ts`)
 
-## Smart adaptive behavior
+- Stop sending `deviceId` to the edge function (or send it but server ignores).
+- Remove the OAuth-callback code path that overwrites `deviceId` from the `state` query param — it's no longer meaningful.
+- On native (`isNativePlatform()`), `checkStatus` will now succeed for any signed-in user that connected Google on desktop. Calendars and events load normally.
+- Keep the existing native guard in `startAuth` (still no OAuth on iOS — they must link on web), but show a clear "Connect Google Calendar on the web app first" empty state in the calendar panel when native + not connected.
 
-On tutorial start, inspect current state and pre-mark steps complete:
-- `libraryStore.items.length >= 3` with mixed horizons → skip step 3
-- any completed library item → skip step 5
-- localStorage flag `archive-visited` (set by `ArchivePanel` open) → shorten step 6 to single tooltip
+## 4. iOS-specific polish
 
-Dismissing a tooltip pauses (does not erase) progress. Re-opens from Help panel resume at `currentStep`.
+- In the Settings / Calendar panel on iOS, if `connected === false`, show a small explainer: "Open the web app at launchspacetime.com and connect Google Calendar there — events will sync to this device automatically."
+- No Capacitor plugin changes needed. No redirect URL changes needed (OAuth still happens in web only).
 
-## Integration points (files touched)
+# Rollout
 
-- `src/pages/Index.tsx` — remove `InteractiveTutorial` mount, add `<TutorialRoot />`; bootstrap tutorial on first login if `tutorial_state.part1.completed` is false
-- `src/components/AppNav.tsx` — add `data-tutorial` attrs to Library + Archive triggers
-- `src/components/LibraryPanel.tsx` — add `data-tutorial` attrs to add-task input and to first row's complete checkbox
-- `src/store/libraryStore.ts` — emit `tutorial:task-created` / `task-completed` events (or rely on subscribing to store changes in `TutorialRoot`)
-- `src/components/ArchivePanel.tsx` — set `archive-visited` flag on open, emit event
-- `src/components/HelpPanel.tsx` — "Replay tutorial" button calls `tutorialStore.reset()` instead of opening old modal
-- `src/components/InteractiveTutorial.tsx` — deleted
+1. Ship migration + edge function + client together.
+2. Existing desktop users keep working only if we backfill `user_id`. Simplest path: on next `checkStatus` from a logged-in web session that still has the old `device_id` in localStorage, the edge function can **one-time migrate**: if no row matches `user_id` but a row matches the supplied `device_id`, stamp `user_id` on it.
+3. Users who connected anonymously (no auth at the time) will need to reconnect once — acceptable since the app now requires auth anyway.
 
-## Database
+# Out of scope
 
-New migration adds `tutorial_state jsonb not null default '{}'::jsonb` to `profiles`. `useDataSync` (or a small new hook) hydrates the store on login and writes back on changes. Already covered by existing profile RLS.
-
-## Motion / styling
-
-- Overlay: full-screen `<svg>` with a single `<mask>` cutout (rounded 8px) over the anchor; backdrop `hsl(var(--background) / 0.72)` with `backdrop-blur-sm`.
-- Tooltip: surface token card, `font-mono` body, Space Grotesk heading, 320px max width, 12px padding, hairline border, no shadow stack.
-- All transitions: `framer-motion`, 240ms, `[0.22, 1, 0.36, 1]`. No bounce, no scale > 1.02. Spotlight rect tweens between anchors.
-- Respects existing light-industrial tokens — no new colors.
-
-## Out of scope (saved for Part 2)
-
-Scheduling tutorial, drag onto timeline, priority escalation explanation, recurring tasks, calendar view tour. Engine supports them by adding a `steps/part2.ts` file and a new trigger.
+- Realtime push from Google (still polled on demand).
+- Multiple Google accounts per user (still one connection per user).
