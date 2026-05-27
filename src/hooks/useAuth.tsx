@@ -66,12 +66,30 @@ export function useAuth() {
     const { useTaskStore } = await import('@/store/taskStore');
     const { useLibraryStore } = await import('@/store/libraryStore');
     const { useCarryStore } = await import('@/store/carryStore');
+    const { useCalendarStore } = await import('@/store/calendarStore');
     useTaskStore.setState({ tasks: [], editingTaskId: null, focusTaskId: null });
     useLibraryStore.setState({ items: [] });
     useCarryStore.setState({ carried: null });
+    // Wipe Google Calendar UI state so the next signed-in user does not see
+    // the previous user's connection/calendars/events. The connection itself
+    // lives in the database keyed by user_id, not here.
+    useCalendarStore.setState({
+      connected: false,
+      email: null,
+      calendars: [],
+      eventsById: {},
+      events: [],
+      lastFetchedRange: null,
+      lastFetchSignature: null,
+      lastFetchedAt: null,
+      completedEventIds: [],
+      deletedEventIds: [],
+      eventCategories: {},
+    });
     try {
       localStorage.removeItem('do-task-store');
       localStorage.removeItem('do-library-store');
+      localStorage.removeItem('do-calendar-store');
     } catch (_) {}
     await supabase.auth.signOut();
   };
