@@ -11,6 +11,7 @@ export function useAuth() {
   useEffect(() => {
     // Set up listener first — handles all future auth changes.
     // We log every event with enough detail to distinguish OTP / OAuth / recovery.
+    let lastUserId: string | null = null;
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[AUTH/EVENT]', event, {
         userId: session?.user?.id ?? null,
@@ -20,6 +21,27 @@ export function useAuth() {
       if (event === 'PASSWORD_RECOVERY') {
         console.warn('[AUTH/EVENT] PASSWORD_RECOVERY received — only /reset-password should handle this');
       }
+      // Defensive: if the signed-in user changes identity (e.g. logged in as
+      // a different account without an explicit signOut), wipe the calendar
+      // store so the new user does not inherit the previous user's
+      // calendars/events. Connection itself is server-side & user-scoped.
+      const nextUserId = session?.user?.id ?? null;
+      if (lastUserId && nextUserId && lastUserId !== nextUserId) {
+        import('@/store/calendarStore').then(({ useCalendarStore }) => {
+          useCalendarStore.setState({
+            connected: false,
+            email: null,
+            calendars: [],
+            eventsById: {},
+            events: [],
+            lastFetchedRange: null,
+            lastFetchSignature: null,
+            lastFetchedAt: null,
+          });
+          try { localStorage.removeItem('do-calendar-store'); } catch (_) {}
+        });
+      }
+      lastUserId = nextUserId;
       // On a fresh sign-in, always land on Day view at "today".
       if (event === 'SIGNED_IN') {
         import('@/store/taskStore').then(({ useTaskStore }) => {
