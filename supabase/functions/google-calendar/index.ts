@@ -67,7 +67,7 @@ function formatEventDateTime(dateTime: string, timeZone: string) {
   };
 }
 
-async function exchangeCode(code: string, redirectUri: string, deviceId: string) {
+async function exchangeCode(code: string, redirectUri: string, deviceId: string, userId: string) {
   // Exchange authorization code for tokens
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -96,20 +96,20 @@ async function exchangeCode(code: string, redirectUri: string, deviceId: string)
 
   const expiresAt = new Date(Date.now() + (tokens.expires_in || 3600) * 1000).toISOString();
 
-  // Upsert connection
+  // Upsert connection keyed by user_id (account-scoped, works across devices)
+  const payload: Record<string, unknown> = {
+    user_id: userId,
+    device_id: deviceId || null,
+    access_token: tokens.access_token,
+    token_expires_at: expiresAt,
+    email: user.email || null,
+    updated_at: new Date().toISOString(),
+  };
+  if (tokens.refresh_token) payload.refresh_token = tokens.refresh_token;
+
   const { data, error } = await supabase
     .from("google_connections")
-    .upsert(
-      {
-        device_id: deviceId,
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token || null,
-        token_expires_at: expiresAt,
-        email: user.email || null,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "device_id" }
-    )
+    .upsert(payload, { onConflict: "user_id" })
     .select()
     .single();
 
@@ -148,14 +148,9 @@ async function refreshAccessToken(connection: any) {
   return tokens.access_token;
 }
 
-async function getValidToken(deviceId: string) {
-  const { data: conn, error } = await supabase
-    .from("google_connections")
-    .select("*")
-    .eq("device_id", deviceId)
-    .single();
-
-  if (error || !conn) throw new Error("Not connected");
+async function getValidToken(userId: string, deviceId?: string) {
+  let conn = await findConnection(userId, deviceId);
+  if (!conn) throw new Error("Not connected");
 
   // Check if token is expired (with 5 min buffer)
   const expiresAt = new Date(conn.token_expires_at).getTime();
@@ -167,8 +162,40 @@ async function getValidToken(deviceId: string) {
   return { token: conn.access_token, connectionId: conn.id };
 }
 
-async function fetchCalendars(deviceId: string) {
-  const { token, connectionId } = await getValidToken(deviceId);
+/**
+ * Look up the user's Google connection. Falls back to legacy device_id rows
+ * and stamps them with user_id on first hit (one-time migration).
+ */
+async function findConnection(userId: string, deviceId?: string) {
+  const { data: byUser } = await supabase
+    .from("google_connections")
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (byUser) return byUser;
+
+  if (deviceId) {
+    const { data: byDevice } = await supabase
+      .from("google_connections")
+      .select("*")
+      .eq("device_id", deviceId)
+      .is("user_id", null)
+      .maybeSingle();
+    if (byDevice) {
+      const { data: claimed } = await supabase
+        .from("google_connections")
+        .update({ user_id: userId, updated_at: new Date().toISOString() })
+        .eq("id", byDevice.id)
+        .select()
+        .single();
+      return claimed || byDevice;
+    }
+  }
+  return null;
+}
+
+async function fetchCalendars(userId: string, deviceId?: string) {
+  const { token, connectionId } = await getValidToken(userId, deviceId);
 
   const res = await fetch(
     "https://www.googleapis.com/calendar/v3/users/me/calendarList",
@@ -202,8 +229,8 @@ async function fetchCalendars(deviceId: string) {
   return allCals || [];
 }
 
-async function fetchEvents(deviceId: string, timeMin: string, timeMax: string, calendarIds: string[], timeZone: string = "UTC") {
-  const { token } = await getValidToken(deviceId);
+async function fetchEvents(userId: string, deviceId: string | undefined, timeMin: string, timeMax: string, calendarIds: string[], timeZone: string = "UTC") {
+  const { token } = await getValidToken(userId, deviceId);
 
   const allEvents: any[] = [];
   const queryTimeMin = toUtcBoundaryIso(timeMin, "00:00:00", timeZone);
@@ -281,22 +308,14 @@ async function fetchEvents(deviceId: string, timeMin: string, timeMax: string, c
   return allEvents;
 }
 
-async function disconnect(deviceId: string) {
-  await supabase
-    .from("google_connections")
-    .delete()
-    .eq("device_id", deviceId);
+async function disconnect(userId: string) {
+  await supabase.from("google_connections").delete().eq("user_id", userId);
   return { success: true };
 }
 
-async function getStatus(deviceId: string) {
-  const { data } = await supabase
-    .from("google_connections")
-    .select("id, email, created_at")
-    .eq("device_id", deviceId)
-    .single();
-
-  return data ? { connected: true, email: data.email } : { connected: false };
+async function getStatus(userId: string, deviceId?: string) {
+  const conn = await findConnection(userId, deviceId);
+  return conn ? { connected: true, email: conn.email } : { connected: false };
 }
 
 async function toggleCalendar(calendarId: string, visible: boolean) {
@@ -351,28 +370,28 @@ Deno.serve(async (req) => {
           scope: SCOPES,
           access_type: "offline",
           prompt: "consent",
-          state: deviceId,
+          state: deviceId || userId,
         });
         result = { url: `https://accounts.google.com/o/oauth2/v2/auth?${params}` };
         break;
       }
       case "exchange_code":
-        result = await exchangeCode(code, redirectUri, deviceId);
+        result = await exchangeCode(code, redirectUri, deviceId, userId);
         break;
       case "status":
-        result = await getStatus(deviceId);
+        result = await getStatus(userId, deviceId);
         break;
       case "calendars":
-        result = await fetchCalendars(deviceId);
+        result = await fetchCalendars(userId, deviceId);
         break;
       case "events":
-        result = await fetchEvents(deviceId, timeMin, timeMax, calendarIds, timeZone);
+        result = await fetchEvents(userId, deviceId, timeMin, timeMax, calendarIds, timeZone);
         break;
       case "toggle_calendar":
         result = await toggleCalendar(calendarId, visible);
         break;
       case "disconnect":
-        result = await disconnect(deviceId);
+        result = await disconnect(userId);
         break;
       default:
         throw new Error(`Unknown action: ${action}`);
