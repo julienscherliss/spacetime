@@ -15,6 +15,11 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 const SCOPES = "https://www.googleapis.com/auth/calendar.readonly";
 
+// IMPORTANT: Google Calendar connections are ALWAYS scoped to the authenticated
+// Supabase user_id from the JWT. `device_id` is legacy/informational only and
+// MUST NOT be trusted as an identity. Never look up, update, or delete a
+// connection using only client-provided data.
+
 function getFormatterParts(date: Date, timeZone: string) {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone,
@@ -67,7 +72,7 @@ function formatEventDateTime(dateTime: string, timeZone: string) {
   };
 }
 
-async function exchangeCode(code: string, redirectUri: string, deviceId: string, userId: string) {
+async function exchangeCode(code: string, redirectUri: string, deviceId: string | undefined, userId: string) {
   // Exchange authorization code for tokens
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -96,7 +101,10 @@ async function exchangeCode(code: string, redirectUri: string, deviceId: string,
 
   const expiresAt = new Date(Date.now() + (tokens.expires_in || 3600) * 1000).toISOString();
 
-  // Upsert connection keyed by user_id (account-scoped, works across devices)
+  // Upsert connection keyed by user_id (account-scoped, works across devices).
+  // If Google did not return a refresh_token (re-grant without prompt=consent),
+  // we intentionally omit the column so the previously stored refresh_token is
+  // preserved by PostgREST upsert.
   const payload: Record<string, unknown> = {
     user_id: userId,
     device_id: deviceId || null,
@@ -131,7 +139,13 @@ async function refreshAccessToken(connection: any) {
     }),
   });
 
-  if (!tokenRes.ok) throw new Error("Token refresh failed");
+  if (!tokenRes.ok) {
+    // Refresh token is dead (user revoked access, expired, etc.). Wipe the
+    // connection so the next status check returns connected:false and the UI
+    // can prompt for reconnect. Scoped strictly to this user's row.
+    await supabase.from("google_connections").delete().eq("id", connection.id);
+    throw new Error("Reconnect required");
+  }
   const tokens = await tokenRes.json();
 
   const expiresAt = new Date(Date.now() + (tokens.expires_in || 3600) * 1000).toISOString();
@@ -148,8 +162,8 @@ async function refreshAccessToken(connection: any) {
   return tokens.access_token;
 }
 
-async function getValidToken(userId: string, deviceId?: string) {
-  let conn = await findConnection(userId, deviceId);
+async function getValidToken(userId: string, deviceId: string | undefined, jwtEmail: string | null) {
+  const conn = await findConnection(userId, deviceId, jwtEmail);
   if (!conn) throw new Error("Not connected");
 
   // Check if token is expired (with 5 min buffer)
@@ -163,10 +177,17 @@ async function getValidToken(userId: string, deviceId?: string) {
 }
 
 /**
- * Look up the user's Google connection. Falls back to legacy device_id rows
- * and stamps them with user_id on first hit (one-time migration).
+ * Look up the user's Google connection.
+ *
+ * Primary lookup is by `user_id` (the only trusted identity).
+ *
+ * Legacy fallback: a pre-migration row may exist with `user_id = null` and a
+ * matching `device_id`. We only auto-claim it when the JWT-authenticated email
+ * matches the email stored on that row, to prevent a different user on the
+ * same browser from silently inheriting someone else's Google account.
+ * Mismatch → return null and force a clean reconnect.
  */
-async function findConnection(userId: string, deviceId?: string) {
+async function findConnection(userId: string, deviceId: string | undefined, jwtEmail: string | null) {
   const { data: byUser } = await supabase
     .from("google_connections")
     .select("*")
@@ -174,28 +195,29 @@ async function findConnection(userId: string, deviceId?: string) {
     .maybeSingle();
   if (byUser) return byUser;
 
-  if (deviceId) {
+  if (deviceId && jwtEmail) {
     const { data: byDevice } = await supabase
       .from("google_connections")
       .select("*")
       .eq("device_id", deviceId)
       .is("user_id", null)
       .maybeSingle();
-    if (byDevice) {
+    if (byDevice && byDevice.email && byDevice.email.toLowerCase() === jwtEmail.toLowerCase()) {
       const { data: claimed } = await supabase
         .from("google_connections")
         .update({ user_id: userId, updated_at: new Date().toISOString() })
         .eq("id", byDevice.id)
+        .is("user_id", null)
         .select()
-        .single();
-      return claimed || byDevice;
+        .maybeSingle();
+      if (claimed) return claimed;
     }
   }
   return null;
 }
 
-async function fetchCalendars(userId: string, deviceId?: string) {
-  const { token, connectionId } = await getValidToken(userId, deviceId);
+async function fetchCalendars(userId: string, deviceId: string | undefined, jwtEmail: string | null) {
+  const { token, connectionId } = await getValidToken(userId, deviceId, jwtEmail);
 
   const res = await fetch(
     "https://www.googleapis.com/calendar/v3/users/me/calendarList",
@@ -229,8 +251,8 @@ async function fetchCalendars(userId: string, deviceId?: string) {
   return allCals || [];
 }
 
-async function fetchEvents(userId: string, deviceId: string | undefined, timeMin: string, timeMax: string, calendarIds: string[], timeZone: string = "UTC") {
-  const { token } = await getValidToken(userId, deviceId);
+async function fetchEvents(userId: string, deviceId: string | undefined, jwtEmail: string | null, timeMin: string, timeMax: string, calendarIds: string[], timeZone: string = "UTC") {
+  const { token } = await getValidToken(userId, deviceId, jwtEmail);
 
   const allEvents: any[] = [];
   const queryTimeMin = toUtcBoundaryIso(timeMin, "00:00:00", timeZone);
@@ -309,20 +331,32 @@ async function fetchEvents(userId: string, deviceId: string | undefined, timeMin
 }
 
 async function disconnect(userId: string) {
+  // Scoped strictly to the authenticated user. Never accept a target id from
+  // the client — that would let User A wipe User B's connection.
   await supabase.from("google_connections").delete().eq("user_id", userId);
   return { success: true };
 }
 
-async function getStatus(userId: string, deviceId?: string) {
-  const conn = await findConnection(userId, deviceId);
+async function getStatus(userId: string, deviceId: string | undefined, jwtEmail: string | null) {
+  const conn = await findConnection(userId, deviceId, jwtEmail);
   return conn ? { connected: true, email: conn.email } : { connected: false };
 }
 
-async function toggleCalendar(calendarId: string, visible: boolean) {
-  await supabase
+async function toggleCalendar(userId: string, calendarId: string, visible: boolean) {
+  // Authorize: the target google_calendars row must belong to a connection
+  // owned by the authenticated user. Without this check, any signed-in user
+  // could flip visibility on any row.
+  const { data: cal } = await supabase
     .from("google_calendars")
-    .update({ visible })
-    .eq("id", calendarId);
+    .select("id, google_connections!inner(user_id)")
+    .eq("id", calendarId)
+    .maybeSingle();
+  // deno-lint-ignore no-explicit-any
+  const ownerId = (cal as any)?.google_connections?.user_id;
+  if (!cal || ownerId !== userId) {
+    throw new Error("Not authorized for this calendar");
+  }
+  await supabase.from("google_calendars").update({ visible }).eq("id", calendarId);
   return { success: true };
 }
 
@@ -355,6 +389,7 @@ Deno.serve(async (req) => {
     }
 
     const userId = claimsData.claims.sub;
+    const jwtEmail: string | null = (claimsData.claims as { email?: string }).email ?? null;
 
     const body = await req.json();
     const { action, deviceId, code, redirectUri, timeMin, timeMax, calendarIds, calendarId, visible, timeZone } = body;
@@ -370,7 +405,9 @@ Deno.serve(async (req) => {
           scope: SCOPES,
           access_type: "offline",
           prompt: "consent",
-          state: deviceId || userId,
+          // State is for CSRF only — exchange_code uses the JWT's userId, not
+          // this value, to bind the saved connection.
+          state: userId,
         });
         result = { url: `https://accounts.google.com/o/oauth2/v2/auth?${params}` };
         break;
@@ -379,16 +416,16 @@ Deno.serve(async (req) => {
         result = await exchangeCode(code, redirectUri, deviceId, userId);
         break;
       case "status":
-        result = await getStatus(userId, deviceId);
+        result = await getStatus(userId, deviceId, jwtEmail);
         break;
       case "calendars":
-        result = await fetchCalendars(userId, deviceId);
+        result = await fetchCalendars(userId, deviceId, jwtEmail);
         break;
       case "events":
-        result = await fetchEvents(userId, deviceId, timeMin, timeMax, calendarIds, timeZone);
+        result = await fetchEvents(userId, deviceId, jwtEmail, timeMin, timeMax, calendarIds, timeZone);
         break;
       case "toggle_calendar":
-        result = await toggleCalendar(calendarId, visible);
+        result = await toggleCalendar(userId, calendarId, visible);
         break;
       case "disconnect":
         result = await disconnect(userId);
