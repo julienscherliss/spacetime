@@ -1,0 +1,2 @@
+ALTER TABLE public.google_connections DROP CONSTRAINT IF EXISTS google_connections_device_id_key;
+CREATE INDEX IF NOT EXISTS google_connections_device_id_idx ON public.google_connections(device_id) WHERE device_id IS NOT NULL;
