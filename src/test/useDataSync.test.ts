@@ -369,11 +369,16 @@ describe('useDataSync regression guard', () => {
     expect(deleteIn).not.toHaveBeenCalled();
   });
 
-  it('per-row diff: only upserts tasks that actually changed', async () => {
+  it('per-row diff: only persists tasks that actually changed', async () => {
     const upsertTasks = vi.fn().mockResolvedValue({ error: null });
+    const updatePatches: any[] = [];
+    const updateTasks = vi.fn((patch: any) => {
+      updatePatches.push(patch);
+      return { eq: () => ({ eq: () => Promise.resolve({ error: null }) }) };
+    });
     const from = vi.fn((table: string) => {
       if (table === 'tasks') {
-        return { upsert: upsertTasks, delete: () => ({ in: vi.fn() }) };
+        return { upsert: upsertTasks, update: updateTasks, delete: () => ({ in: vi.fn() }) };
       }
       return {
         select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }),
@@ -409,30 +414,38 @@ describe('useDataSync regression guard', () => {
     expect(upsertTasks).toHaveBeenCalledTimes(1);
     expect((upsertTasks.mock.calls[0]![0] as any[]).length).toBe(20);
 
-    // Mutate ONE task. The diff must upsert exactly that one row.
+    // Mutate ONE task. The diff must update exactly that one row.
     upsertTasks.mockClear();
+    updateTasks.mockClear();
+    updatePatches.length = 0;
     const next = tasks.slice();
     next[7] = { ...next[7], title: 'Edited' };
     useTaskStore.setState({ tasks: next });
     await (syncModule as any).saveTasksNow('user-1');
-    expect(upsertTasks).toHaveBeenCalledTimes(1);
-    const rows = upsertTasks.mock.calls[0]![0] as any[];
-    expect(rows.length).toBe(1);
-    expect(rows[0].id).toBe(next[7].id);
-    expect(rows[0].title).toBe('Edited');
+    expect(upsertTasks).not.toHaveBeenCalled();
+    expect(updateTasks).toHaveBeenCalledTimes(1);
+    expect(updatePatches.length).toBe(1);
+    expect(updatePatches[0].title).toBe('Edited');
 
     // Save again with no further change: snapshot match should early-exit
-    // and no upsert call should be issued at all.
+    // and no write should be issued at all.
     upsertTasks.mockClear();
+    updateTasks.mockClear();
     await (syncModule as any).saveTasksNow('user-1');
     expect(upsertTasks).not.toHaveBeenCalled();
+    expect(updateTasks).not.toHaveBeenCalled();
   });
 
   it('per-row diff: reorder/groupOrder/attachments changes are detected and persisted', async () => {
     const upsertTasks = vi.fn().mockResolvedValue({ error: null });
+    const updatePatches: any[] = [];
+    const updateTasks = vi.fn((patch: any) => {
+      updatePatches.push(patch);
+      return { eq: () => ({ eq: () => Promise.resolve({ error: null }) }) };
+    });
     const from = vi.fn((table: string) => {
       if (table === 'tasks') {
-        return { upsert: upsertTasks, delete: () => ({ in: vi.fn() }) };
+        return { upsert: upsertTasks, update: updateTasks, delete: () => ({ in: vi.fn() }) };
       }
       return {
         select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }),
@@ -466,6 +479,8 @@ describe('useDataSync regression guard', () => {
     useTaskStore.setState({ tasks: [a, b] });
     await (syncModule as any).saveTasksNow('user-1');
     upsertTasks.mockClear();
+    updateTasks.mockClear();
+    updatePatches.length = 0;
 
     // Swap groupOrder (reorder) on both rows.
     useTaskStore.setState({
@@ -475,15 +490,14 @@ describe('useDataSync regression guard', () => {
       ],
     });
     await (syncModule as any).saveTasksNow('user-1');
-    expect(upsertTasks).toHaveBeenCalledTimes(1);
-    const rows = upsertTasks.mock.calls[0]![0] as any[];
-    expect(rows.length).toBe(2);
-    const orders = Object.fromEntries(rows.map((r) => [r.id, r.group_order]));
-    expect(orders[a.id]).toBe(1);
-    expect(orders[b.id]).toBe(0);
+    expect(updateTasks).toHaveBeenCalledTimes(2);
+    expect(updatePatches.length).toBe(2);
+    expect(updatePatches.every((p) => p.group_order !== undefined)).toBe(true);
+    expect(updatePatches.map((p) => p.group_order).sort()).toEqual([0, 1]);
 
     // Now change only `attachments` on one row — must still be detected.
-    upsertTasks.mockClear();
+    updateTasks.mockClear();
+    updatePatches.length = 0;
     useTaskStore.setState({
       tasks: [
         { ...a, groupOrder: 1, attachments: [{ id: 'att', name: 'doc' } as any] },
@@ -491,11 +505,9 @@ describe('useDataSync regression guard', () => {
       ],
     });
     await (syncModule as any).saveTasksNow('user-1');
-    expect(upsertTasks).toHaveBeenCalledTimes(1);
-    const rows2 = upsertTasks.mock.calls[0]![0] as any[];
-    expect(rows2.length).toBe(1);
-    expect(rows2[0].id).toBe(a.id);
-    expect(rows2[0].attachments).toEqual([{ id: 'att', name: 'doc' }]);
+    expect(updateTasks).toHaveBeenCalledTimes(1);
+    expect(updatePatches.length).toBe(1);
+    expect(updatePatches[0].attachments).toEqual([{ id: 'att', name: 'doc' }]);
   });
 
   // ── Per-field partial-patch tests (two-device stale-overwrite fix) ──
