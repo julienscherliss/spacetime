@@ -470,7 +470,8 @@ export function LibraryPanel() {
     const titleText = sourceText.replace(/#\S*$/, '').replace(/@\S*$/, '').replace(/\/\/\S*$/, '').trim();
     if (!titleText) return;
     const autoCategory = overrides?.category ?? (quickCategory || (filters.category !== 'all' && filters.category !== 'none' ? filters.category : ''));
-    const dueDate = overrides?.dueDate ?? quickDueDate;
+    const dueDate = overrides?.dueDate ?? pendingShortcutDueDate.current ?? quickDueDate;
+    pendingShortcutDueDate.current = null;
 
     if (dueDate) {
       // User already picked a date inline — skip the prompt.
