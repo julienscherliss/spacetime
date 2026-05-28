@@ -507,9 +507,15 @@ describe('useDataSync regression guard', () => {
 
   const mountSyncWithUpsertSpy = async () => {
     const upsertTasks = vi.fn().mockResolvedValue({ error: null });
+    // Existing-task changes now go through `.update(patch).eq().eq()`.
+    const updatePatches: any[] = [];
+    const updateTasks = vi.fn((patch: any) => {
+      updatePatches.push(patch);
+      return { eq: () => ({ eq: () => Promise.resolve({ error: null }) }) };
+    });
     const from = vi.fn((table: string) => {
       if (table === 'tasks') {
-        return { upsert: upsertTasks, delete: () => ({ in: vi.fn() }) };
+        return { upsert: upsertTasks, update: updateTasks, delete: () => ({ in: vi.fn() }) };
       }
       return {
         select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }),
@@ -524,7 +530,7 @@ describe('useDataSync regression guard', () => {
     vi.doMock('@/integrations/supabase/client', () => ({ supabase: { from, auth } }));
     const { useTaskStore } = await import('@/store/taskStore');
     const syncModule = await import('@/hooks/useDataSync');
-    return { upsertTasks, useTaskStore, syncModule };
+    return { upsertTasks, updateTasks, updatePatches, useTaskStore, syncModule };
   };
 
   const baseTask = (overrides: Partial<any> = {}) => ({
