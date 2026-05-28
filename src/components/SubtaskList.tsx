@@ -59,21 +59,9 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
       onChange(next);
     }, [onChange]);
 
-    const logPasteDiagnostics = useCallback((source: string, text: string) => {
-      console.log(`[SubtaskList] ${source} raw pasted clipboard text`, text);
-      console.log(`[SubtaskList] ${source} JSON.stringify(text)`, JSON.stringify(text));
-      console.log(`[SubtaskList] ${source} contains line breaks`, {
-        containsNewline: text.includes('\n'),
-        containsCarriageReturn: text.includes('\r'),
-        containsCRLF: text.includes('\r\n'),
-      });
-    }, []);
-
-    const commitParsedText = useCallback((rawText: string, source: string) => {
+    const commitParsedText = useCallback((rawText: string) => {
       const baseSubtasks = latestSubtasksRef.current;
       const parsedItems = parseSubtaskText(rawText);
-
-      console.log(`[SubtaskList] ${source} parsed line count`, parsedItems.length, parsedItems);
 
       if (parsedItems.length === 0) {
         return baseSubtasks;
@@ -81,8 +69,6 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
 
       const createdSubtasks = parsedItems.map((title) => ({ id: generateId(), title, completed: false }));
       const next = [...baseSubtasks, ...createdSubtasks];
-
-      console.log(`[SubtaskList] ${source} final subtasks created`, createdSubtasks.map((item) => item.title));
 
       emitSubtasks(next);
       updateInput('');
@@ -95,18 +81,16 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
       setInputValue: (v: string) => updateInput(v),
       flushPendingInput: () => {
         const pendingInput = latestInputRef.current;
-        console.log('[SubtaskList] flushPendingInput input value', JSON.stringify(pendingInput));
         const trimmed = pendingInput.trim();
         if (!trimmed) return subtasks;
-        return commitParsedText(pendingInput, 'flushPendingInput');
+        return commitParsedText(pendingInput);
       },
     }), [commitParsedText, subtasks, updateInput]);
 
     const handleAdd = () => {
       const pendingInput = latestInputRef.current;
-      console.log('[SubtaskList] handleAdd input value', JSON.stringify(pendingInput));
       if (!pendingInput.trim()) return;
-      commitParsedText(pendingInput, 'handleAdd');
+      commitParsedText(pendingInput);
     };
 
     const handleToggle = (id: string) => {
@@ -156,14 +140,9 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
     };
 
     const handleSubtaskPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>, index: number) => {
-      console.log('[SubtaskList] subtask onPaste handler', { index });
       const text = e.clipboardData.getData('text');
-      logPasteDiagnostics('subtask onPaste', text);
       const parts = parseSubtaskText(text);
       if (parts.length <= 1) {
-        setTimeout(() => {
-          console.log('[SubtaskList] subtask input value after paste', JSON.stringify(subtaskRefs.current[subtasks[index].id]?.value ?? ''));
-        }, 0);
         return;
       }
 
@@ -182,17 +161,13 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
         completed: false,
       }));
       updated.splice(index + 1, 0, ...inserted);
-      console.log('[SubtaskList] subtask onPaste parsed line count', parts.length, parts);
-      console.log('[SubtaskList] subtask onPaste final subtasks created', inserted.map((item) => item.title));
       emitSubtasks(updated);
       const lastId = inserted[inserted.length - 1].id;
       setTimeout(() => subtaskRefs.current[lastId]?.focus(), 0);
     };
 
     const handleInputPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-      console.log('[SubtaskList] input onPaste handler');
       const text = e.clipboardData.getData('text');
-      logPasteDiagnostics('input onPaste', text);
       const ta = e.currentTarget;
       const currentInput = latestInputRef.current;
       const start = ta.selectionStart ?? currentInput.length;
@@ -204,12 +179,8 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
 
       if (parts.length > 1) {
         e.preventDefault();
-        commitParsedText(nextValue, 'input onPaste');
+        commitParsedText(nextValue);
       }
-
-      setTimeout(() => {
-        console.log('[SubtaskList] input value after paste', JSON.stringify(inputRef.current?.value ?? ''));
-      }, 0);
     };
 
     // Drag handlers
@@ -324,14 +295,12 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
             wrap="soft"
             rows={1}
             onChange={(e) => {
-              console.log('[SubtaskList] input onChange handler', JSON.stringify(e.target.value));
               updateInput(e.target.value);
               autosizeTextarea(e.currentTarget);
             }}
             onInput={(e) => autosizeTextarea(e.currentTarget)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
-                console.log('[SubtaskList] Enter key handler');
                 e.preventDefault();
                 handleAdd();
               }
