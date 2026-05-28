@@ -8,7 +8,7 @@ import {
 import {
   X, Plus, Check, Clock, AlertTriangle, Trash2,
   ArrowDownAZ, CalendarClock, Tag, ChevronDown, ChevronRight, GripVertical, CalendarDays,
-  PanelLeftClose, PanelLeftOpen,
+  PanelLeftClose, PanelLeftOpen, Pencil,
 } from 'lucide-react';
 import { TagAutocomplete, isSubtagOf, hasSubtags, getParentValue } from '@/components/TagAutocomplete';
 import { DateAutocomplete } from '@/components/DateAutocomplete';
@@ -50,7 +50,7 @@ function getDueBadge(dueDate?: string | null): { text: string; urgent: boolean }
   return { text: `${diffDays}d`, urgent: false };
 }
 
-function getRelativeQuickDueLabel(dateStr: string): string {
+export function getRelativeQuickDueLabel(dateStr: string): string {
   const due = parseLocalDate(dateStr);
   const diff = getLocalDayDiff(dateStr);
 
@@ -299,7 +299,7 @@ function JiggleChip({ label, catValue, onDelete, isDragging }: {
 }
 
 /* ── Quick due-date picker for add input ── */
-function QuickDuePicker({ dueDate, setDueDate }: { dueDate: string; setDueDate: (d: string) => void }) {
+export function QuickDuePicker({ dueDate, setDueDate }: { dueDate: string; setDueDate: (d: string) => void }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -492,6 +492,20 @@ export function LibraryPanel() {
     setQuickDueDate('');
     setQuickCategory('');
     inputRef.current?.focus();
+  };
+
+  // Create the item from the current input and immediately open the full edit
+  // modal so the user can add details, tags, subtasks, etc.
+  const handleEditAdd = () => {
+    const titleText = input.replace(/#\S*$/, '').replace(/@\S*$/, '').replace(/\/\/\S*$/, '').trim();
+    const autoCategory = quickCategory || (filters.category !== 'all' && filters.category !== 'none' ? filters.category : '');
+    const id = addItem(titleText, autoCategory || undefined, quickDueDate || null);
+    const created = useLibraryStore.getState().items.find((i) => i.id === id);
+    if (created) setEditingItem(created);
+    incrementEntryCount();
+    setInput('');
+    setQuickDueDate('');
+    setQuickCategory('');
   };
 
   const handleAddCategory = () => {
@@ -787,6 +801,13 @@ export function LibraryPanel() {
                             <X size={8} />
                           </button>
                         )}
+                        <button
+                          onClick={handleEditAdd}
+                          title="Add details"
+                          className="p-2 text-muted-foreground/40 hover:text-foreground transition-colors shrink-0"
+                        >
+                          <Pencil size={15} />
+                        </button>
                         <QuickDuePicker dueDate={quickDueDate} setDueDate={setQuickDueDate} />
                       </div>
                     </div>
@@ -911,6 +932,13 @@ export function LibraryPanel() {
                         <X size={8} />
                       </button>
                     )}
+                    <button
+                      onClick={handleEditAdd}
+                      title="Add details"
+                      className="p-2 text-muted-foreground/40 hover:text-foreground transition-colors shrink-0"
+                    >
+                      <Pencil size={15} />
+                    </button>
                     <QuickDuePicker dueDate={quickDueDate} setDueDate={setQuickDueDate} />
                   </div>
                 </div>

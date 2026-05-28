@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useTaskStore } from '@/store/taskStore';
 import { useCalendarStore } from '@/store/calendarStore';
+import { useLibraryStore } from '@/store/libraryStore';
+import { useQuickAddStore } from '@/store/quickAddStore';
+import { QuickAddBar } from '@/components/QuickAddBar';
 import { AppNav } from '@/components/AppNav';
 import { setupNotificationTapListener } from '@/utils/notificationService';
 import { isNativePlatform } from '@/utils/nativePlatform';
@@ -165,6 +168,29 @@ const Index = () => {
     return () => window.removeEventListener('toggle-feedback', handler);
   }, []);
 
+  // Global quick-add: typing a printable character while on a main view (and
+  // not focused in an input or with another overlay open) opens the quick-add
+  // bar pre-filled with that character.
+  const anyOverlayOpen =
+    waitingOpen || settingsOpen || archiveOpen || analyticsOpen ||
+    billingOpen || helpOpen || subscribeOpen || feedbackOpen;
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key.length !== 1) return; // printable single characters only
+      const ae = document.activeElement as HTMLElement | null;
+      if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
+      if (useQuickAddStore.getState().open) return;
+      if (anyOverlayOpen) return;
+      if (useLibraryStore.getState().panelOpen) return;
+      if (useCalendarStore.getState().panelOpen) return;
+      if (useTaskStore.getState().editingTaskId) return;
+      useQuickAddStore.getState().openBar(e.key);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [anyOverlayOpen]);
+
   return (
     <div className={`min-h-screen bg-background pb-16 sm:pb-0`}>
       <AppNav />
@@ -193,6 +219,7 @@ const Index = () => {
       <DailyCompletionModal />
       
       <LibraryPanel />
+      <QuickAddBar />
       <WaitingRoom open={waitingOpen} onClose={() => setWaitingOpen(false)} />
       <TouchDragGhost />
       <CarryIndicator />
