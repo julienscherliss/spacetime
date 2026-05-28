@@ -46,6 +46,7 @@ export function QuickAddBar() {
       setInput(initialText);
       setQuickDueDate('');
       setQuickCategory('');
+      awaitingPromptRef.current = false;
       // Focus and move caret to the end after the bar mounts.
       requestAnimationFrame(() => {
         const el = inputRef.current;
