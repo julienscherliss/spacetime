@@ -7,6 +7,31 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+// Resolves a feedback-screenshots reference to a displayable URL. New entries
+// store the storage path (private bucket → signed URL); legacy entries stored
+// a full public URL.
+function ScreenshotPreview({ reference }: { reference: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (/^https?:\/\//i.test(reference)) {
+      setUrl(reference);
+      return;
+    }
+    supabase.storage
+      .from('feedback-screenshots')
+      .createSignedUrl(reference, 60 * 10)
+      .then(({ data }) => { if (!cancelled) setUrl(data?.signedUrl ?? null); });
+    return () => { cancelled = true; };
+  }, [reference]);
+  if (!url) return <div className="text-[11px] font-mono text-muted-foreground p-3">Loading…</div>;
+  return (
+    <a href={url} target="_blank" rel="noreferrer" className="block border border-border/40 rounded-md overflow-hidden bg-muted/30 hover:border-border transition-colors">
+      <img src={url} alt="Screenshot" className="w-full max-h-64 object-contain" />
+    </a>
+  );
+}
+
 interface FeedbackRow {
   id: string;
   created_at: string;
