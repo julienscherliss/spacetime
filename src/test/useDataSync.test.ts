@@ -797,8 +797,6 @@ describe('useDataSync regression guard', () => {
   });
 
   it('realtime remote task changes refetch open clients, while self-echo task events are ignored once', async () => {
-    vi.useFakeTimers();
-
     const taskId = crypto.randomUUID();
     const serverRows: any[] = [{
       id: taskId,
@@ -869,6 +867,11 @@ describe('useDataSync regression guard', () => {
     vi.doMock('@/utils/nativePlatform', () => ({
       isNativePlatform: vi.fn(() => true),
     }));
+    vi.doMock('@capacitor/app', () => ({
+      App: {
+        addListener: vi.fn().mockResolvedValue({ remove: vi.fn() }),
+      },
+    }));
 
     const React = await import('react');
     const { useDataSync } = await import('@/hooks/useDataSync');
@@ -888,10 +891,11 @@ describe('useDataSync regression guard', () => {
 
     serverRows[0] = { ...serverRows[0], title: 'Browser changed title' };
     realtimeHandlers.tasks({ eventType: 'UPDATE', new: { id: taskId }, old: { id: taskId } });
-    await vi.advanceTimersByTimeAsync(450);
-    await Promise.resolve();
-    expect(tasksRange).toHaveBeenCalledTimes(2);
-    expect(useTaskStore.getState().tasks[0]?.title).toBe('Browser changed title');
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await waitFor(() => {
+      expect(tasksRange).toHaveBeenCalledTimes(2);
+      expect(useTaskStore.getState().tasks[0]?.title).toBe('Browser changed title');
+    });
 
     useTaskStore.setState({
       tasks: [{
@@ -900,19 +904,20 @@ describe('useDataSync regression guard', () => {
       }],
     });
 
-    await vi.advanceTimersByTimeAsync(350);
-    await Promise.resolve();
-    expect(updateTasks).toHaveBeenCalledTimes(1);
-    expect((updateTasks.mock.calls as any[]).at(0)?.[0]).toEqual({ duration: 45 });
+    await waitFor(() => {
+      expect(updateTasks).toHaveBeenCalledTimes(1);
+      expect((updateTasks.mock.calls as any[]).at(0)?.[0]).toEqual({ duration: 45 });
+    });
 
     realtimeHandlers.tasks({ eventType: 'UPDATE', new: { id: taskId }, old: { id: taskId } });
-    await vi.advanceTimersByTimeAsync(450);
+    await new Promise((resolve) => setTimeout(resolve, 500));
     expect(tasksRange).toHaveBeenCalledTimes(2);
 
     realtimeHandlers.tasks({ eventType: 'UPDATE', new: { id: taskId }, old: { id: taskId } });
-    await vi.advanceTimersByTimeAsync(450);
-    await Promise.resolve();
-    expect(tasksRange).toHaveBeenCalledTimes(3);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await waitFor(() => {
+      expect(tasksRange).toHaveBeenCalledTimes(3);
+    });
   }, 10000);
 
   it('visibility resume refetches from DB and preserves remote task changes before local edits save', async () => {
