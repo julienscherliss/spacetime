@@ -247,6 +247,10 @@ function clearAllUserState() {
 
 export async function saveTasksNow(userId: string): Promise<boolean> {
   if (taskSaveInFlight) return taskSaveInFlight;
+  if (syncStatus === 'signing_out') {
+    console.warn('[Sync] Skipping task save — session is signing out.');
+    return false;
+  }
 
   const run = async (): Promise<boolean> => {
   const state = useTaskStore.getState();
@@ -264,6 +268,28 @@ export async function saveTasksNow(userId: string): Promise<boolean> {
   try {
     const localIds = new Set(validTaskIds(state.tasks));
     const toDelete = Array.from(previousIds).filter((id) => !localIds.has(id));
+
+    // SAFETY: refuse to push an empty tasks state when the previous synced
+    // snapshot was populated. This blocks the historical wipe pattern where
+    // sign-out / account-switch / failed-load briefly cleared the store and
+    // a debounced save then deleted every server row.
+    if (validTasks.length === 0 && previousIds.size > 0) {
+      console.warn('[Sync] Refusing to save empty tasks — likely transient state, not a real wipe.');
+      return false;
+    }
+
+    // SAFETY: a single save should not delete a large fraction of rows.
+    // Genuine bulk deletes go through an explicit per-row deletion path that
+    // updates the snapshot incrementally, so this guard does not block them.
+    if (
+      previousIds.size >= BULK_DELETE_MIN &&
+      toDelete.length / previousIds.size >= BULK_DELETE_RATIO
+    ) {
+      console.warn(
+        `[Sync] Refusing bulk task delete (${toDelete.length}/${previousIds.size}) — looks unintentional.`,
+      );
+      return false;
+    }
 
     if (toDelete.length > 0) {
       const { error: delErr } = await supabase.from('tasks').delete().in('id', toDelete);
@@ -303,6 +329,10 @@ export async function saveTasksNow(userId: string): Promise<boolean> {
 
 async function saveLibraryNow(userId: string): Promise<boolean> {
   if (libSaveInFlight) return libSaveInFlight;
+  if (syncStatus === 'signing_out') {
+    console.warn('[Sync] Skipping library save — session is signing out.');
+    return false;
+  }
 
   const run = async (): Promise<boolean> => {
   const state = useLibraryStore.getState();
@@ -331,6 +361,16 @@ async function saveLibraryNow(userId: string): Promise<boolean> {
     // if the previous snapshot was also empty (genuinely nothing to sync).
     if (validItems.length === 0 && previousIds.size > 0) {
       console.warn('[Sync] Refusing to save empty library — looks like a transient state, not a real deletion of all items.');
+      return false;
+    }
+
+    if (
+      previousIds.size >= BULK_DELETE_MIN &&
+      toDelete.length / previousIds.size >= BULK_DELETE_RATIO
+    ) {
+      console.warn(
+        `[Sync] Refusing bulk library delete (${toDelete.length}/${previousIds.size}) — looks unintentional.`,
+      );
       return false;
     }
 
@@ -370,6 +410,10 @@ async function saveLibraryNow(userId: string): Promise<boolean> {
 
 async function saveCategoriesNow(userId: string): Promise<boolean> {
   if (catSaveInFlight) return catSaveInFlight;
+  if (syncStatus === 'signing_out') {
+    console.warn('[Sync] Skipping category save — session is signing out.');
+    return false;
+  }
 
   const run = async (): Promise<boolean> => {
   const state = useLibraryStore.getState();
@@ -390,6 +434,16 @@ async function saveCategoriesNow(userId: string): Promise<boolean> {
 
     if (state.categories.length === 0 && previousValues.size > 0) {
       console.warn('[Sync] Refusing to save empty categories — likely transient state, not a real wipe.');
+      return false;
+    }
+
+    if (
+      previousValues.size >= BULK_DELETE_MIN &&
+      toDelete.length / previousValues.size >= BULK_DELETE_RATIO
+    ) {
+      console.warn(
+        `[Sync] Refusing bulk category delete (${toDelete.length}/${previousValues.size}) — looks unintentional.`,
+      );
       return false;
     }
 
