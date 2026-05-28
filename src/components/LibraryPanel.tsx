@@ -50,7 +50,7 @@ function getDueBadge(dueDate?: string | null): { text: string; urgent: boolean }
   return { text: `${diffDays}d`, urgent: false };
 }
 
-function getRelativeQuickDueLabel(dateStr: string): string {
+export function getRelativeQuickDueLabel(dateStr: string): string {
   const due = parseLocalDate(dateStr);
   const diff = getLocalDayDiff(dateStr);
 
