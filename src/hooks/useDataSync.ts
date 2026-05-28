@@ -320,6 +320,7 @@ function buildTaskPatch(
 
   const patch: Record<string, any> = { id: task.id, user_id: userId };
   let changed = false;
+  const fullRow = taskToRow(task, userId) as Record<string, any>;
   for (const key of Object.keys(TASK_KEY_TO_COLUMN)) {
     const a = current[key];
     const b = previous[key];
@@ -331,7 +332,8 @@ function buildTaskPatch(
         ? JSON.stringify(a) === JSON.stringify(b)
         : false);
     if (!same) {
-      patch[TASK_KEY_TO_COLUMN[key]] = (taskToRow(task, userId) as any)[TASK_KEY_TO_COLUMN[key]];
+      const col = TASK_KEY_TO_COLUMN[key];
+      patch[col] = fullRow[col];
       changed = true;
     }
   }
