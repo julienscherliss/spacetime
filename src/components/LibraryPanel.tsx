@@ -372,6 +372,9 @@ export function LibraryPanel() {
 
   const [input, setInput] = useState('');
   const [quickDueDate, setQuickDueDate] = useState('');
+  // Tracks a date picked via the @-shortcut so handleAdd can read it
+  // synchronously (state updates are async and would be stale).
+  const pendingShortcutDueDate = useRef<string | null>(null);
   const [quickCategory, setQuickCategory] = useState('');
   const [showSort, setShowSort] = useState(false);
   const [showNewCat, setShowNewCat] = useState(false);
