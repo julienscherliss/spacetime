@@ -84,6 +84,14 @@ export function useAuth() {
 
   const signOut = async () => {
     logAudit({ action: 'auth.signed_out' });
+    // CRITICAL: tell the sync layer we are tearing down BEFORE we mutate any
+    // user-scoped store. This drops queued debounced saves and short-circuits
+    // future ones, so the transient empty state below cannot be flushed to
+    // the database as a destructive delete. See useDataSync.markSigningOut.
+    try {
+      const { markSigningOut } = await import('@/hooks/useDataSync');
+      markSigningOut();
+    } catch (_) {}
     // Clear user-scoped stores before sign-out to prevent stale data flash
     const { useTaskStore } = await import('@/store/taskStore');
     const { useLibraryStore } = await import('@/store/libraryStore');
