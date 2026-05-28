@@ -26,7 +26,7 @@ export function QuickAddBar() {
   // When we hand off to the date prompt we keep the bar mounted so its input
   // stays a valid popover anchor. Close the bar once the prompt resolves.
   useEffect(() => {
-    if (!awaitingPromptRef.current) return;
+    if (!open) return;
     const unsub = useLibraryDuePrompt.subscribe((state) => {
       if (awaitingPromptRef.current && !state.pending) {
         awaitingPromptRef.current = false;
