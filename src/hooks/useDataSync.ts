@@ -456,16 +456,25 @@ export async function saveTasksNow(userId: string): Promise<boolean> {
     // changed since the last successful sync. A 200-task user toggling one
     // task should produce 1 realtime message, not 200.
     if (validTasks.length > 0) {
-      const previousById = parseSnapshotById(lastSyncedTaskSnapshot);
-      const currentProjections = validTasks.map((t) => ({
-        task: t,
-        json: JSON.stringify(taskSnapshotFields(t)),
-      }));
-      const changed = currentProjections.filter(
-        ({ task, json }) => previousById.get(task.id) !== json,
-      );
-      if (changed.length > 0) {
-        const rows = changed.map(({ task }) => taskToRow(task, userId));
+      // PER-FIELD DIFF: for every task whose projection changed, build a
+      // partial row containing ONLY the columns that actually changed
+      // (plus id + user_id). This prevents a stale device from clobbering
+      // unrelated fields — including protective fields like archived_at,
+      // archive_reason, completed, priority, group_order — that another
+      // device has updated since this device's snapshot was taken.
+      //
+      // PostgREST upsert (ON CONFLICT DO UPDATE) only writes the columns
+      // present in the payload; omitted columns retain their server value.
+      // Brand-new tasks (id not in previous snapshot) still receive the
+      // full taskToRow payload via buildTaskPatch so INSERT can fill every
+      // NOT NULL column with the correct values.
+      const previousObjectsById = parseSnapshotObjectsById(lastSyncedTaskSnapshot);
+      const rows: Record<string, any>[] = [];
+      for (const task of validTasks) {
+        const patch = buildTaskPatch(task, userId, previousObjectsById.get(task.id));
+        if (patch) rows.push(patch);
+      }
+      if (rows.length > 0) {
         const { error: upsertErr } = await supabase.from('tasks').upsert(rows as any);
         if (upsertErr) {
           console.error('[Sync] Failed to save tasks:', upsertErr);
