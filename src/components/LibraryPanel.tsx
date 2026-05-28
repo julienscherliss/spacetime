@@ -801,6 +801,13 @@ export function LibraryPanel() {
                             <X size={8} />
                           </button>
                         )}
+                        <button
+                          onClick={handleEditAdd}
+                          title="Add details"
+                          className="p-2 text-muted-foreground/40 hover:text-foreground transition-colors shrink-0"
+                        >
+                          <Pencil size={15} />
+                        </button>
                         <QuickDuePicker dueDate={quickDueDate} setDueDate={setQuickDueDate} />
                       </div>
                     </div>
