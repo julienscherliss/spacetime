@@ -151,6 +151,31 @@ let lastSyncedTaskSnapshot: string = '';
 let lastSyncedLibSnapshot: string = '';
 let lastSyncedCatSnapshot: string = '';
 
+// ─── Sync status guard ─────────────────────────────────
+//
+// Saves are only safe to run once initial load has completed AND we are not
+// in the middle of tearing down the session (sign-out / account switch).
+// `signing_out` is set by useAuth.signOut BEFORE it mutates local stores so
+// that the resulting transient empty state cannot fire a destructive save.
+
+type SyncStatus = 'idle' | 'loaded' | 'signing_out';
+let syncStatus: SyncStatus = 'idle';
+
+export function markSigningOut() {
+  syncStatus = 'signing_out';
+  // Drop any queued debounced saves so the empty-state caused by sign-out
+  // cleanup cannot reach the database.
+  if (taskSaveTimeout) { clearTimeout(taskSaveTimeout); taskSaveTimeout = null; }
+  if (libSaveTimeout) { clearTimeout(libSaveTimeout); libSaveTimeout = null; }
+  if (catSaveTimeout) { clearTimeout(catSaveTimeout); catSaveTimeout = null; }
+}
+
+// Bulk-delete safety threshold. If a single save would remove more than this
+// fraction of the previously-synced rows, abort and require the caller to go
+// through an explicit bulk-delete path. Tunable, intentionally conservative.
+const BULK_DELETE_RATIO = 0.5;
+const BULK_DELETE_MIN = 5; // never trip the guard below a handful of rows
+
 function validTaskIds(tasks: Task[]): string[] {
   return tasks.filter((t) => isValidUUID(t.id)).map((t) => t.id);
 }
