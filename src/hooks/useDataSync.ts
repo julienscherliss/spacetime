@@ -359,18 +359,34 @@ export async function saveTasksNow(userId: string): Promise<boolean> {
       console.warn('[Sync] Ignoring', toDelete.length, 'tasks missing from local state — hard delete is disabled.');
     }
 
+    // PER-ROW DIFF: upsert only the tasks whose persisted projection has
+    // changed since the last successful sync. A 200-task user toggling one
+    // task should produce 1 realtime message, not 200.
     if (validTasks.length > 0) {
-      const rows = validTasks.map(t => taskToRow(t, userId));
-      const { error: upsertErr } = await supabase.from('tasks').upsert(rows as any);
-      if (upsertErr) {
-        console.error('[Sync] Failed to save tasks:', upsertErr);
-        toast.error('Failed to save tasks — changes may not persist.');
-        return false;
+      const previousById = parseSnapshotById(lastSyncedTaskSnapshot);
+      const currentProjections = validTasks.map((t) => ({
+        task: t,
+        json: JSON.stringify(taskSnapshotFields(t)),
+      }));
+      const changed = currentProjections.filter(
+        ({ task, json }) => previousById.get(task.id) !== json,
+      );
+      if (changed.length > 0) {
+        const rows = changed.map(({ task }) => taskToRow(task, userId));
+        const { error: upsertErr } = await supabase.from('tasks').upsert(rows as any);
+        if (upsertErr) {
+          console.error('[Sync] Failed to save tasks:', upsertErr);
+          toast.error('Failed to save tasks — changes may not persist.');
+          return false;
+        }
       }
     }
 
     lastSyncedTaskSnapshot = snap;
-      ignoreTaskReloadUntil = Date.now() + 2500;
+    // Suppress the realtime echo of our own upsert. 5s gives slow mobile
+    // connections enough headroom that the echo cannot trigger a reload
+    // → setState → save loop after the window expires.
+    ignoreTaskReloadUntil = Date.now() + 5000;
     return true;
   } catch (err) {
     console.error('[Sync] Task save error:', err);
