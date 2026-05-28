@@ -219,6 +219,7 @@ const Index = () => {
       <DailyCompletionModal />
       
       <LibraryPanel />
+      <QuickAddBar />
       <WaitingRoom open={waitingOpen} onClose={() => setWaitingOpen(false)} />
       <TouchDragGhost />
       <CarryIndicator />
