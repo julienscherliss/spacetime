@@ -15,6 +15,7 @@ import { DescriptionWithLinks } from '@/components/DescriptionWithLinks';
 import { autosizeTextarea } from '@/lib/autosizeTextarea';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { formatLocalDate, getLocalDayDiff, parseLocalDate } from '@/lib/dateOnly';
+import { parseSubtaskText } from '@/lib/parseSubtaskText';
 
 function formatDuration(m: number): string {
   const h = Math.floor(m / 60);
@@ -189,10 +190,30 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
   };
 
   const addSubtask = () => {
-    if (!newSubtaskText.trim()) return;
-    setSubtasks([...subtasks, { id: crypto.randomUUID(), title: newSubtaskText.trim(), completed: false }]);
+    const parts = parseSubtaskText(newSubtaskText);
+    if (parts.length === 0) return;
+    setSubtasks([
+      ...subtasks,
+      ...parts.map((title) => ({ id: crypto.randomUUID(), title, completed: false })),
+    ]);
     setNewSubtaskText('');
     newSubtaskRef.current?.focus();
+  };
+
+  const handleSubtaskPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const text = e.clipboardData.getData('text');
+    const ta = e.currentTarget;
+    const start = ta.selectionStart ?? newSubtaskText.length;
+    const end = ta.selectionEnd ?? newSubtaskText.length;
+    const nextValue = newSubtaskText.slice(0, start) + text + newSubtaskText.slice(end);
+    const parts = parseSubtaskText(nextValue);
+    if (parts.length <= 1) return;
+    e.preventDefault();
+    setSubtasks([
+      ...subtasks,
+      ...parts.map((title) => ({ id: crypto.randomUUID(), title, completed: false })),
+    ]);
+    setNewSubtaskText('');
   };
 
   const catLabel = categories.find(c => c.value === category)?.label || (category || '');
@@ -412,6 +433,7 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
               }}
               onInput={(e) => autosizeTextarea(e.currentTarget)}
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addSubtask(); } }}
+              onPaste={handleSubtaskPaste}
               placeholder="Add subtask…"
               className="block flex-1 min-w-0 w-full bg-transparent text-[12px] font-mono leading-[1.4] whitespace-pre-wrap [overflow-wrap:anywhere] text-foreground/60 placeholder:text-muted-foreground/20 focus:outline-none resize-none overflow-hidden py-1"
             />
