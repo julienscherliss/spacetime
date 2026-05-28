@@ -529,12 +529,19 @@ async function saveCategoriesNow(userId: string): Promise<boolean> {
     }
 
     if (state.categories.length > 0) {
-      const rows = state.categories.map(c => categoryToRow(c, userId));
-      await supabase.from('library_categories').upsert(rows as any, { onConflict: 'user_id,value' });
+      // Categories are keyed by `value` (unique with user_id). Diff per row.
+      const previousByValue = parseSnapshotById(lastSyncedCatSnapshot);
+      const changed = state.categories.filter(
+        (c) => previousByValue.get(c.value) !== JSON.stringify(c),
+      );
+      if (changed.length > 0) {
+        const rows = changed.map((c) => categoryToRow(c, userId));
+        await supabase.from('library_categories').upsert(rows as any, { onConflict: 'user_id,value' });
+      }
     }
 
     lastSyncedCatSnapshot = snap;
-      ignoreCategoryReloadUntil = Date.now() + 2500;
+    ignoreCategoryReloadUntil = Date.now() + 5000;
     return true;
   } catch (_) {
     return false;
