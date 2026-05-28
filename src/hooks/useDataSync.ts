@@ -293,13 +293,12 @@ export async function saveTasksNow(userId: string): Promise<boolean> {
       return false;
     }
 
+    // SAFETY: the app no longer hard-deletes user data. Items are archived
+    // (archivedAt + archiveReason) instead, so any local-only disappearance
+    // is treated as drift, not a delete. The server also enforces this via
+    // a trigger that rejects DELETEs from non-service-role callers.
     if (toDelete.length > 0) {
-      const { error: delErr } = await supabase.from('tasks').delete().in('id', toDelete);
-      if (delErr) {
-        console.error('[Sync] Failed to delete tasks:', delErr);
-        toast.error('Failed to sync deleted tasks.');
-        return false;
-      }
+      console.warn('[Sync] Ignoring', toDelete.length, 'tasks missing from local state — hard delete is disabled.');
     }
 
     if (validTasks.length > 0) {
@@ -377,11 +376,7 @@ async function saveLibraryNow(userId: string): Promise<boolean> {
     }
 
     if (toDelete.length > 0) {
-      const { error: delErr } = await supabase.from('library_items').delete().in('id', toDelete).eq('user_id', userId);
-      if (delErr) {
-        console.error('[Sync] Failed to delete library items:', delErr);
-        return false;
-      }
+      console.warn('[Sync] Ignoring', toDelete.length, 'library items missing from local state — hard delete is disabled.');
     }
 
     if (validItems.length > 0) {
@@ -450,7 +445,7 @@ async function saveCategoriesNow(userId: string): Promise<boolean> {
     }
 
     if (toDelete.length > 0) {
-      await supabase.from('library_categories').delete().eq('user_id', userId).in('value', toDelete);
+      console.warn('[Sync] Ignoring', toDelete.length, 'categories missing from local state — hard delete is disabled.');
     }
 
     if (state.categories.length > 0) {
