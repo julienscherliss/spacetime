@@ -44,7 +44,7 @@ function rowToTask(row: any): Task {
   };
 }
 
-function taskToRow(task: Task, userId: string) {
+export function taskToRow(task: Task, userId: string) {
   return {
     id: task.id,
     user_id: userId,
@@ -185,7 +185,7 @@ function validTaskIds(tasks: Task[]): string[] {
 // changed) and per-row diffing (only upsert rows whose JSON differs).
 // MUST stay in sync with `taskToRow` — any field written to the DB must
 // appear here, or echo-reload from realtime can re-trigger a save loop.
-function taskSnapshotFields(t: Task) {
+export function taskSnapshotFields(t: Task) {
   return {
     id: t.id,
     title: t.title,
@@ -268,7 +268,7 @@ function parseSnapshotObjectsById(snap: string): Map<string, Record<string, any>
 // Mapping from the camelCase keys in `taskSnapshotFields` to the snake_case
 // DB column names produced by `taskToRow`. MUST stay in sync with both.
 // `id` is added separately and is always present in every upsert payload.
-const TASK_KEY_TO_COLUMN: Record<string, string> = {
+export const TASK_KEY_TO_COLUMN: Record<string, string> = {
   title: 'title',
   category: 'category',
   description: 'description',
