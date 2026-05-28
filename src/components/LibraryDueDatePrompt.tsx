@@ -145,7 +145,7 @@ export function LibraryDueDatePrompt() {
         <Calendar
           mode="single"
           selected={date ? new Date(date + 'T12:00:00') : undefined}
-          onSelect={(d) => { if (d) setDate(formatYMD(d)); }}
+          onSelect={(d) => { if (d) commit(formatYMD(d)); }}
           className="p-3 pointer-events-auto"
         />
         <div className="flex items-center gap-1.5 px-3 pb-2">
@@ -174,16 +174,6 @@ export function LibraryDueDatePrompt() {
             None
           </button>
         </div>
-        {date && (
-          <div className="px-3 pb-2">
-            <button
-              onClick={() => commit(date)}
-              className="w-full py-1.5 text-[10px] font-mono tracking-wider bg-foreground text-background rounded hover:bg-foreground/90 transition-colors"
-            >
-              Save
-            </button>
-          </div>
-        )}
       </PopoverContent>
     </Popover>
   );
