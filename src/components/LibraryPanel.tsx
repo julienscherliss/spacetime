@@ -299,7 +299,7 @@ function JiggleChip({ label, catValue, onDelete, isDragging }: {
 }
 
 /* ── Quick due-date picker for add input ── */
-function QuickDuePicker({ dueDate, setDueDate }: { dueDate: string; setDueDate: (d: string) => void }) {
+export function QuickDuePicker({ dueDate, setDueDate }: { dueDate: string; setDueDate: (d: string) => void }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
