@@ -618,14 +618,16 @@ describe('useDataSync regression guard', () => {
   });
 
   it('partial-patch: unchanged task sends nothing', async () => {
-    const { upsertTasks, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
+    const { upsertTasks, updateTasks, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
     const t = baseTask();
     useTaskStore.setState({ tasks: [t] });
     await (syncModule as any).saveTasksNow('user-1');
     upsertTasks.mockClear();
+    updateTasks.mockClear();
 
     await (syncModule as any).saveTasksNow('user-1');
     expect(upsertTasks).not.toHaveBeenCalled();
+    expect(updateTasks).not.toHaveBeenCalled();
   });
 
   // ── Two-device stale-overwrite scenarios ──
@@ -640,68 +642,65 @@ describe('useDataSync regression guard', () => {
   // server-side row to prove omitted columns are NOT included.
 
   it('stale device: B duration edit does not include or revert title', async () => {
-    const { upsertTasks, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
+    const { updatePatches, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
     const t = baseTask({ title: 'A-title', duration: 30 });
     // Device B's snapshot was taken when title was 'A-title' and duration 30.
     useTaskStore.setState({ tasks: [t] });
     await (syncModule as any).saveTasksNow('user-1');
-    upsertTasks.mockClear();
+    updatePatches.length = 0;
 
     // Device B never sees A's title edit. Locally B changes only duration.
     useTaskStore.setState({ tasks: [{ ...t, duration: 45 }] });
     await (syncModule as any).saveTasksNow('user-1');
 
-    const rows = upsertTasks.mock.calls[0]![0] as any[];
-    expect(rows[0]).not.toHaveProperty('title');
-    expect(rows[0].duration).toBe(45);
+    expect(updatePatches[0]).not.toHaveProperty('title');
+    expect(updatePatches[0].duration).toBe(45);
   });
 
   it('stale device: B title edit does not include archived_at / archive_reason / completed', async () => {
-    const { upsertTasks, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
+    const { updatePatches, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
     // B's last-synced snapshot has the task NOT archived and NOT completed.
     const t = baseTask({ title: 'Original' });
     useTaskStore.setState({ tasks: [t] });
     await (syncModule as any).saveTasksNow('user-1');
-    upsertTasks.mockClear();
+    updatePatches.length = 0;
 
     // Meanwhile Device A archives the task on the server. B has no idea.
     // B locally renames the task from its stale state.
     useTaskStore.setState({ tasks: [{ ...t, title: 'Renamed' }] });
     await (syncModule as any).saveTasksNow('user-1');
 
-    const rows = upsertTasks.mock.calls[0]![0] as any[];
-    expect(rows[0]).not.toHaveProperty('archived_at');
-    expect(rows[0]).not.toHaveProperty('archive_reason');
-    expect(rows[0]).not.toHaveProperty('completed');
-    expect(rows[0].title).toBe('Renamed');
+    expect(updatePatches[0]).not.toHaveProperty('archived_at');
+    expect(updatePatches[0]).not.toHaveProperty('archive_reason');
+    expect(updatePatches[0]).not.toHaveProperty('completed');
+    expect(updatePatches[0].title).toBe('Renamed');
   });
 
   it('stale device: B completion does not include priority / group_order (no reorder revert)', async () => {
-    const { upsertTasks, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
+    const { updatePatches, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
     const t = baseTask({ priority: 0, groupOrder: 0 });
     useTaskStore.setState({ tasks: [t] });
     await (syncModule as any).saveTasksNow('user-1');
-    upsertTasks.mockClear();
+    updatePatches.length = 0;
 
     // Device A has since reordered (priority/groupOrder changed on server).
     // Device B, unaware, marks the task completed from stale state.
     useTaskStore.setState({ tasks: [{ ...t, completed: true }] });
     await (syncModule as any).saveTasksNow('user-1');
 
-    const rows = upsertTasks.mock.calls[0]![0] as any[];
-    expect(rows[0]).not.toHaveProperty('priority');
-    expect(rows[0]).not.toHaveProperty('original_priority');
-    expect(rows[0]).not.toHaveProperty('group_order');
-    expect(rows[0]).not.toHaveProperty('group_id');
-    expect(rows[0].completed).toBe(true);
+    expect(updatePatches[0]).not.toHaveProperty('priority');
+    expect(updatePatches[0]).not.toHaveProperty('original_priority');
+    expect(updatePatches[0]).not.toHaveProperty('group_order');
+    expect(updatePatches[0]).not.toHaveProperty('group_id');
+    expect(updatePatches[0].completed).toBe(true);
   });
 
   it('partial-patch: protective fields are never included unless actually changed', async () => {
-    const { upsertTasks, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
+    const { updatePatches, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
     const t = baseTask({ title: 'P' });
     useTaskStore.setState({ tasks: [t] });
     await (syncModule as any).saveTasksNow('user-1');
-    upsertTasks.mockClear();
+    updatePatches.length = 0;
 
     // Touch every non-protective field that exists on the snapshot.
     useTaskStore.setState({
@@ -717,22 +716,20 @@ describe('useDataSync regression guard', () => {
     });
     await (syncModule as any).saveTasksNow('user-1');
 
-    const rows = upsertTasks.mock.calls[0]![0] as any[];
     for (const protectedCol of ['archived_at', 'archive_reason', 'completed']) {
-      expect(rows[0]).not.toHaveProperty(protectedCol);
+      expect(updatePatches[0]).not.toHaveProperty(protectedCol);
     }
 
     // Now explicitly archive the task — protective fields MUST appear.
-    upsertTasks.mockClear();
+    updatePatches.length = 0;
     const arch = useTaskStore.getState().tasks[0];
     useTaskStore.setState({
       tasks: [{ ...arch, archivedAt: '2026-05-06T12:00:00.000Z', archiveReason: 'completed', completed: true }],
     });
     await (syncModule as any).saveTasksNow('user-1');
-    const rows2 = upsertTasks.mock.calls[0]![0] as any[];
-    expect(rows2[0].archived_at).toBe('2026-05-06T12:00:00.000Z');
-    expect(rows2[0].archive_reason).toBe('completed');
-    expect(rows2[0].completed).toBe(true);
+    expect(updatePatches[0].archived_at).toBe('2026-05-06T12:00:00.000Z');
+    expect(updatePatches[0].archive_reason).toBe('completed');
+    expect(updatePatches[0].completed).toBe(true);
   });
 
   // Schema-drift guard: the three task projections must stay aligned, or
