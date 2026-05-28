@@ -546,7 +546,7 @@ export function LibraryPanel() {
                       className="p-1.5 text-muted-foreground/60 hover:text-foreground transition-colors"
                       title={sidebarMode ? 'Expand to full screen' : 'Collapse to sidebar'}
                     >
-                      {sidebarMode ? <PanelLeftClose size={16} strokeWidth={1.5} /> : <PanelLeftOpen size={16} strokeWidth={1.5} />}
+                      {sidebarMode ? <PanelLeftOpen size={16} strokeWidth={1.5} /> : <PanelLeftClose size={16} strokeWidth={1.5} />}
                     </button>
                     <button
                       onClick={() => setPanelOpen(false)}
