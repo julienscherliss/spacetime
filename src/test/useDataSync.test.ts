@@ -368,4 +368,133 @@ describe('useDataSync regression guard', () => {
     expect(ok).toBe(false);
     expect(deleteIn).not.toHaveBeenCalled();
   });
+
+  it('per-row diff: only upserts tasks that actually changed', async () => {
+    const upsertTasks = vi.fn().mockResolvedValue({ error: null });
+    const from = vi.fn((table: string) => {
+      if (table === 'tasks') {
+        return { upsert: upsertTasks, delete: () => ({ in: vi.fn() }) };
+      }
+      return {
+        select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }),
+        upsert: vi.fn().mockResolvedValue({ error: null }),
+        delete: () => ({ in: vi.fn() }),
+      };
+    });
+    const auth = {
+      onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
+      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+    };
+    vi.doMock('@/integrations/supabase/client', () => ({ supabase: { from, auth } }));
+
+    const { useTaskStore } = await import('@/store/taskStore');
+    const syncModule = await import('@/hooks/useDataSync');
+
+    const mkTask = (i: number) => ({
+      id: crypto.randomUUID(),
+      title: `Task ${i}`,
+      type: 'one-time' as const,
+      priority: 0 as const,
+      originalPriority: 0 as const,
+      date: '2026-05-06',
+      completed: false,
+      createdAt: '2026-05-06T00:00:00.000Z',
+      moveCount: 0,
+    });
+    const tasks = Array.from({ length: 20 }, (_, i) => mkTask(i));
+    useTaskStore.setState({ tasks });
+
+    // First save: full upload (snapshot is empty before this).
+    await (syncModule as any).saveTasksNow('user-1');
+    expect(upsertTasks).toHaveBeenCalledTimes(1);
+    expect((upsertTasks.mock.calls[0]![0] as any[]).length).toBe(20);
+
+    // Mutate ONE task. The diff must upsert exactly that one row.
+    upsertTasks.mockClear();
+    const next = tasks.slice();
+    next[7] = { ...next[7], title: 'Edited' };
+    useTaskStore.setState({ tasks: next });
+    await (syncModule as any).saveTasksNow('user-1');
+    expect(upsertTasks).toHaveBeenCalledTimes(1);
+    const rows = upsertTasks.mock.calls[0]![0] as any[];
+    expect(rows.length).toBe(1);
+    expect(rows[0].id).toBe(next[7].id);
+    expect(rows[0].title).toBe('Edited');
+
+    // Save again with no further change: snapshot match should early-exit
+    // and no upsert call should be issued at all.
+    upsertTasks.mockClear();
+    await (syncModule as any).saveTasksNow('user-1');
+    expect(upsertTasks).not.toHaveBeenCalled();
+  });
+
+  it('per-row diff: reorder/groupOrder/attachments changes are detected and persisted', async () => {
+    const upsertTasks = vi.fn().mockResolvedValue({ error: null });
+    const from = vi.fn((table: string) => {
+      if (table === 'tasks') {
+        return { upsert: upsertTasks, delete: () => ({ in: vi.fn() }) };
+      }
+      return {
+        select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }),
+        upsert: vi.fn().mockResolvedValue({ error: null }),
+        delete: () => ({ in: vi.fn() }),
+      };
+    });
+    const auth = {
+      onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
+      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+    };
+    vi.doMock('@/integrations/supabase/client', () => ({ supabase: { from, auth } }));
+
+    const { useTaskStore } = await import('@/store/taskStore');
+    const syncModule = await import('@/hooks/useDataSync');
+
+    const a = {
+      id: crypto.randomUUID(),
+      title: 'A',
+      type: 'one-time' as const,
+      priority: 0 as const,
+      originalPriority: 0 as const,
+      date: '2026-05-06',
+      completed: false,
+      createdAt: '2026-05-06T00:00:00.000Z',
+      moveCount: 0,
+      groupOrder: 0,
+      attachments: [],
+    };
+    const b = { ...a, id: crypto.randomUUID(), title: 'B', groupOrder: 1 };
+    useTaskStore.setState({ tasks: [a, b] });
+    await (syncModule as any).saveTasksNow('user-1');
+    upsertTasks.mockClear();
+
+    // Swap groupOrder (reorder) on both rows.
+    useTaskStore.setState({
+      tasks: [
+        { ...a, groupOrder: 1 },
+        { ...b, groupOrder: 0 },
+      ],
+    });
+    await (syncModule as any).saveTasksNow('user-1');
+    expect(upsertTasks).toHaveBeenCalledTimes(1);
+    const rows = upsertTasks.mock.calls[0]![0] as any[];
+    expect(rows.length).toBe(2);
+    const orders = Object.fromEntries(rows.map((r) => [r.id, r.group_order]));
+    expect(orders[a.id]).toBe(1);
+    expect(orders[b.id]).toBe(0);
+
+    // Now change only `attachments` on one row — must still be detected.
+    upsertTasks.mockClear();
+    useTaskStore.setState({
+      tasks: [
+        { ...a, groupOrder: 1, attachments: [{ id: 'att', name: 'doc' } as any] },
+        { ...b, groupOrder: 0 },
+      ],
+    });
+    await (syncModule as any).saveTasksNow('user-1');
+    expect(upsertTasks).toHaveBeenCalledTimes(1);
+    const rows2 = upsertTasks.mock.calls[0]![0] as any[];
+    expect(rows2.length).toBe(1);
+    expect(rows2[0].id).toBe(a.id);
+    expect(rows2[0].attachments).toEqual([{ id: 'att', name: 'doc' }]);
+  });
 });
