@@ -38,25 +38,40 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
       autosizeTextarea(inputRef.current);
     }, [subtasks, input]);
 
+    const parseSubtaskLines = (text: string) =>
+      text
+        .split(/\r?\n+/)
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
+
+    const appendInputAsSubtasks = (rawText: string) => {
+      const lines = parseSubtaskLines(rawText);
+      if (lines.length === 0) return subtasks;
+
+      const next = [
+        ...subtasks,
+        ...lines.map((title) => ({ id: generateId(), title, completed: false })),
+      ];
+
+      onChange(next);
+      setInput('');
+      inputRef.current?.focus();
+      return next;
+    };
+
     useImperativeHandle(ref, () => ({
       focus: () => inputRef.current?.focus(),
       setInputValue: (v: string) => setInput(v),
       flushPendingInput: () => {
         const trimmed = input.trim();
         if (!trimmed) return subtasks;
-        const next = [...subtasks, { id: generateId(), title: trimmed, completed: false }];
-        onChange(next);
-        setInput('');
-        return next;
+        return appendInputAsSubtasks(input);
       },
     }));
 
     const handleAdd = () => {
       if (!input.trim()) return;
-      const newId = generateId();
-      onChange([...subtasks, { id: newId, title: input.trim(), completed: false }]);
-      setInput('');
-      inputRef.current?.focus();
+      appendInputAsSubtasks(input);
     };
 
     const handleToggle = (id: string) => {
@@ -105,15 +120,9 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
       }
     };
 
-    // Split pasted text on any line break (including paragraph breaks).
-    // Each non-empty line becomes its own subtask. Returns null when there
-    // is nothing to split (single-line paste).
     const splitParagraphs = (text: string): string[] | null => {
       if (!/\r?\n/.test(text)) return null;
-      const parts = text
-        .split(/\r?\n+/)
-        .map((p) => p.trim())
-        .filter((p) => p.length > 0);
+      const parts = parseSubtaskLines(text);
       return parts.length > 1 ? parts : null;
     };
 
@@ -151,13 +160,18 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
       const end = ta.selectionEnd ?? input.length;
       const before = input.slice(0, start);
       const after = input.slice(end);
-      const newItems: Subtask[] = parts.slice(0, -1).map((p, i) => ({
+      const newItems: Subtask[] = parts.map((part, index) => ({
         id: generateId(),
-        title: i === 0 ? before + p : p,
+        title:
+          index === 0
+            ? before + part
+            : index === parts.length - 1
+              ? part + after
+              : part,
         completed: false,
       }));
       onChange([...subtasks, ...newItems]);
-      setInput(parts[parts.length - 1] + after);
+      setInput('');
       setTimeout(() => inputRef.current?.focus(), 0);
     };
 
