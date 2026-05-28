@@ -191,6 +191,28 @@ const Index = () => {
     return () => window.removeEventListener('keydown', handler);
   }, [anyOverlayOpen]);
 
+  // Tab toggles the full-screen library view against the current main view.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const ae = document.activeElement as HTMLElement | null;
+      if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
+      if (useQuickAddStore.getState().open) return;
+      if (anyOverlayOpen) return;
+      if (useCalendarStore.getState().panelOpen) return;
+      if (useTaskStore.getState().editingTaskId) return;
+      e.preventDefault();
+      if (useLibraryStore.getState().panelOpen) {
+        useLibraryStore.getState().setPanelOpen(false);
+      } else {
+        window.dispatchEvent(new CustomEvent('library:open-fullscreen'));
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [anyOverlayOpen]);
+
   return (
     <div className={`min-h-screen bg-background pb-16 sm:pb-0`}>
       <AppNav />
