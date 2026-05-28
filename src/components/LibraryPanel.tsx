@@ -462,14 +462,16 @@ export function LibraryPanel() {
     };
   }, [draggingTag]);
 
-  const handleAdd = () => {
-    const titleText = input.replace(/#\S*$/, '').replace(/@\S*$/, '').replace(/\/\/\S*$/, '').trim();
+  const handleAdd = (overrides?: { dueDate?: string; category?: string; title?: string }) => {
+    const sourceText = overrides?.title ?? input;
+    const titleText = sourceText.replace(/#\S*$/, '').replace(/@\S*$/, '').replace(/\/\/\S*$/, '').trim();
     if (!titleText) return;
-    const autoCategory = quickCategory || (filters.category !== 'all' && filters.category !== 'none' ? filters.category : '');
+    const autoCategory = overrides?.category ?? (quickCategory || (filters.category !== 'all' && filters.category !== 'none' ? filters.category : ''));
+    const dueDate = overrides?.dueDate ?? quickDueDate;
 
-    if (quickDueDate) {
+    if (dueDate) {
       // User already picked a date inline — skip the prompt.
-      useLibraryStore.getState().addItem(titleText, autoCategory || undefined, quickDueDate);
+      useLibraryStore.getState().addItem(titleText, autoCategory || undefined, dueDate);
     } else {
       // Always prompt for due date on enter — anchored to the quick-add input.
       useLibraryDuePrompt.getState().request({
