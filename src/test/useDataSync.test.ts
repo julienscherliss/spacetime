@@ -905,7 +905,7 @@ describe('useDataSync regression guard', () => {
     await vi.advanceTimersByTimeAsync(350);
     await waitFor(() => {
       expect(updateTasks).toHaveBeenCalledTimes(1);
-      expect(updateTasks.mock.calls.at(0)?.[0]).toEqual({ duration: 45 });
+      expect((updateTasks.mock.calls as any[]).at(0)?.[0]).toEqual({ duration: 45 });
     });
 
     realtimeHandlers.tasks({ eventType: 'UPDATE', new: { id: taskId }, old: { id: taskId } });
@@ -1019,7 +1019,7 @@ describe('useDataSync regression guard', () => {
 
     await waitFor(() => {
       expect(updateTasks).toHaveBeenCalledTimes(1);
-      expect(updateTasks.mock.calls.at(0)?.[0]).toEqual({ duration: 30 });
+      expect((updateTasks.mock.calls as any[]).at(0)?.[0]).toEqual({ duration: 30 });
     });
   });
 });
