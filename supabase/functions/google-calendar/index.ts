@@ -20,6 +20,11 @@ const SCOPES = "https://www.googleapis.com/auth/calendar.readonly";
 // MUST NOT be trusted as an identity. Never look up, update, or delete a
 // connection using only client-provided data.
 
+// Token-free structured logging. NEVER log access_token/refresh_token values.
+function gcalLog(stage: string, info: Record<string, unknown> = {}) {
+  console.log(JSON.stringify({ fn: "google-calendar", stage, ...info }));
+}
+
 function getFormatterParts(date: Date, timeZone: string) {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone,
@@ -128,6 +133,7 @@ async function exchangeCode(code: string, redirectUri: string, deviceId: string 
 async function refreshAccessToken(connection: any) {
   if (!connection.refresh_token) throw new Error("No refresh token");
 
+  gcalLog("refresh.attempt", { connectionId: connection.id, userId: connection.user_id });
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -140,6 +146,7 @@ async function refreshAccessToken(connection: any) {
   });
 
   if (!tokenRes.ok) {
+    gcalLog("refresh.failed", { connectionId: connection.id, status: tokenRes.status });
     // Refresh token is dead (user revoked access, expired, etc.). Wipe the
     // connection so the next status check returns connected:false and the UI
     // can prompt for reconnect. Scoped strictly to this user's row.
@@ -159,15 +166,25 @@ async function refreshAccessToken(connection: any) {
     })
     .eq("id", connection.id);
 
+  gcalLog("refresh.succeeded", { connectionId: connection.id });
   return tokens.access_token;
 }
 
 async function getValidToken(userId: string, deviceId: string | undefined, jwtEmail: string | null) {
   const conn = await findConnection(userId, deviceId, jwtEmail);
-  if (!conn) throw new Error("Not connected");
+  if (!conn) {
+    gcalLog("getValidToken.no_connection", { userId });
+    throw new Error("Not connected");
+  }
 
   // Check if token is expired (with 5 min buffer)
   const expiresAt = new Date(conn.token_expires_at).getTime();
+  gcalLog("getValidToken.lookup", {
+    userId,
+    connectionId: conn.id,
+    hasRefreshToken: !!conn.refresh_token,
+    expiresInSec: Math.round((expiresAt - Date.now()) / 1000),
+  });
   if (Date.now() > expiresAt - 5 * 60 * 1000) {
     const newToken = await refreshAccessToken(conn);
     return { token: newToken, connectionId: conn.id };
@@ -394,6 +411,8 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { action, deviceId, code, redirectUri, timeMin, timeMax, calendarIds, calendarId, visible, timeZone } = body;
 
+    gcalLog("request", { action, userId });
+
     let result: any;
 
     switch (action) {
@@ -438,6 +457,7 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
+    gcalLog("error", { message: (error as Error)?.message });
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
