@@ -133,8 +133,9 @@ export function FeedbackModal({ open, onClose }: FeedbackModalProps) {
           .from('feedback-screenshots')
           .upload(path, screenshot, { contentType: screenshot.type });
         if (upErr) throw upErr;
-        const { data: pub } = supabase.storage.from('feedback-screenshots').getPublicUrl(up.path);
-        screenshotUrl = pub.publicUrl;
+        // Bucket is private; store the storage path. Admin UI generates a
+        // short-lived signed URL when displaying it.
+        screenshotUrl = up.path;
       }
 
       const metadata = {
