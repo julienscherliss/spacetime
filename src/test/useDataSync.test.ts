@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
+import { render, waitFor, cleanup } from '@testing-library/react';
 
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {},
@@ -9,6 +10,11 @@ import { shouldShowScheduledTask } from '@/utils/taskVisibility';
 describe('useDataSync regression guard', () => {
   beforeEach(() => {
     vi.resetModules();
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
   });
 
   it('deduplicates concurrent task saves so stale reloads cannot race ahead of an active write', async () => {
