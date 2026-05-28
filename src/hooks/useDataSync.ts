@@ -423,6 +423,7 @@ function clearAllUserState() {
   lastSyncedTaskSnapshot = '';
   lastSyncedLibSnapshot = '';
   lastSyncedCatSnapshot = '';
+  pendingTaskSelfEchoIds.clear();
   syncStatus = 'idle';
 }
 
@@ -1139,6 +1140,10 @@ export function useDataSync(user: User | null) {
 
     const handleVisibility = async () => {
       if (document.visibilityState !== 'visible' || userIdRef.current !== user.id) return;
+      syncLog('visibilitychange received', {
+        platform: currentPlatform(),
+        visibilityState: document.visibilityState,
+      });
 
       // CRITICAL: Flush any pending local writes BEFORE refetching from DB.
       // On mobile, the app may have been backgrounded mid-debounce — if we
@@ -1147,12 +1152,7 @@ export function useDataSync(user: User | null) {
 
       if (userIdRef.current !== user.id) return;
       console.log('[Sync] App became visible — refetching from DB');
-      const now = Date.now();
-      await loadFromDB(user.id, {
-        skipTasks: now < ignoreTaskReloadUntil,
-        skipLibrary: now < ignoreLibraryReloadUntil,
-        skipCategories: now < ignoreCategoryReloadUntil,
-      });
+      await loadFromDB(user.id);
       initialLoadDone.current = true;
     };
 
