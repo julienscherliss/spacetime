@@ -800,7 +800,7 @@ describe('useDataSync regression guard', () => {
     vi.useFakeTimers();
 
     const taskId = crypto.randomUUID();
-    const serverRows = [{
+    const serverRows: any[] = [{
       id: taskId,
       title: 'Initial title',
       type: 'one-time',
@@ -905,7 +905,7 @@ describe('useDataSync regression guard', () => {
     await vi.advanceTimersByTimeAsync(350);
     await waitFor(() => {
       expect(updateTasks).toHaveBeenCalledTimes(1);
-      expect(updateTasks.mock.calls[0]?.[0]).toEqual({ duration: 45 });
+      expect(updateTasks.mock.calls.at(0)?.[0]).toEqual({ duration: 45 });
     });
 
     realtimeHandlers.tasks({ eventType: 'UPDATE', new: { id: taskId }, old: { id: taskId } });
@@ -922,7 +922,7 @@ describe('useDataSync regression guard', () => {
 
   it('visibility resume refetches from DB and preserves remote task changes before local edits save', async () => {
     const taskId = crypto.randomUUID();
-    const serverRows = [{
+    const serverRows: any[] = [{
       id: taskId,
       title: 'Original',
       type: 'one-time',
@@ -1019,7 +1019,7 @@ describe('useDataSync regression guard', () => {
 
     await waitFor(() => {
       expect(updateTasks).toHaveBeenCalledTimes(1);
-      expect(updateTasks.mock.calls[0]?.[0]).toEqual({ duration: 30 });
+      expect(updateTasks.mock.calls.at(0)?.[0]).toEqual({ duration: 30 });
     });
   });
 });
