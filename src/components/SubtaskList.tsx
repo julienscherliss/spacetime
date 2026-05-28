@@ -105,6 +105,61 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
       }
     };
 
+    // Split pasted text on paragraph breaks (blank lines). Returns array of
+    // trimmed non-empty paragraphs, or null if no paragraph break present.
+    const splitParagraphs = (text: string): string[] | null => {
+      if (!/\n\s*\n/.test(text)) return null;
+      const parts = text
+        .split(/\n\s*\n+/)
+        .map((p) => p.replace(/\s+$/g, '').replace(/^\s+/g, ''))
+        .filter((p) => p.length > 0);
+      return parts.length > 1 ? parts : null;
+    };
+
+    const handleSubtaskPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>, index: number) => {
+      const text = e.clipboardData.getData('text');
+      const parts = splitParagraphs(text);
+      if (!parts) return;
+      e.preventDefault();
+      const ta = e.currentTarget;
+      const start = ta.selectionStart ?? ta.value.length;
+      const end = ta.selectionEnd ?? ta.value.length;
+      const current = subtasks[index];
+      const before = current.title.slice(0, start);
+      const after = current.title.slice(end);
+      const updated: Subtask[] = [...subtasks];
+      updated[index] = { ...current, title: before + parts[0] };
+      const inserted = parts.slice(1).map((p, i) => ({
+        id: generateId(),
+        title: i === parts.length - 2 ? p + after : p,
+        completed: false,
+      }));
+      updated.splice(index + 1, 0, ...inserted);
+      onChange(updated);
+      const lastId = inserted[inserted.length - 1].id;
+      setTimeout(() => subtaskRefs.current[lastId]?.focus(), 0);
+    };
+
+    const handleInputPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      const text = e.clipboardData.getData('text');
+      const parts = splitParagraphs(text);
+      if (!parts) return;
+      e.preventDefault();
+      const ta = e.currentTarget;
+      const start = ta.selectionStart ?? input.length;
+      const end = ta.selectionEnd ?? input.length;
+      const before = input.slice(0, start);
+      const after = input.slice(end);
+      const newItems: Subtask[] = parts.slice(0, -1).map((p, i) => ({
+        id: generateId(),
+        title: i === 0 ? before + p : p,
+        completed: false,
+      }));
+      onChange([...subtasks, ...newItems]);
+      setInput(parts[parts.length - 1] + after);
+      setTimeout(() => inputRef.current?.focus(), 0);
+    };
+
     // Drag handlers
     const handleDragStart = useCallback((e: React.DragEvent, index: number) => {
       e.dataTransfer.effectAllowed = 'move';
@@ -196,6 +251,7 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
               }}
               onInput={(e) => autosizeTextarea(e.currentTarget)}
               onKeyDown={(e) => handleSubtaskKeyDown(e, i)}
+              onPaste={(e) => handleSubtaskPaste(e, i)}
               className={`block flex-1 min-w-0 w-full bg-transparent text-[12px] font-mono leading-[1.4] whitespace-pre-wrap [overflow-wrap:anywhere] focus:outline-none resize-none overflow-hidden py-2 ${
                 s.completed ? 'line-through text-muted-foreground/30' : 'text-foreground/70'
               }`}
@@ -226,6 +282,7 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
                 handleAdd();
               }
             }}
+            onPaste={handleInputPaste}
             placeholder=""
             className="block flex-1 min-w-0 w-full bg-transparent text-[12px] font-mono leading-[1.4] whitespace-pre-wrap [overflow-wrap:anywhere] text-foreground/50 placeholder:text-muted-foreground/60 focus:outline-none resize-none overflow-hidden py-2"
           />
