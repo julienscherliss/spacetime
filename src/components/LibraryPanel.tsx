@@ -494,6 +494,20 @@ export function LibraryPanel() {
     inputRef.current?.focus();
   };
 
+  // Create the item from the current input and immediately open the full edit
+  // modal so the user can add details, tags, subtasks, etc.
+  const handleEditAdd = () => {
+    const titleText = input.replace(/#\S*$/, '').replace(/@\S*$/, '').replace(/\/\/\S*$/, '').trim();
+    const autoCategory = quickCategory || (filters.category !== 'all' && filters.category !== 'none' ? filters.category : '');
+    const id = addItem(titleText, autoCategory || undefined, quickDueDate || null);
+    const created = useLibraryStore.getState().items.find((i) => i.id === id);
+    if (created) setEditingItem(created);
+    incrementEntryCount();
+    setInput('');
+    setQuickDueDate('');
+    setQuickCategory('');
+  };
+
   const handleAddCategory = () => {
     if (!newCatName.trim()) return;
     addCategory(newCatName.trim());
