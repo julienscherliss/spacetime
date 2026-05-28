@@ -252,14 +252,6 @@ export async function saveTasksNow(userId: string): Promise<boolean> {
     console.warn('[Sync] Skipping task save — session is signing out.');
     return false;
   }
-  // Allow saves either after the initial load succeeded ('loaded') or in the
-  // very-first-write path used by tests / first-time migration when no
-  // snapshot exists yet. Block 'idle' saves only when a previous snapshot
-  // already exists, which means initial load is mid-flight or failed.
-  if (syncStatus !== 'loaded' && lastSyncedTaskSnapshot) {
-    console.warn('[Sync] Skipping task save — initial load not complete.');
-    return false;
-  }
 
   const run = async (): Promise<boolean> => {
   const state = useTaskStore.getState();
