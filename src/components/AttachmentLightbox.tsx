@@ -37,6 +37,7 @@ export function AttachmentLightbox({ attachments, currentIndex, onClose, onNavig
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex < attachments.length - 1;
   const displayUrl = resolvedUrl || '';
+  const isLoading = !displayUrl;
 
   return (
     <AnimatePresence>
@@ -100,7 +101,9 @@ export function AttachmentLightbox({ attachments, currentIndex, onClose, onNavig
           className="max-w-[90vw] max-h-[85vh] flex items-center justify-center"
           onClick={(e) => e.stopPropagation()}
         >
-          {isImage ? (
+          {isLoading ? (
+            <div className="w-[min(80vw,32rem)] h-[min(60vh,24rem)] rounded-lg border border-border/30 bg-muted/10 animate-pulse" />
+          ) : isImage ? (
             <img
               src={displayUrl}
               alt={att.name}
