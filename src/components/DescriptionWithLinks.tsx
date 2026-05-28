@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback, type ClipboardEventHandler } from 'react';
 import { extractUrls, generateDisplayName, extractDomain } from '@/utils/linkDetection';
 import { ExternalLink } from 'lucide-react';
 
@@ -6,6 +6,7 @@ interface DescriptionWithLinksProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  onPasteCapture?: ClipboardEventHandler<HTMLTextAreaElement>;
 }
 
 /** Shorten a URL for display: "docs.google.com/d/1x…" */
@@ -30,7 +31,7 @@ function shortenUrl(url: string): string {
  * Textarea that keeps URLs inline but renders a read-mode overlay
  * showing shortened, clickable links when not focused.
  */
-export function DescriptionWithLinks({ value, onChange, placeholder }: DescriptionWithLinksProps) {
+export function DescriptionWithLinks({ value, onChange, placeholder, onPasteCapture }: DescriptionWithLinksProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isFocused, setIsFocused] = useState(false);
 
@@ -109,6 +110,7 @@ export function DescriptionWithLinks({ value, onChange, placeholder }: Descripti
       <textarea
         ref={textareaRef}
         value={value}
+        onPasteCapture={onPasteCapture}
         onChange={(e) => {
           onChange(e.target.value);
         }}
