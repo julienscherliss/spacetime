@@ -732,26 +732,48 @@ export const useTaskStore = create<TaskState>()(
 
       getArchivedTasks: () => get().tasks.filter((t) => !!t.archivedAt),
 
-      deleteFutureInstances: (parentId, fromDate) =>
+      // SAFETY: these previously hard-removed tasks from the local store,
+      // which then triggered server DELETEs via the sync diff. The app no
+      // longer hard-deletes user data — recurrence removal now archives
+      // the matching tasks (archivedAt + archiveReason='deleted'). All
+      // schedule views already filter out archived tasks. The DB also
+      // enforces this via a trigger that blocks non-service-role deletes.
+      deleteFutureInstances: (parentId, fromDate) => {
+        const now = new Date().toISOString();
         set((s) => ({
-          tasks: s.tasks.filter((t) => {
-            if (t.id === parentId) return false;
-            if (t.recurrenceParentId === parentId && t.date >= fromDate) return false;
-            return true;
+          tasks: s.tasks.map((t) => {
+            if (t.id === parentId)
+              return { ...t, archivedAt: now, archiveReason: 'deleted' as const };
+            if (t.recurrenceParentId === parentId && t.date >= fromDate)
+              return { ...t, archivedAt: now, archiveReason: 'deleted' as const };
+            return t;
           }),
           editingTaskId: null,
-        })),
+        }));
+      },
 
-      removeInstances: (parentId) =>
+      removeInstances: (parentId) => {
+        const now = new Date().toISOString();
         set((s) => ({
-          tasks: s.tasks.filter((t) => t.recurrenceParentId !== parentId),
-        })),
+          tasks: s.tasks.map((t) =>
+            t.recurrenceParentId === parentId
+              ? { ...t, archivedAt: now, archiveReason: 'deleted' as const }
+              : t
+          ),
+        }));
+      },
 
-      deleteRecurrenceSeries: (parentId) =>
+      deleteRecurrenceSeries: (parentId) => {
+        const now = new Date().toISOString();
         set((s) => ({
-          tasks: s.tasks.filter((t) => t.id !== parentId && t.recurrenceParentId !== parentId),
+          tasks: s.tasks.map((t) =>
+            t.id === parentId || t.recurrenceParentId === parentId
+              ? { ...t, archivedAt: now, archiveReason: 'deleted' as const }
+              : t
+          ),
           editingTaskId: null,
-        })),
+        }));
+      },
 
       canMoveTask: (id, newDate, newTime) => {
         const task = get().tasks.find((t) => t.id === id);
