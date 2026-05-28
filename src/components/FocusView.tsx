@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { autosizeTextarea } from '@/lib/autosizeTextarea';
 import { useTrackpadSwipe } from '@/hooks/useTrackpadSwipe';
 import { GroupListRow } from '@/components/GroupListRow';
+import { parseSubtaskText } from '@/lib/parseSubtaskText';
 
 type FocusPanel = 'completed' | 'main' | 'detail';
 
@@ -836,21 +837,42 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
                 }}
                 onInput={(e) => autosizeTextarea(e.currentTarget)}
                 placeholder="New subtask…"
+                onPaste={(e) => {
+                  const text = e.clipboardData.getData('text');
+                  const ta = e.currentTarget;
+                  const start = ta.selectionStart ?? newSubtaskDraft.length;
+                  const end = ta.selectionEnd ?? newSubtaskDraft.length;
+                  const nextValue = newSubtaskDraft.slice(0, start) + text + newSubtaskDraft.slice(end);
+                  const parts = parseSubtaskText(nextValue);
+                  if (parts.length <= 1) return;
+                  e.preventDefault();
+                  const newSubs = parts.map((title) => ({ id: crypto.randomUUID(), title, completed: false }));
+                  onUpdateTask(task.id, { subtasks: [...(task.subtasks || []), ...newSubs] });
+                  setNewSubtaskDraft('');
+                }}
                 onBlur={() => {
-                  if (newSubtaskDraft.trim()) {
-                    const newSub = { id: crypto.randomUUID(), title: newSubtaskDraft.trim(), completed: false };
-                    onUpdateTask(task.id, { subtasks: [...(task.subtasks || []), newSub] });
+                  const parts = parseSubtaskText(newSubtaskDraft);
+                  if (parts.length > 0) {
+                    const newSubs = parts.map((title) => ({ id: crypto.randomUUID(), title, completed: false }));
+                    onUpdateTask(task.id, { subtasks: [...(task.subtasks || []), ...newSubs] });
                   }
                   setNewSubtaskDraft('');
                   setAddingSubtask(false);
                 }}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey && newSubtaskDraft.trim()) {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    const parts = parseSubtaskText(newSubtaskDraft);
+                    if (parts.length > 0) {
+                      e.preventDefault();
+                      const newSubs = parts.map((title) => ({ id: crypto.randomUUID(), title, completed: false }));
+                      onUpdateTask(task.id, { subtasks: [...(task.subtasks || []), ...newSubs] });
+                      setNewSubtaskDraft('');
+                      return;
+                    }
                     e.preventDefault();
-                    const newSub = { id: crypto.randomUUID(), title: newSubtaskDraft.trim(), completed: false };
-                    onUpdateTask(task.id, { subtasks: [...(task.subtasks || []), newSub] });
                     setNewSubtaskDraft('');
-                  } else if ((e.key === 'Enter' && !e.shiftKey) || e.key === 'Escape') {
+                    setAddingSubtask(false);
+                  } else if (e.key === 'Escape') {
                     e.preventDefault();
                     setNewSubtaskDraft('');
                     setAddingSubtask(false);
