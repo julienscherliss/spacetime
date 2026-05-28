@@ -333,7 +333,9 @@ export function TaskEditPanel() {
   const handleSave = () => {
     if (!task) return;
     // Flush any text the user typed in the "add subtask" field but never pressed Enter on.
+    console.log('[TaskEditPanel] save/flushPendingInput from parent');
     const flushed = subtaskListRef.current?.flushPendingInput();
+    console.log('[TaskEditPanel] flushed subtasks returned', flushed?.map((item) => item.title) ?? []);
     const updates = getUpdates(flushed);
 
     if (isRecurring && task.linked !== isLinked) {
@@ -746,6 +748,9 @@ export function TaskEditPanel() {
                 <input
                   ref={titleInputRef}
                   value={title}
+                  onPaste={() => {
+                    console.log('[TaskEditPanel] title paste path used');
+                  }}
                   onChange={(e) => {
                     const val = e.target.value;
                     setTitle(val);
@@ -768,6 +773,9 @@ export function TaskEditPanel() {
                 value={description}
                 onChange={(val) => {
                   setDescription(val);
+                }}
+                onPasteCapture={() => {
+                  console.log('[TaskEditPanel] description paste path used');
                 }}
                 placeholder="Description"
               />
