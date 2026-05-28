@@ -216,8 +216,16 @@ export const useLibraryStore = create<LibraryState>()(
           ),
         })),
 
+      // SAFETY: never hard-removes the row — soft-deletes via `deletedAt`
+      // so the server row is preserved (and the DB trigger blocks hard
+      // deletes anyway). `getFilteredItems` already hides items with
+      // `deletedAt`, so behavior is preserved.
       removeItem: (id) =>
-        set((s) => ({ items: s.items.filter((i) => i.id !== id) })),
+        set((s) => ({
+          items: s.items.map((i) =>
+            i.id === id ? { ...i, deletedAt: new Date().toISOString() } : i
+          ),
+        })),
 
       addFromSchedule: (source, duration = 30) => {
         const payload = typeof source === 'string'
@@ -339,11 +347,19 @@ export const useLibraryStore = create<LibraryState>()(
         });
       },
 
+      // SAFETY: archives the category instead of removing it. The server row
+      // is preserved (and the DB trigger blocks hard deletes). UI surfaces
+      // already filter archived categories out of the active list.
       removeCategory: (value) => {
         set((s) => {
           const nextItems = s.items.map(i => i.category === value ? { ...i, category: '' } : i);
+          const nextCats = s.categories.map(c =>
+            c.value === value || c.value.startsWith(value + '/')
+              ? { ...c, archived: true }
+              : c
+          );
           return {
-            categories: mergeCategories(nextItems, s.categories.filter(c => c.value !== value)),
+            categories: mergeCategories(nextItems, nextCats),
             items: nextItems,
           };
         });
