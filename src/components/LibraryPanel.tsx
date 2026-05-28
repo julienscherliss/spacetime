@@ -404,6 +404,16 @@ export function LibraryPanel() {
     prevPanelOpen.current = panelOpen;
   }, [panelOpen, viewMode]);
 
+  // Tab hotkey requests opening the library in full-screen (non-sidebar) mode.
+  useEffect(() => {
+    const handler = () => {
+      setSidebarMode(false);
+      setPanelOpen(true);
+    };
+    window.addEventListener('library:open-fullscreen', handler);
+    return () => window.removeEventListener('library:open-fullscreen', handler);
+  }, [setPanelOpen]);
+
   const items = getFilteredItems();
   const allItems = useLibraryStore((s) => s.items);
   const totalCount = allItems.filter((i) => !i.completed && !i.deletedAt).length;
