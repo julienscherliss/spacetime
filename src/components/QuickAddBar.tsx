@@ -62,6 +62,8 @@ export function QuickAddBar() {
     text.replace(/#\S*$/, '').replace(/@\S*$/, '').replace(/\/\/\S*$/, '').trim();
 
   const handleAdd = (overrides?: { dueDate?: string; category?: string; title?: string }) => {
+    // Already handed off to the date prompt — let it own confirmation.
+    if (awaitingPromptRef.current) return;
     const titleText = cleanTitle(overrides?.title ?? input);
     if (!titleText) return;
     const autoCategory = overrides?.category ?? quickCategory;
