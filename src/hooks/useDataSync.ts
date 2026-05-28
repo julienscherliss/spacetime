@@ -279,10 +279,11 @@ export async function saveTasksNow(userId: string): Promise<boolean> {
     const toDelete = Array.from(previousIds).filter((id) => !localIds.has(id));
 
     // SAFETY: refuse to push an empty tasks state when the previous synced
-    // snapshot was populated. This blocks the historical wipe pattern where
-    // sign-out / account-switch / failed-load briefly cleared the store and
-    // a debounced save then deleted every server row.
-    if (validTasks.length === 0 && previousIds.size > 0) {
+    // snapshot was non-trivially populated. Blocks the historical wipe
+    // pattern (sign-out / account-switch / failed-load briefly clears the
+    // store, debounced save then deletes every row). Small stores can still
+    // legitimately go to 0 — those fall through to the bulk-delete check.
+    if (validTasks.length === 0 && previousIds.size >= BULK_DELETE_MIN) {
       console.warn('[Sync] Refusing to save empty tasks — likely transient state, not a real wipe.');
       return false;
     }
