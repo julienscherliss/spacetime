@@ -744,6 +744,11 @@ export async function loadFromDB(
   options: { skipTasks?: boolean; skipLibrary?: boolean; skipCategories?: boolean } = {}
 ): Promise<boolean> {
   try {
+    syncLog('loadFromDB started', {
+      platform: currentPlatform(),
+      userId,
+      options,
+    });
     const [taskRes, libRes, catRes] = await Promise.all([
       options.skipTasks ? Promise.resolve({ data: null, error: null } as any) : fetchAllRows('tasks', userId),
       options.skipLibrary ? Promise.resolve({ data: null, error: null } as any) : fetchAllRows('library_items', userId),
@@ -760,6 +765,11 @@ export async function loadFromDB(
       const tasks = (taskRes.data || []).map(rowToTask);
       useTaskStore.setState({ tasks });
       lastSyncedTaskSnapshot = snapshotTasks(tasks);
+      pendingTaskSelfEchoIds.clear();
+      syncLog('lastSyncedTaskSnapshot reset after load', {
+        platform: currentPlatform(),
+        taskCount: tasks.length,
+      });
     }
 
     if (!options.skipLibrary && !libRes.error) {
@@ -826,6 +836,13 @@ export async function loadFromDB(
       useLibraryStore.setState({ categories });
       lastSyncedCatSnapshot = snapshotCats(categories);
     }
+
+    syncLog('loadFromDB completed', {
+      platform: currentPlatform(),
+      taskCount: options.skipTasks ? undefined : (taskRes.data || []).length,
+      libraryCount: options.skipLibrary ? undefined : (libRes.data || []).length,
+      categoryCount: options.skipCategories ? undefined : (catRes.data || []).length,
+    });
 
     return true;
   } catch (err) {
