@@ -44,7 +44,11 @@ export const useLibraryDuePrompt = create<PromptState>((set) => ({
       });
       return;
     }
-    set({ pending: item });
+    // Close any in-flight prompt first so a stale window-level Enter handler
+    // can't commit the new item with the previous task's selected date. The
+    // null → item transition forces the prompt to remount with fresh state.
+    set({ pending: null });
+    queueMicrotask(() => set({ pending: item }));
   },
   clear: () => set({ pending: null }),
 }));
