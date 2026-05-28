@@ -44,7 +44,11 @@ export const useLibraryDuePrompt = create<PromptState>((set) => ({
       });
       return;
     }
-    set({ pending: item });
+    // Close any in-flight prompt first so a stale window-level Enter handler
+    // can't commit the new item with the previous task's selected date. The
+    // null → item transition forces the prompt to remount with fresh state.
+    set({ pending: null });
+    queueMicrotask(() => set({ pending: item }));
   },
   clear: () => set({ pending: null }),
 }));
@@ -77,11 +81,12 @@ export function LibraryDueDatePrompt() {
   }, [open, pending]);
 
   useEffect(() => {
-    if (open) {
-      setDate('');
-      enterCountRef.current = 0;
-    }
-  }, [open]);
+    // Reset whenever the pending request changes (including from one item to
+    // the next while the prompt is still open) so the next task never
+    // inherits the previous task's selected date.
+    setDate('');
+    enterCountRef.current = 0;
+  }, [pending]);
 
   const commit = (dueDate: string | null) => {
     if (!pending) return;
