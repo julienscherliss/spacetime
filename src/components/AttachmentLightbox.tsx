@@ -1,10 +1,13 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { resolveAttachmentUrl } from '@/lib/attachmentUrl';
 
 interface Attachment {
   name: string;
-  url: string;
+  url?: string;
   type: string;
+  path?: string;
 }
 
 interface AttachmentLightboxProps {
@@ -16,12 +19,24 @@ interface AttachmentLightboxProps {
 
 export function AttachmentLightbox({ attachments, currentIndex, onClose, onNavigate }: AttachmentLightboxProps) {
   const att = attachments[currentIndex];
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setResolvedUrl(null);
+    if (att) {
+      resolveAttachmentUrl(att).then((u) => { if (active) setResolvedUrl(u); });
+    }
+    return () => { active = false; };
+  }, [att?.path, att?.url]);
+
   if (!att) return null;
 
   const isImage = att.type.startsWith('image/');
   const isPdf = att.type === 'application/pdf';
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex < attachments.length - 1;
+  const displayUrl = resolvedUrl || '';
 
   return (
     <AnimatePresence>
