@@ -287,21 +287,34 @@ async function saveLibraryNow(userId: string): Promise<boolean> {
   if (snap === lastSyncedLibSnapshot) return true;
 
   try {
-    const { data: dbItems, error: fetchErr } = await supabase
-      .from('library_items')
-      .select('id')
-      .eq('user_id', userId);
+    // SAFETY: derive deletions from the last successfully-synced snapshot,
+    // NOT from a fresh DB fetch. A live DB fetch combined with a transiently
+    // empty local `items` array (e.g. during sign-out, user switch, or before
+    // initial load completes) previously wiped every row from `library_items`.
+    // Mirror the pattern used by saveTasksNow.
+    const previousIds = new Set(
+      lastSyncedLibSnapshot
+        ? (JSON.parse(lastSyncedLibSnapshot) as Array<{ id: string }>).map((i) => i.id)
+        : [],
+    );
+    const localIds = new Set(state.items.map(i => i.id));
+    const toDelete = Array.from(previousIds).filter((id) => !localIds.has(id));
 
-    if (fetchErr) {
-      console.error('[Sync] Failed to fetch library IDs:', fetchErr);
+    // Extra belt-and-braces guard: refuse to wipe everything if local somehow
+    // emptied without an explicit removal having been observed against a
+    // populated previous snapshot. Saves with zero local items only proceed
+    // if the previous snapshot was also empty (genuinely nothing to sync).
+    if (validItems.length === 0 && previousIds.size > 0) {
+      console.warn('[Sync] Refusing to save empty library — looks like a transient state, not a real deletion of all items.');
       return false;
     }
 
-    const localIds = new Set(state.items.map(i => i.id));
-    const toDelete = (dbItems || []).map((i: any) => i.id).filter((id: string) => !localIds.has(id));
-
     if (toDelete.length > 0) {
-      await supabase.from('library_items').delete().in('id', toDelete);
+      const { error: delErr } = await supabase.from('library_items').delete().in('id', toDelete).eq('user_id', userId);
+      if (delErr) {
+        console.error('[Sync] Failed to delete library items:', delErr);
+        return false;
+      }
     }
 
     if (validItems.length > 0) {
@@ -340,15 +353,20 @@ async function saveCategoriesNow(userId: string): Promise<boolean> {
   if (snap === lastSyncedCatSnapshot) return true;
 
   try {
-    const { data: dbCats, error: fetchErr } = await supabase
-      .from('library_categories')
-      .select('value')
-      .eq('user_id', userId);
-
-    if (fetchErr) return false;
-
+    // SAFETY: derive deletions from the last successfully-synced snapshot,
+    // not from a fresh DB fetch (see saveLibraryNow for the wipe-bug history).
+    const previousValues = new Set(
+      lastSyncedCatSnapshot
+        ? (JSON.parse(lastSyncedCatSnapshot) as Array<{ value: string }>).map((c) => c.value)
+        : [],
+    );
     const localValues = new Set(state.categories.map(c => c.value));
-    const toDelete = (dbCats || []).map((c: any) => c.value).filter((v: string) => !localValues.has(v));
+    const toDelete = Array.from(previousValues).filter((v) => !localValues.has(v));
+
+    if (state.categories.length === 0 && previousValues.size > 0) {
+      console.warn('[Sync] Refusing to save empty categories — likely transient state, not a real wipe.');
+      return false;
+    }
 
     if (toDelete.length > 0) {
       await supabase.from('library_categories').delete().eq('user_id', userId).in('value', toDelete);
