@@ -27,8 +27,12 @@ export function QuickAddBar() {
   // stays a valid popover anchor. Close the bar once the prompt resolves.
   useEffect(() => {
     if (!open) return;
+    let sawPending = false;
     const unsub = useLibraryDuePrompt.subscribe((state) => {
-      if (awaitingPromptRef.current && !state.pending) {
+      if (!awaitingPromptRef.current) return;
+      if (state.pending) {
+        sawPending = true;
+      } else if (sawPending) {
         awaitingPromptRef.current = false;
         close();
       }
