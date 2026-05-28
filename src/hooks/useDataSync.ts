@@ -162,6 +162,7 @@ let catSaveInFlight: Promise<boolean> | null = null;
 let ignoreTaskReloadUntil = 0;
 let ignoreLibraryReloadUntil = 0;
 let ignoreCategoryReloadUntil = 0;
+let pendingTaskSelfEchoIds = new Map<string, number>();
 
 // ─── Snapshot for diffing ──────────────────────────────
 
@@ -510,6 +511,13 @@ export async function saveTasksNow(userId: string): Promise<boolean> {
 
       // New tasks: full-row upsert so every NOT NULL column is populated.
       if (newRows.length > 0) {
+        syncLog('saveTasksNow writing new task rows', {
+          platform: currentPlatform(),
+          method: 'upsert',
+          rowKind: 'new',
+          count: newRows.length,
+          patchKeys: newRows.map((r) => Object.keys(r)),
+        });
         const { error: insertErr } = await supabase.from('tasks').upsert(newRows as any);
         if (insertErr) {
           console.error('[Sync] Failed to save tasks:', {
@@ -527,6 +535,13 @@ export async function saveTasksNow(userId: string): Promise<boolean> {
       // Existing tasks: partial UPDATE (never upsert) so omitting NOT NULL
       // columns is safe and unrelated/protective fields keep their server value.
       for (const { id, patch } of updates) {
+        syncLog('saveTasksNow writing task patch', {
+          platform: currentPlatform(),
+          method: 'update',
+          rowKind: 'existing',
+          id,
+          patchKeys: Object.keys(patch),
+        });
         const { error: updateErr } = await supabase
           .from('tasks')
           .update(patch as any)
@@ -547,10 +562,13 @@ export async function saveTasksNow(userId: string): Promise<boolean> {
     }
 
     lastSyncedTaskSnapshot = snap;
-    // Suppress the realtime echo of our own upsert. 5s gives slow mobile
-    // connections enough headroom that the echo cannot trigger a reload
-    // → setState → save loop after the window expires.
-    ignoreTaskReloadUntil = Date.now() + 5000;
+    syncLog('lastSyncedTaskSnapshot reset after save', {
+      platform: currentPlatform(),
+      taskCount: validTasks.length,
+    });
+    const echoExpiresAt = Date.now() + TASK_SELF_ECHO_TTL_MS;
+    ignoreTaskReloadUntil = echoExpiresAt;
+    pendingTaskSelfEchoIds = new Map(validTasks.map((task) => [task.id, echoExpiresAt]));
     return true;
   } catch (err) {
     console.error('[Sync] Task save error:', err);
