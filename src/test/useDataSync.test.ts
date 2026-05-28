@@ -369,11 +369,16 @@ describe('useDataSync regression guard', () => {
     expect(deleteIn).not.toHaveBeenCalled();
   });
 
-  it('per-row diff: only upserts tasks that actually changed', async () => {
+  it('per-row diff: only persists tasks that actually changed', async () => {
     const upsertTasks = vi.fn().mockResolvedValue({ error: null });
+    const updatePatches: any[] = [];
+    const updateTasks = vi.fn((patch: any) => {
+      updatePatches.push(patch);
+      return { eq: () => ({ eq: () => Promise.resolve({ error: null }) }) };
+    });
     const from = vi.fn((table: string) => {
       if (table === 'tasks') {
-        return { upsert: upsertTasks, delete: () => ({ in: vi.fn() }) };
+        return { upsert: upsertTasks, update: updateTasks, delete: () => ({ in: vi.fn() }) };
       }
       return {
         select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }),
@@ -409,30 +414,38 @@ describe('useDataSync regression guard', () => {
     expect(upsertTasks).toHaveBeenCalledTimes(1);
     expect((upsertTasks.mock.calls[0]![0] as any[]).length).toBe(20);
 
-    // Mutate ONE task. The diff must upsert exactly that one row.
+    // Mutate ONE task. The diff must update exactly that one row.
     upsertTasks.mockClear();
+    updateTasks.mockClear();
+    updatePatches.length = 0;
     const next = tasks.slice();
     next[7] = { ...next[7], title: 'Edited' };
     useTaskStore.setState({ tasks: next });
     await (syncModule as any).saveTasksNow('user-1');
-    expect(upsertTasks).toHaveBeenCalledTimes(1);
-    const rows = upsertTasks.mock.calls[0]![0] as any[];
-    expect(rows.length).toBe(1);
-    expect(rows[0].id).toBe(next[7].id);
-    expect(rows[0].title).toBe('Edited');
+    expect(upsertTasks).not.toHaveBeenCalled();
+    expect(updateTasks).toHaveBeenCalledTimes(1);
+    expect(updatePatches.length).toBe(1);
+    expect(updatePatches[0].title).toBe('Edited');
 
     // Save again with no further change: snapshot match should early-exit
-    // and no upsert call should be issued at all.
+    // and no write should be issued at all.
     upsertTasks.mockClear();
+    updateTasks.mockClear();
     await (syncModule as any).saveTasksNow('user-1');
     expect(upsertTasks).not.toHaveBeenCalled();
+    expect(updateTasks).not.toHaveBeenCalled();
   });
 
   it('per-row diff: reorder/groupOrder/attachments changes are detected and persisted', async () => {
     const upsertTasks = vi.fn().mockResolvedValue({ error: null });
+    const updatePatches: any[] = [];
+    const updateTasks = vi.fn((patch: any) => {
+      updatePatches.push(patch);
+      return { eq: () => ({ eq: () => Promise.resolve({ error: null }) }) };
+    });
     const from = vi.fn((table: string) => {
       if (table === 'tasks') {
-        return { upsert: upsertTasks, delete: () => ({ in: vi.fn() }) };
+        return { upsert: upsertTasks, update: updateTasks, delete: () => ({ in: vi.fn() }) };
       }
       return {
         select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }),
@@ -466,6 +479,8 @@ describe('useDataSync regression guard', () => {
     useTaskStore.setState({ tasks: [a, b] });
     await (syncModule as any).saveTasksNow('user-1');
     upsertTasks.mockClear();
+    updateTasks.mockClear();
+    updatePatches.length = 0;
 
     // Swap groupOrder (reorder) on both rows.
     useTaskStore.setState({
@@ -475,15 +490,14 @@ describe('useDataSync regression guard', () => {
       ],
     });
     await (syncModule as any).saveTasksNow('user-1');
-    expect(upsertTasks).toHaveBeenCalledTimes(1);
-    const rows = upsertTasks.mock.calls[0]![0] as any[];
-    expect(rows.length).toBe(2);
-    const orders = Object.fromEntries(rows.map((r) => [r.id, r.group_order]));
-    expect(orders[a.id]).toBe(1);
-    expect(orders[b.id]).toBe(0);
+    expect(updateTasks).toHaveBeenCalledTimes(2);
+    expect(updatePatches.length).toBe(2);
+    expect(updatePatches.every((p) => p.group_order !== undefined)).toBe(true);
+    expect(updatePatches.map((p) => p.group_order).sort()).toEqual([0, 1]);
 
     // Now change only `attachments` on one row — must still be detected.
-    upsertTasks.mockClear();
+    updateTasks.mockClear();
+    updatePatches.length = 0;
     useTaskStore.setState({
       tasks: [
         { ...a, groupOrder: 1, attachments: [{ id: 'att', name: 'doc' } as any] },
@@ -491,11 +505,9 @@ describe('useDataSync regression guard', () => {
       ],
     });
     await (syncModule as any).saveTasksNow('user-1');
-    expect(upsertTasks).toHaveBeenCalledTimes(1);
-    const rows2 = upsertTasks.mock.calls[0]![0] as any[];
-    expect(rows2.length).toBe(1);
-    expect(rows2[0].id).toBe(a.id);
-    expect(rows2[0].attachments).toEqual([{ id: 'att', name: 'doc' }]);
+    expect(updateTasks).toHaveBeenCalledTimes(1);
+    expect(updatePatches.length).toBe(1);
+    expect(updatePatches[0].attachments).toEqual([{ id: 'att', name: 'doc' }]);
   });
 
   // ── Per-field partial-patch tests (two-device stale-overwrite fix) ──
@@ -507,9 +519,15 @@ describe('useDataSync regression guard', () => {
 
   const mountSyncWithUpsertSpy = async () => {
     const upsertTasks = vi.fn().mockResolvedValue({ error: null });
+    // Existing-task changes now go through `.update(patch).eq().eq()`.
+    const updatePatches: any[] = [];
+    const updateTasks = vi.fn((patch: any) => {
+      updatePatches.push(patch);
+      return { eq: () => ({ eq: () => Promise.resolve({ error: null }) }) };
+    });
     const from = vi.fn((table: string) => {
       if (table === 'tasks') {
-        return { upsert: upsertTasks, delete: () => ({ in: vi.fn() }) };
+        return { upsert: upsertTasks, update: updateTasks, delete: () => ({ in: vi.fn() }) };
       }
       return {
         select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }),
@@ -524,7 +542,7 @@ describe('useDataSync regression guard', () => {
     vi.doMock('@/integrations/supabase/client', () => ({ supabase: { from, auth } }));
     const { useTaskStore } = await import('@/store/taskStore');
     const syncModule = await import('@/hooks/useDataSync');
-    return { upsertTasks, useTaskStore, syncModule };
+    return { upsertTasks, updateTasks, updatePatches, useTaskStore, syncModule };
   };
 
   const baseTask = (overrides: Partial<any> = {}) => ({
@@ -540,50 +558,54 @@ describe('useDataSync regression guard', () => {
     ...overrides,
   });
 
-  it('partial-patch: changed title sends only id, user_id and title', async () => {
-    const { upsertTasks, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
+  it('partial-patch: changed title uses update and sends only title', async () => {
+    const { upsertTasks, updateTasks, updatePatches, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
     const t = baseTask({ title: 'Original', duration: 30, category: 'work' });
     useTaskStore.setState({ tasks: [t] });
     await (syncModule as any).saveTasksNow('user-1');
     upsertTasks.mockClear();
+    updateTasks.mockClear();
+    updatePatches.length = 0;
 
     useTaskStore.setState({ tasks: [{ ...t, title: 'Edited' }] });
     await (syncModule as any).saveTasksNow('user-1');
 
-    const rows = upsertTasks.mock.calls[0]![0] as any[];
-    expect(rows.length).toBe(1);
-    expect(Object.keys(rows[0]).sort()).toEqual(['id', 'title', 'user_id']);
-    expect(rows[0].title).toBe('Edited');
+    // Existing task → update, never upsert.
+    expect(upsertTasks).not.toHaveBeenCalled();
+    expect(updateTasks).toHaveBeenCalledTimes(1);
+    expect(Object.keys(updatePatches[0]).sort()).toEqual(['title']);
+    expect(updatePatches[0].title).toBe('Edited');
   });
 
-  it('partial-patch: changed duration sends only id, user_id and duration', async () => {
-    const { upsertTasks, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
+  it('partial-patch: changed duration uses update and sends only duration', async () => {
+    const { upsertTasks, updateTasks, updatePatches, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
     const t = baseTask({ duration: 30 });
     useTaskStore.setState({ tasks: [t] });
     await (syncModule as any).saveTasksNow('user-1');
-    upsertTasks.mockClear();
+    updateTasks.mockClear();
+    updatePatches.length = 0;
 
     useTaskStore.setState({ tasks: [{ ...t, duration: 60 }] });
     await (syncModule as any).saveTasksNow('user-1');
 
-    const rows = upsertTasks.mock.calls[0]![0] as any[];
-    expect(Object.keys(rows[0]).sort()).toEqual(['duration', 'id', 'user_id']);
-    expect(rows[0].duration).toBe(60);
+    expect(updateTasks).toHaveBeenCalledTimes(1);
+    expect(Object.keys(updatePatches[0]).sort()).toEqual(['duration']);
+    expect(updatePatches[0].duration).toBe(60);
   });
 
-  it('partial-patch: changed groupOrder sends only id, user_id and group_order', async () => {
-    const { upsertTasks, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
+  it('partial-patch: changed groupOrder uses update and sends only group_order', async () => {
+    const { updateTasks, updatePatches, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
     const t = baseTask({ groupOrder: 0 });
     useTaskStore.setState({ tasks: [t] });
     await (syncModule as any).saveTasksNow('user-1');
-    upsertTasks.mockClear();
+    updateTasks.mockClear();
+    updatePatches.length = 0;
 
     useTaskStore.setState({ tasks: [{ ...t, groupOrder: 3 }] });
     await (syncModule as any).saveTasksNow('user-1');
 
-    const rows = upsertTasks.mock.calls[0]![0] as any[];
-    expect(Object.keys(rows[0]).sort()).toEqual(['group_order', 'id', 'user_id']);
-    expect(rows[0].group_order).toBe(3);
+    expect(Object.keys(updatePatches[0]).sort()).toEqual(['group_order']);
+    expect(updatePatches[0].group_order).toBe(3);
   });
 
   it('partial-patch: brand-new tasks (no previous snapshot) send the full row', async () => {
@@ -608,14 +630,16 @@ describe('useDataSync regression guard', () => {
   });
 
   it('partial-patch: unchanged task sends nothing', async () => {
-    const { upsertTasks, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
+    const { upsertTasks, updateTasks, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
     const t = baseTask();
     useTaskStore.setState({ tasks: [t] });
     await (syncModule as any).saveTasksNow('user-1');
     upsertTasks.mockClear();
+    updateTasks.mockClear();
 
     await (syncModule as any).saveTasksNow('user-1');
     expect(upsertTasks).not.toHaveBeenCalled();
+    expect(updateTasks).not.toHaveBeenCalled();
   });
 
   // ── Two-device stale-overwrite scenarios ──
@@ -630,68 +654,65 @@ describe('useDataSync regression guard', () => {
   // server-side row to prove omitted columns are NOT included.
 
   it('stale device: B duration edit does not include or revert title', async () => {
-    const { upsertTasks, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
+    const { updatePatches, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
     const t = baseTask({ title: 'A-title', duration: 30 });
     // Device B's snapshot was taken when title was 'A-title' and duration 30.
     useTaskStore.setState({ tasks: [t] });
     await (syncModule as any).saveTasksNow('user-1');
-    upsertTasks.mockClear();
+    updatePatches.length = 0;
 
     // Device B never sees A's title edit. Locally B changes only duration.
     useTaskStore.setState({ tasks: [{ ...t, duration: 45 }] });
     await (syncModule as any).saveTasksNow('user-1');
 
-    const rows = upsertTasks.mock.calls[0]![0] as any[];
-    expect(rows[0]).not.toHaveProperty('title');
-    expect(rows[0].duration).toBe(45);
+    expect(updatePatches[0]).not.toHaveProperty('title');
+    expect(updatePatches[0].duration).toBe(45);
   });
 
   it('stale device: B title edit does not include archived_at / archive_reason / completed', async () => {
-    const { upsertTasks, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
+    const { updatePatches, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
     // B's last-synced snapshot has the task NOT archived and NOT completed.
     const t = baseTask({ title: 'Original' });
     useTaskStore.setState({ tasks: [t] });
     await (syncModule as any).saveTasksNow('user-1');
-    upsertTasks.mockClear();
+    updatePatches.length = 0;
 
     // Meanwhile Device A archives the task on the server. B has no idea.
     // B locally renames the task from its stale state.
     useTaskStore.setState({ tasks: [{ ...t, title: 'Renamed' }] });
     await (syncModule as any).saveTasksNow('user-1');
 
-    const rows = upsertTasks.mock.calls[0]![0] as any[];
-    expect(rows[0]).not.toHaveProperty('archived_at');
-    expect(rows[0]).not.toHaveProperty('archive_reason');
-    expect(rows[0]).not.toHaveProperty('completed');
-    expect(rows[0].title).toBe('Renamed');
+    expect(updatePatches[0]).not.toHaveProperty('archived_at');
+    expect(updatePatches[0]).not.toHaveProperty('archive_reason');
+    expect(updatePatches[0]).not.toHaveProperty('completed');
+    expect(updatePatches[0].title).toBe('Renamed');
   });
 
   it('stale device: B completion does not include priority / group_order (no reorder revert)', async () => {
-    const { upsertTasks, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
+    const { updatePatches, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
     const t = baseTask({ priority: 0, groupOrder: 0 });
     useTaskStore.setState({ tasks: [t] });
     await (syncModule as any).saveTasksNow('user-1');
-    upsertTasks.mockClear();
+    updatePatches.length = 0;
 
     // Device A has since reordered (priority/groupOrder changed on server).
     // Device B, unaware, marks the task completed from stale state.
     useTaskStore.setState({ tasks: [{ ...t, completed: true }] });
     await (syncModule as any).saveTasksNow('user-1');
 
-    const rows = upsertTasks.mock.calls[0]![0] as any[];
-    expect(rows[0]).not.toHaveProperty('priority');
-    expect(rows[0]).not.toHaveProperty('original_priority');
-    expect(rows[0]).not.toHaveProperty('group_order');
-    expect(rows[0]).not.toHaveProperty('group_id');
-    expect(rows[0].completed).toBe(true);
+    expect(updatePatches[0]).not.toHaveProperty('priority');
+    expect(updatePatches[0]).not.toHaveProperty('original_priority');
+    expect(updatePatches[0]).not.toHaveProperty('group_order');
+    expect(updatePatches[0]).not.toHaveProperty('group_id');
+    expect(updatePatches[0].completed).toBe(true);
   });
 
   it('partial-patch: protective fields are never included unless actually changed', async () => {
-    const { upsertTasks, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
+    const { updatePatches, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
     const t = baseTask({ title: 'P' });
     useTaskStore.setState({ tasks: [t] });
     await (syncModule as any).saveTasksNow('user-1');
-    upsertTasks.mockClear();
+    updatePatches.length = 0;
 
     // Touch every non-protective field that exists on the snapshot.
     useTaskStore.setState({
@@ -707,22 +728,20 @@ describe('useDataSync regression guard', () => {
     });
     await (syncModule as any).saveTasksNow('user-1');
 
-    const rows = upsertTasks.mock.calls[0]![0] as any[];
     for (const protectedCol of ['archived_at', 'archive_reason', 'completed']) {
-      expect(rows[0]).not.toHaveProperty(protectedCol);
+      expect(updatePatches[0]).not.toHaveProperty(protectedCol);
     }
 
     // Now explicitly archive the task — protective fields MUST appear.
-    upsertTasks.mockClear();
+    updatePatches.length = 0;
     const arch = useTaskStore.getState().tasks[0];
     useTaskStore.setState({
       tasks: [{ ...arch, archivedAt: '2026-05-06T12:00:00.000Z', archiveReason: 'completed', completed: true }],
     });
     await (syncModule as any).saveTasksNow('user-1');
-    const rows2 = upsertTasks.mock.calls[0]![0] as any[];
-    expect(rows2[0].archived_at).toBe('2026-05-06T12:00:00.000Z');
-    expect(rows2[0].archive_reason).toBe('completed');
-    expect(rows2[0].completed).toBe(true);
+    expect(updatePatches[0].archived_at).toBe('2026-05-06T12:00:00.000Z');
+    expect(updatePatches[0].archive_reason).toBe('completed');
+    expect(updatePatches[0].completed).toBe(true);
   });
 
   // Schema-drift guard: the three task projections must stay aligned, or
