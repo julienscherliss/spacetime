@@ -69,7 +69,7 @@ describe('useDataSync regression guard', () => {
     expect(upsertTasks).toHaveBeenCalledTimes(1);
   });
 
-  it('only deletes tasks that were present in the last synced snapshot', async () => {
+  it('never issues hard DELETE statements for tasks (archive-only model)', async () => {
     const deleteIn = vi.fn().mockResolvedValue({ error: null });
     const upsertTasks = vi.fn().mockResolvedValue({ error: null });
 
@@ -119,14 +119,14 @@ describe('useDataSync regression guard', () => {
     useTaskStore.setState({ tasks: [completedTask] });
     await (syncModule as any).saveTasksNow('user-1');
 
+    // Even when a row disappears from local state, the sync layer must NOT
+    // send a DELETE to the server. Hard deletion is reserved for the
+    // account-deletion edge function (service_role).
     useTaskStore.setState({ tasks: [] });
     await (syncModule as any).saveTasksNow('user-1');
-    expect(deleteIn).toHaveBeenCalledWith('id', [completedTask.id]);
+    expect(deleteIn).not.toHaveBeenCalled();
 
     useTaskStore.setState({ tasks: [] });
-    await (syncModule as any).saveTasksNow('user-1');
-
-    deleteIn.mockClear();
     await (syncModule as any).saveTasksNow('user-1');
     expect(deleteIn).not.toHaveBeenCalled();
   });
