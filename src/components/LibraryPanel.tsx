@@ -396,9 +396,15 @@ export function LibraryPanel() {
 
   // When panel opens, default to sidebar mode in day/week views, full-screen in focus/calendar.
   const prevPanelOpen = useRef(false);
+  const forceFullscreenOnOpen = useRef(false);
   useEffect(() => {
     if (panelOpen && !prevPanelOpen.current) {
-      setSidebarMode(viewMode === 'day' || viewMode === 'week');
+      if (forceFullscreenOnOpen.current) {
+        setSidebarMode(false);
+      } else {
+        setSidebarMode(viewMode === 'day' || viewMode === 'week');
+      }
+      forceFullscreenOnOpen.current = false;
       window.dispatchEvent(new CustomEvent('tutorial:library-opened'));
     }
     prevPanelOpen.current = panelOpen;
@@ -407,6 +413,7 @@ export function LibraryPanel() {
   // Tab hotkey requests opening the library in full-screen (non-sidebar) mode.
   useEffect(() => {
     const handler = () => {
+      forceFullscreenOnOpen.current = true;
       setSidebarMode(false);
       setPanelOpen(true);
     };
