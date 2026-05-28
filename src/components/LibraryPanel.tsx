@@ -764,7 +764,7 @@ export function LibraryPanel() {
                               setQuickDueDate(dateStr);
                               pendingShortcutDueDate.current = dateStr;
                             }}
-                            onSubmitAfterSelect={() => handleAdd()}
+                            onSubmitAfterSelect={(dateStr) => handleAdd({ dueDate: dateStr })}
                           />
                         </div>
                         {quickCategory && (
@@ -888,7 +888,7 @@ export function LibraryPanel() {
                           setQuickDueDate(dateStr);
                           pendingShortcutDueDate.current = dateStr;
                         }}
-                        onSubmitAfterSelect={() => handleAdd()}
+                        onSubmitAfterSelect={(dateStr) => handleAdd({ dueDate: dateStr })}
                       />
                     </div>
                     {quickCategory && (
