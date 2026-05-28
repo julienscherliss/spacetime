@@ -19,7 +19,9 @@ function Harness() {
 }
 
 function getComposer() {
-  return screen.getAllByRole('textbox')[0] as HTMLTextAreaElement;
+  const boxes = screen.getAllByRole('textbox') as HTMLTextAreaElement[];
+  // The composer is always the last textarea (after any existing subtask rows).
+  return boxes[boxes.length - 1];
 }
 
 function pasteText(element: HTMLElement, text: string) {
