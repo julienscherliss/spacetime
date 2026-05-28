@@ -481,15 +481,47 @@ export async function saveTasksNow(userId: string): Promise<boolean> {
       // full taskToRow payload via buildTaskPatch so INSERT can fill every
       // NOT NULL column with the correct values.
       const previousObjectsById = parseSnapshotObjectsById(lastSyncedTaskSnapshot);
-      const rows: Record<string, any>[] = [];
+      const newRows: Record<string, any>[] = [];
+      const updates: Array<{ id: string; patch: Record<string, any> }> = [];
       for (const task of validTasks) {
-        const patch = buildTaskPatch(task, userId, previousObjectsById.get(task.id));
-        if (patch) rows.push(patch);
+        const write = buildTaskWrite(task, userId, previousObjectsById.get(task.id));
+        if (!write) continue;
+        if (write.kind === 'new') newRows.push(write.row);
+        else updates.push({ id: task.id, patch: write.row });
       }
-      if (rows.length > 0) {
-        const { error: upsertErr } = await supabase.from('tasks').upsert(rows as any);
-        if (upsertErr) {
-          console.error('[Sync] Failed to save tasks:', upsertErr);
+
+      // New tasks: full-row upsert so every NOT NULL column is populated.
+      if (newRows.length > 0) {
+        const { error: insertErr } = await supabase.from('tasks').upsert(newRows as any);
+        if (insertErr) {
+          console.error('[Sync] Failed to save tasks:', {
+            method: 'upsert',
+            rowKind: 'new',
+            count: newRows.length,
+            patchKeys: newRows.map((r) => Object.keys(r)),
+            error: insertErr,
+          });
+          toast.error('Failed to save tasks — changes may not persist.');
+          return false;
+        }
+      }
+
+      // Existing tasks: partial UPDATE (never upsert) so omitting NOT NULL
+      // columns is safe and unrelated/protective fields keep their server value.
+      for (const { id, patch } of updates) {
+        const { error: updateErr } = await supabase
+          .from('tasks')
+          .update(patch as any)
+          .eq('id', id)
+          .eq('user_id', userId);
+        if (updateErr) {
+          console.error('[Sync] Failed to save tasks:', {
+            method: 'update',
+            rowKind: 'existing',
+            id,
+            patchKeys: Object.keys(patch),
+            error: updateErr,
+          });
           toast.error('Failed to save tasks — changes may not persist.');
           return false;
         }
