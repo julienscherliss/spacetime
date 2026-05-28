@@ -105,13 +105,14 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
       }
     };
 
-    // Split pasted text on paragraph breaks (blank lines). Returns array of
-    // trimmed non-empty paragraphs, or null if no paragraph break present.
+    // Split pasted text on any line break (including paragraph breaks).
+    // Each non-empty line becomes its own subtask. Returns null when there
+    // is nothing to split (single-line paste).
     const splitParagraphs = (text: string): string[] | null => {
-      if (!/\n\s*\n/.test(text)) return null;
+      if (!/\r?\n/.test(text)) return null;
       const parts = text
-        .split(/\n\s*\n+/)
-        .map((p) => p.replace(/\s+$/g, '').replace(/^\s+/g, ''))
+        .split(/\r?\n+/)
+        .map((p) => p.trim())
         .filter((p) => p.length > 0);
       return parts.length > 1 ? parts : null;
     };
