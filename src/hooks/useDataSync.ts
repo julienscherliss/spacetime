@@ -6,6 +6,24 @@ import { isNativePlatform } from '@/utils/nativePlatform';
 import { toast } from 'sonner';
 import type { User } from '@supabase/supabase-js';
 
+type SyncTable = 'tasks' | 'library_items' | 'library_categories';
+
+const RELOAD_DEBOUNCE_MS = 400;
+const RELOAD_RETRY_MS = 600;
+const TASK_SELF_ECHO_TTL_MS = 2000;
+
+function syncLog(message: string, details?: Record<string, unknown>) {
+  if (details) {
+    console.log(`[Sync] ${message}`, details);
+    return;
+  }
+  console.log(`[Sync] ${message}`);
+}
+
+function currentPlatform() {
+  return isNativePlatform() ? 'native' : 'web';
+}
+
 // ─── Converters ────────────────────────────────────────
 
 function rowToTask(row: any): Task {
