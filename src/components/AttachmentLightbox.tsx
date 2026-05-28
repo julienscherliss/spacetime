@@ -55,7 +55,7 @@ export function AttachmentLightbox({ attachments, currentIndex, onClose, onNavig
           </span>
           <div className="flex items-center gap-2">
             <a
-              href={att.url}
+              href={displayUrl}
               download={att.name}
               target="_blank"
               rel="noopener noreferrer"
@@ -102,13 +102,13 @@ export function AttachmentLightbox({ attachments, currentIndex, onClose, onNavig
         >
           {isImage ? (
             <img
-              src={att.url}
+              src={displayUrl}
               alt={att.name}
               className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
             />
           ) : isPdf ? (
             <iframe
-              src={att.url}
+              src={displayUrl}
               title={att.name}
               className="w-[80vw] h-[85vh] rounded-lg border border-border/30"
             />
@@ -116,7 +116,7 @@ export function AttachmentLightbox({ attachments, currentIndex, onClose, onNavig
             <div className="flex flex-col items-center gap-4 p-8 bg-card rounded-lg border border-border/30">
               <span className="text-[13px] font-mono text-foreground/60">{att.name}</span>
               <a
-                href={att.url}
+                href={displayUrl}
                 download={att.name}
                 target="_blank"
                 rel="noopener noreferrer"
