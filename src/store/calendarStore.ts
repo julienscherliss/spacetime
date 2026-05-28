@@ -2,7 +2,36 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '@/integrations/supabase/client';
 import { useTimezoneStore } from '@/store/timezoneStore';
-import { isNativePlatform } from '@/utils/nativePlatform';
+import { isNativePlatform, isElectron } from '@/utils/nativePlatform';
+
+// ---------------------------------------------------------------------------
+// Platform-tagged logger. NEVER logs token values — only metadata about flow.
+// ---------------------------------------------------------------------------
+function platformTag(): 'web' | 'capacitor' | 'electron' {
+  if (isElectron()) return 'electron';
+  if (isNativePlatform()) return 'capacitor';
+  return 'web';
+}
+function calLog(stage: string, info: Record<string, unknown> = {}) {
+  // eslint-disable-next-line no-console
+  console.info(`[gcal/${platformTag()}] ${stage}`, info);
+}
+
+/**
+ * Awaits a hydrated Supabase session. Returns the user id when authenticated,
+ * or null when no session is available yet. All edge-function calls must
+ * resolve through here so we never fire calendar requests before the JWT is
+ * attached — that's the main reason native/electron previously reported
+ * "disconnected".
+ */
+async function getAuthedUserId(): Promise<string | null> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.user?.id ?? null;
+  } catch {
+    return null;
+  }
+}
 
 export interface GoogleCalendar {
   id: string;
@@ -73,10 +102,23 @@ function getDeviceId(): string {
 }
 
 async function callEdge(action: string, params: Record<string, any> = {}) {
+  // Force-attach the latest JWT. supabase.functions.invoke normally injects it
+  // automatically, but on native cold-start the session can finish hydrating
+  // a tick after import; explicit lookup avoids the race.
+  const { data: { session } } = await supabase.auth.getSession();
+  const accessToken = session?.access_token;
+  if (!accessToken) {
+    calLog('callEdge.skipped_no_session', { action });
+    throw new Error('Not authenticated');
+  }
   const { data, error } = await supabase.functions.invoke('google-calendar', {
     body: { action, ...params },
+    headers: { Authorization: `Bearer ${accessToken}` },
   });
-  if (error) throw new Error(error.message);
+  if (error) {
+    calLog('callEdge.error', { action, message: error.message });
+    throw new Error(error.message);
+  }
   return data;
 }
 
@@ -137,13 +179,25 @@ export const useCalendarStore = create<CalendarState>()(
       setPanelOpen: (open) => set({ panelOpen: open }),
 
       checkStatus: async () => {
+        const userId = await getAuthedUserId();
+        if (!userId) {
+          calLog('checkStatus.skipped_no_session');
+          // Don't flip to disconnected on a missing session — that's a race,
+          // not a real disconnect. Leave whatever state we had.
+          return;
+        }
         try {
-          const result = await callEdge('status', { deviceId: get().deviceId });
-          set({ connected: result.connected, email: result.email || null });
-          if (result.connected) {
+          calLog('checkStatus.start', { userId });
+          const result = await callEdge('status');
+          calLog('checkStatus.result', { connected: !!result?.connected });
+          set({ connected: !!result?.connected, email: result?.email || null });
+          if (result?.connected) {
             get().fetchCalendars();
+          } else {
+            set({ calendars: [], eventsById: {}, events: [] });
           }
-        } catch {
+        } catch (e) {
+          calLog('checkStatus.failed', { message: (e as Error)?.message });
           set({ connected: false, email: null });
         }
       },
@@ -154,10 +208,7 @@ export const useCalendarStore = create<CalendarState>()(
           return;
         }
         const redirectUri = window.location.origin;
-        const result = await callEdge('get_auth_url', {
-          deviceId: get().deviceId,
-          redirectUri,
-        });
+        const result = await callEdge('get_auth_url', { redirectUri });
         window.location.href = result.url;
       },
 
@@ -165,11 +216,7 @@ export const useCalendarStore = create<CalendarState>()(
         set({ loading: true });
         try {
           const redirectUri = window.location.origin;
-          await callEdge('exchange_code', {
-            code,
-            redirectUri,
-            deviceId: get().deviceId,
-          });
+          await callEdge('exchange_code', { code, redirectUri });
           set({ connected: true, loading: false });
           await get().fetchCalendars();
         } catch (e) {
@@ -179,8 +226,12 @@ export const useCalendarStore = create<CalendarState>()(
       },
 
       fetchCalendars: async () => {
+        const userId = await getAuthedUserId();
+        if (!userId) { calLog('fetchCalendars.skipped_no_session'); return; }
         try {
-          const result = await callEdge('calendars', { deviceId: get().deviceId });
+          calLog('fetchCalendars.start');
+          const result = await callEdge('calendars');
+          calLog('fetchCalendars.result', { count: Array.isArray(result) ? result.length : 0 });
           if (Array.isArray(result)) {
             set({
               calendars: result.map((c: any) => ({
@@ -193,14 +244,15 @@ export const useCalendarStore = create<CalendarState>()(
             });
           }
         } catch (e) {
-          console.error('Fetch calendars error:', e);
+          calLog('fetchCalendars.failed', { message: (e as Error)?.message });
         }
       },
 
       fetchEvents: async (startDate, endDate) => {
+        const userId = await getAuthedUserId();
+        if (!userId) { calLog('fetchEvents.skipped_no_session'); return; }
         const {
           calendars,
-          deviceId,
           lastFetchedRange,
           lastFetchSignature,
           lastFetchedAt,
@@ -249,13 +301,14 @@ export const useCalendarStore = create<CalendarState>()(
         set({ loading: !requestedRangeHasVisibleEvents });
 
         try {
+          calLog('fetchEvents.start', { calCount: visibleCalIds.length, startDate, endDate });
           const result = await callEdge('events', {
-            deviceId,
             timeMin: bufferedStartDate,
             timeMax: bufferedEndDate,
             calendarIds: visibleCalIds,
             timeZone,
           });
+          calLog('fetchEvents.result', { count: Array.isArray(result) ? result.length : 0 });
           if (Array.isArray(result)) {
             const merged = { ...eventsById };
             for (const event of result) {
@@ -276,7 +329,7 @@ export const useCalendarStore = create<CalendarState>()(
             set({ loading: false });
           }
         } catch (e) {
-          console.error('Fetch events error:', e);
+          calLog('fetchEvents.failed', { message: (e as Error)?.message });
           set({ loading: false });
         }
       },
@@ -301,7 +354,7 @@ export const useCalendarStore = create<CalendarState>()(
 
       disconnect: async () => {
         try {
-          await callEdge('disconnect', { deviceId: get().deviceId });
+          await callEdge('disconnect');
           set({ connected: false, email: null, calendars: [], eventsById: {}, events: [] });
         } catch (e) {
           console.error('Disconnect error:', e);
@@ -350,16 +403,11 @@ export const useCalendarStore = create<CalendarState>()(
     }),
     {
       name: 'do-calendar-store',
+      // Persist only per-user UX mutations. Connection state, calendar list,
+      // and fetched events are intentionally NOT persisted so the next session
+      // (or a different user / platform / install) always rehydrates from the
+      // server and never shows a stale "connected" or stale calendar list.
       partialize: (state) => ({
-        deviceId: state.deviceId,
-        connected: state.connected,
-        email: state.email,
-        calendars: state.calendars,
-        eventsById: state.eventsById,
-        events: state.events,
-        lastFetchedRange: state.lastFetchedRange,
-        lastFetchSignature: state.lastFetchSignature,
-        lastFetchedAt: state.lastFetchedAt,
         completedEventIds: state.completedEventIds,
         deletedEventIds: state.deletedEventIds,
         eventCategories: state.eventCategories,
@@ -367,3 +415,67 @@ export const useCalendarStore = create<CalendarState>()(
     }
   )
 );
+
+// ---------------------------------------------------------------------------
+// Auth-driven lifecycle: re-check connection when the session arrives or
+// changes, and clear in-memory connection state on sign-out. This is what
+// makes "link on web, use everywhere" work — native shells subscribe here on
+// startup and refresh as soon as Supabase finishes hydrating the session.
+// ---------------------------------------------------------------------------
+let lastSeenUserId: string | null = null;
+
+function bindAuthLifecycle() {
+  // Initial hydration check (fires once the SDK has read the persisted JWT).
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    if (session?.user?.id) {
+      lastSeenUserId = session.user.id;
+      calLog('auth.initial_session', { userId: session.user.id });
+      useCalendarStore.getState().checkStatus();
+    } else {
+      calLog('auth.initial_no_session');
+    }
+  });
+
+  supabase.auth.onAuthStateChange((event, session) => {
+    const uid = session?.user?.id ?? null;
+    calLog('auth.event', { event, userIdChanged: uid !== lastSeenUserId });
+
+    if (event === 'SIGNED_OUT' || !uid) {
+      lastSeenUserId = null;
+      useCalendarStore.setState({
+        connected: false,
+        email: null,
+        calendars: [],
+        eventsById: {},
+        events: [],
+        lastFetchedRange: null,
+        lastFetchSignature: null,
+        lastFetchedAt: null,
+      });
+      return;
+    }
+
+    if (uid !== lastSeenUserId) {
+      // Different user signed in on this device — wipe stale connection state
+      // before checking again. Prevents a flash of the previous user's data.
+      useCalendarStore.setState({
+        connected: false,
+        email: null,
+        calendars: [],
+        eventsById: {},
+        events: [],
+        lastFetchedRange: null,
+        lastFetchSignature: null,
+        lastFetchedAt: null,
+      });
+    }
+    lastSeenUserId = uid;
+
+    if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+      useCalendarStore.getState().checkStatus();
+    }
+  });
+}
+
+// Run once at module load (singleton import).
+bindAuthLifecycle();
