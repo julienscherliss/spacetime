@@ -658,6 +658,10 @@ export function useDataSync(user: User | null) {
       if (ok && userIdRef.current === user.id) {
         initialLoadDone.current = true;
         initialSyncComplete = true;
+        // Only allow saves once the source-of-truth load has succeeded.
+        // A failed load leaves status at 'idle' so a debounced save cannot
+        // push a half-empty store back at the database.
+        if (syncStatus !== 'signing_out') syncStatus = 'loaded';
         try { window.dispatchEvent(new CustomEvent('data-sync:initial-loaded')); } catch {}
 
         // If DB had zero tasks but localStorage had some (first-time migration),
