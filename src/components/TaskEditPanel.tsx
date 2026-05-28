@@ -6,6 +6,7 @@ import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar,
 import { GroupNamePrompt } from '@/components/GroupNamePrompt';
 import { AttachmentLightbox } from '@/components/AttachmentLightbox';
 import { AttachmentThumb } from '@/components/AttachmentThumb';
+import { removeAttachmentFile } from '@/lib/attachmentUrl';
 import { useTimezoneStore } from '@/store/timezoneStore';
 import { supabase } from '@/integrations/supabase/client';
 import { useLibraryStore } from '@/store/libraryStore';
@@ -403,14 +404,7 @@ export function TaskEditPanel() {
 
   const removeAttachment = async (index: number) => {
     const att = attachments[index];
-    // Try path field first, then extract from URL
-    const storagePath = (att as any).path || (() => {
-      const pathMatch = att.url.match(/task-attachments\/(.+?)(?:\?|$)/);
-      return pathMatch ? pathMatch[1] : null;
-    })();
-    if (storagePath) {
-      await supabase.storage.from('task-attachments').remove([storagePath]);
-    }
+    await removeAttachmentFile(att as any);
     setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
