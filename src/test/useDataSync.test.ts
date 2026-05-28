@@ -724,4 +724,50 @@ describe('useDataSync regression guard', () => {
     expect(rows2[0].archive_reason).toBe('completed');
     expect(rows2[0].completed).toBe(true);
   });
+
+  // Schema-drift guard: the three task projections must stay aligned, or
+  // partial-patch saves silently drop new fields. If you add a column to
+  // `taskToRow`, you MUST also add it to `taskSnapshotFields` and
+  // `TASK_KEY_TO_COLUMN` (and vice-versa). This test fails loudly if not.
+  it('schema sync: taskToRow ↔ taskSnapshotFields ↔ TASK_KEY_TO_COLUMN stay aligned', async () => {
+    vi.doMock('@/integrations/supabase/client', () => ({
+      supabase: {
+        from: vi.fn(),
+        auth: {
+          onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
+          getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+        },
+      },
+    }));
+    const { taskToRow, taskSnapshotFields, TASK_KEY_TO_COLUMN } = await import('@/hooks/useDataSync');
+
+    const sample: any = {
+      id: '11111111-1111-1111-1111-111111111111',
+      title: 'T',
+      type: 'one-time',
+      priority: 0,
+      originalPriority: 0,
+      date: '2026-05-06',
+      completed: false,
+      createdAt: '2026-05-06T00:00:00.000Z',
+      moveCount: 0,
+    };
+
+    const rowCols = new Set(Object.keys(taskToRow(sample, 'user-1')));
+    // id + user_id are infrastructure columns the partial-patch builder
+    // always supplies — they don't belong to the camelCase projection map.
+    rowCols.delete('id');
+    rowCols.delete('user_id');
+
+    const snapKeys = new Set(Object.keys(taskSnapshotFields(sample)));
+    snapKeys.delete('id');
+
+    const mapKeys = new Set(Object.keys(TASK_KEY_TO_COLUMN));
+    const mapCols = new Set(Object.values(TASK_KEY_TO_COLUMN));
+
+    // Every camelCase key in the snapshot must have a mapping entry.
+    expect([...snapKeys].sort()).toEqual([...mapKeys].sort());
+    // Every DB column written by taskToRow must be reachable via the map.
+    expect([...rowCols].sort()).toEqual([...mapCols].sort());
+  });
 });
