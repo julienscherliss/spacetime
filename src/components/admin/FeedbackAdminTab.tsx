@@ -362,9 +362,7 @@ function FeedbackItem({
               {item.screenshot_url && (
                 <div>
                   <SectionLabel>SCREENSHOT</SectionLabel>
-                  <a href={item.screenshot_url} target="_blank" rel="noreferrer" className="block border border-border/40 rounded-md overflow-hidden bg-muted/30 hover:border-border transition-colors">
-                    <img src={item.screenshot_url} alt="Screenshot" className="w-full max-h-64 object-contain" />
-                  </a>
+                  <ScreenshotPreview reference={item.screenshot_url} />
                 </div>
               )}
 
