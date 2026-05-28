@@ -77,11 +77,12 @@ export function LibraryDueDatePrompt() {
   }, [open, pending]);
 
   useEffect(() => {
-    if (open) {
-      setDate('');
-      enterCountRef.current = 0;
-    }
-  }, [open]);
+    // Reset whenever the pending request changes (including from one item to
+    // the next while the prompt is still open) so the next task never
+    // inherits the previous task's selected date.
+    setDate('');
+    enterCountRef.current = 0;
+  }, [pending]);
 
   const commit = (dueDate: string | null) => {
     if (!pending) return;
