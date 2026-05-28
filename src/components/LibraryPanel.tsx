@@ -762,14 +762,9 @@ export function LibraryPanel() {
                             onSelectDate={(dateStr, cleaned) => {
                               setInput(cleaned);
                               setQuickDueDate(dateStr);
+                              pendingShortcutDueDate.current = dateStr;
                             }}
-                            onSubmitAfterSelect={() => {
-                              // Use the just-picked date directly to avoid
-                              // reading stale quickDueDate state.
-                              const justPicked = inputRef.current?.value === '' ? undefined : undefined;
-                              void justPicked;
-                              handleAdd();
-                            }}
+                            onSubmitAfterSelect={() => handleAdd()}
                           />
                         </div>
                         {quickCategory && (
