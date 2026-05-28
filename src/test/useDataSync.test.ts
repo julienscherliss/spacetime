@@ -546,50 +546,54 @@ describe('useDataSync regression guard', () => {
     ...overrides,
   });
 
-  it('partial-patch: changed title sends only id, user_id and title', async () => {
-    const { upsertTasks, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
+  it('partial-patch: changed title uses update and sends only title', async () => {
+    const { upsertTasks, updateTasks, updatePatches, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
     const t = baseTask({ title: 'Original', duration: 30, category: 'work' });
     useTaskStore.setState({ tasks: [t] });
     await (syncModule as any).saveTasksNow('user-1');
     upsertTasks.mockClear();
+    updateTasks.mockClear();
+    updatePatches.length = 0;
 
     useTaskStore.setState({ tasks: [{ ...t, title: 'Edited' }] });
     await (syncModule as any).saveTasksNow('user-1');
 
-    const rows = upsertTasks.mock.calls[0]![0] as any[];
-    expect(rows.length).toBe(1);
-    expect(Object.keys(rows[0]).sort()).toEqual(['id', 'title', 'user_id']);
-    expect(rows[0].title).toBe('Edited');
+    // Existing task → update, never upsert.
+    expect(upsertTasks).not.toHaveBeenCalled();
+    expect(updateTasks).toHaveBeenCalledTimes(1);
+    expect(Object.keys(updatePatches[0]).sort()).toEqual(['title']);
+    expect(updatePatches[0].title).toBe('Edited');
   });
 
-  it('partial-patch: changed duration sends only id, user_id and duration', async () => {
-    const { upsertTasks, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
+  it('partial-patch: changed duration uses update and sends only duration', async () => {
+    const { upsertTasks, updateTasks, updatePatches, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
     const t = baseTask({ duration: 30 });
     useTaskStore.setState({ tasks: [t] });
     await (syncModule as any).saveTasksNow('user-1');
-    upsertTasks.mockClear();
+    updateTasks.mockClear();
+    updatePatches.length = 0;
 
     useTaskStore.setState({ tasks: [{ ...t, duration: 60 }] });
     await (syncModule as any).saveTasksNow('user-1');
 
-    const rows = upsertTasks.mock.calls[0]![0] as any[];
-    expect(Object.keys(rows[0]).sort()).toEqual(['duration', 'id', 'user_id']);
-    expect(rows[0].duration).toBe(60);
+    expect(updateTasks).toHaveBeenCalledTimes(1);
+    expect(Object.keys(updatePatches[0]).sort()).toEqual(['duration']);
+    expect(updatePatches[0].duration).toBe(60);
   });
 
-  it('partial-patch: changed groupOrder sends only id, user_id and group_order', async () => {
-    const { upsertTasks, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
+  it('partial-patch: changed groupOrder uses update and sends only group_order', async () => {
+    const { updateTasks, updatePatches, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
     const t = baseTask({ groupOrder: 0 });
     useTaskStore.setState({ tasks: [t] });
     await (syncModule as any).saveTasksNow('user-1');
-    upsertTasks.mockClear();
+    updateTasks.mockClear();
+    updatePatches.length = 0;
 
     useTaskStore.setState({ tasks: [{ ...t, groupOrder: 3 }] });
     await (syncModule as any).saveTasksNow('user-1');
 
-    const rows = upsertTasks.mock.calls[0]![0] as any[];
-    expect(Object.keys(rows[0]).sort()).toEqual(['group_order', 'id', 'user_id']);
-    expect(rows[0].group_order).toBe(3);
+    expect(Object.keys(updatePatches[0]).sort()).toEqual(['group_order']);
+    expect(updatePatches[0].group_order).toBe(3);
   });
 
   it('partial-patch: brand-new tasks (no previous snapshot) send the full row', async () => {
