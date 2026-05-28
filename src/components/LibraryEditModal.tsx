@@ -16,6 +16,7 @@ import { DescriptionWithLinks } from '@/components/DescriptionWithLinks';
 import { autosizeTextarea } from '@/lib/autosizeTextarea';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { formatLocalDate, getLocalDayDiff, parseLocalDate } from '@/lib/dateOnly';
+import { removeAttachmentFile } from '@/lib/attachmentUrl';
 import { parseSubtaskText } from '@/lib/parseSubtaskText';
 
 function formatDuration(m: number): string {
@@ -164,13 +165,7 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
 
   const removeAttachment = async (index: number) => {
     const att = attachments[index];
-    const storagePath = (att as any).path || (() => {
-      const pathMatch = att.url.match(/task-attachments\/(.+?)(?:\?|$)/);
-      return pathMatch ? pathMatch[1] : null;
-    })();
-    if (storagePath) {
-      await supabase.storage.from('task-attachments').remove([storagePath]);
-    }
+    await removeAttachmentFile(att as any);
     setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
