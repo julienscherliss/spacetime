@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLibraryStore, LibraryTask, LibrarySubtask } from '@/store/libraryStore';
 import { X, Trash2, Clock, AlertTriangle, Tag, CalendarDays, Plus, Check, Paperclip, Upload, FileText } from 'lucide-react';
+import { AttachmentThumb } from '@/components/AttachmentThumb';
 import { AttachmentLightbox } from '@/components/AttachmentLightbox';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -164,9 +165,7 @@ export function LibraryDetailPane({ item, onClose }: LibraryDetailPaneProps) {
         const filePath = `${user.id}/library/${item.id}/${Date.now()}-${file.name}`;
         const { error } = await supabase.storage.from('task-attachments').upload(filePath, file);
         if (error) throw error;
-        const { data: signedData } = await supabase.storage.from('task-attachments').createSignedUrl(filePath, 60 * 60 * 24 * 365);
-        const url = signedData?.signedUrl || filePath;
-        setAttachments(prev => [...prev, { name: file.name, url, type: file.type }]);
+        setAttachments(prev => [...prev, { name: file.name, url: '', type: file.type, path: filePath } as any]);
       }
     } catch (err) {
       console.error('Upload failed:', err);
@@ -423,9 +422,7 @@ export function LibraryDetailPane({ item, onClose }: LibraryDetailPaneProps) {
                   if (!att.type.startsWith('image/')) return null;
                   return (
                     <div key={i} className="relative group">
-                      <button onClick={() => setLightboxIndex(i)}>
-                        <img src={att.url} alt={att.name} className="w-16 h-16 object-cover rounded-md border border-border/30 hover:border-primary/30 transition-colors cursor-zoom-in" />
-                      </button>
+                      <AttachmentThumb att={att as any} onClick={() => setLightboxIndex(i)} />
                       <button onClick={() => removeAttachment(i)} className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-card border border-border/50 flex items-center justify-center text-muted-foreground/40 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
                         <X size={8} />
                       </button>
