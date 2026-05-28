@@ -982,7 +982,10 @@ export function useDataSync(user: User | null) {
 
       // Debounce at 300ms (short enough to catch most actions before app switch)
       if (taskSaveTimeout) clearTimeout(taskSaveTimeout);
-      taskSaveTimeout = setTimeout(() => saveTasksNow(userId), 300);
+      taskSaveTimeout = setTimeout(() => {
+        taskSaveTimeout = null;
+        void saveTasksNow(userId);
+      }, 300);
     });
 
     return () => {
@@ -1006,10 +1009,16 @@ export function useDataSync(user: User | null) {
       const userId = userIdRef.current;
 
       if (libSaveTimeout) clearTimeout(libSaveTimeout);
-      libSaveTimeout = setTimeout(() => saveLibraryNow(userId), 300);
+      libSaveTimeout = setTimeout(() => {
+        libSaveTimeout = null;
+        void saveLibraryNow(userId);
+      }, 300);
 
       if (catSaveTimeout) clearTimeout(catSaveTimeout);
-      catSaveTimeout = setTimeout(() => saveCategoriesNow(userId), 300);
+      catSaveTimeout = setTimeout(() => {
+        catSaveTimeout = null;
+        void saveCategoriesNow(userId);
+      }, 300);
     });
 
     return () => {
