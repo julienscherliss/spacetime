@@ -231,4 +231,140 @@ describe('useDataSync regression guard', () => {
       routinesEnabled: false,
     })).toBe(true);
   });
+
+  it('refuses to wipe tasks when local state transiently empties (sign-out / failed load race)', async () => {
+    const deleteIn = vi.fn().mockResolvedValue({ error: null });
+    const upsertTasks = vi.fn().mockResolvedValue({ error: null });
+
+    const from = vi.fn((table: string) => {
+      if (table === 'tasks') {
+        return {
+          upsert: upsertTasks,
+          delete: () => ({ in: deleteIn }),
+        };
+      }
+      return {
+        select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }),
+        upsert: vi.fn().mockResolvedValue({ error: null }),
+        delete: () => ({ in: vi.fn() }),
+      };
+    });
+    const auth = {
+      onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
+      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+    };
+    vi.doMock('@/integrations/supabase/client', () => ({ supabase: { from, auth } }));
+
+    const { useTaskStore } = await import('@/store/taskStore');
+    const syncModule = await import('@/hooks/useDataSync');
+
+    // Seed snapshot with a populated state (simulates a successful load).
+    const seed = Array.from({ length: 4 }, (_, i) => ({
+      id: crypto.randomUUID(),
+      title: `Task ${i}`,
+      type: 'one-time' as const,
+      priority: 0 as const,
+      originalPriority: 0 as const,
+      date: '2026-05-06',
+      completed: false,
+      createdAt: '2026-05-06T00:00:00.000Z',
+      moveCount: 0,
+    }));
+    useTaskStore.setState({ tasks: seed });
+    await (syncModule as any).saveTasksNow('user-1');
+    deleteIn.mockClear();
+    upsertTasks.mockClear();
+
+    // Now simulate a transient empty store (the historical wipe pattern).
+    useTaskStore.setState({ tasks: [] });
+    const ok = await (syncModule as any).saveTasksNow('user-1');
+
+    expect(ok).toBe(false);
+    expect(deleteIn).not.toHaveBeenCalled();
+    expect(upsertTasks).not.toHaveBeenCalled();
+  });
+
+  it('short-circuits saves once markSigningOut is called', async () => {
+    const deleteIn = vi.fn().mockResolvedValue({ error: null });
+    const upsertTasks = vi.fn().mockResolvedValue({ error: null });
+
+    const from = vi.fn(() => ({
+      upsert: upsertTasks,
+      delete: () => ({ in: deleteIn }),
+      select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }),
+    }));
+    const auth = {
+      onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
+      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+    };
+    vi.doMock('@/integrations/supabase/client', () => ({ supabase: { from, auth } }));
+
+    const { useTaskStore } = await import('@/store/taskStore');
+    const syncModule = await import('@/hooks/useDataSync');
+
+    useTaskStore.setState({
+      tasks: [{
+        id: crypto.randomUUID(),
+        title: 'persist me',
+        type: 'one-time',
+        priority: 0,
+        originalPriority: 0,
+        date: '2026-05-06',
+        completed: false,
+        createdAt: '2026-05-06T00:00:00.000Z',
+        moveCount: 0,
+      }],
+    });
+
+    (syncModule as any).markSigningOut();
+    const ok = await (syncModule as any).saveTasksNow('user-1');
+    expect(ok).toBe(false);
+    expect(upsertTasks).not.toHaveBeenCalled();
+    expect(deleteIn).not.toHaveBeenCalled();
+  });
+
+  it('refuses a single save that would delete more than half of the previously-synced rows', async () => {
+    const deleteIn = vi.fn().mockResolvedValue({ error: null });
+    const upsertTasks = vi.fn().mockResolvedValue({ error: null });
+
+    const from = vi.fn((table: string) => {
+      if (table === 'tasks') {
+        return { upsert: upsertTasks, delete: () => ({ in: deleteIn }) };
+      }
+      return {
+        select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }),
+        upsert: vi.fn().mockResolvedValue({ error: null }),
+        delete: () => ({ in: vi.fn() }),
+      };
+    });
+    const auth = {
+      onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
+      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+    };
+    vi.doMock('@/integrations/supabase/client', () => ({ supabase: { from, auth } }));
+
+    const { useTaskStore } = await import('@/store/taskStore');
+    const syncModule = await import('@/hooks/useDataSync');
+
+    const seed = Array.from({ length: 10 }, (_, i) => ({
+      id: crypto.randomUUID(),
+      title: `Task ${i}`,
+      type: 'one-time' as const,
+      priority: 0 as const,
+      originalPriority: 0 as const,
+      date: '2026-05-06',
+      completed: false,
+      createdAt: '2026-05-06T00:00:00.000Z',
+      moveCount: 0,
+    }));
+    useTaskStore.setState({ tasks: seed });
+    await (syncModule as any).saveTasksNow('user-1');
+    deleteIn.mockClear();
+
+    // Keep only 2 of 10 — a 80% delete in one save. Should be refused.
+    useTaskStore.setState({ tasks: seed.slice(0, 2) });
+    const ok = await (syncModule as any).saveTasksNow('user-1');
+    expect(ok).toBe(false);
+    expect(deleteIn).not.toHaveBeenCalled();
+  });
 });
