@@ -454,17 +454,23 @@ async function saveLibraryNow(userId: string): Promise<boolean> {
     }
 
     if (validItems.length > 0) {
-      const rows = validItems.map(i => libraryItemToRow(i, userId));
-      const { error } = await supabase.from('library_items').upsert(rows as any);
-      if (error) {
-        console.error('[Sync] Failed to save library:', error);
-        toast.error('Failed to save library items.');
-        return false;
+      const previousById = parseSnapshotById(lastSyncedLibSnapshot);
+      const changed = validItems.filter(
+        (i) => previousById.get(i.id) !== JSON.stringify(i),
+      );
+      if (changed.length > 0) {
+        const rows = changed.map((i) => libraryItemToRow(i, userId));
+        const { error } = await supabase.from('library_items').upsert(rows as any);
+        if (error) {
+          console.error('[Sync] Failed to save library:', error);
+          toast.error('Failed to save library items.');
+          return false;
+        }
       }
     }
 
     lastSyncedLibSnapshot = snap;
-      ignoreLibraryReloadUntil = Date.now() + 2500;
+    ignoreLibraryReloadUntil = Date.now() + 5000;
     return true;
   } catch (err) {
     console.error('[Sync] Library save error:', err);
