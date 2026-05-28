@@ -369,7 +369,7 @@ async function saveLibraryNow(userId: string): Promise<boolean> {
     // emptied without an explicit removal having been observed against a
     // populated previous snapshot. Saves with zero local items only proceed
     // if the previous snapshot was also empty (genuinely nothing to sync).
-    if (validItems.length === 0 && previousIds.size > 0) {
+    if (validItems.length === 0 && previousIds.size >= BULK_DELETE_MIN) {
       console.warn('[Sync] Refusing to save empty library — looks like a transient state, not a real deletion of all items.');
       return false;
     }
@@ -442,7 +442,7 @@ async function saveCategoriesNow(userId: string): Promise<boolean> {
     const localValues = new Set(state.categories.map(c => c.value));
     const toDelete = Array.from(previousValues).filter((v) => !localValues.has(v));
 
-    if (state.categories.length === 0 && previousValues.size > 0) {
+    if (state.categories.length === 0 && previousValues.size >= BULK_DELETE_MIN) {
       console.warn('[Sync] Refusing to save empty categories — likely transient state, not a real wipe.');
       return false;
     }
