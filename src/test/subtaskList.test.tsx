@@ -114,8 +114,6 @@ describe('SubtaskList multiline entry', () => {
     render(<Harness />);
 
     pasteText(getComposer(), '- one\n- two');
-    const boxes = screen.getAllByRole('textbox') as HTMLTextAreaElement[];
-    console.error('BOXES', boxes.length, boxes.map(b => JSON.stringify(b.value)));
     fireEvent.keyDown(getComposer(), { key: 'Enter' });
 
     expectTitles(['one', 'two']);
