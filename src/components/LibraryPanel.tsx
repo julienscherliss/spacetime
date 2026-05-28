@@ -859,7 +859,7 @@ export function LibraryPanel() {
                 {/* Add input */}
                 <div data-tutorial="library-add" className="px-4 py-3 border-b border-border/40">
                   <div className="relative flex items-center gap-2.5">
-                    <button onClick={handleAdd} className="p-1 text-muted-foreground/40 hover:text-foreground transition-colors shrink-0"><Plus size={16} /></button>
+                    <button onClick={() => handleAdd()} className="p-1 text-muted-foreground/40 hover:text-foreground transition-colors shrink-0"><Plus size={16} /></button>
                     <div className="relative flex-1">
                       <input
                         ref={inputRef}
@@ -886,8 +886,9 @@ export function LibraryPanel() {
                         onSelectDate={(dateStr, cleaned) => {
                           setInput(cleaned);
                           setQuickDueDate(dateStr);
+                          pendingShortcutDueDate.current = dateStr;
                         }}
-                        onSubmitAfterSelect={handleAdd}
+                        onSubmitAfterSelect={() => handleAdd()}
                       />
                     </div>
                     {quickCategory && (
