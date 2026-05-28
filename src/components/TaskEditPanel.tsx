@@ -1004,13 +1004,7 @@ export function TaskEditPanel() {
                         if (!att.type.startsWith('image/')) return null;
                         return (
                           <div key={i} className="relative group">
-                            <button onClick={(e) => { e.stopPropagation(); setLightboxIndex(i); }}>
-                              <img
-                                src={att.url}
-                                alt={att.name}
-                                className="w-16 h-16 object-cover rounded-md border border-border/30 hover:border-primary/30 transition-colors cursor-zoom-in"
-                              />
-                            </button>
+                            <AttachmentThumb att={att as any} onClick={() => setLightboxIndex(i)} />
                             <button
                               onClick={() => removeAttachment(i)}
                               className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-card border border-border/50 flex items-center justify-center text-muted-foreground/40 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
