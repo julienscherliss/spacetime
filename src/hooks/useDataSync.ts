@@ -6,6 +6,24 @@ import { isNativePlatform } from '@/utils/nativePlatform';
 import { toast } from 'sonner';
 import type { User } from '@supabase/supabase-js';
 
+type SyncTable = 'tasks' | 'library_items' | 'library_categories';
+
+const RELOAD_DEBOUNCE_MS = 400;
+const RELOAD_RETRY_MS = 600;
+const TASK_SELF_ECHO_TTL_MS = 2000;
+
+function syncLog(message: string, details?: Record<string, unknown>) {
+  if (details) {
+    console.log(`[Sync] ${message}`, details);
+    return;
+  }
+  console.log(`[Sync] ${message}`);
+}
+
+function currentPlatform() {
+  return isNativePlatform() ? 'native' : 'web';
+}
+
 // ─── Converters ────────────────────────────────────────
 
 function rowToTask(row: any): Task {
@@ -144,6 +162,7 @@ let catSaveInFlight: Promise<boolean> | null = null;
 let ignoreTaskReloadUntil = 0;
 let ignoreLibraryReloadUntil = 0;
 let ignoreCategoryReloadUntil = 0;
+let pendingTaskSelfEchoIds = new Map<string, number>();
 
 // ─── Snapshot for diffing ──────────────────────────────
 
@@ -404,6 +423,7 @@ function clearAllUserState() {
   lastSyncedTaskSnapshot = '';
   lastSyncedLibSnapshot = '';
   lastSyncedCatSnapshot = '';
+  pendingTaskSelfEchoIds.clear();
   syncStatus = 'idle';
 }
 
@@ -492,6 +512,13 @@ export async function saveTasksNow(userId: string): Promise<boolean> {
 
       // New tasks: full-row upsert so every NOT NULL column is populated.
       if (newRows.length > 0) {
+        syncLog('saveTasksNow writing new task rows', {
+          platform: currentPlatform(),
+          method: 'upsert',
+          rowKind: 'new',
+          count: newRows.length,
+          patchKeys: newRows.map((r) => Object.keys(r)),
+        });
         const { error: insertErr } = await supabase.from('tasks').upsert(newRows as any);
         if (insertErr) {
           console.error('[Sync] Failed to save tasks:', {
@@ -509,6 +536,13 @@ export async function saveTasksNow(userId: string): Promise<boolean> {
       // Existing tasks: partial UPDATE (never upsert) so omitting NOT NULL
       // columns is safe and unrelated/protective fields keep their server value.
       for (const { id, patch } of updates) {
+        syncLog('saveTasksNow writing task patch', {
+          platform: currentPlatform(),
+          method: 'update',
+          rowKind: 'existing',
+          id,
+          patchKeys: Object.keys(patch),
+        });
         const { error: updateErr } = await supabase
           .from('tasks')
           .update(patch as any)
@@ -529,10 +563,13 @@ export async function saveTasksNow(userId: string): Promise<boolean> {
     }
 
     lastSyncedTaskSnapshot = snap;
-    // Suppress the realtime echo of our own upsert. 5s gives slow mobile
-    // connections enough headroom that the echo cannot trigger a reload
-    // → setState → save loop after the window expires.
-    ignoreTaskReloadUntil = Date.now() + 5000;
+    syncLog('lastSyncedTaskSnapshot reset after save', {
+      platform: currentPlatform(),
+      taskCount: validTasks.length,
+    });
+    const echoExpiresAt = Date.now() + TASK_SELF_ECHO_TTL_MS;
+    ignoreTaskReloadUntil = echoExpiresAt;
+    pendingTaskSelfEchoIds = new Map(validTasks.map((task) => [task.id, echoExpiresAt]));
     return true;
   } catch (err) {
     console.error('[Sync] Task save error:', err);
@@ -708,6 +745,11 @@ export async function loadFromDB(
   options: { skipTasks?: boolean; skipLibrary?: boolean; skipCategories?: boolean } = {}
 ): Promise<boolean> {
   try {
+    syncLog('loadFromDB started', {
+      platform: currentPlatform(),
+      userId,
+      options,
+    });
     const [taskRes, libRes, catRes] = await Promise.all([
       options.skipTasks ? Promise.resolve({ data: null, error: null } as any) : fetchAllRows('tasks', userId),
       options.skipLibrary ? Promise.resolve({ data: null, error: null } as any) : fetchAllRows('library_items', userId),
@@ -724,6 +766,11 @@ export async function loadFromDB(
       const tasks = (taskRes.data || []).map(rowToTask);
       useTaskStore.setState({ tasks });
       lastSyncedTaskSnapshot = snapshotTasks(tasks);
+      pendingTaskSelfEchoIds.clear();
+      syncLog('lastSyncedTaskSnapshot reset after load', {
+        platform: currentPlatform(),
+        taskCount: tasks.length,
+      });
     }
 
     if (!options.skipLibrary && !libRes.error) {
@@ -790,6 +837,13 @@ export async function loadFromDB(
       useLibraryStore.setState({ categories });
       lastSyncedCatSnapshot = snapshotCats(categories);
     }
+
+    syncLog('loadFromDB completed', {
+      platform: currentPlatform(),
+      taskCount: options.skipTasks ? undefined : (taskRes.data || []).length,
+      libraryCount: options.skipLibrary ? undefined : (libRes.data || []).length,
+      categoryCount: options.skipCategories ? undefined : (catRes.data || []).length,
+    });
 
     return true;
   } catch (err) {
@@ -928,7 +982,10 @@ export function useDataSync(user: User | null) {
 
       // Debounce at 300ms (short enough to catch most actions before app switch)
       if (taskSaveTimeout) clearTimeout(taskSaveTimeout);
-      taskSaveTimeout = setTimeout(() => saveTasksNow(userId), 300);
+      taskSaveTimeout = setTimeout(() => {
+        taskSaveTimeout = null;
+        void saveTasksNow(userId);
+      }, 300);
     });
 
     return () => {
@@ -952,10 +1009,16 @@ export function useDataSync(user: User | null) {
       const userId = userIdRef.current;
 
       if (libSaveTimeout) clearTimeout(libSaveTimeout);
-      libSaveTimeout = setTimeout(() => saveLibraryNow(userId), 300);
+      libSaveTimeout = setTimeout(() => {
+        libSaveTimeout = null;
+        void saveLibraryNow(userId);
+      }, 300);
 
       if (catSaveTimeout) clearTimeout(catSaveTimeout);
-      catSaveTimeout = setTimeout(() => saveCategoriesNow(userId), 300);
+      catSaveTimeout = setTimeout(() => {
+        catSaveTimeout = null;
+        void saveCategoriesNow(userId);
+      }, 300);
     });
 
     return () => {
@@ -978,34 +1041,101 @@ export function useDataSync(user: User | null) {
     if (!user) return;
 
     let reloadTimeout: ReturnType<typeof setTimeout> | null = null;
-    const scheduleReload = () => {
+    const taskWritePending = () => Boolean(taskSaveTimeout || taskSaveInFlight);
+    const anyWritePending = () => Boolean(taskSaveTimeout || libSaveTimeout || catSaveTimeout || taskSaveInFlight || libSaveInFlight || catSaveInFlight);
+    const pruneSelfEchoIds = () => {
+      const now = Date.now();
+      pendingTaskSelfEchoIds.forEach((expiresAt, id) => {
+        if (expiresAt <= now) pendingTaskSelfEchoIds.delete(id);
+      });
+    };
+    const shouldIgnoreTaskEvent = (payload: any) => {
+      pruneSelfEchoIds();
+      const rowId = payload?.new?.id ?? payload?.old?.id;
+      const now = Date.now();
+      if (rowId && pendingTaskSelfEchoIds.get(rowId) && (pendingTaskSelfEchoIds.get(rowId) as number) > now) {
+        syncLog('realtime event ignored (self echo)', {
+          platform: currentPlatform(),
+          table: 'tasks',
+          action: payload?.eventType,
+          id: rowId,
+          ignoreTaskReloadUntil,
+          pendingSaveTimer: Boolean(taskSaveTimeout),
+        });
+        pendingTaskSelfEchoIds.delete(rowId);
+        return true;
+      }
+      return false;
+    };
+    const scheduleReload = (source: { table: SyncTable; action: string; id?: string | null; reason: string }) => {
+      syncLog('scheduleReload called', {
+        platform: currentPlatform(),
+        ...source,
+        ignoreTaskReloadUntil,
+        pendingSaveTimer: Boolean(taskSaveTimeout || libSaveTimeout || catSaveTimeout),
+        taskSaveInFlight: Boolean(taskSaveInFlight),
+        libSaveInFlight: Boolean(libSaveInFlight),
+        catSaveInFlight: Boolean(catSaveInFlight),
+      });
       if (!initialLoadDone.current || userIdRef.current !== user.id) return;
       // If a local save is pending, wait for it to flush so we don't clobber in-flight edits
-      if (taskSaveTimeout || libSaveTimeout || catSaveTimeout || taskSaveInFlight || libSaveInFlight || catSaveInFlight) {
+      if (anyWritePending()) {
+        syncLog('scheduleReload skipped; retrying after pending write', {
+          platform: currentPlatform(),
+          ...source,
+          pendingSaveTimer: Boolean(taskSaveTimeout || libSaveTimeout || catSaveTimeout),
+        });
         if (reloadTimeout) clearTimeout(reloadTimeout);
-        reloadTimeout = setTimeout(scheduleReload, 600);
+        reloadTimeout = setTimeout(() => scheduleReload(source), RELOAD_RETRY_MS);
         return;
       }
       if (reloadTimeout) clearTimeout(reloadTimeout);
       reloadTimeout = setTimeout(() => {
         if (userIdRef.current === user.id) {
-          console.log('[Sync] Realtime change detected — refetching');
-          const now = Date.now();
+          syncLog('realtime change detected — refetching', {
+            platform: currentPlatform(),
+            ...source,
+          });
           loadFromDB(user.id, {
-            skipTasks: now < ignoreTaskReloadUntil,
-            skipLibrary: now < ignoreLibraryReloadUntil,
-            skipCategories: now < ignoreCategoryReloadUntil,
+            skipTasks: false,
+            skipLibrary: false,
+            skipCategories: false,
           });
         }
-      }, 400);
+      }, RELOAD_DEBOUNCE_MS);
+    };
+
+    const handleRealtimeEvent = (table: SyncTable) => (payload: any) => {
+      const rowId = payload?.new?.id ?? payload?.old?.id ?? null;
+      const action = payload?.eventType ?? 'UNKNOWN';
+      const source = { table, action, id: rowId, reason: 'realtime' };
+      syncLog('realtime event received', {
+        platform: currentPlatform(),
+        ...source,
+        ignoreTaskReloadUntil,
+        pendingSaveTimer: Boolean(taskSaveTimeout || libSaveTimeout || catSaveTimeout),
+        taskWritePending: taskWritePending(),
+      });
+      if (table === 'tasks' && shouldIgnoreTaskEvent(payload)) return;
+      scheduleReload(source);
     };
 
     const channel = supabase
       .channel(`user-data-${user.id}`)
-      .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'tasks', filter: `user_id=eq.${user.id}` }, scheduleReload)
-      .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'library_items', filter: `user_id=eq.${user.id}` }, scheduleReload)
-      .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'library_categories', filter: `user_id=eq.${user.id}` }, scheduleReload)
-      .subscribe();
+      .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'tasks', filter: `user_id=eq.${user.id}` }, handleRealtimeEvent('tasks'))
+      .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'library_items', filter: `user_id=eq.${user.id}` }, handleRealtimeEvent('library_items'))
+      .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'library_categories', filter: `user_id=eq.${user.id}` }, handleRealtimeEvent('library_categories'))
+      .subscribe((status) => {
+        syncLog('realtime subscription status', {
+          platform: currentPlatform(),
+          status,
+        });
+      });
+
+    syncLog('realtime subscription created', {
+      platform: currentPlatform(),
+      channel: `user-data-${user.id}`,
+    });
 
     return () => {
       if (reloadTimeout) clearTimeout(reloadTimeout);
@@ -1019,6 +1149,10 @@ export function useDataSync(user: User | null) {
 
     const handleVisibility = async () => {
       if (document.visibilityState !== 'visible' || userIdRef.current !== user.id) return;
+      syncLog('visibilitychange received', {
+        platform: currentPlatform(),
+        visibilityState: document.visibilityState,
+      });
 
       // CRITICAL: Flush any pending local writes BEFORE refetching from DB.
       // On mobile, the app may have been backgrounded mid-debounce — if we
@@ -1027,12 +1161,7 @@ export function useDataSync(user: User | null) {
 
       if (userIdRef.current !== user.id) return;
       console.log('[Sync] App became visible — refetching from DB');
-      const now = Date.now();
-      await loadFromDB(user.id, {
-        skipTasks: now < ignoreTaskReloadUntil,
-        skipLibrary: now < ignoreLibraryReloadUntil,
-        skipCategories: now < ignoreCategoryReloadUntil,
-      });
+      await loadFromDB(user.id);
       initialLoadDone.current = true;
     };
 
@@ -1089,9 +1218,18 @@ export function useDataSync(user: User | null) {
       const { App } = await import('@capacitor/app');
       const listener = await App.addListener('appStateChange', async ({ isActive }) => {
         if (!userIdRef.current || userIdRef.current !== user.id) return;
+        syncLog('appStateChange received', {
+          platform: currentPlatform(),
+          isActive,
+        });
         if (!isActive) {
           await flushPendingWrites(user.id);
+          return;
         }
+
+        await flushPendingWrites(user.id);
+        if (userIdRef.current !== user.id) return;
+        await loadFromDB(user.id);
       });
 
       removeListener = () => {
