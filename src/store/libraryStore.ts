@@ -159,10 +159,11 @@ export const useLibraryStore = create<LibraryState>()(
       })),
 
       addItem: (title, category = '', dueDate = null) => {
+        const id = generateId();
         set((s) => ({
           items: [
             {
-              id: generateId(),
+              id,
               title,
               note: '',
               category: normalizeCategoryValue(category),
@@ -176,6 +177,7 @@ export const useLibraryStore = create<LibraryState>()(
             ...s.items,
           ],
         }));
+        return id;
       },
 
       updateItem: (id, updates) =>
