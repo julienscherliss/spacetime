@@ -1031,34 +1031,101 @@ export function useDataSync(user: User | null) {
     if (!user) return;
 
     let reloadTimeout: ReturnType<typeof setTimeout> | null = null;
-    const scheduleReload = () => {
+    const taskWritePending = () => Boolean(taskSaveTimeout || taskSaveInFlight);
+    const anyWritePending = () => Boolean(taskSaveTimeout || libSaveTimeout || catSaveTimeout || taskSaveInFlight || libSaveInFlight || catSaveInFlight);
+    const pruneSelfEchoIds = () => {
+      const now = Date.now();
+      pendingTaskSelfEchoIds.forEach((expiresAt, id) => {
+        if (expiresAt <= now) pendingTaskSelfEchoIds.delete(id);
+      });
+    };
+    const shouldIgnoreTaskEvent = (payload: any) => {
+      pruneSelfEchoIds();
+      const rowId = payload?.new?.id ?? payload?.old?.id;
+      const now = Date.now();
+      if (rowId && pendingTaskSelfEchoIds.get(rowId) && (pendingTaskSelfEchoIds.get(rowId) as number) > now) {
+        syncLog('realtime event ignored (self echo)', {
+          platform: currentPlatform(),
+          table: 'tasks',
+          action: payload?.eventType,
+          id: rowId,
+          ignoreTaskReloadUntil,
+          pendingSaveTimer: Boolean(taskSaveTimeout),
+        });
+        pendingTaskSelfEchoIds.delete(rowId);
+        return true;
+      }
+      return false;
+    };
+    const scheduleReload = (source: { table: SyncTable; action: string; id?: string | null; reason: string }) => {
+      syncLog('scheduleReload called', {
+        platform: currentPlatform(),
+        ...source,
+        ignoreTaskReloadUntil,
+        pendingSaveTimer: Boolean(taskSaveTimeout || libSaveTimeout || catSaveTimeout),
+        taskSaveInFlight: Boolean(taskSaveInFlight),
+        libSaveInFlight: Boolean(libSaveInFlight),
+        catSaveInFlight: Boolean(catSaveInFlight),
+      });
       if (!initialLoadDone.current || userIdRef.current !== user.id) return;
       // If a local save is pending, wait for it to flush so we don't clobber in-flight edits
-      if (taskSaveTimeout || libSaveTimeout || catSaveTimeout || taskSaveInFlight || libSaveInFlight || catSaveInFlight) {
+      if (anyWritePending()) {
+        syncLog('scheduleReload skipped; retrying after pending write', {
+          platform: currentPlatform(),
+          ...source,
+          pendingSaveTimer: Boolean(taskSaveTimeout || libSaveTimeout || catSaveTimeout),
+        });
         if (reloadTimeout) clearTimeout(reloadTimeout);
-        reloadTimeout = setTimeout(scheduleReload, 600);
+        reloadTimeout = setTimeout(() => scheduleReload(source), RELOAD_RETRY_MS);
         return;
       }
       if (reloadTimeout) clearTimeout(reloadTimeout);
       reloadTimeout = setTimeout(() => {
         if (userIdRef.current === user.id) {
-          console.log('[Sync] Realtime change detected — refetching');
-          const now = Date.now();
+          syncLog('realtime change detected — refetching', {
+            platform: currentPlatform(),
+            ...source,
+          });
           loadFromDB(user.id, {
-            skipTasks: now < ignoreTaskReloadUntil,
-            skipLibrary: now < ignoreLibraryReloadUntil,
-            skipCategories: now < ignoreCategoryReloadUntil,
+            skipTasks: false,
+            skipLibrary: false,
+            skipCategories: false,
           });
         }
-      }, 400);
+      }, RELOAD_DEBOUNCE_MS);
+    };
+
+    const handleRealtimeEvent = (table: SyncTable) => (payload: any) => {
+      const rowId = payload?.new?.id ?? payload?.old?.id ?? null;
+      const action = payload?.eventType ?? 'UNKNOWN';
+      const source = { table, action, id: rowId, reason: 'realtime' };
+      syncLog('realtime event received', {
+        platform: currentPlatform(),
+        ...source,
+        ignoreTaskReloadUntil,
+        pendingSaveTimer: Boolean(taskSaveTimeout || libSaveTimeout || catSaveTimeout),
+        taskWritePending: taskWritePending(),
+      });
+      if (table === 'tasks' && shouldIgnoreTaskEvent(payload)) return;
+      scheduleReload(source);
     };
 
     const channel = supabase
       .channel(`user-data-${user.id}`)
-      .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'tasks', filter: `user_id=eq.${user.id}` }, scheduleReload)
-      .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'library_items', filter: `user_id=eq.${user.id}` }, scheduleReload)
-      .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'library_categories', filter: `user_id=eq.${user.id}` }, scheduleReload)
-      .subscribe();
+      .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'tasks', filter: `user_id=eq.${user.id}` }, handleRealtimeEvent('tasks'))
+      .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'library_items', filter: `user_id=eq.${user.id}` }, handleRealtimeEvent('library_items'))
+      .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'library_categories', filter: `user_id=eq.${user.id}` }, handleRealtimeEvent('library_categories'))
+      .subscribe((status) => {
+        syncLog('realtime subscription status', {
+          platform: currentPlatform(),
+          status,
+        });
+      });
+
+    syncLog('realtime subscription created', {
+      platform: currentPlatform(),
+      channel: `user-data-${user.id}`,
+    });
 
     return () => {
       if (reloadTimeout) clearTimeout(reloadTimeout);
