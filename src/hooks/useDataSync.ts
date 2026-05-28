@@ -241,6 +241,7 @@ function clearAllUserState() {
   lastSyncedTaskSnapshot = '';
   lastSyncedLibSnapshot = '';
   lastSyncedCatSnapshot = '';
+  syncStatus = 'idle';
 }
 
 // ─── Write-through save functions ──────────────────────
