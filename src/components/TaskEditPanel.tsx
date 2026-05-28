@@ -5,6 +5,7 @@ import { SubtaskList, Subtask, SubtaskListHandle } from '@/components/SubtaskLis
 import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar, Inbox, CalendarCheck, XCircle, Paperclip, ExternalLink, Check, AlertTriangle, Tag, Upload, FileText, Bell, PauseCircle, Layers } from 'lucide-react';
 import { GroupNamePrompt } from '@/components/GroupNamePrompt';
 import { AttachmentLightbox } from '@/components/AttachmentLightbox';
+import { AttachmentThumb } from '@/components/AttachmentThumb';
 import { useTimezoneStore } from '@/store/timezoneStore';
 import { supabase } from '@/integrations/supabase/client';
 import { useLibraryStore } from '@/store/libraryStore';
@@ -390,9 +391,7 @@ export function TaskEditPanel() {
         const filePath = `${user.id}/${task.id}/${Date.now()}-${file.name}`;
         const { error } = await supabase.storage.from('task-attachments').upload(filePath, file);
         if (error) throw error;
-        const { data: signedData } = await supabase.storage.from('task-attachments').createSignedUrl(filePath, 60 * 60 * 24 * 365);
-        const url = signedData?.signedUrl || filePath;
-        setAttachments(prev => [...prev, { name: file.name, url, type: file.type, path: filePath }]);
+        setAttachments(prev => [...prev, { name: file.name, url: '', type: file.type, path: filePath } as any]);
       }
     } catch (err) {
       console.error('Upload failed:', err);
