@@ -308,17 +308,29 @@ export const TASK_KEY_TO_COLUMN: Record<string, string> = {
 //
 // Always includes `id` + `user_id` so the upsert can locate / authorize the
 // row. Returns null if nothing changed (caller skips this row).
-function buildTaskPatch(
+type TaskWrite =
+  | { kind: 'new'; row: Record<string, any> }
+  | { kind: 'update'; row: Record<string, any> };
+
+// Determine how a task should be persisted:
+//  - `new`: no previous snapshot entry → send the FULL row via upsert/insert
+//    so Postgres can fill every NOT NULL column (e.g. title).
+//  - `update`: previous snapshot exists and the projection changed → send a
+//    PARTIAL patch (only the changed columns) via `.update()`. Using update
+//    (not upsert) means PostgREST never attempts an insert, so omitting
+//    NOT NULL columns is safe and unrelated/protective fields are preserved.
+// Returns null if an existing task is unchanged (caller skips it).
+function buildTaskWrite(
   task: Task,
   userId: string,
   previous: Record<string, any> | undefined,
-): Record<string, any> | null {
-  const current = taskSnapshotFields(task) as Record<string, any>;
+): TaskWrite | null {
   // No previous snapshot for this id → treat as a brand-new row and send the
   // full taskToRow payload so INSERT fills every NOT NULL column.
-  if (!previous) return taskToRow(task, userId);
+  if (!previous) return { kind: 'new', row: taskToRow(task, userId) };
 
-  const patch: Record<string, any> = { id: task.id, user_id: userId };
+  const current = taskSnapshotFields(task) as Record<string, any>;
+  const patch: Record<string, any> = {};
   let changed = false;
   const fullRow = taskToRow(task, userId) as Record<string, any>;
   for (const key of Object.keys(TASK_KEY_TO_COLUMN)) {
@@ -337,7 +349,7 @@ function buildTaskPatch(
       changed = true;
     }
   }
-  return changed ? patch : null;
+  return changed ? { kind: 'update', row: patch } : null;
 }
 
 function snapshotLib(items: LibraryTask[]): string {
