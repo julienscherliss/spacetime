@@ -21,6 +21,20 @@ export function QuickAddBar() {
   const [editingItem, setEditingItem] = useState<LibraryTask | null>(null);
   const pendingShortcutDueDate = useRef<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const awaitingPromptRef = useRef(false);
+
+  // When we hand off to the date prompt we keep the bar mounted so its input
+  // stays a valid popover anchor. Close the bar once the prompt resolves.
+  useEffect(() => {
+    if (!awaitingPromptRef.current) return;
+    const unsub = useLibraryDuePrompt.subscribe((state) => {
+      if (awaitingPromptRef.current && !state.pending) {
+        awaitingPromptRef.current = false;
+        close();
+      }
+    });
+    return () => unsub();
+  }, [open, close]);
 
   // Sync local input with the keystroke that opened the bar.
   useEffect(() => {
@@ -52,7 +66,10 @@ export function QuickAddBar() {
 
     if (dueDate) {
       addItem(titleText, autoCategory || undefined, dueDate);
+      incrementEntryCount();
+      close();
     } else {
+      awaitingPromptRef.current = true;
       useLibraryDuePrompt.getState().request({
         title: titleText,
         category: autoCategory || undefined,
@@ -61,9 +78,8 @@ export function QuickAddBar() {
         side: 'bottom',
         align: 'start',
       });
+      incrementEntryCount();
     }
-    incrementEntryCount();
-    close();
   };
 
   // Create the item now and open the full edit modal for details/tags/subtasks.
