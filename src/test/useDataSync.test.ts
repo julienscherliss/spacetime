@@ -259,7 +259,8 @@ describe('useDataSync regression guard', () => {
     const syncModule = await import('@/hooks/useDataSync');
 
     // Seed snapshot with a populated state (simulates a successful load).
-    const seed = Array.from({ length: 4 }, (_, i) => ({
+    // Use >= BULK_DELETE_MIN items so the empty-state guard engages.
+    const seed = Array.from({ length: 6 }, (_, i) => ({
       id: crypto.randomUUID(),
       title: `Task ${i}`,
       type: 'one-time' as const,
