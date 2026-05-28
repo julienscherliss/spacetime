@@ -247,6 +247,99 @@ function parseSnapshotById(snap: string): Map<string, string> {
   return out;
 }
 
+// Parsed form of `parseSnapshotById` — keeps the projected fields as-is so
+// per-field diffing can compare individual keys without re-parsing JSON.
+function parseSnapshotObjectsById(snap: string): Map<string, Record<string, any>> {
+  const out = new Map<string, Record<string, any>>();
+  if (!snap) return out;
+  try {
+    const arr = JSON.parse(snap) as Array<Record<string, any>>;
+    for (const entry of arr) {
+      const key = entry?.id as string | undefined;
+      if (!key) continue;
+      out.set(key, entry);
+    }
+  } catch {
+    // Corrupt snapshot — caller falls back to treating every task as new.
+  }
+  return out;
+}
+
+// Mapping from the camelCase keys in `taskSnapshotFields` to the snake_case
+// DB column names produced by `taskToRow`. MUST stay in sync with both.
+// `id` is added separately and is always present in every upsert payload.
+const TASK_KEY_TO_COLUMN: Record<string, string> = {
+  title: 'title',
+  category: 'category',
+  description: 'description',
+  subtasks: 'subtasks',
+  type: 'type',
+  priority: 'priority',
+  originalPriority: 'original_priority',
+  date: 'date',
+  time: 'time',
+  duration: 'duration',
+  completed: 'completed',
+  moveCount: 'move_count',
+  recurrence: 'recurrence',
+  recurrenceParentId: 'recurrence_parent_id',
+  isRecurrenceInstance: 'is_recurrence_instance',
+  isRoutine: 'is_routine',
+  linked: 'linked',
+  seriesId: 'series_id',
+  linkedGroupId: 'linked_group_id',
+  detachedFromSeries: 'detached_from_series',
+  inWaitingRoom: 'in_waiting_room',
+  waitingRoomCount: 'waiting_room_count',
+  dueDate: 'due_date',
+  archivedAt: 'archived_at',
+  archiveReason: 'archive_reason',
+  attachments: 'attachments',
+  groupId: 'group_id',
+  preferredDuration: 'preferred_duration',
+  groupOrder: 'group_order',
+};
+
+// Build a partial DB row containing only the columns whose projected values
+// differ between `current` (taskSnapshotFields(task)) and `previous`
+// (the same projection from the last synced snapshot). The returned row is
+// safe to upsert: PostgREST's ON CONFLICT DO UPDATE only writes the columns
+// present in the payload, so omitted columns retain their server value.
+//
+// Always includes `id` + `user_id` so the upsert can locate / authorize the
+// row. Returns null if nothing changed (caller skips this row).
+function buildTaskPatch(
+  task: Task,
+  userId: string,
+  previous: Record<string, any> | undefined,
+): Record<string, any> | null {
+  const current = taskSnapshotFields(task) as Record<string, any>;
+  // No previous snapshot for this id → treat as a brand-new row and send the
+  // full taskToRow payload so INSERT fills every NOT NULL column.
+  if (!previous) return taskToRow(task, userId);
+
+  const patch: Record<string, any> = { id: task.id, user_id: userId };
+  let changed = false;
+  const fullRow = taskToRow(task, userId) as Record<string, any>;
+  for (const key of Object.keys(TASK_KEY_TO_COLUMN)) {
+    const a = current[key];
+    const b = previous[key];
+    // Deep-equal via JSON for the few object/array fields (subtasks,
+    // recurrence, attachments). Cheap and matches how the snapshot is built.
+    const same =
+      a === b ||
+      (a !== null && b !== null && typeof a === 'object' && typeof b === 'object'
+        ? JSON.stringify(a) === JSON.stringify(b)
+        : false);
+    if (!same) {
+      const col = TASK_KEY_TO_COLUMN[key];
+      patch[col] = fullRow[col];
+      changed = true;
+    }
+  }
+  return changed ? patch : null;
+}
+
 function snapshotLib(items: LibraryTask[]): string {
   const projected = items
     .filter((i) => isValidUUID(i.id))
@@ -363,16 +456,25 @@ export async function saveTasksNow(userId: string): Promise<boolean> {
     // changed since the last successful sync. A 200-task user toggling one
     // task should produce 1 realtime message, not 200.
     if (validTasks.length > 0) {
-      const previousById = parseSnapshotById(lastSyncedTaskSnapshot);
-      const currentProjections = validTasks.map((t) => ({
-        task: t,
-        json: JSON.stringify(taskSnapshotFields(t)),
-      }));
-      const changed = currentProjections.filter(
-        ({ task, json }) => previousById.get(task.id) !== json,
-      );
-      if (changed.length > 0) {
-        const rows = changed.map(({ task }) => taskToRow(task, userId));
+      // PER-FIELD DIFF: for every task whose projection changed, build a
+      // partial row containing ONLY the columns that actually changed
+      // (plus id + user_id). This prevents a stale device from clobbering
+      // unrelated fields — including protective fields like archived_at,
+      // archive_reason, completed, priority, group_order — that another
+      // device has updated since this device's snapshot was taken.
+      //
+      // PostgREST upsert (ON CONFLICT DO UPDATE) only writes the columns
+      // present in the payload; omitted columns retain their server value.
+      // Brand-new tasks (id not in previous snapshot) still receive the
+      // full taskToRow payload via buildTaskPatch so INSERT can fill every
+      // NOT NULL column with the correct values.
+      const previousObjectsById = parseSnapshotObjectsById(lastSyncedTaskSnapshot);
+      const rows: Record<string, any>[] = [];
+      for (const task of validTasks) {
+        const patch = buildTaskPatch(task, userId, previousObjectsById.get(task.id));
+        if (patch) rows.push(patch);
+      }
+      if (rows.length > 0) {
         const { error: upsertErr } = await supabase.from('tasks').upsert(rows as any);
         if (upsertErr) {
           console.error('[Sync] Failed to save tasks:', upsertErr);
