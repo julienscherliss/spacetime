@@ -116,4 +116,4 @@ describe('SubtaskList multiline entry', () => {
 
     expectTitles(['one', 'two']);
   });
-}
+});

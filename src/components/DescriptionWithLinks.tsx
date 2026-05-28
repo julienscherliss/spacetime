@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback, type ClipboardEventHandler } from 'react';
 import { extractUrls, generateDisplayName, extractDomain } from '@/utils/linkDetection';
 import { ExternalLink } from 'lucide-react';
 
@@ -6,7 +6,7 @@ interface DescriptionWithLinksProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
-  onPasteCapture?: React.ClipboardEventHandler<HTMLTextAreaElement>;
+  onPasteCapture?: ClipboardEventHandler<HTMLTextAreaElement>;
 }
 
 /** Shorten a URL for display: "docs.google.com/d/1x…" */
