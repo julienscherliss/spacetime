@@ -372,6 +372,9 @@ export function LibraryPanel() {
 
   const [input, setInput] = useState('');
   const [quickDueDate, setQuickDueDate] = useState('');
+  // Tracks a date picked via the @-shortcut so handleAdd can read it
+  // synchronously (state updates are async and would be stale).
+  const pendingShortcutDueDate = useRef<string | null>(null);
   const [quickCategory, setQuickCategory] = useState('');
   const [showSort, setShowSort] = useState(false);
   const [showNewCat, setShowNewCat] = useState(false);
@@ -462,14 +465,17 @@ export function LibraryPanel() {
     };
   }, [draggingTag]);
 
-  const handleAdd = () => {
-    const titleText = input.replace(/#\S*$/, '').replace(/@\S*$/, '').replace(/\/\/\S*$/, '').trim();
+  const handleAdd = (overrides?: { dueDate?: string; category?: string; title?: string }) => {
+    const sourceText = overrides?.title ?? input;
+    const titleText = sourceText.replace(/#\S*$/, '').replace(/@\S*$/, '').replace(/\/\/\S*$/, '').trim();
     if (!titleText) return;
-    const autoCategory = quickCategory || (filters.category !== 'all' && filters.category !== 'none' ? filters.category : '');
+    const autoCategory = overrides?.category ?? (quickCategory || (filters.category !== 'all' && filters.category !== 'none' ? filters.category : ''));
+    const dueDate = overrides?.dueDate ?? pendingShortcutDueDate.current ?? quickDueDate;
+    pendingShortcutDueDate.current = null;
 
-    if (quickDueDate) {
+    if (dueDate) {
       // User already picked a date inline — skip the prompt.
-      useLibraryStore.getState().addItem(titleText, autoCategory || undefined, quickDueDate);
+      useLibraryStore.getState().addItem(titleText, autoCategory || undefined, dueDate);
     } else {
       // Always prompt for due date on enter — anchored to the quick-add input.
       useLibraryDuePrompt.getState().request({
@@ -729,7 +735,7 @@ export function LibraryPanel() {
                     {/* Add input */}
                     <div data-tutorial="library-add" className="px-4 py-3 border-b border-border/40">
                       <div className="relative flex items-center gap-2.5">
-                        <button onClick={handleAdd} className="p-1 text-muted-foreground/40 hover:text-foreground transition-colors shrink-0"><Plus size={16} /></button>
+                        <button onClick={() => handleAdd()} className="p-1 text-muted-foreground/40 hover:text-foreground transition-colors shrink-0"><Plus size={16} /></button>
                         <div className="relative flex-1">
                           <input
                             ref={inputRef}
@@ -756,8 +762,9 @@ export function LibraryPanel() {
                             onSelectDate={(dateStr, cleaned) => {
                               setInput(cleaned);
                               setQuickDueDate(dateStr);
+                              pendingShortcutDueDate.current = dateStr;
                             }}
-                            onSubmitAfterSelect={handleAdd}
+                            onSubmitAfterSelect={() => handleAdd()}
                           />
                         </div>
                         {quickCategory && (
@@ -852,7 +859,7 @@ export function LibraryPanel() {
                 {/* Add input */}
                 <div data-tutorial="library-add" className="px-4 py-3 border-b border-border/40">
                   <div className="relative flex items-center gap-2.5">
-                    <button onClick={handleAdd} className="p-1 text-muted-foreground/40 hover:text-foreground transition-colors shrink-0"><Plus size={16} /></button>
+                    <button onClick={() => handleAdd()} className="p-1 text-muted-foreground/40 hover:text-foreground transition-colors shrink-0"><Plus size={16} /></button>
                     <div className="relative flex-1">
                       <input
                         ref={inputRef}
@@ -879,8 +886,9 @@ export function LibraryPanel() {
                         onSelectDate={(dateStr, cleaned) => {
                           setInput(cleaned);
                           setQuickDueDate(dateStr);
+                          pendingShortcutDueDate.current = dateStr;
                         }}
-                        onSubmitAfterSelect={handleAdd}
+                        onSubmitAfterSelect={() => handleAdd()}
                       />
                     </div>
                     {quickCategory && (
