@@ -1209,9 +1209,18 @@ export function useDataSync(user: User | null) {
       const { App } = await import('@capacitor/app');
       const listener = await App.addListener('appStateChange', async ({ isActive }) => {
         if (!userIdRef.current || userIdRef.current !== user.id) return;
+        syncLog('appStateChange received', {
+          platform: currentPlatform(),
+          isActive,
+        });
         if (!isActive) {
           await flushPendingWrites(user.id);
+          return;
         }
+
+        await flushPendingWrites(user.id);
+        if (userIdRef.current !== user.id) return;
+        await loadFromDB(user.id);
       });
 
       removeListener = () => {
