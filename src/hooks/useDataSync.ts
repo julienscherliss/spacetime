@@ -419,8 +419,61 @@ export async function loadFromDB(
 
     if (!options.skipLibrary && !libRes.error) {
       const items = (libRes.data || []).map(rowToLibraryItem);
-      useLibraryStore.setState({ items });
-      lastSyncedLibSnapshot = snapshotLib(items);
+      // RECOVERY: if the DB has zero library items but the localStorage cache
+      // for this device still holds some, restore them rather than treating
+      // the empty DB as authoritative. This protects against the historical
+      // "wipe on sign-out" bug — any device that still has the cache will
+      // push the library back up on next login.
+      let restored = false;
+      if (items.length === 0) {
+        try {
+          const cached = localStorage.getItem('do-library-store');
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            const cachedItems: any[] = parsed?.state?.items || [];
+            const validCached = cachedItems.filter((i) => i && isValidUUID(i.id));
+            if (validCached.length > 0) {
+              console.warn('[Sync] DB library was empty but localStorage cache has', validCached.length, 'items — restoring from cache.');
+              const restoredItems = validCached.map((i: any) => ({
+                id: i.id,
+                title: i.title || 'Untitled',
+                note: i.note ?? '',
+                category: i.category ?? '',
+                defaultDuration: i.defaultDuration ?? 30,
+                createdAt: i.createdAt || new Date().toISOString(),
+                isUrgent: i.isUrgent ?? false,
+                isImportant: i.isImportant ?? false,
+                dueDate: i.dueDate ?? null,
+                subtasks: i.subtasks ?? [],
+                attachments: i.attachments ?? [],
+                completed: i.completed ?? false,
+                completedAt: i.completedAt ?? null,
+                deletedAt: i.deletedAt ?? null,
+              }));
+              useLibraryStore.setState({ items: restoredItems });
+              // Seed snapshot as if DB already had these so saveLibraryNow
+              // treats the upsert as a pure insert, not a delete-diff.
+              lastSyncedLibSnapshot = snapshotLib([]);
+              // Push to DB immediately.
+              const rows = restoredItems.map((i) => libraryItemToRow(i, userId));
+              const { error: upErr } = await supabase.from('library_items').upsert(rows as any);
+              if (!upErr) {
+                lastSyncedLibSnapshot = snapshotLib(restoredItems);
+                try { toast.success(`Restored ${restoredItems.length} library item${restoredItems.length === 1 ? '' : 's'} from this device's cache.`); } catch {}
+                restored = true;
+              } else {
+                console.error('[Sync] Failed to restore library from cache:', upErr);
+              }
+            }
+          }
+        } catch (err) {
+          console.error('[Sync] Library restore-from-cache failed:', err);
+        }
+      }
+      if (!restored) {
+        useLibraryStore.setState({ items });
+        lastSyncedLibSnapshot = snapshotLib(items);
+      }
     }
 
     if (!options.skipCategories && !catRes.error) {
