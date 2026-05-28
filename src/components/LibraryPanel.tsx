@@ -8,7 +8,7 @@ import {
 import {
   X, Plus, Check, Clock, AlertTriangle, Trash2,
   ArrowDownAZ, CalendarClock, Tag, ChevronDown, ChevronRight, GripVertical, CalendarDays,
-  PanelLeftClose, PanelLeftOpen,
+  PanelLeftClose, PanelLeftOpen, Pencil,
 } from 'lucide-react';
 import { TagAutocomplete, isSubtagOf, hasSubtags, getParentValue } from '@/components/TagAutocomplete';
 import { DateAutocomplete } from '@/components/DateAutocomplete';
