@@ -795,4 +795,231 @@ describe('useDataSync regression guard', () => {
     // Every DB column written by taskToRow must be reachable via the map.
     expect([...rowCols].sort()).toEqual([...mapCols].sort());
   });
+
+  it('realtime remote task changes refetch open clients, while self-echo task events are ignored once', async () => {
+    vi.useFakeTimers();
+
+    const taskId = crypto.randomUUID();
+    const serverRows = [{
+      id: taskId,
+      title: 'Initial title',
+      type: 'one-time',
+      priority: 0,
+      original_priority: 0,
+      date: '2026-05-06',
+      completed: false,
+      move_count: 0,
+      created_at: '2026-05-06T00:00:00.000Z',
+      group_order: 0,
+    }];
+
+    const tasksRange = vi.fn(() => Promise.resolve({ data: serverRows.slice(), error: null }));
+    const updateTasks = vi.fn(() => ({ eq: () => ({ eq: () => Promise.resolve({ error: null }) }) }));
+    const upsertTasks = vi.fn().mockResolvedValue({ error: null });
+
+    const realtimeHandlers: Record<string, (payload: any) => void> = {};
+    const subscribe = vi.fn((callback?: (status: string) => void) => {
+      callback?.('SUBSCRIBED');
+      return { id: 'channel-1' };
+    });
+    const on = vi.fn((event: string, config: any, handler: (payload: any) => void) => {
+      realtimeHandlers[config.table] = handler;
+      return channel;
+    });
+    const channel = { on, subscribe };
+
+    const from = vi.fn((table: string) => {
+      if (table === 'tasks') {
+        return {
+          select: () => ({
+            eq: () => ({
+              order: () => ({ range: tasksRange }),
+            }),
+          }),
+          upsert: upsertTasks,
+          update: updateTasks,
+          delete: () => ({ in: vi.fn() }),
+        };
+      }
+
+      return {
+        select: () => ({
+          eq: () => ({
+            order: () => ({ range: vi.fn().mockResolvedValue({ data: [], error: null }) }),
+          }),
+        }),
+        upsert: vi.fn().mockResolvedValue({ error: null }),
+        delete: () => ({ in: vi.fn() }),
+      };
+    });
+
+    const auth = {
+      onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
+      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+    };
+
+    vi.doMock('@/integrations/supabase/client', () => ({
+      supabase: {
+        from,
+        auth,
+        channel: vi.fn(() => channel),
+        removeChannel: vi.fn(),
+      },
+    }));
+    vi.doMock('@/utils/nativePlatform', () => ({
+      isNativePlatform: vi.fn(() => true),
+    }));
+
+    const React = await import('react');
+    const { useDataSync } = await import('@/hooks/useDataSync');
+    const { useTaskStore } = await import('@/store/taskStore');
+
+    function Harness() {
+      useDataSync({ id: 'user-1' } as any);
+      return null;
+    }
+
+    render(React.createElement(Harness));
+
+    await waitFor(() => {
+      expect(tasksRange).toHaveBeenCalledTimes(1);
+      expect(useTaskStore.getState().tasks[0]?.title).toBe('Initial title');
+    });
+
+    serverRows[0] = { ...serverRows[0], title: 'Browser changed title' };
+    realtimeHandlers.tasks({ eventType: 'UPDATE', new: { id: taskId }, old: { id: taskId } });
+    await vi.advanceTimersByTimeAsync(450);
+
+    await waitFor(() => {
+      expect(tasksRange).toHaveBeenCalledTimes(2);
+      expect(useTaskStore.getState().tasks[0]?.title).toBe('Browser changed title');
+    });
+
+    useTaskStore.setState({
+      tasks: [{
+        ...useTaskStore.getState().tasks[0],
+        duration: 45,
+      }],
+    });
+
+    await vi.advanceTimersByTimeAsync(350);
+    await waitFor(() => {
+      expect(updateTasks).toHaveBeenCalledTimes(1);
+      expect(updateTasks.mock.calls[0]?.[0]).toEqual({ duration: 45 });
+    });
+
+    realtimeHandlers.tasks({ eventType: 'UPDATE', new: { id: taskId }, old: { id: taskId } });
+    await vi.advanceTimersByTimeAsync(450);
+    expect(tasksRange).toHaveBeenCalledTimes(2);
+
+    realtimeHandlers.tasks({ eventType: 'UPDATE', new: { id: taskId }, old: { id: taskId } });
+    await vi.advanceTimersByTimeAsync(450);
+
+    await waitFor(() => {
+      expect(tasksRange).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  it('visibility resume refetches from DB and preserves remote task changes before local edits save', async () => {
+    const taskId = crypto.randomUUID();
+    const serverRows = [{
+      id: taskId,
+      title: 'Original',
+      type: 'one-time',
+      priority: 0,
+      original_priority: 0,
+      date: '2026-05-06',
+      completed: false,
+      move_count: 0,
+      created_at: '2026-05-06T00:00:00.000Z',
+      group_order: 0,
+    }];
+
+    const tasksRange = vi.fn(() => Promise.resolve({ data: serverRows.slice(), error: null }));
+    const updateTasks = vi.fn(() => ({ eq: () => ({ eq: () => Promise.resolve({ error: null }) }) }));
+    const upsertTasks = vi.fn().mockResolvedValue({ error: null });
+    const channel = { on: vi.fn(() => channel), subscribe: vi.fn(() => ({ id: 'channel-1' })) };
+
+    const from = vi.fn((table: string) => {
+      if (table === 'tasks') {
+        return {
+          select: () => ({
+            eq: () => ({
+              order: () => ({ range: tasksRange }),
+            }),
+          }),
+          upsert: upsertTasks,
+          update: updateTasks,
+          delete: () => ({ in: vi.fn() }),
+        };
+      }
+
+      return {
+        select: () => ({
+          eq: () => ({
+            order: () => ({ range: vi.fn().mockResolvedValue({ data: [], error: null }) }),
+          }),
+        }),
+        upsert: vi.fn().mockResolvedValue({ error: null }),
+        delete: () => ({ in: vi.fn() }),
+      };
+    });
+
+    const auth = {
+      onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
+      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+    };
+
+    vi.doMock('@/integrations/supabase/client', () => ({
+      supabase: {
+        from,
+        auth,
+        channel: vi.fn(() => channel),
+        removeChannel: vi.fn(),
+      },
+    }));
+
+    const React = await import('react');
+    const { fireEvent } = await import('@testing-library/react');
+    const { useDataSync } = await import('@/hooks/useDataSync');
+    const { useTaskStore } = await import('@/store/taskStore');
+
+    function Harness() {
+      useDataSync({ id: 'user-1' } as any);
+      return null;
+    }
+
+    render(React.createElement(Harness));
+
+    await waitFor(() => {
+      expect(tasksRange).toHaveBeenCalledTimes(1);
+      expect(useTaskStore.getState().tasks[0]?.title).toBe('Original');
+    });
+
+    serverRows[0] = { ...serverRows[0], title: 'Browser renamed me', archived_at: '2026-05-06T12:00:00.000Z', archive_reason: 'completed', completed: true };
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => 'visible',
+    });
+
+    fireEvent(document, new Event('visibilitychange'));
+
+    await waitFor(() => {
+      expect(tasksRange).toHaveBeenCalledTimes(2);
+      expect(useTaskStore.getState().tasks[0]?.title).toBe('Browser renamed me');
+      expect(useTaskStore.getState().tasks[0]?.archivedAt).toBe('2026-05-06T12:00:00.000Z');
+    });
+
+    useTaskStore.setState({
+      tasks: [{
+        ...useTaskStore.getState().tasks[0],
+        duration: 30,
+      }],
+    });
+
+    await waitFor(() => {
+      expect(updateTasks).toHaveBeenCalledTimes(1);
+      expect(updateTasks.mock.calls[0]?.[0]).toEqual({ duration: 30 });
+    });
+  });
 });
