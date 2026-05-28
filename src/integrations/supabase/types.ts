@@ -89,6 +89,39 @@ export type Database = {
         }
         Relationships: []
       }
+      deleted_records_recovery: {
+        Row: {
+          delete_reason: string | null
+          deleted_at: string
+          deleted_by: string | null
+          id: string
+          original_row_id: string
+          original_table: string
+          row_data: Json
+          user_id: string | null
+        }
+        Insert: {
+          delete_reason?: string | null
+          deleted_at?: string
+          deleted_by?: string | null
+          id?: string
+          original_row_id: string
+          original_table: string
+          row_data: Json
+          user_id?: string | null
+        }
+        Update: {
+          delete_reason?: string | null
+          deleted_at?: string
+          deleted_by?: string | null
+          id?: string
+          original_row_id?: string
+          original_table?: string
+          row_data?: Json
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       email_send_log: {
         Row: {
           created_at: string
@@ -1034,6 +1067,7 @@ export type Database = {
         }
         Returns: number
       }
+      purge_old_recovery_records: { Args: never; Returns: number }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {
@@ -1041,6 +1075,10 @@ export type Database = {
           msg_id: number
           read_ct: number
         }[]
+      }
+      restore_deleted_record: {
+        Args: { _recovery_id: string }
+        Returns: string
       }
     }
     Enums: {
