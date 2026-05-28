@@ -287,21 +287,34 @@ async function saveLibraryNow(userId: string): Promise<boolean> {
   if (snap === lastSyncedLibSnapshot) return true;
 
   try {
-    const { data: dbItems, error: fetchErr } = await supabase
-      .from('library_items')
-      .select('id')
-      .eq('user_id', userId);
+    // SAFETY: derive deletions from the last successfully-synced snapshot,
+    // NOT from a fresh DB fetch. A live DB fetch combined with a transiently
+    // empty local `items` array (e.g. during sign-out, user switch, or before
+    // initial load completes) previously wiped every row from `library_items`.
+    // Mirror the pattern used by saveTasksNow.
+    const previousIds = new Set(
+      lastSyncedLibSnapshot
+        ? (JSON.parse(lastSyncedLibSnapshot) as Array<{ id: string }>).map((i) => i.id)
+        : [],
+    );
+    const localIds = new Set(state.items.map(i => i.id));
+    const toDelete = Array.from(previousIds).filter((id) => !localIds.has(id));
 
-    if (fetchErr) {
-      console.error('[Sync] Failed to fetch library IDs:', fetchErr);
+    // Extra belt-and-braces guard: refuse to wipe everything if local somehow
+    // emptied without an explicit removal having been observed against a
+    // populated previous snapshot. Saves with zero local items only proceed
+    // if the previous snapshot was also empty (genuinely nothing to sync).
+    if (validItems.length === 0 && previousIds.size > 0) {
+      console.warn('[Sync] Refusing to save empty library — looks like a transient state, not a real deletion of all items.');
       return false;
     }
 
-    const localIds = new Set(state.items.map(i => i.id));
-    const toDelete = (dbItems || []).map((i: any) => i.id).filter((id: string) => !localIds.has(id));
-
     if (toDelete.length > 0) {
-      await supabase.from('library_items').delete().in('id', toDelete);
+      const { error: delErr } = await supabase.from('library_items').delete().in('id', toDelete).eq('user_id', userId);
+      if (delErr) {
+        console.error('[Sync] Failed to delete library items:', delErr);
+        return false;
+      }
     }
 
     if (validItems.length > 0) {
@@ -340,15 +353,20 @@ async function saveCategoriesNow(userId: string): Promise<boolean> {
   if (snap === lastSyncedCatSnapshot) return true;
 
   try {
-    const { data: dbCats, error: fetchErr } = await supabase
-      .from('library_categories')
-      .select('value')
-      .eq('user_id', userId);
-
-    if (fetchErr) return false;
-
+    // SAFETY: derive deletions from the last successfully-synced snapshot,
+    // not from a fresh DB fetch (see saveLibraryNow for the wipe-bug history).
+    const previousValues = new Set(
+      lastSyncedCatSnapshot
+        ? (JSON.parse(lastSyncedCatSnapshot) as Array<{ value: string }>).map((c) => c.value)
+        : [],
+    );
     const localValues = new Set(state.categories.map(c => c.value));
-    const toDelete = (dbCats || []).map((c: any) => c.value).filter((v: string) => !localValues.has(v));
+    const toDelete = Array.from(previousValues).filter((v) => !localValues.has(v));
+
+    if (state.categories.length === 0 && previousValues.size > 0) {
+      console.warn('[Sync] Refusing to save empty categories — likely transient state, not a real wipe.');
+      return false;
+    }
 
     if (toDelete.length > 0) {
       await supabase.from('library_categories').delete().eq('user_id', userId).in('value', toDelete);
@@ -401,8 +419,61 @@ export async function loadFromDB(
 
     if (!options.skipLibrary && !libRes.error) {
       const items = (libRes.data || []).map(rowToLibraryItem);
-      useLibraryStore.setState({ items });
-      lastSyncedLibSnapshot = snapshotLib(items);
+      // RECOVERY: if the DB has zero library items but the localStorage cache
+      // for this device still holds some, restore them rather than treating
+      // the empty DB as authoritative. This protects against the historical
+      // "wipe on sign-out" bug — any device that still has the cache will
+      // push the library back up on next login.
+      let restored = false;
+      if (items.length === 0) {
+        try {
+          const cached = localStorage.getItem('do-library-store');
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            const cachedItems: any[] = parsed?.state?.items || [];
+            const validCached = cachedItems.filter((i) => i && isValidUUID(i.id));
+            if (validCached.length > 0) {
+              console.warn('[Sync] DB library was empty but localStorage cache has', validCached.length, 'items — restoring from cache.');
+              const restoredItems = validCached.map((i: any) => ({
+                id: i.id,
+                title: i.title || 'Untitled',
+                note: i.note ?? '',
+                category: i.category ?? '',
+                defaultDuration: i.defaultDuration ?? 30,
+                createdAt: i.createdAt || new Date().toISOString(),
+                isUrgent: i.isUrgent ?? false,
+                isImportant: i.isImportant ?? false,
+                dueDate: i.dueDate ?? null,
+                subtasks: i.subtasks ?? [],
+                attachments: i.attachments ?? [],
+                completed: i.completed ?? false,
+                completedAt: i.completedAt ?? null,
+                deletedAt: i.deletedAt ?? null,
+              }));
+              useLibraryStore.setState({ items: restoredItems });
+              // Seed snapshot as if DB already had these so saveLibraryNow
+              // treats the upsert as a pure insert, not a delete-diff.
+              lastSyncedLibSnapshot = snapshotLib([]);
+              // Push to DB immediately.
+              const rows = restoredItems.map((i) => libraryItemToRow(i, userId));
+              const { error: upErr } = await supabase.from('library_items').upsert(rows as any);
+              if (!upErr) {
+                lastSyncedLibSnapshot = snapshotLib(restoredItems);
+                try { toast.success(`Restored ${restoredItems.length} library item${restoredItems.length === 1 ? '' : 's'} from this device's cache.`); } catch {}
+                restored = true;
+              } else {
+                console.error('[Sync] Failed to restore library from cache:', upErr);
+              }
+            }
+          }
+        } catch (err) {
+          console.error('[Sync] Library restore-from-cache failed:', err);
+        }
+      }
+      if (!restored) {
+        useLibraryStore.setState({ items });
+        lastSyncedLibSnapshot = snapshotLib(items);
+      }
     }
 
     if (!options.skipCategories && !catRes.error) {
