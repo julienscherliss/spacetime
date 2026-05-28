@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useTaskStore } from '@/store/taskStore';
 import { useCalendarStore } from '@/store/calendarStore';
+import { useLibraryStore } from '@/store/libraryStore';
+import { useQuickAddStore } from '@/store/quickAddStore';
+import { QuickAddBar } from '@/components/QuickAddBar';
 import { AppNav } from '@/components/AppNav';
 import { setupNotificationTapListener } from '@/utils/notificationService';
 import { isNativePlatform } from '@/utils/nativePlatform';
