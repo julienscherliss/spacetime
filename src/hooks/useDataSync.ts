@@ -180,21 +180,79 @@ function validTaskIds(tasks: Task[]): string[] {
   return tasks.filter((t) => isValidUUID(t.id)).map((t) => t.id);
 }
 
+// Projection of every Task field that is actually persisted to the DB.
+// Used for both the collection-level snapshot (early-exit when nothing
+// changed) and per-row diffing (only upsert rows whose JSON differs).
+// MUST stay in sync with `taskToRow` — any field written to the DB must
+// appear here, or echo-reload from realtime can re-trigger a save loop.
+function taskSnapshotFields(t: Task) {
+  return {
+    id: t.id,
+    title: t.title,
+    category: t.category ?? null,
+    description: t.description ?? null,
+    subtasks: t.subtasks ?? [],
+    type: t.type,
+    priority: t.priority,
+    originalPriority: t.originalPriority,
+    date: t.date,
+    time: t.time ?? null,
+    duration: t.duration ?? null,
+    completed: t.completed,
+    moveCount: t.moveCount,
+    recurrence: t.recurrence ?? null,
+    recurrenceParentId: t.recurrenceParentId ?? null,
+    isRecurrenceInstance: t.isRecurrenceInstance ?? false,
+    isRoutine: t.isRoutine ?? null,
+    linked: t.linked ?? false,
+    seriesId: t.seriesId ?? null,
+    linkedGroupId: t.linkedGroupId ?? null,
+    detachedFromSeries: t.detachedFromSeries ?? false,
+    inWaitingRoom: t.inWaitingRoom ?? false,
+    waitingRoomCount: t.waitingRoomCount ?? 0,
+    dueDate: t.dueDate ?? null,
+    archivedAt: t.archivedAt ?? null,
+    archiveReason: t.archiveReason ?? null,
+    attachments: t.attachments ?? [],
+    groupId: t.groupId ?? null,
+    preferredDuration: t.preferredDuration ?? null,
+    groupOrder: t.groupOrder ?? null,
+  };
+}
+
 function snapshotTasks(tasks: Task[]): string {
-  return JSON.stringify(tasks.filter(t => isValidUUID(t.id)).map(t => ({
-    id: t.id, title: t.title, category: t.category, description: t.description,
-    subtasks: t.subtasks, type: t.type, priority: t.priority, originalPriority: t.originalPriority,
-    date: t.date, time: t.time, duration: t.duration, completed: t.completed,
-    moveCount: t.moveCount, recurrence: t.recurrence, recurrenceParentId: t.recurrenceParentId,
-    isRecurrenceInstance: t.isRecurrenceInstance, isRoutine: t.isRoutine, linked: t.linked,
-    seriesId: t.seriesId, linkedGroupId: t.linkedGroupId, detachedFromSeries: t.detachedFromSeries,
-    inWaitingRoom: t.inWaitingRoom, waitingRoomCount: t.waitingRoomCount,
-    dueDate: t.dueDate, archivedAt: t.archivedAt, archiveReason: t.archiveReason,
-  })));
+  // Sort by id so the string is stable regardless of in-memory order.
+  const projected = tasks
+    .filter((t) => isValidUUID(t.id))
+    .map(taskSnapshotFields)
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  return JSON.stringify(projected);
+}
+
+// Build a Map<id, json> from a snapshot string. Used to compute per-row
+// diffs so we upsert only the rows that actually changed.
+function parseSnapshotById(snap: string): Map<string, string> {
+  const out = new Map<string, string>();
+  if (!snap) return out;
+  try {
+    const arr = JSON.parse(snap) as Array<{ id?: string; value?: string }>;
+    for (const entry of arr) {
+      const key = (entry.id ?? entry.value) as string | undefined;
+      if (!key) continue;
+      out.set(key, JSON.stringify(entry));
+    }
+  } catch {
+    // Corrupt snapshot — treat as empty so callers fall back to a full upsert.
+  }
+  return out;
 }
 
 function snapshotLib(items: LibraryTask[]): string {
-  return JSON.stringify(items.filter(i => isValidUUID(i.id)));
+  const projected = items
+    .filter((i) => isValidUUID(i.id))
+    .slice()
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  return JSON.stringify(projected);
 }
 
 function snapshotCats(cats: CategoryDef[]): string {
