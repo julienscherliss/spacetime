@@ -33,7 +33,7 @@ interface DateAutocompleteProps {
   inputValue: string;
   inputRef?: React.RefObject<HTMLInputElement>;
   onSelectDate: (dateStr: string, cleanedValue: string) => void;
-  onSubmitAfterSelect?: () => void;
+  onSubmitAfterSelect?: (dateStr: string) => void;
 }
 
 export function DateAutocomplete({ inputValue, inputRef, onSelectDate, onSubmitAfterSelect }: DateAutocompleteProps) {
@@ -91,7 +91,8 @@ export function DateAutocomplete({ inputValue, inputRef, onSelectDate, onSubmitA
             onSelectDate(opt.date, cleaned);
             setShowMenu(false);
             if (e.key === 'Enter' && onSubmitAfterSelect) {
-              setTimeout(() => onSubmitAfterSelect(), 0);
+              const picked = opt.date;
+              setTimeout(() => onSubmitAfterSelect(picked), 0);
             }
           }
         }
