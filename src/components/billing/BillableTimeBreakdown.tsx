@@ -85,18 +85,7 @@ export function BillableTimeBreakdown() {
   const interval = useMemo(() => rangeFor(range), [range]);
   const settingsByTag = useMemo(() => new Map(settings.map(s => [s.tagValue, s])), [settings]);
 
-  const findOwnBillableAnchor = (tagValue: string): string | null => {
-    const parts = tagValue.split('/');
-    for (let i = parts.length; i >= 1; i--) {
-      const candidate = parts.slice(0, i).join('/');
-      const setting = settingsByTag.get(candidate);
-      if (!setting) continue;
-      if (setting.billable && !setting.parentOnly) return candidate;
-      if (setting.parentOnly) continue;
-      return null;
-    }
-    return null;
-  };
+  const isExactBillableTag = (tagValue: string) => !!findBillableAncestor(tagValue, settings);
 
   // Determine which tags are billable (direct or inherited).
   const billableTagValues = useMemo(() => {
@@ -142,22 +131,19 @@ export function BillableTimeBreakdown() {
         const prev = lastUsed.get(ancestor);
         if (!prev || dateStr > prev) lastUsed.set(ancestor, dateStr);
       }
-      if (inRange && t.completed) {
-        const anchor = findOwnBillableAnchor(cat);
-        if (anchor) {
-          ownBillableMinutes.set(anchor, (ownBillableMinutes.get(anchor) || 0) + dur);
-          const ownPrev = ownBillableLastUsed.get(anchor);
-          if (!ownPrev || dateStr > ownPrev) ownBillableLastUsed.set(anchor, dateStr);
+      if (inRange && t.completed && isExactBillableTag(cat)) {
+        ownBillableMinutes.set(cat, (ownBillableMinutes.get(cat) || 0) + dur);
+        const ownPrev = ownBillableLastUsed.get(cat);
+        if (!ownPrev || dateStr > ownPrev) ownBillableLastUsed.set(cat, dateStr);
 
-          const anchorParts = anchor.split('/');
-          for (let i = anchorParts.length; i >= 1; i--) {
-            const ancestor = anchorParts.slice(0, i).join('/');
-            const setting = settingsByTag.get(ancestor);
-            if (!setting || (!setting.billable && !setting.parentOnly)) continue;
-            billableTreeMinutes.set(ancestor, (billableTreeMinutes.get(ancestor) || 0) + dur);
-            const treePrev = billableTreeLastUsed.get(ancestor);
-            if (!treePrev || dateStr > treePrev) billableTreeLastUsed.set(ancestor, dateStr);
-          }
+        const parts = cat.split('/');
+        for (let i = parts.length - 1; i >= 1; i--) {
+          const ancestor = parts.slice(0, i).join('/');
+          const setting = settingsByTag.get(ancestor);
+          if (!setting?.parentOnly) continue;
+          billableTreeMinutes.set(ancestor, (billableTreeMinutes.get(ancestor) || 0) + dur);
+          const treePrev = billableTreeLastUsed.get(ancestor);
+          if (!treePrev || dateStr > treePrev) billableTreeLastUsed.set(ancestor, dateStr);
         }
       }
     }
@@ -171,7 +157,7 @@ export function BillableTimeBreakdown() {
       billableTreeLastUsed,
       now,
     };
-  }, [tasks, interval, settingsByTag]);
+  }, [tasks, interval, settings, settingsByTag]);
 
   const billingMeta = useMemo(() => {
     const ownBilledMinutes = new Map<string, number>();
@@ -190,15 +176,15 @@ export function BillableTimeBreakdown() {
       for (const it of inv.items) {
         const mins = (it.hours || 0) * 60;
         if (!mins) continue;
-        const anchor = findOwnBillableAnchor(it.tagValue || '');
-        if (!anchor) continue;
+        const tagValue = it.tagValue || '';
+        if (!isExactBillableTag(tagValue)) continue;
 
-        ownEverInvoiced.add(anchor);
-        const anchorParts = anchor.split('/');
-        for (let i = anchorParts.length; i >= 1; i--) {
-          const ancestor = anchorParts.slice(0, i).join('/');
+        ownEverInvoiced.add(tagValue);
+        const parts = tagValue.split('/');
+        for (let i = parts.length - 1; i >= 1; i--) {
+          const ancestor = parts.slice(0, i).join('/');
           const setting = settingsByTag.get(ancestor);
-          if (!setting || (!setting.billable && !setting.parentOnly)) continue;
+          if (!setting?.parentOnly) continue;
           billableTreeEverInvoiced.add(ancestor);
           if (inRange) {
             billableTreeBilledMinutes.set(ancestor, (billableTreeBilledMinutes.get(ancestor) || 0) + mins);
@@ -206,7 +192,7 @@ export function BillableTimeBreakdown() {
         }
 
         if (inRange) {
-          ownBilledMinutes.set(anchor, (ownBilledMinutes.get(anchor) || 0) + mins);
+          ownBilledMinutes.set(tagValue, (ownBilledMinutes.get(tagValue) || 0) + mins);
         }
       }
     }
@@ -217,7 +203,7 @@ export function BillableTimeBreakdown() {
       ownEverInvoiced,
       billableTreeEverInvoiced,
     };
-  }, [invoices, interval, settingsByTag]);
+  }, [invoices, interval, settings, settingsByTag]);
 
   const rateLabelFor = (tagValue: string): string => {
     const direct = settingsByTag.get(tagValue);
