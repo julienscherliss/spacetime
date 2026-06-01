@@ -251,8 +251,22 @@ export function BillableTimeBreakdown() {
         hasBeenInvoiced: everInvoicedTags.has(value),
       });
     }
+    // Hide intermediate billable rows that have no own time and no billing
+    // history when at least one billable subtag below them DOES carry time —
+    // the subtag row already represents that work, so the empty parent is noise.
+    const allVals = new Set(list.map(r => r.value));
+    const filtered = list.filter(r => {
+      if (r.parentOnly) return true;
+      if (r.minutes > 0 || r.billedMinutes > 0 || r.hasBeenInvoiced) return true;
+      // Has any billable descendant in the list?
+      const prefix = r.value + '/';
+      for (const v of allVals) {
+        if (v !== r.value && v.startsWith(prefix)) return false;
+      }
+      return true;
+    });
     // Sort: roots first by minutes desc, subtags follow their parent alphabetically
-    return list.sort((a, b) => {
+    return filtered.sort((a, b) => {
       const ad = a.value.split('/').length;
       const bd = b.value.split('/').length;
       if (ad !== bd) return ad - bd;
