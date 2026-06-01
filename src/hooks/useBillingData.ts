@@ -59,6 +59,29 @@ export function useBillableTagRows(start?: Date, end?: Date): BillableTagRow[] {
   const minutesByTag = useCompletedMinutesByTag(start, end);
   const tasks = useTaskStore(s => s.tasks);
 
+  // Minutes attributed to the NEAREST billable anchor only — so a parent
+  // billable tag does NOT double-count minutes that actually belong to a
+  // billable subtag beneath it. Only counts anchors that are themselves
+  // billable (parentOnly anchors are ignored as accumulators).
+  const minutesByAnchor = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const t of tasks) {
+      if (t.archiveReason === 'deleted') continue;
+      if (!t.completed) continue;
+      const cat = t.category || '';
+      if (!cat) continue;
+      if (start && end) {
+        const d = parseISO(t.date);
+        if (!isWithinInterval(d, { start, end })) continue;
+      }
+      const anchor = findBillableAncestor(cat, settings);
+      if (!anchor || !anchor.billable) continue;
+      const mins = t.duration || 30;
+      map.set(anchor.tagValue, (map.get(anchor.tagValue) || 0) + mins);
+    }
+    return map;
+  }, [tasks, settings, start, end]);
+
   // Tags with completed time in the last 7 days (rolled up to ancestors).
   const recentlyActiveTags = useMemo(() => {
     const cutoff = subDays(new Date(), 7);
@@ -120,7 +143,7 @@ export function useBillableTagRows(start?: Date, end?: Date): BillableTagRow[] {
       // (the parent row will roll up parent+all descendants via existing logic).
       // To avoid double counting, only count direct minutes for inherited rows.
       const completedMinutes = direct?.billable
-        ? (minutesByTag.get(tagValue) || 0)
+        ? (minutesByAnchor.get(tagValue) || 0)
         : 0; // Inherited rows are informational; their time is already in the parent's roll-up
       const invoicedMinutes = invoices
         .flatMap(inv => inv.items)
@@ -154,14 +177,16 @@ export function useBillableTagRows(start?: Date, end?: Date): BillableTagRow[] {
       });
     }
 
-    // Hide inherited rows that have zero activity AND no billing history (they're noise).
-    // Keep direct billable tags always.
+    // Hide rows that have zero own activity AND no billing history.
+    // For direct billable parents: their minutes now exclude billable subtags,
+    // so a parent whose time is fully covered by billable children correctly
+    // drops out. Flat-rate tags are kept regardless so the flat fee remains
+    // visible until invoiced.
     const filtered = rows.filter(r => {
-      const direct = settingsByTag.get(r.tagValue);
-      if (direct?.billable) return true;
+      if (r.settings.rateType === 'flat') return true;
       return r.completedMinutes > 0 || r.invoicedMinutes > 0;
     });
 
     return filtered.sort((a, b) => b.unbilledAmount - a.unbilledAmount);
-  }, [settings, invoices, categories, minutesByTag, recentlyActiveTags]);
+  }, [settings, invoices, categories, minutesByAnchor, recentlyActiveTags]);
 }
