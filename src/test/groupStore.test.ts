@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useTaskStore } from '@/store/taskStore';
+import { getOccupiedSlots } from '@/utils/collisionDetection';
 
 // Stub native/notification side effects so the store actions stay pure in tests.
 vi.mock('@/utils/notificationService', () => ({
@@ -235,5 +236,47 @@ describe('Group store actions', () => {
     const g1 = store.createEmptyGroup({ name: 'G1', date: '2099-01-01', time: '09:00', duration: 30 });
     const g2 = store.createEmptyGroup({ name: 'G2', date: '2099-01-01', time: '10:00', duration: 30 });
     expect(useTaskStore.getState().addTaskToGroup(g2, g1)).toBe(false);
+  });
+
+  it('allows a detached former recurring task to be added to a Group', () => {
+    const store = useTaskStore.getState();
+    const groupId = store.createEmptyGroup({ name: 'G1', date: '2099-01-01', time: '09:00', duration: 30 });
+
+    useTaskStore.setState((state) => ({
+      tasks: [
+        ...state.tasks,
+        {
+          id: 'detached-task',
+          title: 'Detached task',
+          type: 'one-time',
+          priority: 0,
+          originalPriority: 0,
+          date: '2099-01-01',
+          time: '11:00',
+          duration: 30,
+          completed: false,
+          createdAt: '2099-01-01T00:00:00.000Z',
+          moveCount: 0,
+          linked: false,
+          detachedFromSeries: true,
+          isRecurrenceInstance: true,
+          recurrenceParentId: 'series-1',
+        },
+      ],
+    }));
+
+    expect(useTaskStore.getState().addTaskToGroup('detached-task', groupId)).toBe(true);
+    expect(useTaskStore.getState().tasks.find((t) => t.id === 'detached-task')?.groupId).toBe(groupId);
+  });
+
+  it('does not treat hidden group children as occupied slots on the main timeline', () => {
+    const store = useTaskStore.getState();
+    const groupId = store.createEmptyGroup({ name: 'Block', date: '2099-01-01', time: '09:00', duration: 30 });
+    store.addTask({ title: 'Child', date: '2099-01-01', time: '10:00', duration: 30, priority: 0, type: 'one-time' });
+    const child = useTaskStore.getState().tasks.find((t) => t.title === 'Child')!;
+    useTaskStore.getState().addTaskToGroup(child.id, groupId);
+
+    const occupied = getOccupiedSlots(useTaskStore.getState().tasks, '2099-01-01', undefined, true);
+    expect(occupied.map((slot) => slot.id)).toEqual([groupId]);
   });
 });

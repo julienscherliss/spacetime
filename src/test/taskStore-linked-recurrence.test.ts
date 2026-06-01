@@ -128,4 +128,25 @@ describe('linked recurrence schedule propagation', () => {
     });
     expect(tasks.find((task) => task.id === 'linked-b')).toBeUndefined();
   });
+
+  it('treats a detached occurrence with stale recurrence metadata as independent', () => {
+    const detached = makeTask({
+      id: 'detached',
+      type: 'one-time',
+      recurrence: undefined,
+      linked: false,
+      linkedGroupId: undefined,
+      detachedFromSeries: true,
+      isRecurrenceInstance: true,
+      recurrenceParentId: 'parent',
+    });
+
+    resetStore([detached]);
+    useTaskStore.getState().reorderTask('detached', '14:00');
+
+    const updated = useTaskStore.getState().tasks.find((task) => task.id === 'detached')!;
+    expect(updated.linked).toBe(false);
+    expect(updated.recurrence).toBeUndefined();
+    expect(updated.detachedFromSeries).toBe(true);
+  });
 });

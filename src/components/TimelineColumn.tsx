@@ -1196,6 +1196,10 @@ export function TimelineColumn({
           detachedFromSeries: true,
           recurrence: undefined,
           type: 'one-time',
+          isRecurrenceInstance: false,
+          recurrenceParentId: undefined,
+          seriesId: undefined,
+          isRoutine: false,
         });
       }
 
