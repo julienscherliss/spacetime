@@ -257,12 +257,13 @@ export function BillableTimeBreakdown() {
     const allVals = new Set(list.map(r => r.value));
     const filtered = list.filter(r => {
       if (r.parentOnly) return true;
-      if (r.minutes > 0 || r.billedMinutes > 0 || r.hasBeenInvoiced) return true;
-      // Has any billable descendant in the list?
+      // Has any billable descendant in the list? If so, that subtag row
+      // represents the work — hide this empty intermediate row.
       const prefix = r.value + '/';
       for (const v of allVals) {
         if (v !== r.value && v.startsWith(prefix)) return false;
       }
+      if (r.minutes > 0 || r.billedMinutes > 0 || r.hasBeenInvoiced) return true;
       return true;
     });
     // Sort: roots first by minutes desc, subtags follow their parent alphabetically
