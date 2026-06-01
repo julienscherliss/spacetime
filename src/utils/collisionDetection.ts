@@ -31,7 +31,7 @@ export function slotsOverlap(a: { startMin: number; endMin: number }, b: { start
  * When routinesEnabled is false, routine tasks are excluded from collision detection.
  */
 export function getOccupiedSlots(
-  tasks: Array<{ id: string; time?: string; duration?: number; date: string; completed: boolean; archivedAt?: string; inWaitingRoom?: boolean; isRoutine?: boolean; type?: string }>,
+  tasks: Array<{ id: string; time?: string; duration?: number; date: string; completed: boolean; archivedAt?: string; inWaitingRoom?: boolean; isRoutine?: boolean; type?: string; groupId?: string }>,
   date: string,
   excludeId?: string,
   routinesEnabled: boolean = true
@@ -42,6 +42,7 @@ export function getOccupiedSlots(
       !t.completed &&
       !t.archivedAt &&
       !t.inWaitingRoom &&
+      !t.groupId &&
       t.time &&
       t.id !== excludeId &&
       // Skip routines when they are disabled

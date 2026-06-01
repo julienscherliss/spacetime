@@ -233,6 +233,11 @@ function isTaskInSameSeries(candidate: Task, seriesId: string): boolean {
   );
 }
 
+function isTaskStillRecurring(task: Task): boolean {
+  if (task.detachedFromSeries) return false;
+  return !!task.recurrence || task.isRecurrenceInstance === true || !!task.recurrenceParentId;
+}
+
 function sortTasksBySeriesOrder(tasks: Task[]): Task[] {
   return [...tasks].sort((a, b) => {
     if (a.date !== b.date) return a.date.localeCompare(b.date);
@@ -1259,7 +1264,7 @@ export const useTaskStore = create<TaskState>()(
           toast.error('Only scheduled tasks can be converted to a Group');
           return null;
         }
-        if (original.recurrence || original.isRecurrenceInstance || original.recurrenceParentId) {
+        if (isTaskStillRecurring(original)) {
           toast.error('Repeating tasks can\u2019t be turned into a Group. Convert it to a one-time task first.');
           return null;
         }
@@ -1339,7 +1344,7 @@ export const useTaskStore = create<TaskState>()(
           toast.error('Groups cannot be nested');
           return false;
         }
-        if (task.recurrence || task.isRecurrenceInstance || task.recurrenceParentId) {
+        if (isTaskStillRecurring(task)) {
           toast.error('Repeating tasks can\u2019t be added to a Group.');
           return false;
         }
