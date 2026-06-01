@@ -136,14 +136,20 @@ export function BillableTimeBreakdown() {
         const ownPrev = ownBillableLastUsed.get(cat);
         if (!ownPrev || dateStr > ownPrev) ownBillableLastUsed.set(cat, dateStr);
 
-        const parts = cat.split('/');
-        for (let i = parts.length - 1; i >= 1; i--) {
-          const ancestor = parts.slice(0, i).join('/');
-          const setting = settingsByTag.get(ancestor);
-          if (!setting?.parentOnly) continue;
-          billableTreeMinutes.set(ancestor, (billableTreeMinutes.get(ancestor) || 0) + dur);
-          const treePrev = billableTreeLastUsed.get(ancestor);
-          if (!treePrev || dateStr > treePrev) billableTreeLastUsed.set(ancestor, dateStr);
+        // Only roll up into parentOnly ancestors when this tag is EXPLICITLY
+        // billable (own settings flag), not merely inheriting from the parent.
+        // Otherwise the parent bar swells with every casual subtag.
+        const ownSetting = settingsByTag.get(cat);
+        if (ownSetting?.billable) {
+          const parts = cat.split('/');
+          for (let i = parts.length - 1; i >= 1; i--) {
+            const ancestor = parts.slice(0, i).join('/');
+            const setting = settingsByTag.get(ancestor);
+            if (!setting?.parentOnly) continue;
+            billableTreeMinutes.set(ancestor, (billableTreeMinutes.get(ancestor) || 0) + dur);
+            const treePrev = billableTreeLastUsed.get(ancestor);
+            if (!treePrev || dateStr > treePrev) billableTreeLastUsed.set(ancestor, dateStr);
+          }
         }
       }
     }
