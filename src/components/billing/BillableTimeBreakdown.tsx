@@ -97,8 +97,25 @@ export function BillableTimeBreakdown() {
   // Per-tag aggregates: minutes in range + lastUsed date across ALL time.
   const perTag = useMemo(() => {
     const minutes = new Map<string, number>();
+    // Minutes attributed only to the NEAREST truly-billable anchor (skipping
+    // parentOnly anchors). Used so a billable parent tag does NOT double-count
+    // minutes that actually belong to a billable subtag beneath it.
+    const ownBillableMinutes = new Map<string, number>();
     const lastUsed = new Map<string, string>(); // YYYY-MM-DD
     const now = new Date();
+    const settingsByTagLocal = new Map(settings.map(s => [s.tagValue, s]));
+    const findOwnAnchor = (cat: string): string | null => {
+      const parts = cat.split('/');
+      for (let i = parts.length; i >= 1; i--) {
+        const cand = parts.slice(0, i).join('/');
+        const s = settingsByTagLocal.get(cand);
+        if (!s) continue;
+        if (s.billable && !s.parentOnly) return cand;
+        if (s.parentOnly) continue; // skip up past parent anchors
+        return null; // explicit opt-out
+      }
+      return null;
+    };
 
     for (const t of tasks) {
       if (t.archiveReason === 'deleted') continue;
@@ -124,10 +141,16 @@ export function BillableTimeBreakdown() {
         const prev = lastUsed.get(ancestor);
         if (!prev || dateStr > prev) lastUsed.set(ancestor, dateStr);
       }
+      if (inRange && t.completed) {
+        const anchor = findOwnAnchor(cat);
+        if (anchor) {
+          ownBillableMinutes.set(anchor, (ownBillableMinutes.get(anchor) || 0) + dur);
+        }
+      }
     }
 
-    return { minutes, lastUsed, now };
-  }, [tasks, interval]);
+    return { minutes, ownBillableMinutes, lastUsed, now };
+  }, [tasks, interval, settings]);
 
   // Billed minutes per tag in range (from invoices issued in range).
   const billedByTag = useMemo(() => {
@@ -205,11 +228,17 @@ export function BillableTimeBreakdown() {
         const last = value.split('/').pop() || value;
         return last.replace(/[-_]/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase());
       })();
-      const minutes = perTag.minutes.get(value) || 0;
+      const direct = settingsByTag.get(value);
+      const isParentAnchor = !!direct?.parentOnly;
+      // Parent anchors keep the full rolled-up total (they exist to summarize
+      // a hierarchy). Billable rows show only their OWN minutes — minutes that
+      // belong to billable subtags are excluded so they aren't double-counted.
+      const minutes = isParentAnchor
+        ? (perTag.minutes.get(value) || 0)
+        : (perTag.ownBillableMinutes.get(value) || 0);
       const billedMinutes = billedByTag.get(value) || 0;
       const lastDate = perTag.lastUsed.get(value);
       const daysSince = lastDate ? differenceInDays(perTag.now, parseISO(lastDate)) : null;
-      const direct = settingsByTag.get(value);
       list.push({
         value,
         label,
