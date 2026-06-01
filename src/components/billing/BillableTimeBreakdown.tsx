@@ -83,6 +83,20 @@ export function BillableTimeBreakdown() {
   const [archiveTarget, setArchiveTarget] = useState<{ value: string; label: string } | null>(null);
 
   const interval = useMemo(() => rangeFor(range), [range]);
+  const settingsByTag = useMemo(() => new Map(settings.map(s => [s.tagValue, s])), [settings]);
+
+  const findOwnBillableAnchor = (tagValue: string): string | null => {
+    const parts = tagValue.split('/');
+    for (let i = parts.length; i >= 1; i--) {
+      const candidate = parts.slice(0, i).join('/');
+      const setting = settingsByTag.get(candidate);
+      if (!setting) continue;
+      if (setting.billable && !setting.parentOnly) return candidate;
+      if (setting.parentOnly) continue;
+      return null;
+    }
+    return null;
+  };
 
   // Determine which tags are billable (direct or inherited).
   const billableTagValues = useMemo(() => {
@@ -97,25 +111,12 @@ export function BillableTimeBreakdown() {
   // Per-tag aggregates: minutes in range + lastUsed date across ALL time.
   const perTag = useMemo(() => {
     const minutes = new Map<string, number>();
-    // Minutes attributed only to the NEAREST truly-billable anchor (skipping
-    // parentOnly anchors). Used so a billable parent tag does NOT double-count
-    // minutes that actually belong to a billable subtag beneath it.
     const ownBillableMinutes = new Map<string, number>();
+    const billableTreeMinutes = new Map<string, number>();
     const lastUsed = new Map<string, string>(); // YYYY-MM-DD
+    const ownBillableLastUsed = new Map<string, string>();
+    const billableTreeLastUsed = new Map<string, string>();
     const now = new Date();
-    const settingsByTagLocal = new Map(settings.map(s => [s.tagValue, s]));
-    const findOwnAnchor = (cat: string): string | null => {
-      const parts = cat.split('/');
-      for (let i = parts.length; i >= 1; i--) {
-        const cand = parts.slice(0, i).join('/');
-        const s = settingsByTagLocal.get(cand);
-        if (!s) continue;
-        if (s.billable && !s.parentOnly) return cand;
-        if (s.parentOnly) continue; // skip up past parent anchors
-        return null; // explicit opt-out
-      }
-      return null;
-    };
 
     for (const t of tasks) {
       if (t.archiveReason === 'deleted') continue;
@@ -142,19 +143,42 @@ export function BillableTimeBreakdown() {
         if (!prev || dateStr > prev) lastUsed.set(ancestor, dateStr);
       }
       if (inRange && t.completed) {
-        const anchor = findOwnAnchor(cat);
+        const anchor = findOwnBillableAnchor(cat);
         if (anchor) {
           ownBillableMinutes.set(anchor, (ownBillableMinutes.get(anchor) || 0) + dur);
+          const ownPrev = ownBillableLastUsed.get(anchor);
+          if (!ownPrev || dateStr > ownPrev) ownBillableLastUsed.set(anchor, dateStr);
+
+          const anchorParts = anchor.split('/');
+          for (let i = anchorParts.length; i >= 1; i--) {
+            const ancestor = anchorParts.slice(0, i).join('/');
+            const setting = settingsByTag.get(ancestor);
+            if (!setting || (!setting.billable && !setting.parentOnly)) continue;
+            billableTreeMinutes.set(ancestor, (billableTreeMinutes.get(ancestor) || 0) + dur);
+            const treePrev = billableTreeLastUsed.get(ancestor);
+            if (!treePrev || dateStr > treePrev) billableTreeLastUsed.set(ancestor, dateStr);
+          }
         }
       }
     }
 
-    return { minutes, ownBillableMinutes, lastUsed, now };
-  }, [tasks, interval, settings]);
+    return {
+      minutes,
+      ownBillableMinutes,
+      billableTreeMinutes,
+      lastUsed,
+      ownBillableLastUsed,
+      billableTreeLastUsed,
+      now,
+    };
+  }, [tasks, interval, settingsByTag]);
 
-  // Billed minutes per tag in range (from invoices issued in range).
-  const billedByTag = useMemo(() => {
-    const map = new Map<string, number>();
+  const billingMeta = useMemo(() => {
+    const ownBilledMinutes = new Map<string, number>();
+    const billableTreeBilledMinutes = new Map<string, number>();
+    const ownEverInvoiced = new Set<string>();
+    const billableTreeEverInvoiced = new Set<string>();
+
     for (const inv of invoices) {
       let inRange = true;
       if (interval) {
@@ -163,35 +187,37 @@ export function BillableTimeBreakdown() {
           inRange = isWithinInterval(d, interval);
         } catch { inRange = false; }
       }
-      if (!inRange) continue;
       for (const it of inv.items) {
         const mins = (it.hours || 0) * 60;
         if (!mins) continue;
-        const segs = (it.tagValue || '').split('/');
-        for (let i = segs.length; i >= 1; i--) {
-          const a = segs.slice(0, i).join('/');
-          map.set(a, (map.get(a) || 0) + mins);
+        const anchor = findOwnBillableAnchor(it.tagValue || '');
+        if (!anchor) continue;
+
+        ownEverInvoiced.add(anchor);
+        const anchorParts = anchor.split('/');
+        for (let i = anchorParts.length; i >= 1; i--) {
+          const ancestor = anchorParts.slice(0, i).join('/');
+          const setting = settingsByTag.get(ancestor);
+          if (!setting || (!setting.billable && !setting.parentOnly)) continue;
+          billableTreeEverInvoiced.add(ancestor);
+          if (inRange) {
+            billableTreeBilledMinutes.set(ancestor, (billableTreeBilledMinutes.get(ancestor) || 0) + mins);
+          }
+        }
+
+        if (inRange) {
+          ownBilledMinutes.set(anchor, (ownBilledMinutes.get(anchor) || 0) + mins);
         }
       }
     }
-    return map;
-  }, [invoices, interval]);
 
-  // Tags that have ever been invoiced (any time, any range).
-  const everInvoicedTags = useMemo(() => {
-    const set = new Set<string>();
-    for (const inv of invoices) {
-      for (const it of inv.items) {
-        const segs = (it.tagValue || '').split('/');
-        for (let i = segs.length; i >= 1; i--) {
-          set.add(segs.slice(0, i).join('/'));
-        }
-      }
-    }
-    return set;
-  }, [invoices]);
-
-  const settingsByTag = useMemo(() => new Map(settings.map(s => [s.tagValue, s])), [settings]);
+    return {
+      ownBilledMinutes,
+      billableTreeBilledMinutes,
+      ownEverInvoiced,
+      billableTreeEverInvoiced,
+    };
+  }, [invoices, interval, settingsByTag]);
 
   const rateLabelFor = (tagValue: string): string => {
     const direct = settingsByTag.get(tagValue);
@@ -219,8 +245,12 @@ export function BillableTimeBreakdown() {
       if (!showArchived && archived) continue;
       // Hide archived tags that never had any activity (no tasks ever, never invoiced).
       if (archived) {
-        const everUsed = perTag.lastUsed.has(value);
-        const everInvoiced = everInvoicedTags.has(value);
+        const direct = settingsByTag.get(value);
+        const isParentAnchor = !!direct?.parentOnly;
+        const everUsed = isParentAnchor ? perTag.billableTreeLastUsed.has(value) : perTag.ownBillableLastUsed.has(value);
+        const everInvoiced = isParentAnchor
+          ? billingMeta.billableTreeEverInvoiced.has(value)
+          : billingMeta.ownEverInvoiced.has(value);
         if (!everUsed && !everInvoiced) continue;
       }
       // Derive a label: prefer category label, else last segment of the path prettified
@@ -230,14 +260,15 @@ export function BillableTimeBreakdown() {
       })();
       const direct = settingsByTag.get(value);
       const isParentAnchor = !!direct?.parentOnly;
-      // Parent anchors keep the full rolled-up total (they exist to summarize
-      // a hierarchy). Billable rows show only their OWN minutes — minutes that
-      // belong to billable subtags are excluded so they aren't double-counted.
       const minutes = isParentAnchor
-        ? (perTag.minutes.get(value) || 0)
+        ? (perTag.billableTreeMinutes.get(value) || 0)
         : (perTag.ownBillableMinutes.get(value) || 0);
-      const billedMinutes = billedByTag.get(value) || 0;
-      const lastDate = perTag.lastUsed.get(value);
+      const billedMinutes = isParentAnchor
+        ? (billingMeta.billableTreeBilledMinutes.get(value) || 0)
+        : (billingMeta.ownBilledMinutes.get(value) || 0);
+      const lastDate = isParentAnchor
+        ? perTag.billableTreeLastUsed.get(value)
+        : perTag.ownBillableLastUsed.get(value);
       const daysSince = lastDate ? differenceInDays(perTag.now, parseISO(lastDate)) : null;
       list.push({
         value,
@@ -248,23 +279,13 @@ export function BillableTimeBreakdown() {
         daysSince,
         rateLabel: rateLabelFor(value),
         parentOnly: !!direct?.parentOnly,
-        hasBeenInvoiced: everInvoicedTags.has(value),
+        hasBeenInvoiced: isParentAnchor
+          ? billingMeta.billableTreeEverInvoiced.has(value)
+          : billingMeta.ownEverInvoiced.has(value),
       });
     }
-    // Hide intermediate billable rows that have no own time and no billing
-    // history when at least one billable subtag below them DOES carry time —
-    // the subtag row already represents that work, so the empty parent is noise.
-    const allVals = new Set(list.map(r => r.value));
     const filtered = list.filter(r => {
-      if (r.parentOnly) return true;
-      // Has any billable descendant in the list? If so, that subtag row
-      // represents the work — hide this empty intermediate row.
-      const prefix = r.value + '/';
-      for (const v of allVals) {
-        if (v !== r.value && v.startsWith(prefix)) return false;
-      }
-      if (r.minutes > 0 || r.billedMinutes > 0 || r.hasBeenInvoiced) return true;
-      return true;
+      return r.minutes > 0 || r.billedMinutes > 0 || r.hasBeenInvoiced;
     });
     // Sort: roots first by minutes desc, subtags follow their parent alphabetically
     return filtered.sort((a, b) => {
@@ -274,7 +295,7 @@ export function BillableTimeBreakdown() {
       if (a.minutes !== b.minutes) return b.minutes - a.minutes;
       return a.value.localeCompare(b.value);
     });
-  }, [categories, billableTagValues, perTag, billedByTag, showArchived, settings, everInvoicedTags]);
+  }, [categories, billableTagValues, perTag, billingMeta, showArchived, settingsByTag]);
 
   // A row is a "root" in this view if NO ancestor of it is also in the visible row set.
   // This way subtags (e.g. "Projects/Starfire") render as top-level when their parent
