@@ -279,8 +279,39 @@ export function BillableTimeBreakdown() {
     const filtered = list.filter(r => {
       return r.minutes > 0 || r.billedMinutes > 0 || r.hasBeenInvoiced;
     });
+
+    // Re-derive parentOnly totals from their visible billable descendants only.
+    // That way the parent bar matches what the user actually sees underneath it
+    // — not a hidden tally of long-forgotten billable subtags.
+    const filteredValues = new Set(filtered.map(r => r.value));
+    const isVisibleDescendant = (parent: string, candidate: string) => {
+      if (candidate === parent) return false;
+      if (!candidate.startsWith(parent + '/')) return false;
+      // walk up from candidate; first visible ancestor must be `parent`
+      const parts = candidate.split('/');
+      for (let i = parts.length - 1; i >= 1; i--) {
+        const anc = parts.slice(0, i).join('/');
+        if (filteredValues.has(anc)) return anc === parent;
+      }
+      return false;
+    };
+    const recomputed = filtered.map(r => {
+      if (!r.parentOnly) return r;
+      let mins = 0;
+      let billed = 0;
+      let invoiced = false;
+      for (const other of filtered) {
+        if (other.parentOnly) continue;
+        if (!isVisibleDescendant(r.value, other.value)) continue;
+        mins += other.minutes;
+        billed += other.billedMinutes;
+        if (other.hasBeenInvoiced) invoiced = true;
+      }
+      return { ...r, minutes: mins, billedMinutes: billed, hasBeenInvoiced: r.hasBeenInvoiced || invoiced };
+    });
+
     // Sort: roots first by minutes desc, subtags follow their parent alphabetically
-    return filtered.sort((a, b) => {
+    return recomputed.sort((a, b) => {
       const ad = a.value.split('/').length;
       const bd = b.value.split('/').length;
       if (ad !== bd) return ad - bd;
