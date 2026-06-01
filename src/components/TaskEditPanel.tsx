@@ -1092,8 +1092,12 @@ export function TaskEditPanel() {
                     <Archive size={12} strokeWidth={1.5} />
                     LIBRARY
                   </button>
-                  {/* Convert to Group — only for normal scheduled, non-recurring tasks not already in a Group */}
-                  {task && !task.groupId && task.time && task.duration && !task.recurrence && !task.isRecurrenceInstance && !task.recurrenceParentId && (
+                  {/* Convert to Group — allowed for normal scheduled tasks not already in a Group.
+                      Recurring tasks are disallowed unless explicitly unlinked from their series. */}
+                  {task && !task.groupId && task.time && task.duration && (
+                    task.linked === false ||
+                    (!task.recurrence && !task.isRecurrenceInstance && !task.recurrenceParentId)
+                  ) && (
                     <button type="button"
                       onClick={(e) => {
                         e.stopPropagation();
