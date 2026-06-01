@@ -416,6 +416,7 @@ export function BillableTimeBreakdown() {
     const unbilledMinutes = Math.max(0, r.minutes - billedClamped);
     const billedPct = (billedClamped / maxMinutes) * 100;
     const unbilledPct = (unbilledMinutes / maxMinutes) * 100;
+    const showNeutralSummaryBar = r.parentOnly;
     // Only show stale/inactive treatment for tags that have been invoiced before.
     const labelColor = r.hasBeenInvoiced ? stalenessClass(r.daysSince) : 'text-foreground/80';
     const showWarn = r.hasBeenInvoiced && (r.daysSince == null || r.daysSince > 7);
@@ -484,23 +485,42 @@ export function BillableTimeBreakdown() {
               )}
             </div>
           </div>
-          <div className="h-2 bg-muted/50 rounded-sm overflow-hidden ml-4 flex">
-            {/* Billed (paid/invoiced) segment — primary accent */}
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${billedPct}%` }}
-              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-              className="h-full bg-primary/80"
-              title={`Billed: ${formatTime(billedClamped)}`}
-            />
-            {/* Unbilled segment — solid dark grey, matches analytics chart */}
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${unbilledPct}%` }}
-              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1], delay: 0.05 }}
-              className="h-full bg-foreground/70"
-              title={`Unbilled: ${formatTime(unbilledMinutes)}`}
-            />
+          <div className="h-2 bg-muted/50 rounded-sm overflow-hidden ml-4 relative">
+            {showNeutralSummaryBar ? (
+              <>
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${totalPct}%` }}
+                  transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                  className="absolute inset-y-0 left-0 bg-muted-foreground/25"
+                  title={`Tracked total: ${formatTime(r.minutes)}`}
+                />
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${billedPct}%` }}
+                  transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1], delay: 0.05 }}
+                  className="absolute inset-y-0 left-0 bg-primary/80"
+                  title={`Billed: ${formatTime(billedClamped)}`}
+                />
+              </>
+            ) : (
+              <div className="h-full flex">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${billedPct}%` }}
+                  transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                  className="h-full bg-primary/80"
+                  title={`Billed: ${formatTime(billedClamped)}`}
+                />
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${unbilledPct}%` }}
+                  transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1], delay: 0.05 }}
+                  className="h-full bg-foreground/70"
+                  title={`Unbilled: ${formatTime(unbilledMinutes)}`}
+                />
+              </div>
+            )}
           </div>
         </div>
 
