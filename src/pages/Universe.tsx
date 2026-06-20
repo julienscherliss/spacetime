@@ -110,10 +110,14 @@ function computePlanets(
   });
 }
 
-function statusColor(s: PlanetStatus) {
-  if (s === "overdue") return "hsl(0 75% 60%)";
-  if (s === "due-soon") return "hsl(45 90% 60%)";
-  return "hsl(190 70% 65%)";
+const INK = "hsl(0 0% 12%)";
+const PAPER = "hsl(0 0% 96%)";
+const ACCENT = "hsl(12 76% 50%)";
+const MUTED = "hsl(0 0% 65%)";
+
+function statusInk(s: PlanetStatus) {
+  if (s === "overdue") return ACCENT;
+  return INK;
 }
 
 function statusLabel(p: Planet) {
@@ -130,9 +134,21 @@ function PlanetNode({
   planet: Planet;
   onClick: () => void;
 }) {
-  const color = statusColor(planet.status);
-  const pulseDur =
-    planet.status === "overdue" ? 2.5 : planet.status === "due-soon" ? 3.5 : 0;
+  const ink = statusInk(planet.status);
+  const size = planet.size * 2;
+  const pulse = planet.status === "overdue";
+  // Fill style by status — flat, monochrome, no glow.
+  // healthy = outline only; due-soon = dotted/hatched grey; overdue = solid ink.
+  let fill = "transparent";
+  let stroke = INK;
+  let strokeWidth = 1.25;
+  if (planet.status === "due-soon") {
+    fill = "transparent";
+    stroke = INK;
+  } else if (planet.status === "overdue") {
+    fill = ACCENT;
+    stroke = ACCENT;
+  }
   return (
     <div
       className="absolute top-1/2 left-1/2"
@@ -150,12 +166,10 @@ function PlanetNode({
       >
         <button
           onClick={onClick}
-          className="group relative -translate-x-1/2 -translate-y-1/2 flex items-center justify-center rounded-full transition-transform hover:scale-110 focus:outline-none"
+          className="group relative -translate-x-1/2 -translate-y-1/2 flex items-center justify-center focus:outline-none"
           style={{
-            width: planet.size * 2,
-            height: planet.size * 2,
-            background: `radial-gradient(circle at 30% 30%, ${color}, hsl(230 30% 12%) 75%)`,
-            boxShadow: `0 0 ${planet.size}px ${color}55, inset 0 0 ${planet.size / 2}px hsl(230 50% 5% / 0.6)`,
+            width: size,
+            height: size,
             // Counter-rotate label so it doesn't spin with orbit
             animation: `universe-counter-rotate ${planet.duration}s linear infinite`,
             animationDelay: `${(planet.angle / 360) * planet.duration}s`,
@@ -163,26 +177,65 @@ function PlanetNode({
           aria-label={`${planet.label}: ${statusLabel(planet)}`}
         >
           <span className="sr-only">{planet.label}</span>
-          {pulseDur > 0 && (
-            <span
-              aria-hidden
-              className="absolute inset-0 rounded-full pointer-events-none"
-              style={{
-                boxShadow: `0 0 ${planet.size * 1.4}px ${color}`,
-                animation: `universe-soft-pulse ${pulseDur}s ease-in-out infinite`,
-              }}
+          <svg
+            width={size}
+            height={size}
+            viewBox="0 0 100 100"
+            className="overflow-visible transition-transform group-hover:scale-110"
+            style={{ transitionDuration: "200ms" }}
+          >
+            {/* faint outer ring for overdue pulse */}
+            {pulse && (
+              <circle
+                cx="50"
+                cy="50"
+                r="48"
+                fill="none"
+                stroke={ACCENT}
+                strokeWidth="0.75"
+                style={{
+                  transformOrigin: "50% 50%",
+                  animation: "universe-ring-pulse 2.6s ease-in-out infinite",
+                }}
+              />
+            )}
+            <circle
+              cx="50"
+              cy="50"
+              r="42"
+              fill={fill}
+              stroke={stroke}
+              strokeWidth={strokeWidth}
+              strokeDasharray={
+                planet.status === "due-soon" ? "2 3" : undefined
+              }
             />
-          )}
+            {/* tiny moon dot — only present on healthy/due-soon to echo reference */}
+            {planet.status !== "overdue" && (
+              <circle
+                cx={50 + Math.cos((planet.angle * Math.PI) / 180) * 38}
+                cy={50 + Math.sin((planet.angle * Math.PI) / 180) * 38}
+                r="2"
+                fill={INK}
+              />
+            )}
+          </svg>
           <div
             className="absolute left-1/2 -translate-x-1/2 text-center pointer-events-none"
-            style={{ top: `calc(100% + 8px)` }}
+            style={{ top: `calc(100% + 10px)` }}
           >
-            <div className="text-[11px] font-mono tracking-widest uppercase text-white/90 whitespace-nowrap">
+            <div
+              className="text-[11px] tracking-widest uppercase whitespace-nowrap"
+              style={{ color: INK, fontFamily: "'JetBrains Mono', monospace" }}
+            >
               {planet.label}
             </div>
             <div
-              className="text-[10px] font-mono tracking-wider whitespace-nowrap"
-              style={{ color }}
+              className="text-[10px] tracking-wider whitespace-nowrap mt-0.5"
+              style={{
+                color: planet.status === "overdue" ? ACCENT : MUTED,
+                fontFamily: "'JetBrains Mono', monospace",
+              }}
             >
               {statusLabel(planet)}
             </div>
@@ -196,44 +249,44 @@ function PlanetNode({
 function OrbitRing({ radius }: { radius: number }) {
   return (
     <div
-      className="absolute top-1/2 left-1/2 rounded-full border border-white/5 pointer-events-none"
+      className="absolute top-1/2 left-1/2 rounded-full pointer-events-none"
       style={{
         width: radius * 2,
         height: radius * 2,
         transform: "translate(-50%, -50%)",
+        border: "1px solid hsl(0 0% 12% / 0.12)",
       }}
     />
   );
 }
 
-function Starfield() {
-  const stars = useMemo(() => {
-    const arr: { x: number; y: number; s: number; o: number; d: number }[] = [];
-    for (let i = 0; i < 120; i++) {
+function GrainField() {
+  // Sparse ink-dot field — the cassette-era "registration grain"
+  const dots = useMemo(() => {
+    const arr: { x: number; y: number; s: number; o: number }[] = [];
+    for (let i = 0; i < 80; i++) {
       arr.push({
         x: Math.random() * 100,
         y: Math.random() * 100,
-        s: Math.random() * 1.8 + 0.4,
-        o: Math.random() * 0.6 + 0.2,
-        d: Math.random() * 6 + 3,
+        s: Math.random() < 0.85 ? 1 : 1.5,
+        o: Math.random() * 0.18 + 0.05,
       });
     }
     return arr;
   }, []);
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {stars.map((s, i) => (
+      {dots.map((d, i) => (
         <div
           key={i}
-          className="absolute rounded-full bg-white"
+          className="absolute rounded-full"
           style={{
-            left: `${s.x}%`,
-            top: `${s.y}%`,
-            width: s.s,
-            height: s.s,
-            opacity: s.o,
-            animation: `universe-twinkle ${s.d}s ease-in-out infinite`,
-            animationDelay: `-${Math.random() * s.d}s`,
+            left: `${d.x}%`,
+            top: `${d.y}%`,
+            width: d.s,
+            height: d.s,
+            background: INK,
+            opacity: d.o,
           }}
         />
       ))}
@@ -252,11 +305,11 @@ function PlanetDetail({
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
   const itemStatus = (it: LibraryTask) => {
-    if (!it.dueDate) return { label: "no due date", color: "text-white/40" };
+    if (!it.dueDate) return { label: "no due date", color: "text-foreground/40" };
     const d = new Date(it.dueDate);
-    if (d < today) return { label: "overdue", color: "text-[hsl(0_75%_65%)]" };
-    if (d < tomorrow) return { label: "due today", color: "text-[hsl(45_90%_65%)]" };
-    return { label: d.toLocaleDateString(), color: "text-white/60" };
+    if (d < today) return { label: "overdue", color: "text-[hsl(12_76%_50%)]" };
+    if (d < tomorrow) return { label: "due today", color: "text-foreground" };
+    return { label: d.toLocaleDateString(), color: "text-foreground/60" };
   };
   const sorted = [...planet.items].sort((a, b) => {
     if (a.dueDate && !b.dueDate) return -1;
@@ -266,16 +319,16 @@ function PlanetDetail({
   });
   return (
     <div
-      className="fixed inset-0 z-50 flex items-stretch justify-end bg-black/60 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-50 flex items-stretch justify-end bg-foreground/20 backdrop-blur-sm animate-fade-in"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md h-full bg-[hsl(230_30%_8%)] border-l border-white/10 overflow-y-auto p-6 text-white animate-slide-in-right"
+        className="w-full max-w-md h-full bg-background border-l border-foreground/15 overflow-y-auto p-6 text-foreground animate-slide-in-right"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between mb-6">
           <div>
-            <div className="text-[10px] font-mono tracking-[0.3em] uppercase text-white/40">
+            <div className="text-[10px] font-mono tracking-[0.3em] uppercase text-foreground/50">
               Planet
             </div>
             <h2
@@ -287,7 +340,7 @@ function PlanetDetail({
           </div>
           <button
             onClick={onClose}
-            className="text-white/60 hover:text-white text-xl leading-none px-2"
+            className="text-foreground/60 hover:text-foreground text-xl leading-none px-2"
             aria-label="Close"
           >
             ×
@@ -299,28 +352,28 @@ function PlanetDetail({
           <Stat
             label="Overdue"
             value={planet.overdue}
-            color={planet.overdue > 0 ? "hsl(0 75% 65%)" : undefined}
+            color={planet.overdue > 0 ? ACCENT : undefined}
           />
           <Stat
             label="Today"
             value={planet.dueToday}
-            color={planet.dueToday > 0 ? "hsl(45 90% 65%)" : undefined}
+            color={planet.dueToday > 0 ? INK : undefined}
           />
           <Stat label="Upcoming" value={planet.upcoming} />
         </div>
 
         <Link
           to={`/app?tag=${encodeURIComponent(planet.value)}`}
-          className="block w-full text-center text-[11px] font-mono uppercase tracking-[0.25em] py-3 mb-6 border border-white/20 hover:bg-white/5 transition-colors"
+          className="block w-full text-center text-[11px] font-mono uppercase tracking-[0.25em] py-3 mb-6 border border-foreground/30 hover:bg-foreground hover:text-background transition-colors"
         >
           View Tasks
         </Link>
 
-        <div className="text-[10px] font-mono uppercase tracking-[0.25em] text-white/40 mb-3">
+        <div className="text-[10px] font-mono uppercase tracking-[0.25em] text-foreground/50 mb-3">
           Library Items
         </div>
         {sorted.length === 0 ? (
-          <div className="text-sm text-white/40 font-mono">No items.</div>
+          <div className="text-sm text-foreground/40 font-mono">No items.</div>
         ) : (
           <ul className="space-y-2">
             {sorted.map((it) => {
@@ -328,7 +381,7 @@ function PlanetDetail({
               return (
                 <li
                   key={it.id}
-                  className="border border-white/10 px-3 py-2 flex items-center justify-between gap-3"
+                  className="border border-foreground/15 px-3 py-2 flex items-center justify-between gap-3"
                 >
                   <span className="text-sm truncate">{it.title}</span>
                   <span
@@ -356,14 +409,14 @@ function Stat({
   color?: string;
 }) {
   return (
-    <div className="border border-white/10 p-2 text-center">
+    <div className="border border-foreground/15 p-2 text-center">
       <div
         className="text-xl font-semibold"
-        style={{ color: color || "white", fontFamily: "Space Grotesk, sans-serif" }}
+        style={{ color: color || INK, fontFamily: "Space Grotesk, sans-serif" }}
       >
         {value}
       </div>
-      <div className="text-[9px] font-mono uppercase tracking-widest text-white/40 mt-0.5">
+      <div className="text-[9px] font-mono uppercase tracking-widest text-foreground/50 mt-0.5">
         {label}
       </div>
     </div>
@@ -396,32 +449,24 @@ export default function UniversePage() {
           from { transform: translate(-50%, -50%) rotate(0deg); }
           to { transform: translate(-50%, -50%) rotate(-360deg); }
         }
-        @keyframes universe-twinkle {
-          0%, 100% { opacity: 0.2; }
-          50% { opacity: 0.9; }
-        }
-        @keyframes universe-soft-pulse {
-          0%, 100% { opacity: 0.35; }
-          50% { opacity: 0.9; }
+        @keyframes universe-ring-pulse {
+          0%, 100% { opacity: 0.15; transform: scale(1); }
+          50% { opacity: 0.7; transform: scale(1.08); }
         }
         @keyframes universe-you-pulse {
-          0%, 100% { box-shadow: 0 0 40px hsl(190 80% 60% / 0.5), inset 0 0 20px hsl(190 80% 60% / 0.4); }
-          50% { box-shadow: 0 0 70px hsl(190 80% 60% / 0.8), inset 0 0 30px hsl(190 80% 60% / 0.6); }
+          0%, 100% { transform: translate(-50%, -50%) scale(1); }
+          50% { transform: translate(-50%, -50%) scale(1.04); }
         }
       `}</style>
       <div
-        className="min-h-screen w-full overflow-hidden relative text-white"
-        style={{
-          background:
-            "radial-gradient(ellipse at center, hsl(230 40% 10%) 0%, hsl(230 50% 4%) 70%, hsl(230 60% 2%) 100%)",
-        }}
+        className="min-h-screen w-full overflow-hidden relative bg-background text-foreground"
       >
-        <Starfield />
+        <GrainField />
 
         {/* Header */}
-        <header className="relative z-10 flex items-center justify-between px-6 py-5">
+        <header className="relative z-10 flex items-center justify-between px-6 py-5 border-b border-foreground/10">
           <div>
-            <div className="text-[10px] font-mono tracking-[0.4em] uppercase text-white/40">
+            <div className="text-[10px] font-mono tracking-[0.4em] uppercase text-foreground/50">
               Spacetime · Experimental
             </div>
             <h1
@@ -433,7 +478,7 @@ export default function UniversePage() {
           </div>
           <Link
             to="/app"
-            className="text-[11px] font-mono uppercase tracking-[0.25em] px-4 py-2 border border-white/20 hover:bg-white/5 transition-colors"
+            className="text-[11px] font-mono uppercase tracking-[0.25em] px-4 py-2 border border-foreground/30 hover:bg-foreground hover:text-background transition-colors"
           >
             Back to App
           </Link>
@@ -444,10 +489,10 @@ export default function UniversePage() {
           {planets.length === 0 ? (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center max-w-md px-6">
-                <div className="text-[11px] font-mono uppercase tracking-[0.3em] text-white/40 mb-3">
+                <div className="text-[11px] font-mono uppercase tracking-[0.3em] text-foreground/50 mb-3">
                   Empty Universe
                 </div>
-                <p className="text-white/70">
+                <p className="text-foreground/70">
                   Add tags to your Library to see your universe come to life.
                 </p>
               </div>
@@ -461,16 +506,22 @@ export default function UniversePage() {
 
               {/* Center: You */}
               <div
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full flex items-center justify-center"
+                className="absolute top-1/2 left-1/2 rounded-full flex items-center justify-center"
                 style={{
-                  width: 90,
-                  height: 90,
-                  background:
-                    "radial-gradient(circle at 35% 35%, hsl(190 90% 75%), hsl(220 70% 30%) 80%)",
+                  width: 88,
+                  height: 88,
+                  background: INK,
+                  border: `1px solid ${INK}`,
                   animation: "universe-you-pulse 4s ease-in-out infinite",
                 }}
               >
-                <span className="text-[11px] font-mono uppercase tracking-[0.3em] text-white">
+                <span
+                  className="text-[11px] uppercase tracking-[0.3em]"
+                  style={{
+                    color: PAPER,
+                    fontFamily: "'JetBrains Mono', monospace",
+                  }}
+                >
                   You
                 </span>
               </div>
