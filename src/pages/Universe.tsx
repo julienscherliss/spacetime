@@ -1,6 +1,16 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useLibraryStore, type LibraryTask } from "@/store/libraryStore";
+import { useTaskStore, type Task } from "@/store/taskStore";
+import {
+  generateWorld,
+  computeInvestment,
+  TIER_LABEL,
+  type WorldScene,
+  type InvestmentMetrics,
+  type Feature,
+  type Tile,
+} from "@/utils/planetWorld";
 
 type PlanetStatus = "healthy" | "due-soon" | "overdue";
 
