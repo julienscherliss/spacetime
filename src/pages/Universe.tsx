@@ -380,7 +380,7 @@ export default function UniversePage() {
   }, [planets]);
 
   return (
-    <AuthGuardWrapper>
+    <>
       <style>{`
         @keyframes universe-orbit {
           from { transform: rotate(0deg); }
@@ -491,6 +491,6 @@ export default function UniversePage() {
           <PlanetDetail planet={selected} onClose={() => setSelected(null)} />
         )}
       </div>
-    </AuthGuardWrapper>
+    </>
   );
 }
