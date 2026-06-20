@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useLibraryStore, type LibraryTask } from "@/store/libraryStore";
-import { AuthGuardWrapper } from "@/pages/Universe.guard";
 
 type PlanetStatus = "healthy" | "due-soon" | "overdue";
 
