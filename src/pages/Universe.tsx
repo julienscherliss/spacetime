@@ -400,16 +400,10 @@ export default function UniversePage() {
           0%, 100% { opacity: 0.2; }
           50% { opacity: 0.9; }
         }
-        @keyframes universe-pulse-red {
-          0%, 100% { filter: drop-shadow(0 0 4px hsl(0 75% 60% / 0.4)); }
-          50% { filter: drop-shadow(0 0 14px hsl(0 75% 60% / 0.8)); }
+        @keyframes universe-soft-pulse {
+          0%, 100% { opacity: 0.35; }
+          50% { opacity: 0.9; }
         }
-        @keyframes universe-pulse-yellow {
-          0%, 100% { filter: drop-shadow(0 0 4px hsl(45 90% 60% / 0.3)); }
-          50% { filter: drop-shadow(0 0 12px hsl(45 90% 60% / 0.7)); }
-        }
-        .universe-pulse-red { animation-name: universe-pulse-red, universe-counter-rotate !important; animation-duration: 3s, var(--orbit-dur, 120s) !important; animation-timing-function: ease-in-out, linear !important; animation-iteration-count: infinite, infinite !important; }
-        .universe-pulse-yellow { animation-name: universe-pulse-yellow, universe-counter-rotate !important; animation-duration: 3.5s, var(--orbit-dur, 120s) !important; animation-timing-function: ease-in-out, linear !important; animation-iteration-count: infinite, infinite !important; }
         @keyframes universe-you-pulse {
           0%, 100% { box-shadow: 0 0 40px hsl(190 80% 60% / 0.5), inset 0 0 20px hsl(190 80% 60% / 0.4); }
           50% { box-shadow: 0 0 70px hsl(190 80% 60% / 0.8), inset 0 0 30px hsl(190 80% 60% / 0.6); }
