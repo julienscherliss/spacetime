@@ -172,7 +172,7 @@ function PlanetNode({
             height: size,
             // Counter-rotate label so it doesn't spin with orbit
             animation: `universe-counter-rotate ${planet.duration}s linear infinite`,
-            animationDelay: `${(planet.angle / 360) * planet.duration}s`,
+            animationDelay: `-${(planet.angle / 360) * planet.duration}s`,
           }}
           aria-label={`${planet.label}: ${statusLabel(planet)}`}
         >
