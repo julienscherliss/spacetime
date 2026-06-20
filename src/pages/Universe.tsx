@@ -131,12 +131,8 @@ function PlanetNode({
   onClick: () => void;
 }) {
   const color = statusColor(planet.status);
-  const pulse =
-    planet.status === "overdue"
-      ? "universe-pulse-red"
-      : planet.status === "due-soon"
-      ? "universe-pulse-yellow"
-      : "";
+  const pulseDur =
+    planet.status === "overdue" ? 2.5 : planet.status === "due-soon" ? 3.5 : 0;
   return (
     <div
       className="absolute top-1/2 left-1/2"
@@ -154,7 +150,7 @@ function PlanetNode({
       >
         <button
           onClick={onClick}
-          className={`group relative -translate-x-1/2 -translate-y-1/2 flex items-center justify-center rounded-full transition-transform hover:scale-110 focus:outline-none ${pulse}`}
+          className="group relative -translate-x-1/2 -translate-y-1/2 flex items-center justify-center rounded-full transition-transform hover:scale-110 focus:outline-none"
           style={{
             width: planet.size * 2,
             height: planet.size * 2,
@@ -167,6 +163,16 @@ function PlanetNode({
           aria-label={`${planet.label}: ${statusLabel(planet)}`}
         >
           <span className="sr-only">{planet.label}</span>
+          {pulseDur > 0 && (
+            <span
+              aria-hidden
+              className="absolute inset-0 rounded-full pointer-events-none"
+              style={{
+                boxShadow: `0 0 ${planet.size * 1.4}px ${color}`,
+                animation: `universe-soft-pulse ${pulseDur}s ease-in-out infinite`,
+              }}
+            />
+          )}
           <div
             className="absolute left-1/2 -translate-x-1/2 text-center pointer-events-none"
             style={{ top: `calc(100% + 8px)` }}
