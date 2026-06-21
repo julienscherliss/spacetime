@@ -3,7 +3,7 @@ import { useTimezoneStore, getTzAbbr, TIMEZONES } from '@/store/timezoneStore';
 import type { MobilityMode } from '@/store/timezoneStore';
 import { useCalendarStore } from '@/store/calendarStore';
 import { supabase } from '@/integrations/supabase/client';
-import { X, Search, Globe, Repeat, MapPin, Calendar as CalIcon, RefreshCw, Unplug, HelpCircle, Moon, Shield, Lock, Bell, Type, Volume2, MessageSquarePlus, Sliders } from 'lucide-react';
+import { X, Search, Globe, Repeat, MapPin, Calendar as CalIcon, RefreshCw, Unplug, HelpCircle, Moon, Shield, Lock, Bell, Type, Volume2, MessageSquarePlus, Sliders, Sunrise } from 'lucide-react';
 import { toast } from 'sonner';
 import { HelpPanel } from './HelpPanel';
 import { ColorSchemePanel } from './ColorSchemePanel';
@@ -69,6 +69,15 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const [notificationLoading, setNotificationLoading] = useState(false);
   const dayToggleTarget = useTaskStore(s => s.dayToggleTarget);
   const setDayToggleTarget = useTaskStore(s => s.setDayToggleTarget);
+  const dayStartHour = useTaskStore(s => s.dayStartHour);
+  const dayEndHour = useTaskStore(s => s.dayEndHour);
+  const setDayHours = useTaskStore(s => s.setDayHours);
+  const formatHour = (h: number): string => {
+    if (h === 0) return '12 AM';
+    if (h === 12) return '12 PM';
+    if (h === 24) return '12 AM';
+    return h < 12 ? `${h} AM` : `${h - 12} PM`;
+  };
   const [showAdvanced, setShowAdvanced] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     return localStorage.getItem('settings.showAdvanced') === '1';
@@ -405,6 +414,63 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                 );
               })}
             </div>
+          </div>
+          )}
+
+          {/* Day window (start/end hours) — advanced */}
+          {showAdvanced && (
+          <div className="mb-4">
+            <div className="flex items-center gap-1.5 mb-2">
+              <Sunrise size={12} strokeWidth={1.5} className="text-muted-foreground" />
+              <span className="text-[11px] font-mono tracking-[0.12em] text-muted-foreground">DAY WINDOW</span>
+            </div>
+            <div className="text-[10px] font-mono text-muted-foreground/50 mb-2">
+              Hours shown on Timeline (day &amp; week) and Sequencer. Default 6 AM – 9 PM.
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] font-mono tracking-wider text-muted-foreground/60">START</span>
+                <select
+                  value={dayStartHour}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10);
+                    setDayHours(v, Math.max(v + 1, dayEndHour));
+                  }}
+                  className="bg-muted/30 border border-border/50 rounded-sm px-2 py-2 text-[11px] font-mono"
+                >
+                  {Array.from({ length: 24 }, (_, h) => h).map((h) => (
+                    <option key={h} value={h} disabled={h >= dayEndHour}>
+                      {formatHour(h)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] font-mono tracking-wider text-muted-foreground/60">END</span>
+                <select
+                  value={dayEndHour}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10);
+                    setDayHours(Math.min(dayStartHour, v - 1), v);
+                  }}
+                  className="bg-muted/30 border border-border/50 rounded-sm px-2 py-2 text-[11px] font-mono"
+                >
+                  {Array.from({ length: 24 }, (_, h) => h + 1).map((h) => (
+                    <option key={h} value={h} disabled={h <= dayStartHour}>
+                      {formatHour(h)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            {(dayStartHour !== 6 || dayEndHour !== 21) && (
+              <button
+                onClick={() => setDayHours(6, 21)}
+                className="mt-2 text-[10px] font-mono tracking-wider text-muted-foreground/60 hover:text-foreground"
+              >
+                RESET TO DEFAULT (6 AM – 9 PM)
+              </button>
+            )}
           </div>
           )}
 

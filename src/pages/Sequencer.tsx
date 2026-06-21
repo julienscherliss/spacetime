@@ -19,16 +19,33 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
-const START_HOUR = 8;
-const END_HOUR = 18;
-const ROWS = END_HOUR - START_HOUR; // 10
 const COLS = 4;
 const SLOT_MIN = 15;
-const SLOTS_PER_DAY = ROWS * COLS;
 const LABEL_COL_W = 46;
 const PICKUP_MS = 1000;
 const LOCK_MS = 250;
 const MOVE_THRESHOLD_PX = 8;
+
+// Day window is configurable via Settings → Advanced. These mirror the store
+// and are kept in sync via a top-level subscription so all helpers in this
+// module read the live values.
+let START_HOUR = 6;
+let END_HOUR = 21;
+let ROWS = END_HOUR - START_HOUR;
+let SLOTS_PER_DAY = ROWS * COLS;
+
+function _syncSequencerHours(s: { dayStartHour: number; dayEndHour: number }) {
+  START_HOUR = s.dayStartHour;
+  END_HOUR = s.dayEndHour;
+  ROWS = Math.max(1, END_HOUR - START_HOUR);
+  SLOTS_PER_DAY = ROWS * COLS;
+}
+_syncSequencerHours(useTaskStore.getState());
+useTaskStore.subscribe((state, prev) => {
+  if (state.dayStartHour !== prev.dayStartHour || state.dayEndHour !== prev.dayEndHour) {
+    _syncSequencerHours(state);
+  }
+});
 
 const slotToMin = (slot: number) => START_HOUR * 60 + slot * SLOT_MIN;
 const minToSlot = (min: number) => Math.floor((min - START_HOUR * 60) / SLOT_MIN);
@@ -121,6 +138,9 @@ interface PreviewState {
 
 export default function Sequencer({ embedded = false }: { embedded?: boolean } = {}) {
   const tasks = useTaskStore((s) => s.tasks);
+  // Re-render when the configured day window changes.
+  useTaskStore((s) => s.dayStartHour);
+  useTaskStore((s) => s.dayEndHour);
   const setEditingTask = useTaskStore((s) => s.setEditingTask);
   const addTask = useTaskStore((s) => s.addTask);
   const updateTask = useTaskStore((s) => s.updateTask);
