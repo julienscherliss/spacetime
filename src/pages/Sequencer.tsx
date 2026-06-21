@@ -67,7 +67,16 @@ interface CellAssignment {
 }
 
 type Gesture =
-  | { kind: 'idle-pending'; pointerId: number; startSlot: number; x0: number; y0: number; t0: number }
+  | {
+      kind: 'idle-pending';
+      pointerId: number;
+      startSlot: number;
+      x0: number;
+      y0: number;
+      t0: number;
+      isTouch: boolean;
+      holdTimer: ReturnType<typeof setTimeout> | null;
+    }
   | { kind: 'create-drag'; pointerId: number; startSlot: number; endSlot: number }
   | {
       kind: 'task-pending';
@@ -77,6 +86,7 @@ type Gesture =
       x0: number;
       y0: number;
       t0: number;
+      isTouch: boolean;
       pickupTimer: ReturnType<typeof setTimeout> | null;
     }
   | {
