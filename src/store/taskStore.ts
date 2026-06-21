@@ -101,6 +101,10 @@ interface TaskState {
   daySubMode: DaySubMode;
   weekSubMode: WeekSubMode;
   dayToggleTarget: DayToggleTarget;
+  /** Hour of day (0–23) the timeline/sequencer starts at. Default 6 (6am). */
+  dayStartHour: number;
+  /** Hour of day (0–23) the timeline/sequencer ends at. Default 21 (9pm). */
+  dayEndHour: number;
   routinesEnabled: boolean;
   focusTaskId: string | null;
   editingTaskId: string | null;
@@ -115,6 +119,7 @@ interface TaskState {
   setDaySubMode: (mode: DaySubMode) => void;
   setWeekSubMode: (mode: WeekSubMode) => void;
   setDayToggleTarget: (target: DayToggleTarget) => void;
+  setDayHours: (startHour: number, endHour: number) => void;
   setNavigateToDate: (date: string | null) => void;
   setCurrentDate: (date: string | null) => void;
   setListReturnZoom: (zoom: ListReturnZoom | null) => void;
