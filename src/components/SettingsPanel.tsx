@@ -411,6 +411,63 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
           </div>
           )}
 
+          {/* Day window (start/end hours) — advanced */}
+          {showAdvanced && (
+          <div className="mb-4">
+            <div className="flex items-center gap-1.5 mb-2">
+              <Sunrise size={12} strokeWidth={1.5} className="text-muted-foreground" />
+              <span className="text-[11px] font-mono tracking-[0.12em] text-muted-foreground">DAY WINDOW</span>
+            </div>
+            <div className="text-[10px] font-mono text-muted-foreground/50 mb-2">
+              Hours shown on Timeline (day &amp; week) and Sequencer. Default 6 AM – 9 PM.
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] font-mono tracking-wider text-muted-foreground/60">START</span>
+                <select
+                  value={dayStartHour}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10);
+                    setDayHours(v, Math.max(v + 1, dayEndHour));
+                  }}
+                  className="bg-muted/30 border border-border/50 rounded-sm px-2 py-2 text-[11px] font-mono"
+                >
+                  {Array.from({ length: 24 }, (_, h) => h).map((h) => (
+                    <option key={h} value={h} disabled={h >= dayEndHour}>
+                      {formatHour(h)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] font-mono tracking-wider text-muted-foreground/60">END</span>
+                <select
+                  value={dayEndHour}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10);
+                    setDayHours(Math.min(dayStartHour, v - 1), v);
+                  }}
+                  className="bg-muted/30 border border-border/50 rounded-sm px-2 py-2 text-[11px] font-mono"
+                >
+                  {Array.from({ length: 24 }, (_, h) => h + 1).map((h) => (
+                    <option key={h} value={h} disabled={h <= dayStartHour}>
+                      {formatHour(h)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            {(dayStartHour !== 6 || dayEndHour !== 21) && (
+              <button
+                onClick={() => setDayHours(6, 21)}
+                className="mt-2 text-[10px] font-mono tracking-wider text-muted-foreground/60 hover:text-foreground"
+              >
+                RESET TO DEFAULT (6 AM – 9 PM)
+              </button>
+            )}
+          </div>
+          )}
+
           {/* Task Mobility — advanced */}
           {showAdvanced && (
           <div className="mb-4">
