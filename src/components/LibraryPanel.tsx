@@ -392,7 +392,8 @@ export function LibraryPanel() {
   const isMobile = useIsMobile();
   const { hint: entryHint } = useEntryHint();
   const viewMode = useTaskStore((s) => s.viewMode);
-  const [sidebarMode, setSidebarMode] = useState(false);
+  const sidebarMode = useLibraryStore((s) => s.sidebarMode);
+  const setSidebarMode = useLibraryStore((s) => s.setSidebarMode);
 
   // When panel opens, default to sidebar mode in day/week views, full-screen in focus/calendar.
   const prevPanelOpen = useRef(false);
