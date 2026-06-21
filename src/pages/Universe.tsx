@@ -11,7 +11,7 @@ import {
   type Feature,
   type Tile,
 } from "@/utils/planetWorld";
-import { buildWorldData, type WorldData } from "@/utils/planetWorld3D";
+import { buildLandscape, type LandscapeData } from "@/utils/planetWorld3D";
 import { World3D } from "@/components/universe/World3D";
 
 type PlanetStatus = "healthy" | "due-soon" | "overdue";
@@ -771,8 +771,8 @@ function PlanetWorldView({
   const data = useTagInvestment(planet.value);
   const { scene, metrics, tasks, firstCompletedAt, minutesThisMonth } = data;
   const allTasks = useTaskStore((s) => s.tasks);
-  const world3d: WorldData = useMemo(
-    () => buildWorldData(planet.value, allTasks),
+  const world3d: LandscapeData = useMemo(
+    () => buildLandscape(planet.value, allTasks),
     [planet.value, allTasks]
   );
   const completionPct =
@@ -821,14 +821,14 @@ function PlanetWorldView({
         </div>
 
         {/* Legend */}
-        <div className="absolute bottom-20 left-6 z-10 text-[10px] font-mono uppercase tracking-[0.2em] text-foreground/60 space-y-1 pointer-events-none">
-          <div>· terrain height = hours completed that week</div>
-          <div>· tree = short task &lt; 60 min</div>
-          <div>· building = task ≥ 60 min</div>
-          <div>· obelisk = every 25 completions</div>
-          <div>· red beacon = overdue · amber = due soon</div>
-          {world3d.longestStreakDays > 1 && (
-            <div>· orange line = longest streak ({world3d.longestStreakDays} days)</div>
+        <div className="absolute bottom-20 left-6 z-10 text-[10px] font-mono uppercase tracking-[0.2em] text-foreground/60 space-y-1 pointer-events-none max-w-xs">
+          <div>· west → east = oldest → newest</div>
+          <div>· hills rise where you worked</div>
+          <div>· forests grow with sustained effort</div>
+          <div>· settlements form around long sessions</div>
+          <div>· landmarks mark milestones</div>
+          {world3d.bestStreakDays > 2 && (
+            <div>· river carved by your {world3d.bestStreakDays}-day streak</div>
           )}
         </div>
 
