@@ -1118,8 +1118,9 @@ export function TimelineColumn({
     const y = libDragY - rect.top;
     const mins = START_HOUR * 60 + (y / HOUR_HEIGHT) * 60;
     const duration = Math.max(15, libDragItem.duration || 30);
-    // Center the block roughly under the pointer, then snap to 15.
-    const snapped = snapTo15(mins - duration / 2);
+    // Anchor the block's START at the pointer (matches the actual drop logic,
+    // which uses snapTo15(mins) as the start time).
+    const snapped = snapTo15(mins);
     const top = ((snapped - START_HOUR * 60) / 60) * HOUR_HEIGHT;
     const height = Math.max((duration / 60) * HOUR_HEIGHT, 22);
     // Collision check
