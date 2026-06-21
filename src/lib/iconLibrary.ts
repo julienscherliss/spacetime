@@ -321,7 +321,7 @@ const ENTRIES: IconEntry[] = [
   // ─── Plants & nature ──────────────────────────────
   { name: 'TreeDeciduous', Icon: TreeDeciduous, tags: ['nature', 'park', 'tree'] },
   { name: 'TreePalm', Icon: TreePalm, tags: ['beach', 'tropical', 'vacation'] },
-  { name: 'Flower', Icon: Flower, tags: ['garden', 'plant', 'bloom'] },
+  { name: 'Bloom', Icon: Flower, tags: ['garden', 'plant', 'bloom'] },
   { name: 'LeafyGreen', Icon: LeafyGreen, tags: ['veggie', 'plant', 'healthy'] },
   { name: 'Clover', Icon: Clover, tags: ['luck', 'nature', 'irish'] },
 
@@ -433,7 +433,6 @@ const ENTRIES: IconEntry[] = [
   { name: 'BellPlus', Icon: BellPlus, tags: ['add-notification'] },
   { name: 'BellMinus', Icon: BellMinus, tags: ['remove-notification'] },
   { name: 'BellDot', Icon: BellDot, tags: ['unread', 'notify'] },
-  { name: 'Megaphone', Icon: Megaphone, tags: ['announce', 'marketing', 'promo'] },
   { name: 'Volume', Icon: Volume, tags: ['sound', 'audio'] },
   { name: 'Volume1', Icon: Volume1, tags: ['low-volume', 'audio'] },
   { name: 'Volume2', Icon: Volume2, tags: ['high-volume', 'audio'] },
@@ -629,7 +628,7 @@ const ENTRIES: IconEntry[] = [
   { name: 'Paperclip', Icon: Paperclip, tags: ['attach', 'file', 'clip'] },
   { name: 'Crosshair', Icon: Crosshair, tags: ['target', 'aim', 'focus'] },
   { name: 'Focus', Icon: Focus, tags: ['target', 'aim', 'sharp'] },
-  { name: 'Pen', Icon: Pen, tags: ['write', 'edit'] },
+  { name: 'FountainPen', Icon: Pen, tags: ['write', 'edit'] },
   { name: 'Building2Alt', Icon: Building, tags: ['office', 'tower'] },
 ];
 
