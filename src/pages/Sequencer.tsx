@@ -1022,7 +1022,8 @@ function Cell({
   return (
     <div className="p-[3px]" data-slot-idx={slotIdx}>
       <div
-        className="relative w-full h-full rounded-sm flex items-center justify-center transition-all duration-150"
+        data-tooltip={occupied && !inPreview ? cell?.task.title : undefined}
+        className={`cell-tooltip relative w-full h-full rounded-sm flex items-center justify-center transition-all duration-150 ${occupied && !inPreview ? 'cell-tooltip' : ''}`}
         style={{
           background: previewBg ?? (occupied ? 'hsl(var(--muted))' : 'transparent'),
           border: previewBorder ?? (occupied ? '1px solid hsl(var(--border) / 0.5)' : '1px solid transparent'),
