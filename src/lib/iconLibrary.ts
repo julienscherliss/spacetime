@@ -33,7 +33,7 @@ import {
   Key, KeyRound, KeySquare, Keyboard, Lamp, LampCeiling, LampDesk, LampFloor, Landmark,
   Languages, Laptop, Laugh, Leaf, LeafyGreen, Library, Lightbulb, Link, ListChecks, ListFilter,
   ListMinus, ListOrdered, ListPlus, ListTodo, ListX, Lock, LockKeyhole, Lollipop, Luggage,
-  Magnet, Mail, Map, MapPin, MapPinned, Martini, Medal, Meh, MemoryStick, MessageCircle,
+  Magnet, Mail, Map as MapIcon, MapPin, MapPinned, Martini, Medal, Meh, MemoryStick, MessageCircle,
   MessageCircleHeart, MessageCircleMore, MessageCircleQuestion, MessageSquare, MessagesSquare,
   Mic, Mic2, Microscope, Microwave, Milestone, Milk, MilkOff, Monitor, Moon, Mountain,
   MountainSnow, Mouse, MousePointer, Move, MoveHorizontal, MoveVertical, Music, Music2,
