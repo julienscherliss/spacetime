@@ -101,8 +101,8 @@ export function WeekGrid({
           {HOURS.map((hour, i) => (
             <div
               key={hour}
-              className={`absolute left-0 right-0 font-mono text-muted-foreground/60 font-medium text-right pr-1 -mt-2 select-none ${
-                compact ? 'text-[8px]' : 'text-[10px]'
+              className={`absolute left-0 right-0 font-mono tracking-[0.18em] text-muted-foreground/60 font-medium text-right pr-1 -mt-2 select-none ${
+                compact ? 'text-[8px]' : 'text-[9px]'
               }`}
               style={{ top: i * hourHeight }}
             >
