@@ -72,35 +72,35 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
   const { completeItem } = useLibraryStore();
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFired = useRef(false);
+  const pointerDownPos = useRef<{ x: number; y: number } | null>(null);
   const [isHovered, setIsHovered] = useState(false);
   const showHoldHint = !isMobile && isHovered && getPlaceCount() < 10;
+
+  const triggerPickup = useCallback(() => {
+    longPressFired.current = true;
+    incrementPlaceCount();
+    useCarryStore.getState().pickup({
+      taskId: item.id,
+      title: item.title,
+      duration: item.defaultDuration,
+      fromDate: '',
+      fromLibrary: true,
+      libraryItemId: item.id,
+      pickedUpAt: Date.now(),
+    });
+    // Always close the library on pickup; the panel will auto-reopen once
+    // the carry is dropped (cancels do not trigger re-open).
+    const libState = useLibraryStore.getState();
+    libState.setReopenAfterCarryDrop(true);
+    libState.setPanelOpen(false);
+  }, [item]);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('[data-touch-ignore]')) return;
     longPressFired.current = false;
+    pointerDownPos.current = { x: e.clientX, y: e.clientY };
     longPressTimer.current = setTimeout(() => {
-      longPressFired.current = true;
-      incrementPlaceCount();
-      useCarryStore.getState().pickup({
-        taskId: item.id,
-        title: item.title,
-        duration: item.defaultDuration,
-        fromDate: '',
-        fromLibrary: true,
-        libraryItemId: item.id,
-        pickedUpAt: Date.now(),
-      });
-      // On desktop sidebar mode, the timeline is visible alongside the
-      // library — keep the panel open so the user can drop directly. On
-      // mobile (or fullscreen), close it so the user can see the schedule,
-      // and flag it to re-open automatically after the carry is dropped.
-      const libState = useLibraryStore.getState();
-      const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 768;
-      const keepOpen = isDesktop && libState.sidebarMode;
-      if (!keepOpen) {
-        libState.setReopenAfterCarryDrop(true);
-        libState.setPanelOpen(false);
-      }
+      triggerPickup();
     }, 400);
   }, [item]);
 
@@ -110,10 +110,21 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
     if (!longPressFired.current) onEdit();
   }, [onEdit]);
 
-  const handlePointerMove = useCallback(() => {
-    if (longPressTimer.current && !longPressFired.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    // If the user started dragging before the long-press timer fired, treat
+    // it as a drag-to-place: trigger pickup immediately, which closes the
+    // library and flags it to reopen after the carry is dropped.
+    if (longPressFired.current) return;
+    const origin = pointerDownPos.current;
+    if (!origin) return;
+    const dx = e.clientX - origin.x;
+    const dy = e.clientY - origin.y;
+    if (Math.hypot(dx, dy) > 8) {
+      if (longPressTimer.current) {
+        clearTimeout(longPressTimer.current);
+        longPressTimer.current = null;
+      }
+      triggerPickup();
     }
   }, []);
 
