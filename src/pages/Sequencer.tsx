@@ -259,8 +259,8 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
   const gestureRef = useRef<Gesture | null>(null);
   const [preview, setPreview] = useState<PreviewState | null>(null);
   // Pickup ring: visual + progress while the user holds on a scheduled task.
-  // Rendered as an overlay centered on the press location.
-  const [pickupRing, setPickupRing] = useState<{ x: number; y: number; progress: number } | null>(null);
+  // Rendered inside the target Cell so it is centered and covers the icon.
+  const [pickupRing, setPickupRing] = useState<{ slotIdx: number; progress: number } | null>(null);
   const pickupRafRef = useRef<number | null>(null);
   const pickupStartRef = useRef<number | null>(null);
   const pickupCommittedRef = useRef(false);
@@ -827,7 +827,7 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
       // unless the user moves (→ in-place drag) or releases (→ tap-to-edit).
       pickupStartRef.current = performance.now();
       pickupCommittedRef.current = false;
-      setPickupRing({ x: cx, y: cy, progress: 0 });
+      setPickupRing({ slotIdx: slot, progress: 0 });
       const heldTaskId = cell.task.id;
       const heldDuration = cell.task.duration || 30;
       const heldDate = cell.task.date;
@@ -1031,6 +1031,8 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
                         hidden={hidden}
                         horizontal={horizontal}
                         isOverdue={isOverdue}
+                        pickupSlot={pickupRing?.slotIdx ?? null}
+                        pickupProgress={pickupRing?.progress ?? 0}
                       />
                     );
                   });
@@ -1050,6 +1052,8 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
                       preview={preview}
                       dateStr={dateStr}
                       today={today}
+                      pickupSlot={pickupRing?.slotIdx ?? null}
+                      pickupProgress={pickupRing?.progress ?? 0}
                     />
                   );
                 })}
@@ -1067,25 +1071,6 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
         </div>
 
       </div>
-      {pickupRing && pickupRing.progress > 0 && (
-        <div
-          className="fixed z-50 pointer-events-none"
-          style={{
-            left: pickupRing.x,
-            top: pickupRing.y,
-            transform: 'translate(-50%, -50%)',
-          }}
-        >
-          <div className="relative bg-background/85 backdrop-blur-sm rounded-full p-1.5 shadow-md border border-border">
-            <HoldToConfirmRing
-              progress={pickupRing.progress}
-              size={36}
-              strokeWidth={2.5}
-              label="HOLD TO PICK UP"
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -1105,7 +1090,7 @@ function ChromeBtn({ children, onClick, ariaLabel }: { children: React.ReactNode
 }
 
 function RowFragment({
-  label, cells, rowIdx, nowMin, preview, dateStr, today,
+  label, cells, rowIdx, nowMin, preview, dateStr, today, pickupSlot, pickupProgress,
 }: {
   label: string;
   cells: (CellAssignment | null)[];
@@ -1114,6 +1099,8 @@ function RowFragment({
   preview: PreviewState | null;
   dateStr: string;
   today: string;
+  pickupSlot: number | null;
+  pickupProgress: number;
 }) {
   return (
     <>
@@ -1146,6 +1133,8 @@ function RowFragment({
             previewDuplicate={!!preview?.duplicate && preview?.startSlot === slotIdx}
             hidden={hidden}
             isOverdue={isOverdue}
+            pickupSlot={pickupSlot}
+            pickupProgress={pickupProgress}
           />
         );
       })}
@@ -1155,7 +1144,7 @@ function RowFragment({
 
 function Cell({
   slotIdx, cell, isPast, isCurrent, inPreview, previewBlocked, PreviewIcon, previewDuplicate, hidden,
-  horizontal = false, isOverdue = false,
+  horizontal = false, isOverdue = false, pickupSlot = null, pickupProgress = 0,
 }: {
   slotIdx: number;
   cell: CellAssignment | null;
@@ -1168,9 +1157,13 @@ function Cell({
   hidden: boolean;
   horizontal?: boolean;
   isOverdue?: boolean;
+  pickupSlot?: number | null;
+  pickupProgress?: number;
 }) {
   const occupied = !!cell && !hidden;
   const completed = cell?.task.completed;
+  const isPickupTarget = slotIdx === pickupSlot;
+  const showHoldRing = isPickupTarget && pickupProgress > 0;
 
   const previewBg = inPreview
     ? previewBlocked
@@ -1221,7 +1214,7 @@ function Cell({
           opacity: hidden ? 0 : 1,
         }}
       >
-        {inPreview && PreviewIcon ? (
+        {isPickupTarget ? null : inPreview && PreviewIcon ? (
           <PreviewIcon
             size={22}
             strokeWidth={1.4}
@@ -1240,6 +1233,14 @@ function Cell({
             className="block rounded-full bg-foreground/[0.12] pointer-events-none"
             style={{ width: 3, height: 3 }}
           />
+        )}
+        {showHoldRing && (
+          <div className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
+            <div className="bg-background/70 backdrop-blur-sm rounded-[2px] absolute inset-0" />
+            <div className="relative z-10">
+              <HoldToConfirmRing progress={pickupProgress} size={32} strokeWidth={2.5} label="HOLD TO PICK UP" />
+            </div>
+          </div>
         )}
         {inPreview && previewDuplicate && (
           <div
