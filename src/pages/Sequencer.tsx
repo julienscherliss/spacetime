@@ -11,6 +11,7 @@ import {
 } from '@/utils/collisionDetection';
 import { TaskEditPanel } from '@/components/TaskEditPanel';
 import { useCarryStore, roundCarriedDuration } from '@/store/carryStore';
+import { HoldToConfirmRing } from '@/components/HoldToConfirmRing';
 import { useLibraryDragStore } from '@/store/libraryDragStore';
 import { useTimezoneStore } from '@/store/timezoneStore';
 import { getIconByName } from '@/lib/iconLibrary';
@@ -25,8 +26,14 @@ import {
 const COLS = 4;
 const SLOT_MIN = 15;
 const LABEL_COL_W = 46;
-const PICKUP_MS = 1000;
+// Pickup ring (mirrors TimelineTaskBlock):
+//   0–LOCK_MS:                no movement / no ring
+//   LOCK_MS–PICKUP_START_MS:  movement starts in-place drag
+//   PICKUP_START_MS–onwards:  ring is visible and filling
+//   PICKUP_START_MS + FILL_MS: pickup commits → task goes into inventory
 const LOCK_MS = 250;
+const PICKUP_START_MS = 500;
+const PICKUP_FILL_MS = 500;
 const MOVE_THRESHOLD_PX = 8;
 
 // Day window is configurable via Settings → Advanced. These mirror the store
