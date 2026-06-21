@@ -236,6 +236,11 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
   // ─── Interaction state ─────────────────────────────────
   const gestureRef = useRef<Gesture | null>(null);
   const [preview, setPreview] = useState<PreviewState | null>(null);
+  // Duplicate-mode state: while in a task-drag, hovering on the same target
+  // for 2s flips the drop action from "move" to "duplicate". Any movement
+  // to a different slot reverts to "move" and re-arms the timer.
+  const dupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dupModeRef = useRef<boolean>(false);
 
   // Stable refs so window listeners attach only once.
   const handlePointerMoveRef = useRef<(e: PointerEvent) => void>(() => {});
