@@ -947,6 +947,7 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
                         inPreview={inPreview}
                         previewBlocked={preview?.blocked ?? false}
                         PreviewIcon={preview?.PreviewIcon}
+                        previewDuplicate={!!preview?.duplicate && preview?.startSlot === slotIdx}
                         hidden={hidden}
                         horizontal={horizontal}
                       />
@@ -1037,6 +1038,7 @@ function RowFragment({
             inPreview={inPreview}
             previewBlocked={preview?.blocked ?? false}
             PreviewIcon={preview?.PreviewIcon}
+            previewDuplicate={!!preview?.duplicate && preview?.startSlot === slotIdx}
             hidden={hidden}
           />
         );
