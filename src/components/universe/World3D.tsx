@@ -1,19 +1,20 @@
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
-import { useMemo, useRef } from "react";
-import * as THREE from "three";
+// Painterly 2D planet — a hand-stippled specimen rendered on canvas.
+// Each tag's seed produces a unique chromatic identity. As completion
+// history grows, the palette gains stages and the surface gains density,
+// the way a long-worked painting accrues marks.
+//
+// No 3D. Inspired by topographic strata illustrations, pointillist
+// landscapes, and impressionist gardens — meticulous, layered, painted.
+
+import { useEffect, useMemo, useRef } from "react";
 import type { LandscapeData } from "@/utils/planetWorld3D";
 
-// Light industrial palette — natural tones stay within the project's
-// monochrome-with-accent system: ink near-black, paper background, accent
-// burnt orange. Biome tints are *desaturated* shifts of ink so the planet
-// reads as a single material that grows richer, never as bright fantasy.
 const PAPER = "#f3f0ea";
 const INK = "#1c1b18";
 const ACCENT = "#c4663b";
 
 // ------------------------------------------------------------------
-// Deterministic RNG + value-noise FBM (3D)
+// Deterministic RNG
 // ------------------------------------------------------------------
 function mulberry32(seed: number) {
   let a = seed >>> 0;
@@ -26,52 +27,35 @@ function mulberry32(seed: number) {
   };
 }
 
-function make3DNoise(seed: number) {
-  const size = 32;
+// ------------------------------------------------------------------
+// 2D value-noise FBM
+// ------------------------------------------------------------------
+function makeFBM2D(seed: number, octaves = 4) {
+  const size = 128;
   const rng = mulberry32(seed);
-  const grid = new Float32Array(size * size * size);
+  const grid = new Float32Array(size * size);
   for (let i = 0; i < grid.length; i++) grid[i] = rng() * 2 - 1;
-  const at = (xi: number, yi: number, zi: number) => {
-    const x = ((xi % size) + size) % size;
-    const y = ((yi % size) + size) % size;
-    const z = ((zi % size) + size) % size;
-    return grid[z * size * size + y * size + x];
-  };
+  const at = (xi: number, yi: number) =>
+    grid[(((yi % size) + size) % size) * size + (((xi % size) + size) % size)];
   const smooth = (t: number) => t * t * (3 - 2 * t);
-  return (x: number, y: number, z: number) => {
+  const noise = (x: number, y: number) => {
     const xi = Math.floor(x);
     const yi = Math.floor(y);
-    const zi = Math.floor(z);
     const xf = smooth(x - xi);
     const yf = smooth(y - yi);
-    const zf = smooth(z - zi);
-    const c000 = at(xi, yi, zi);
-    const c100 = at(xi + 1, yi, zi);
-    const c010 = at(xi, yi + 1, zi);
-    const c110 = at(xi + 1, yi + 1, zi);
-    const c001 = at(xi, yi, zi + 1);
-    const c101 = at(xi + 1, yi, zi + 1);
-    const c011 = at(xi, yi + 1, zi + 1);
-    const c111 = at(xi + 1, yi + 1, zi + 1);
-    const a = c000 * (1 - xf) + c100 * xf;
-    const b = c010 * (1 - xf) + c110 * xf;
-    const c = c001 * (1 - xf) + c101 * xf;
-    const d = c011 * (1 - xf) + c111 * xf;
-    const ab = a * (1 - yf) + b * yf;
-    const cd = c * (1 - yf) + d * yf;
-    return ab * (1 - zf) + cd * zf;
+    const a = at(xi, yi);
+    const b = at(xi + 1, yi);
+    const c = at(xi, yi + 1);
+    const d = at(xi + 1, yi + 1);
+    return (a * (1 - xf) + b * xf) * (1 - yf) + (c * (1 - xf) + d * xf) * yf;
   };
-}
-
-function makeFBM3D(seed: number, octaves = 4) {
-  const n = make3DNoise(seed);
-  return (x: number, y: number, z: number) => {
+  return (x: number, y: number) => {
     let total = 0;
     let amp = 1;
     let freq = 1;
     let norm = 0;
     for (let i = 0; i < octaves; i++) {
-      total += n(x * freq, y * freq, z * freq) * amp;
+      total += noise(x * freq, y * freq) * amp;
       norm += amp;
       amp *= 0.5;
       freq *= 2;
@@ -81,16 +65,8 @@ function makeFBM3D(seed: number, octaves = 4) {
 }
 
 // ------------------------------------------------------------------
-// Evolution stage — derived from accumulated effort, age, consistency.
-// Stages map to ecological complexity, never civilization.
+// Evolution stage — same logic as before, governs palette + density
 // ------------------------------------------------------------------
-//  0 primordial rock
-//  1 geological formation (mountains, valleys)
-//  2 water systems (rivers, lakes, seas)
-//  3 organic emergence (microbial patches)
-//  4 plant colonization (moss, lichen)
-//  5 ecosystem formation (forests, wetlands)
-//  6 complex life (biodiverse mosaic)
 function computeStage(land: LandscapeData): number {
   const c = land.totalCompleted;
   const consistencyBonus = land.consistency >= 0.4 ? 1 : 0;
@@ -101,415 +77,453 @@ function computeStage(land: LandscapeData): number {
   if (c >= 90) stage = 4;
   if (c >= 180) stage = 5;
   if (c >= 360) stage = 6;
-  // Sustained engagement can advance one stage early
   if (consistencyBonus && stage < 6 && c >= 6) stage = Math.min(6, stage + 1);
   return stage;
 }
 
 // ------------------------------------------------------------------
-// Planet identity — each tag gets a deterministic ecological "fingerprint"
-// drawn from its seed. Same tag always evolves into the same planet.
+// Stage palettes. Each is ordered from deepest/lowest to highest/peak.
+// Designed to evoke the reference paintings — vivid but cohesive.
 // ------------------------------------------------------------------
-interface PlanetIdentity {
-  axialTilt: number;          // -0.5..0.5 rad
-  mountainScale: number;      // 0.7..1.4 — how dramatic the relief is
-  ruggedness: number;         // 0.4..1.0 — high-freq detail amount
-  waterLevel: number;         // 0.95..1.02 — radius threshold for water
-  biomeHue: number;           // 0..1 — tag's signature tint
-  biomeFreq: number;          // 0.6..1.4 — biome patch size
-  craterDensity: number;      // 0..1 — how many primordial craters
-  rotationSpeed: number;      // 0.01..0.05
+const STAGE_PALETTES: string[][] = [
+  // 0 — Primordial. Dusty rock, ash, ochre.
+  ["#2a2521", "#3d362e", "#5a4d3f", "#7a6a55", "#9c8a6f", "#b8a585", "#d4c3a4"],
+  // 1 — Geological. Stratified strata: deep plum, terracotta, ochre, bone.
+  ["#2a1f3a", "#5b2a4a", "#9c3a3a", "#c45c2e", "#e08a3a", "#f0bb6a", "#e8d4a8", "#bca87c"],
+  // 2 — Water systems. Cool depths join the strata.
+  ["#1a2a3a", "#2d4a5e", "#4a7088", "#7a98ad", "#a8a094", "#c97a5a", "#e0a85a", "#f0d49a"],
+  // 3 — Organic emergence. Microbial darks, mineral teals.
+  ["#1a2630", "#284048", "#3d5a52", "#5a7058", "#7e8868", "#a8956e", "#cba874", "#e3c89a"],
+  // 4 — Plant colonization. Moss & lichen layered over mineral.
+  ["#1c2a26", "#2e4a3a", "#4f6f48", "#7a9058", "#a8b078", "#c4b58a", "#9c8a6e", "#6b5d4a"],
+  // 5 — Ecosystem. Forests, wetlands, dappled light.
+  ["#162a28", "#1f4a3a", "#3a6e4a", "#6a955a", "#a2bd72", "#d4c98a", "#a8704a", "#5a3a2e"],
+  // 6 — Complex life. Pointillist mosaic — full chromatic breath.
+  [
+    "#1a2a4a", "#3a4a7a", "#5a78a8", "#88a8c4", "#a8c4b8",
+    "#7eb098", "#a8c878", "#dcc46a", "#e89a5a", "#c45a6a", "#7a3a6a",
+  ],
+];
+
+// ------------------------------------------------------------------
+// Per-tag identity — drives unique appearance per planet
+// ------------------------------------------------------------------
+interface Identity {
+  hueShift: number;       // -0.08 .. 0.08 (slight global rotation)
+  rotation: number;       // 0..2π (orientation of underlying noise)
+  mountainScale: number;  // 0.6..1.4
+  waterLevel: number;     // 0.32..0.5
+  biomeFreq: number;      // 0.6..1.6
+  ruggedness: number;     // 0.4..1.0
+  dabRatio: number;       // 0.85..1.15 — overall density
+  brushSize: number;      // 0.85..1.2 — base brush scale
 }
 
-function buildIdentity(seed: number): PlanetIdentity {
+function buildIdentity(seed: number): Identity {
   const rng = mulberry32(seed ^ 0xc0ffee);
   return {
-    axialTilt: (rng() - 0.5) * 0.8,
-    mountainScale: 0.7 + rng() * 0.7,
+    hueShift: (rng() - 0.5) * 0.16,
+    rotation: rng() * Math.PI * 2,
+    mountainScale: 0.6 + rng() * 0.8,
+    waterLevel: 0.32 + rng() * 0.18,
+    biomeFreq: 0.6 + rng() * 1.0,
     ruggedness: 0.4 + rng() * 0.6,
-    waterLevel: 0.95 + rng() * 0.07,
-    biomeHue: rng(),
-    biomeFreq: 0.6 + rng() * 0.8,
-    craterDensity: rng(),
-    rotationSpeed: 0.012 + rng() * 0.035,
+    dabRatio: 0.85 + rng() * 0.3,
+    brushSize: 0.85 + rng() * 0.35,
   };
 }
 
 // ------------------------------------------------------------------
-// Biome tint — given (height, latitude, biomeNoise, stage, identity)
-// return a desaturated, ink-leaning color. No saturated greens or blues.
+// HSL helpers
 // ------------------------------------------------------------------
-const ROCK = new THREE.Color("#2a2724");        // dark rock
-const STONE = new THREE.Color("#5a544c");       // mid stone
-const SAND = new THREE.Color("#a89c87");        // dust / dry
-const SNOW = new THREE.Color("#e8e3d8");        // polar / peak
-const WATER_DEEP = new THREE.Color("#1d2a30");  // deep water (near-ink)
-const WATER_SHALLOW = new THREE.Color("#3a4a52");
-const MOSS = new THREE.Color("#4a5340");        // muted green
-const LICHEN = new THREE.Color("#6b6d54");
-const FOREST = new THREE.Color("#2f3a2c");
-const WETLAND = new THREE.Color("#3d4438");
-const HEATH = new THREE.Color("#5b4a3a");       // brown heath
-
-function biomeColor(
-  height: number,        // 0..1 (0=lowest land, 1=highest peak)
-  isWater: boolean,
-  waterDepth: number,    // 0 (shore) ..1 (deep), only if isWater
-  lat: number,           // 0 (equator) ..1 (pole)
-  biome: number,         // -1..1 noise
-  diversity: number,     // -1..1 secondary noise
-  stage: number,
-  id: PlanetIdentity
-): THREE.Color {
-  if (isWater && stage >= 2) {
-    const c = WATER_SHALLOW.clone().lerp(WATER_DEEP, Math.min(1, waterDepth));
-    return c;
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  return [
+    parseInt(h.slice(0, 2), 16),
+    parseInt(h.slice(2, 4), 16),
+    parseInt(h.slice(4, 6), 16),
+  ];
+}
+function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  let h = 0;
+  let s = 0;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h /= 6;
   }
-
-  // Base rock gradient — present at every stage
-  let c = ROCK.clone().lerp(STONE, Math.min(1, height * 1.3));
-  // High peaks: dusty/dry, then polar snow at extremes
-  if (height > 0.65) c = c.lerp(SAND, Math.min(1, (height - 0.65) * 2));
-  const polar = Math.pow(lat, 4);
-  if (polar > 0.2 || height > 0.85) {
-    c = c.lerp(SNOW, Math.max(polar, Math.max(0, height - 0.85) * 3) * 0.8);
+  return [h, s, l];
+}
+function hslToRgb(h: number, s: number, l: number): [number, number, number] {
+  h = ((h % 1) + 1) % 1;
+  if (s === 0) {
+    const v = Math.round(l * 255);
+    return [v, v, v];
   }
-
-  if (stage <= 1) return c; // primordial / geological — bare
-
-  // Stage 3+: organic emergence — dark mottled patches in low/mid lands
-  if (stage >= 3 && height < 0.55 && lat < 0.85) {
-    const organic = Math.max(0, biome);
-    c = c.lerp(WETLAND, organic * 0.35);
-  }
-
-  // Stage 4: plant colonization — moss & lichen spread
-  if (stage >= 4 && lat < 0.8) {
-    const plant = Math.max(0, biome * 0.6 + diversity * 0.4);
-    // Lichen prefers mid heights & cool latitudes
-    const lichenMix = plant * (1 - height) * 0.6;
-    c = c.lerp(LICHEN, Math.min(0.5, lichenMix));
-    if (height < 0.45) {
-      c = c.lerp(MOSS, Math.min(0.55, plant * 0.5));
-    }
-  }
-
-  // Stage 5: ecosystem formation — forests in fertile bands
-  if (stage >= 5 && height < 0.5 && lat < 0.7) {
-    const forest = Math.max(0, biome * 0.5 + diversity * 0.5);
-    c = c.lerp(FOREST, Math.min(0.6, forest * 0.7));
-    // Wetlands near water
-    if (height < 0.12) c = c.lerp(WETLAND, 0.4);
-  }
-
-  // Stage 6: biodiversity — heath/grassland mosaic on slopes
-  if (stage >= 6) {
-    const mosaic = (biome * 0.4 + diversity * 0.6 + 1) * 0.5;
-    if (height > 0.3 && height < 0.7 && lat < 0.75) {
-      c = c.lerp(HEATH, mosaic * 0.35);
-    }
-  }
-
-  // Identity tint — gentle hue shift per planet so each tag feels unique.
-  // Stays inside HSL within ~12° of ink so it never looks fantasy.
-  const tint = new THREE.Color().setHSL(
-    (id.biomeHue * 0.18 + 0.05) % 1,
-    0.08,
-    c.getHSL({ h: 0, s: 0, l: 0 } as THREE.HSL).l
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  const conv = (t: number) => {
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 1 / 6) return p + (q - p) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+  };
+  return [
+    Math.round(conv(h + 1 / 3) * 255),
+    Math.round(conv(h) * 255),
+    Math.round(conv(h - 1 / 3) * 255),
+  ];
+}
+function shiftHex(hex: string, hueShift: number, lightFactor = 1, satFactor = 1): string {
+  const [r, g, b] = hexToRgb(hex);
+  const [h, s, l] = rgbToHsl(r, g, b);
+  const [nr, ng, nb] = hslToRgb(
+    h + hueShift,
+    Math.max(0, Math.min(1, s * satFactor)),
+    Math.max(0, Math.min(1, l * lightFactor))
   );
-  c.lerp(tint, 0.08 * Math.min(1, stage / 4));
+  return `rgb(${nr},${ng},${nb})`;
+}
 
-  return c;
+function shiftPalette(palette: string[], hueShift: number): string[] {
+  return palette.map((c) => shiftHex(c, hueShift));
 }
 
 // ------------------------------------------------------------------
-// Planet — icosphere displaced by FBM, vertex-colored by biome rules.
+// Pick a color from a sorted palette by t (0 deep .. 1 high)
 // ------------------------------------------------------------------
-function PlanetMesh({
-  land,
-  stage,
-  identity,
-}: {
-  land: LandscapeData;
-  stage: number;
-  identity: PlanetIdentity;
-}) {
-  const groupRef = useRef<THREE.Group>(null);
-
-  // Subdivision level scales with stage so early planets stay simple
-  // (low-poly primordial rock) and mature planets are richly detailed.
-  const detail = stage <= 0 ? 4 : stage <= 1 ? 5 : stage <= 3 ? 6 : 6;
-
-  const geometry = useMemo(() => {
-    const geo = new THREE.IcosahedronGeometry(1, detail);
-    const pos = geo.attributes.position;
-    const colors = new Float32Array(pos.count * 3);
-
-    const baseNoise = makeFBM3D(land.seed ^ 0x1a1, 5);
-    const detailNoise = makeFBM3D(land.seed ^ 0x4b7, 3);
-    const biomeNoise = makeFBM3D(land.seed ^ 0x9c2, 4);
-    const diversityNoise = makeFBM3D(land.seed ^ 0xde8, 3);
-    const erosion = makeFBM3D(land.seed ^ 0x2ef, 3);
-
-    // Displacement magnitude grows with stage but never exceeds a calm range
-    const reliefByStage = [0.04, 0.10, 0.13, 0.14, 0.15, 0.16, 0.17];
-    const relief = reliefByStage[stage] * identity.mountainScale;
-
-    // Water level only meaningful from stage 2 onward
-    const waterR = stage >= 2 ? identity.waterLevel : -1;
-
-    const v = new THREE.Vector3();
-    const tmpColor = new THREE.Color();
-    let minR = Infinity;
-    let maxR = -Infinity;
-
-    // Pre-pass: compute displaced radii so we can normalize height for color.
-    const radii = new Float32Array(pos.count);
-    for (let i = 0; i < pos.count; i++) {
-      v.fromBufferAttribute(pos, i);
-      const nx = v.x;
-      const ny = v.y;
-      const nz = v.z;
-      // Continents: low-freq noise
-      const continent = baseNoise(nx * 1.1, ny * 1.1, nz * 1.1);
-      // Mountains: mid-freq, ridged
-      const ridge = 1 - Math.abs(detailNoise(nx * 3.2, ny * 3.2, nz * 3.2));
-      // Erosion channels: high-freq carving (rivers at stage>=2)
-      const carve = stage >= 2 ? Math.pow(Math.max(0, erosion(nx * 5, ny * 5, nz * 5)), 4) * 0.35 : 0;
-
-      let h = continent * 0.6 + (ridge - 0.5) * 0.5 * identity.ruggedness;
-      // Stage 0 also gets craters: subtract circular depressions from
-      // sparse high-freq peaks of a secondary noise.
-      if (stage === 0) {
-        const crater = Math.pow(Math.max(0, detailNoise(nx * 6 + 11, ny * 6 + 11, nz * 6 + 11)), 8);
-        h -= crater * 0.6 * identity.craterDensity;
-      }
-
-      const r = 1 + h * relief - carve * relief;
-      radii[i] = r;
-      if (r < minR) minR = r;
-      if (r > maxR) maxR = r;
-    }
-
-    // Apply displacement + coloring
-    for (let i = 0; i < pos.count; i++) {
-      v.fromBufferAttribute(pos, i);
-      const nx = v.x;
-      const ny = v.y;
-      const nz = v.z;
-      const r = radii[i];
-
-      // Latitude based on Y axis (apply identity tilt after, on the group)
-      const lat = Math.abs(ny); // 0 at equator, 1 at pole
-
-      const isWater = r < waterR;
-      const landR = isWater ? waterR : r;
-      const heightNorm = Math.max(
-        0,
-        Math.min(1, (landR - (waterR > 0 ? waterR : minR)) / Math.max(0.001, maxR - (waterR > 0 ? waterR : minR)))
-      );
-      const waterDepth = isWater ? Math.min(1, (waterR - r) / Math.max(0.001, waterR - minR)) : 0;
-
-      const biome = biomeNoise(nx * identity.biomeFreq * 1.6, ny * identity.biomeFreq * 1.6, nz * identity.biomeFreq * 1.6);
-      const diversity = diversityNoise(nx * 2.4, ny * 2.4, nz * 2.4);
-
-      const c = biomeColor(heightNorm, isWater, waterDepth, lat, biome, diversity, stage, identity);
-
-      // Final radius: water sits at the water plane, land at its displaced radius.
-      const finalR = isWater ? waterR : r;
-      pos.setXYZ(i, nx * finalR, ny * finalR, nz * finalR);
-
-      tmpColor.copy(c);
-      colors[i * 3] = tmpColor.r;
-      colors[i * 3 + 1] = tmpColor.g;
-      colors[i * 3 + 2] = tmpColor.b;
-    }
-
-    geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-    geo.computeVertexNormals();
-    return geo;
-  }, [land.seed, stage, identity, detail]);
-
-  useFrame(({ clock }) => {
-    if (!groupRef.current) return;
-    groupRef.current.rotation.y = clock.getElapsedTime() * identity.rotationSpeed;
-  });
-
-  return (
-    <group ref={groupRef} rotation={[identity.axialTilt, 0, identity.axialTilt * 0.3]}>
-      <mesh geometry={geometry} castShadow receiveShadow>
-        <meshStandardMaterial
-          vertexColors
-          flatShading={stage <= 1}
-          roughness={0.95}
-          metalness={0.0}
-        />
-      </mesh>
-      {/* Subtle atmospheric halo — appears only once water + life exist */}
-      {stage >= 2 && (
-        <mesh scale={1.04 + stage * 0.005}>
-          <sphereGeometry args={[1, 48, 32]} />
-          <meshBasicMaterial
-            color={PAPER}
-            transparent
-            opacity={0.04 + stage * 0.012}
-            side={THREE.BackSide}
-            depthWrite={false}
-          />
-        </mesh>
-      )}
-    </group>
-  );
+function paletteSample(palette: string[], t: number): string {
+  const idx = Math.max(0, Math.min(palette.length - 1, Math.floor(t * palette.length)));
+  return palette[idx];
 }
 
 // ------------------------------------------------------------------
-// Active-task markers — temporary overlays floating above the surface.
-// They don't alter the planet itself; they hover like atmospheric signals.
+// Main renderer — paints the planet onto a static canvas.
+// An overlay canvas above hosts shimmer + active task markers.
 // ------------------------------------------------------------------
-interface ActiveMarker {
-  kind: "overdue" | "due-soon" | "focus";
-  // deterministic surface position so the same task appears in the same spot
-  seed: number;
-}
-
-function markerPosition(seed: number): THREE.Vector3 {
-  const rng = mulberry32(seed);
-  const u = rng();
-  const v = rng();
-  const theta = u * Math.PI * 2;
-  const phi = Math.acos(2 * v - 1);
-  return new THREE.Vector3(
-    Math.sin(phi) * Math.cos(theta),
-    Math.cos(phi),
-    Math.sin(phi) * Math.sin(theta)
-  );
-}
-
-function Marker({ marker, radius }: { marker: ActiveMarker; radius: number }) {
-  const ref = useRef<THREE.Mesh>(null);
-  const dir = useMemo(() => markerPosition(marker.seed), [marker.seed]);
-  const pos = useMemo(() => dir.clone().multiplyScalar(radius * 1.18), [dir, radius]);
-  const color =
-    marker.kind === "overdue" ? ACCENT
-    : marker.kind === "due-soon" ? "#d4a24a"
-    : "#5a7d8f";
-  const pulseSpeed = marker.kind === "overdue" ? 1.4 : marker.kind === "due-soon" ? 0.9 : 0.6;
-
-  useFrame(({ clock }) => {
-    if (!ref.current) return;
-    const t = clock.getElapsedTime();
-    const s = 1 + Math.sin(t * pulseSpeed + marker.seed * 0.1) * 0.25;
-    ref.current.scale.setScalar(s);
-  });
-
-  return (
-    <group position={pos.toArray()}>
-      <mesh ref={ref}>
-        <sphereGeometry args={[0.025, 12, 8]} />
-        <meshBasicMaterial color={color} />
-      </mesh>
-      {/* tether line down to surface */}
-      <line>
-        <bufferGeometry
-          attach="geometry"
-          onUpdate={(g) => {
-            const a = dir.clone().multiplyScalar(radius * 1.0);
-            const b = dir.clone().multiplyScalar(radius * 1.18);
-            g.setAttribute(
-              "position",
-              new THREE.Float32BufferAttribute([a.x, a.y, a.z, b.x, b.y, b.z], 3)
-            );
-          }}
-        />
-        <lineBasicMaterial color={color} transparent opacity={0.6} attach="material" />
-      </line>
-    </group>
-  );
-}
-
-// ------------------------------------------------------------------
-// Camera intro — gentle dolly-in to give a sense of discovery.
-// ------------------------------------------------------------------
-function CameraIntro() {
-  const { camera } = useThree();
-  const start = useRef(performance.now());
-  useFrame(() => {
-    const t = Math.min(1, (performance.now() - start.current) / 1800);
-    const e = 1 - Math.pow(1 - t, 3);
-    const r = 5.5 - e * 2.2;
-    camera.position.set(r * 0.6, r * 0.35, r * 0.85);
-    camera.lookAt(0, 0, 0);
-  });
-  return null;
-}
-
-// ------------------------------------------------------------------
-// Scene
-// ------------------------------------------------------------------
-function Scene({
-  land,
+function PlanetCanvas({
+  world,
   overdueCount,
   dueSoonCount,
   activeCount,
 }: {
-  land: LandscapeData;
+  world: LandscapeData;
   overdueCount: number;
   dueSoonCount: number;
   activeCount: number;
 }) {
-  const identity = useMemo(() => buildIdentity(land.seed), [land.seed]);
-  const stage = useMemo(() => computeStage(land), [land]);
+  const baseRef = useRef<HTMLCanvasElement>(null);
+  const overlayRef = useRef<HTMLCanvasElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const markers = useMemo<ActiveMarker[]>(() => {
-    const out: ActiveMarker[] = [];
-    for (let i = 0; i < Math.min(8, overdueCount); i++) {
-      out.push({ kind: "overdue", seed: land.seed ^ (0xa11 + i * 17) });
+  const stage = useMemo(() => computeStage(world), [world]);
+  const identity = useMemo(() => buildIdentity(world.seed), [world.seed]);
+
+  // ---- Base painting ---------------------------------------------------
+  useEffect(() => {
+    const canvas = baseRef.current;
+    const wrapper = wrapperRef.current;
+    if (!canvas || !wrapper) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const w = wrapper.clientWidth;
+    const h = wrapper.clientHeight;
+    canvas.width = Math.floor(w * dpr);
+    canvas.height = Math.floor(h * dpr);
+    canvas.style.width = `${w}px`;
+    canvas.style.height = `${h}px`;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.scale(dpr, dpr);
+
+    // Background — paper
+    ctx.fillStyle = PAPER;
+    ctx.fillRect(0, 0, w, h);
+
+    const cx = w / 2;
+    const cy = h / 2;
+    const R = Math.min(w, h) * 0.4;
+
+    // Soft cast shadow under the planet
+    const shadow = ctx.createRadialGradient(cx, cy + R * 0.95, R * 0.1, cx, cy + R * 0.95, R * 1.05);
+    shadow.addColorStop(0, "rgba(28,27,24,0.22)");
+    shadow.addColorStop(1, "rgba(28,27,24,0)");
+    ctx.fillStyle = shadow;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + R * 0.92, R * 1.05, R * 0.22, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Paper tooth — faint speckle inside the disc
+    const palette = shiftPalette(STAGE_PALETTES[stage], identity.hueShift);
+    const waterPaletteLen = Math.max(2, Math.floor(palette.length * 0.35));
+    const landPalette = palette.slice(waterPaletteLen);
+    const waterPalette = palette.slice(0, waterPaletteLen);
+
+    const elev = makeFBM2D(world.seed ^ 0x1a1, 5);
+    const biome = makeFBM2D(world.seed ^ 0x4b7, 4);
+    const detail = makeFBM2D(world.seed ^ 0x9c2, 3);
+    const dabs = makeFBM2D(world.seed ^ 0xde8, 2);
+
+    // Light direction (upper-left)
+    const lx = -0.45;
+    const ly = -0.55;
+
+    // Number of dabs — scales with stage + completions, capped for perf
+    const completionBoost = Math.min(28000, world.totalCompleted * 80);
+    const base = 6000 + stage * 2200;
+    const dabCount = Math.floor((base + completionBoost) * identity.dabRatio);
+
+    const rng = mulberry32(world.seed ^ 0xdab1);
+
+    // Stratified strata sliver at the bottom edge — a quiet nod to the
+    // cross-section reference. Appears only once the planet has formed.
+    if (stage >= 1) {
+      const bandCount = Math.min(palette.length, 6 + stage);
+      for (let i = 0; i < bandCount; i++) {
+        const tBand = i / (bandCount - 1);
+        const yBand = cy + R * (0.62 + 0.32 * tBand);
+        const sliverW = R * (0.95 - tBand * 0.55);
+        const color = paletteSample(palette, 1 - tBand);
+        ctx.save();
+        ctx.globalAlpha = 0.18 + tBand * 0.15;
+        // hand-stippled band — many tiny dabs
+        const stippleN = Math.floor(sliverW * 1.3);
+        for (let s = 0; s < stippleN; s++) {
+          const px = cx + (rng() * 2 - 1) * sliverW;
+          const py = yBand + (rng() * 2 - 1) * R * 0.022;
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.ellipse(px, py, 1.2 + rng() * 1.4, 0.6 + rng() * 0.6, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
     }
-    for (let i = 0; i < Math.min(10, dueSoonCount); i++) {
-      out.push({ kind: "due-soon", seed: land.seed ^ (0xb22 + i * 23) });
+
+    // Main disc — pointillist stippling
+    const cosR = Math.cos(identity.rotation);
+    const sinR = Math.sin(identity.rotation);
+
+    ctx.save();
+    // Soft clip with feathered edge: draw inside a circle, but allow
+    // dabs to bleed at the rim for a hand-painted feel.
+    for (let i = 0; i < dabCount; i++) {
+      // Importance-sample inside unit disc
+      const r = Math.sqrt(rng()) * 1.02;       // 1.02 lets edge dabs bleed
+      const a = rng() * Math.PI * 2;
+      const dx = Math.cos(a) * r;
+      const dy = Math.sin(a) * r;
+
+      // Rotate sampling for identity orientation
+      const nx = dx * cosR - dy * sinR;
+      const ny = dx * sinR + dy * cosR;
+
+      // Field samples
+      const e0 = (elev(nx * 1.6, ny * 1.6) + 1) * 0.5;
+      const d0 = (detail(nx * 4.2 + 11, ny * 4.2 + 11) + 1) * 0.5;
+      const b0 = (biome(nx * identity.biomeFreq * 2.4, ny * identity.biomeFreq * 2.4) + 1) * 0.5;
+
+      // Height field
+      let height =
+        e0 * 0.65 + d0 * 0.25 * identity.ruggedness + (b0 - 0.5) * 0.1;
+      // Mountain scale exaggerates peaks
+      height = Math.pow(height, 1 / Math.max(0.4, identity.mountainScale));
+      height = Math.max(0, Math.min(1, height));
+
+      const isWater = stage >= 2 && height < identity.waterLevel;
+
+      // Pick base color
+      let color: string;
+      if (isWater) {
+        // deeper water -> later (deeper) end of water palette
+        const wt = (identity.waterLevel - height) / identity.waterLevel;
+        color = paletteSample(waterPalette, wt);
+      } else {
+        const lt = isWater
+          ? 0
+          : (height - (stage >= 2 ? identity.waterLevel : 0)) /
+            Math.max(0.001, 1 - (stage >= 2 ? identity.waterLevel : 0));
+        // biome jitter mixes a neighbouring palette swatch in
+        const biomeJitter = (b0 - 0.5) * 0.35;
+        color = paletteSample(landPalette, Math.max(0, Math.min(1, lt + biomeJitter)));
+      }
+
+      // Lighting — distance from light dir, plus rim darkening
+      const lit = Math.max(0.35, 1 - Math.hypot(dx - lx, dy - ly) * 0.55);
+      const rim = Math.pow(1 - Math.min(1, r), 0.35); // 1 center -> 0 edge
+      const lightFactor = 0.55 + lit * 0.65 * (0.55 + rim * 0.45);
+
+      // Apply lighting via hsl shift
+      const [rr, gg, bb] = color.startsWith("#") ? hexToRgb(color) : (() => {
+        const m = color.match(/\d+/g)!.map(Number);
+        return [m[0], m[1], m[2]] as [number, number, number];
+      })();
+      const [hh, ss, ll] = rgbToHsl(rr, gg, bb);
+      const [fr, fg, fb] = hslToRgb(hh, ss, Math.max(0.04, Math.min(0.95, ll * lightFactor)));
+
+      // Dab geometry
+      const px = cx + dx * R;
+      const py = cy + dy * R;
+      const dabBase = 1.1 + (stage >= 5 ? 0.5 : 0);
+      const size = (dabBase + rng() * 1.8) * identity.brushSize *
+        (1 + (dabs(nx * 8, ny * 8)) * 0.25);
+      const angle = rng() * Math.PI;
+      const oval = isWater ? 0.45 : 0.58 + rng() * 0.25;
+
+      ctx.globalAlpha = 0.62 + rng() * 0.32;
+      ctx.fillStyle = `rgb(${fr},${fg},${fb})`;
+      ctx.beginPath();
+      ctx.ellipse(px, py, size, size * oval, angle, 0, Math.PI * 2);
+      ctx.fill();
     }
-    const focusN = Math.max(0, activeCount - overdueCount - dueSoonCount);
-    for (let i = 0; i < Math.min(6, focusN); i++) {
-      out.push({ kind: "focus", seed: land.seed ^ (0xc33 + i * 29) });
+    ctx.globalAlpha = 1;
+    ctx.restore();
+
+    // Crisp ink rim — a thin sketched outline
+    ctx.save();
+    ctx.strokeStyle = "rgba(28,27,24,0.4)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.stroke();
+    // Inner highlight crescent — paper showing through
+    ctx.strokeStyle = "rgba(243,240,234,0.5)";
+    ctx.lineWidth = 0.6;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R * 0.985, Math.PI * 1.1, Math.PI * 1.5);
+    ctx.stroke();
+    ctx.restore();
+  }, [world, stage, identity]);
+
+  // ---- Overlay shimmer + active markers --------------------------------
+  useEffect(() => {
+    const canvas = overlayRef.current;
+    const wrapper = wrapperRef.current;
+    if (!canvas || !wrapper) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    let w = wrapper.clientWidth;
+    let h = wrapper.clientHeight;
+    canvas.width = Math.floor(w * dpr);
+    canvas.height = Math.floor(h * dpr);
+    canvas.style.width = `${w}px`;
+    canvas.style.height = `${h}px`;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.scale(dpr, dpr);
+
+    // Build markers: deterministic positions on the disc
+    const cx = w / 2;
+    const cy = h / 2;
+    const R = Math.min(w, h) * 0.4;
+    interface M { x: number; y: number; color: string; speed: number; size: number; phase: number; }
+    const markers: M[] = [];
+    const addMarkers = (count: number, max: number, color: string, speed: number, sizeBase: number) => {
+      const n = Math.min(max, count);
+      for (let i = 0; i < n; i++) {
+        const rng = mulberry32(world.seed ^ (color.charCodeAt(1) * 131 + i * 17));
+        const r = Math.sqrt(rng()) * 0.86;
+        const a = rng() * Math.PI * 2;
+        markers.push({
+          x: cx + Math.cos(a) * r * R,
+          y: cy + Math.sin(a) * r * R,
+          color,
+          speed,
+          size: sizeBase + rng() * 1.5,
+          phase: rng() * Math.PI * 2,
+        });
+      }
+    };
+    addMarkers(overdueCount, 8, ACCENT, 1.6, 4);
+    addMarkers(dueSoonCount, 10, "#d4a24a", 1.0, 3.2);
+    const focus = Math.max(0, activeCount - overdueCount - dueSoonCount);
+    addMarkers(focus, 6, "#5a7d8f", 0.6, 2.4);
+
+    // Shimmer dabs — paper-colored sparkles drifting across surface
+    interface S { ox: number; oy: number; size: number; phase: number; speed: number; }
+    const shimmer: S[] = [];
+    const shimmerN = 60 + stage * 12;
+    const srng = mulberry32(world.seed ^ 0x5111);
+    for (let i = 0; i < shimmerN; i++) {
+      const r = Math.sqrt(srng()) * 0.95;
+      const a = srng() * Math.PI * 2;
+      shimmer.push({
+        ox: Math.cos(a) * r,
+        oy: Math.sin(a) * r,
+        size: 0.6 + srng() * 1.4,
+        phase: srng() * Math.PI * 2,
+        speed: 0.3 + srng() * 0.6,
+      });
     }
-    return out;
-  }, [land.seed, overdueCount, dueSoonCount, activeCount]);
+
+    let raf = 0;
+    const start = performance.now();
+    const tick = () => {
+      const t = (performance.now() - start) / 1000;
+      ctx.clearRect(0, 0, w, h);
+
+      // shimmer
+      for (const s of shimmer) {
+        const a = Math.max(0, Math.sin(t * s.speed + s.phase));
+        if (a < 0.05) continue;
+        ctx.globalAlpha = a * 0.35;
+        ctx.fillStyle = PAPER;
+        ctx.beginPath();
+        ctx.ellipse(cx + s.ox * R, cy + s.oy * R, s.size, s.size * 0.7, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // markers — soft halo + bright core, pulsing
+      for (const m of markers) {
+        const pulse = 0.5 + 0.5 * Math.sin(t * m.speed + m.phase);
+        // halo
+        const haloR = m.size * (3 + pulse * 2);
+        const grad = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, haloR);
+        grad.addColorStop(0, m.color);
+        grad.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.globalAlpha = 0.35 + pulse * 0.25;
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(m.x, m.y, haloR, 0, Math.PI * 2);
+        ctx.fill();
+        // core
+        ctx.globalAlpha = 0.85;
+        ctx.fillStyle = m.color;
+        ctx.beginPath();
+        ctx.arc(m.x, m.y, m.size * (0.85 + pulse * 0.25), 0, Math.PI * 2);
+        ctx.fill();
+        // tiny ink center
+        ctx.globalAlpha = 0.7;
+        ctx.fillStyle = INK;
+        ctx.beginPath();
+        ctx.arc(m.x, m.y, m.size * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [world, overdueCount, dueSoonCount, activeCount, stage]);
 
   return (
-    <>
-      <color attach="background" args={[PAPER]} />
-      <fog attach="fog" args={[PAPER, 8, 18]} />
-      <ambientLight intensity={0.55} />
-      <directionalLight
-        position={[4, 3, 5]}
-        intensity={1.1}
-        color={"#fff7e8"}
-      />
-      <directionalLight
-        position={[-3, -1, -4]}
-        intensity={0.25}
-        color={"#aab4c2"}
-      />
-
-      <PlanetMesh land={land} stage={stage} identity={identity} />
-      {markers.map((m, i) => (
-        <Marker key={i} marker={m} radius={1.05} />
-      ))}
-
-      <CameraIntro />
-      <OrbitControls
-        enablePan={false}
-        minDistance={2.2}
-        maxDistance={7}
-        enableDamping
-        dampingFactor={0.08}
-        target={[0, 0, 0]}
-        autoRotate={false}
-      />
-    </>
+    <div ref={wrapperRef} className="absolute inset-0">
+      <canvas ref={baseRef} className="absolute inset-0" />
+      <canvas ref={overlayRef} className="absolute inset-0 pointer-events-none" />
+    </div>
   );
 }
 
+// ------------------------------------------------------------------
+// Exports
+// ------------------------------------------------------------------
 export function World3D({
   world,
   overdueCount = 0,
@@ -522,22 +536,15 @@ export function World3D({
   activeCount?: number;
 }) {
   return (
-    <Canvas
-      camera={{ position: [3, 1.8, 3.5], fov: 35 }}
-      dpr={[1, 2]}
-      gl={{ antialias: true }}
-    >
-      <Scene
-        land={world}
-        overdueCount={overdueCount}
-        dueSoonCount={dueSoonCount}
-        activeCount={activeCount}
-      />
-    </Canvas>
+    <PlanetCanvas
+      world={world}
+      overdueCount={overdueCount}
+      dueSoonCount={dueSoonCount}
+      activeCount={activeCount}
+    />
   );
 }
 
-// Exported for use by callers that want to label the planet's evolution stage.
 export const STAGE_LABELS = [
   "Primordial",
   "Geological Formation",
@@ -551,4 +558,3 @@ export const STAGE_LABELS = [
 export function planetStage(land: LandscapeData): number {
   return computeStage(land);
 }
-
