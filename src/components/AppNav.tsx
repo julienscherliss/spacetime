@@ -22,7 +22,7 @@ const views: { mode: ViewMode; icon: typeof Focus; label: string }[] = [
 ];
 
 export function AppNav() {
-  const { viewMode, setViewMode, daySubMode, setDaySubMode, weekSubMode, setWeekSubMode, routinesEnabled, toggleRoutines, tasks } = useTaskStore();
+  const { viewMode, setViewMode, daySubMode, setDaySubMode, weekSubMode, setWeekSubMode, dayToggleTarget, routinesEnabled, toggleRoutines, tasks } = useTaskStore();
   const { panelOpen: libPanelOpen, setPanelOpen: setLibPanelOpen } = useLibraryStore();
   const showBillingPref = useTimezoneStore(s => s.showBilling);
   const billingSettings = useBillingStore(s => s.settings);
@@ -201,7 +201,7 @@ export function AppNav() {
                   key={mode}
                   onClick={() => {
                     if (mode === 'day' && viewMode === 'day') {
-                      setDaySubMode(daySubMode === 'timeline' ? 'list' : 'timeline');
+                      setDaySubMode(daySubMode === 'timeline' ? dayToggleTarget : 'timeline');
                       return;
                     }
                     if (mode === 'week' && viewMode === 'week') {
@@ -296,7 +296,7 @@ export function AppNav() {
               key={mode}
               onClick={() => {
                 if (mode === 'day' && viewMode === 'day') {
-                  setDaySubMode(daySubMode === 'timeline' ? 'list' : 'timeline');
+                  setDaySubMode(daySubMode === 'timeline' ? dayToggleTarget : 'timeline');
                   return;
                 }
                 if (mode === 'week' && viewMode === 'week') {
