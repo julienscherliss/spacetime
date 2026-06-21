@@ -747,11 +747,24 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
 
         {/* Day nav */}
         <div className="mt-5 flex items-center gap-2">
-          <ChromeBtn><ChevronLeft size={16} strokeWidth={1.5} /></ChromeBtn>
-          <div className="px-5 py-2 rounded-md text-[11px] font-mono tracking-[0.22em] border border-border">
+          <ChromeBtn onClick={() => shiftDay(-1)} ariaLabel="Previous day">
+            <ChevronLeft size={16} strokeWidth={1.5} />
+          </ChromeBtn>
+          <button
+            type="button"
+            onClick={() => setDateStr(today)}
+            disabled={dateStr === today}
+            className={`px-5 py-2 rounded-md text-[11px] font-mono tracking-[0.22em] border border-border transition-colors ${
+              dateStr === today
+                ? 'opacity-50 cursor-default'
+                : 'hover:bg-muted/40'
+            }`}
+          >
             TODAY
-          </div>
-          <ChromeBtn><ChevronRight size={16} strokeWidth={1.5} /></ChromeBtn>
+          </button>
+          <ChromeBtn onClick={() => shiftDay(1)} ariaLabel="Next day">
+            <ChevronRight size={16} strokeWidth={1.5} />
+          </ChromeBtn>
         </div>
 
         {/* Column / row header */}
