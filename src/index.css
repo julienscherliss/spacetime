@@ -401,6 +401,34 @@
   100% { opacity: 0.3; }
 }
 
+/* ── Tooltip with 250ms delay ── */
+.cell-tooltip {
+  position: relative;
+}
+.cell-tooltip::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: var(--ui-text-sm);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms ease;
+  transition-delay: 250ms;
+  z-index: 100;
+}
+.cell-tooltip:hover::after {
+  opacity: 1;
+}
+
 /* ── Comfort mode global overrides ── */
 /* Scale common hardcoded font sizes that weren't individually migrated to tokens */
 .comfort .font-mono {
