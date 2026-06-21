@@ -37,6 +37,9 @@ export interface LibraryTask {
   dueDate: string | null;
   subtasks: LibrarySubtask[];
   attachments?: LibraryAttachment[];
+  /** Optional Lucide icon name from src/lib/iconLibrary.ts. Overrides the
+   *  category-inherited icon when set. */
+  icon?: string;
   completed?: boolean;
   completedAt?: string | null;
   deletedAt?: string | null;
@@ -85,7 +88,7 @@ interface LibraryState {
   setFilterCategory: (cat: FilterCategory) => void;
   setFilter: (patch: Partial<FilterState>) => void;
   addItem: (title: string, category?: LibraryCategory, dueDate?: string | null) => string;
-  updateItem: (id: string, updates: Partial<Pick<LibraryTask, 'title' | 'note' | 'category' | 'defaultDuration' | 'isUrgent' | 'isImportant' | 'dueDate' | 'subtasks' | 'attachments'>>) => void;
+  updateItem: (id: string, updates: Partial<Pick<LibraryTask, 'title' | 'note' | 'category' | 'defaultDuration' | 'isUrgent' | 'isImportant' | 'dueDate' | 'subtasks' | 'attachments' | 'icon'>>) => void;
   deleteItem: (id: string) => void;
   completeItem: (id: string) => void;
   uncompleteItem: (id: string) => void;
