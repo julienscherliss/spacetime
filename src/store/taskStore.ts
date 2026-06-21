@@ -534,6 +534,7 @@ export const useTaskStore = create<TaskState>()(
       daySubMode: 'timeline',
       weekSubMode: 'list',
       dayToggleTarget: 'sequencer',
+      hasInitializedSubModes: false,
       dayStartHour: 6,
       dayEndHour: 21,
       routinesEnabled: true,
@@ -554,6 +555,7 @@ export const useTaskStore = create<TaskState>()(
       setDaySubMode: (mode) => set({ daySubMode: mode }),
       setWeekSubMode: (mode) => set({ weekSubMode: mode }),
       setDayToggleTarget: (target) => set({ dayToggleTarget: target }),
+      setHasInitializedSubModes: (v) => set({ hasInitializedSubModes: v }),
       setDayHours: (startHour, endHour) => {
         const s = Math.max(0, Math.min(23, Math.floor(startHour)));
         const e = Math.max(s + 1, Math.min(24, Math.floor(endHour)));
