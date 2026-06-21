@@ -531,6 +531,8 @@ export const useTaskStore = create<TaskState>()(
       daySubMode: 'timeline',
       weekSubMode: 'list',
       dayToggleTarget: 'sequencer',
+      dayStartHour: 6,
+      dayEndHour: 21,
       routinesEnabled: true,
       focusTaskId: null,
       editingTaskId: null,
@@ -549,6 +551,11 @@ export const useTaskStore = create<TaskState>()(
       setDaySubMode: (mode) => set({ daySubMode: mode }),
       setWeekSubMode: (mode) => set({ weekSubMode: mode }),
       setDayToggleTarget: (target) => set({ dayToggleTarget: target }),
+      setDayHours: (startHour, endHour) => {
+        const s = Math.max(0, Math.min(23, Math.floor(startHour)));
+        const e = Math.max(s + 1, Math.min(24, Math.floor(endHour)));
+        set({ dayStartHour: s, dayEndHour: e });
+      },
       setNavigateToDate: (date) => set({ navigateToDate: date }),
       setCurrentDate: (date) => set({ currentDate: date }),
       setListReturnZoom: (zoom) => set({ listReturnZoom: zoom }),
