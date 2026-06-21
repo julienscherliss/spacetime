@@ -136,6 +136,8 @@ interface PreviewState {
   blocked: boolean;
   hideTaskId?: string;
   PreviewIcon?: LucideIcon;
+  duplicate?: boolean;
+  startSlot?: number;
 }
 
 export default function Sequencer({ embedded = false }: { embedded?: boolean } = {}) {
@@ -234,6 +236,11 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
   // ─── Interaction state ─────────────────────────────────
   const gestureRef = useRef<Gesture | null>(null);
   const [preview, setPreview] = useState<PreviewState | null>(null);
+  // Duplicate-mode state: while in a task-drag, hovering on the same target
+  // for 2s flips the drop action from "move" to "duplicate". Any movement
+  // to a different slot reverts to "move" and re-arms the timer.
+  const dupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dupModeRef = useRef<boolean>(false);
 
   // Stable refs so window listeners attach only once.
   const handlePointerMoveRef = useRef<(e: PointerEvent) => void>(() => {});
@@ -331,6 +338,11 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
       if ('pickupTimer' in g && g.pickupTimer) clearTimeout(g.pickupTimer);
       if ('holdTimer' in g && g.holdTimer) clearTimeout(g.holdTimer);
     }
+    if (dupTimerRef.current) {
+      clearTimeout(dupTimerRef.current);
+      dupTimerRef.current = null;
+    }
+    dupModeRef.current = false;
     gestureRef.current = null;
     setPreview(null);
   }, []);
@@ -404,11 +416,25 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
         END_HOUR * 60
       );
       const finalStartSlot = blocked ? clamped : Math.max(0, minToSlot(startMin));
+      // If the landing slot changed, revert duplicate mode and re-arm the timer.
+      if (finalStartSlot !== g.targetStart) {
+        dupModeRef.current = false;
+        if (dupTimerRef.current) clearTimeout(dupTimerRef.current);
+        const taskId = g.taskId;
+        dupTimerRef.current = setTimeout(() => {
+          const cur = gestureRef.current;
+          if (!cur || cur.kind !== 'task-drag' || cur.taskId !== taskId) return;
+          dupModeRef.current = true;
+          setPreview((p) => (p ? { ...p, duplicate: true } : p));
+        }, 2000);
+      }
       gestureRef.current = { ...g, targetStart: finalStartSlot, blocked };
       setPreview({
         cells: cellsForRange(finalStartSlot, Math.ceil(g.duration / SLOT_MIN)),
         blocked,
         PreviewIcon: g.PreviewIcon,
+        duplicate: dupModeRef.current,
+        startSlot: finalStartSlot,
       });
       e.preventDefault();
       return;
@@ -475,7 +501,18 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
         cells: cellsForRange(requestedStart, Math.ceil(duration / SLOT_MIN)),
         blocked: false,
         PreviewIcon,
+        startSlot: requestedStart,
       });
+      // Arm the 2s duplicate-mode timer for the initial drop target.
+      dupModeRef.current = false;
+      if (dupTimerRef.current) clearTimeout(dupTimerRef.current);
+      const taskId = g.taskId;
+      dupTimerRef.current = setTimeout(() => {
+        const cur = gestureRef.current;
+        if (!cur || cur.kind !== 'task-drag' || cur.taskId !== taskId) return;
+        dupModeRef.current = true;
+        setPreview((p) => (p ? { ...p, duplicate: true } : p));
+      }, 2000);
       if (navigator.vibrate) navigator.vibrate(12);
     },
     [hitTestSlot, categories]
@@ -548,7 +585,24 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
     if (g.kind === 'task-drag') {
       if (!g.blocked) {
         const newTime = minutesToTime(slotToMin(g.targetStart));
-        updateTask(g.taskId, { time: newTime, date: dateStr });
+        if (dupModeRef.current) {
+          const orig = useTaskStore.getState().tasks.find((t) => t.id === g.taskId);
+          if (orig) {
+            addTask({
+              title: orig.title,
+              category: orig.category,
+              description: orig.description,
+              icon: orig.icon,
+              type: 'one-time',
+              priority: orig.originalPriority ?? orig.priority,
+              date: dateStr,
+              time: newTime,
+              duration: orig.duration,
+            });
+          }
+        } else {
+          updateTask(g.taskId, { time: newTime, date: dateStr });
+        }
       }
       endGesture();
       return;
@@ -893,6 +947,7 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
                         inPreview={inPreview}
                         previewBlocked={preview?.blocked ?? false}
                         PreviewIcon={preview?.PreviewIcon}
+                        previewDuplicate={!!preview?.duplicate && preview?.startSlot === slotIdx}
                         hidden={hidden}
                         horizontal={horizontal}
                       />
@@ -983,6 +1038,7 @@ function RowFragment({
             inPreview={inPreview}
             previewBlocked={preview?.blocked ?? false}
             PreviewIcon={preview?.PreviewIcon}
+            previewDuplicate={!!preview?.duplicate && preview?.startSlot === slotIdx}
             hidden={hidden}
           />
         );
@@ -992,7 +1048,7 @@ function RowFragment({
 }
 
 function Cell({
-  slotIdx, cell, isPast, isCurrent, inPreview, previewBlocked, PreviewIcon, hidden,
+  slotIdx, cell, isPast, isCurrent, inPreview, previewBlocked, PreviewIcon, previewDuplicate, hidden,
   horizontal = false,
 }: {
   slotIdx: number;
@@ -1002,6 +1058,7 @@ function Cell({
   inPreview: boolean;
   previewBlocked: boolean;
   PreviewIcon?: LucideIcon;
+  previewDuplicate?: boolean;
   hidden: boolean;
   horizontal?: boolean;
 }) {
@@ -1056,6 +1113,15 @@ function Cell({
             className="block rounded-full bg-foreground/[0.12] pointer-events-none"
             style={{ width: 3, height: 3 }}
           />
+        )}
+        {inPreview && previewDuplicate && (
+          <div
+            className="absolute top-0.5 right-0.5 rounded-full bg-primary text-primary-foreground text-[9px] font-mono leading-none flex items-center justify-center pointer-events-none"
+            style={{ width: 12, height: 12 }}
+            aria-label="Duplicate"
+          >
+            +
+          </div>
         )}
         {cell && !hidden && cell.isStart && (
           <div
