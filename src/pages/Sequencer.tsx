@@ -1067,24 +1067,12 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
         </div>
 
       </div>
-      {pickupRing && pickupRing.progress > 0 && (
-        <div
-          className="fixed z-50 pointer-events-none"
-          style={{
-            left: pickupRing.x,
-            top: pickupRing.y,
-            transform: 'translate(-50%, -50%)',
-          }}
-        >
-          <div className="relative bg-background/85 backdrop-blur-sm rounded-full p-1.5 shadow-md border border-border">
-            <HoldToConfirmRing
-              progress={pickupRing.progress}
-              size={36}
-              strokeWidth={2.5}
-              label="HOLD TO PICK UP"
-            />
-          </div>
-        </div>
+      {pickupRing && pickupRing.slotIdx >= 0 && (
+        <PickupRingSlot
+          slotIdx={pickupRing.slotIdx}
+          progress={pickupRing.progress}
+          cells={cells}
+        />
       )}
     </div>
   );
