@@ -3,7 +3,7 @@ import { useTimezoneStore, getTzAbbr, TIMEZONES } from '@/store/timezoneStore';
 import type { MobilityMode } from '@/store/timezoneStore';
 import { useCalendarStore } from '@/store/calendarStore';
 import { supabase } from '@/integrations/supabase/client';
-import { X, Search, Globe, Repeat, MapPin, Calendar as CalIcon, RefreshCw, Unplug, HelpCircle, Moon, Shield, Lock, Bell, Type, Volume2, MessageSquarePlus, Sliders } from 'lucide-react';
+import { X, Search, Globe, Repeat, MapPin, Calendar as CalIcon, RefreshCw, Unplug, HelpCircle, Moon, Shield, Lock, Bell, Type, Volume2, MessageSquarePlus, Sliders, Sunrise } from 'lucide-react';
 import { toast } from 'sonner';
 import { HelpPanel } from './HelpPanel';
 import { ColorSchemePanel } from './ColorSchemePanel';
@@ -69,6 +69,9 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const [notificationLoading, setNotificationLoading] = useState(false);
   const dayToggleTarget = useTaskStore(s => s.dayToggleTarget);
   const setDayToggleTarget = useTaskStore(s => s.setDayToggleTarget);
+  const dayStartHour = useTaskStore(s => s.dayStartHour);
+  const dayEndHour = useTaskStore(s => s.dayEndHour);
+  const setDayHours = useTaskStore(s => s.setDayHours);
   const [showAdvanced, setShowAdvanced] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     return localStorage.getItem('settings.showAdvanced') === '1';
