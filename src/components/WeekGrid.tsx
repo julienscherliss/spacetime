@@ -85,6 +85,9 @@ export function WeekGrid({
   onZoomToCluster,
 }: WeekGridProps) {
   const { tasks } = useTaskStore();
+  // Subscribe so the grid re-renders when the configured day window changes.
+  useTaskStore((s) => s.dayStartHour);
+  useTaskStore((s) => s.dayEndHour);
   const weekDays = useWeekDays(weekOffset, today, dayCount, dayShift);
   const rangeLabel = label || formatWeekRange(weekDays);
 
