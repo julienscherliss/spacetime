@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLibraryStore, LibraryTask, LibrarySubtask } from '@/store/libraryStore';
-import { X, Trash2, Clock, AlertTriangle, Tag, CalendarDays, Plus, Check, Paperclip, Upload, FileText } from 'lucide-react';
+import { X, Trash2, Clock, AlertTriangle, Tag, CalendarDays, Plus, Check, Paperclip, Upload, FileText, Sparkles } from 'lucide-react';
+import { IconPicker } from '@/components/IconPicker';
+import { getIconByName } from '@/lib/iconLibrary';
+import { resolveCategoryIcon } from '@/lib/resolveTaskIcon';
 import { AttachmentThumb } from '@/components/AttachmentThumb';
 import { AttachmentLightbox } from '@/components/AttachmentLightbox';
 import { supabase } from '@/integrations/supabase/client';
@@ -83,6 +86,7 @@ export function LibraryDetailPane({ item, onClose }: LibraryDetailPaneProps) {
   const [note, setNote] = useState(item.note || '');
   const [duration, setDuration] = useState(item.defaultDuration);
   const [category, setCategory] = useState(item.category || '');
+  const [icon, setIcon] = useState<string | null>(item.icon || null);
   const [isUrgent, setIsUrgent] = useState(item.isUrgent ?? false);
   const [isImportant, setIsImportant] = useState(item.isImportant ?? false);
   const [dueDate, setDueDate] = useState(item.dueDate || '');
@@ -92,6 +96,7 @@ export function LibraryDetailPane({ item, onClose }: LibraryDetailPaneProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [showCatPicker, setShowCatPicker] = useState(false);
+  const [showIconPicker, setShowIconPicker] = useState(false);
   const [showDurationPicker, setShowDurationPicker] = useState(false);
   const [showDuePicker, setShowDuePicker] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
@@ -106,6 +111,7 @@ export function LibraryDetailPane({ item, onClose }: LibraryDetailPaneProps) {
     setNote(item.note || '');
     setDuration(item.defaultDuration);
     setCategory(item.category || '');
+    setIcon(item.icon || null);
     setIsUrgent(item.isUrgent ?? false);
     setIsImportant(item.isImportant ?? false);
     setDueDate(item.dueDate || '');
@@ -140,6 +146,7 @@ export function LibraryDetailPane({ item, onClose }: LibraryDetailPaneProps) {
       dueDate: dueDate || null,
       subtasks,
       attachments,
+      icon: icon || undefined,
     });
   };
 
@@ -147,7 +154,7 @@ export function LibraryDetailPane({ item, onClose }: LibraryDetailPaneProps) {
     if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
     autoSaveRef.current = setTimeout(doSave, 600);
     return () => { if (autoSaveRef.current) clearTimeout(autoSaveRef.current); };
-  }, [title, note, duration, category, isUrgent, isImportant, dueDate, subtasks, attachments]);
+  }, [title, note, duration, category, icon, isUrgent, isImportant, dueDate, subtasks, attachments]);
 
   const MAX_FILE_SIZE = 25 * 1024 * 1024;
 
@@ -320,6 +327,37 @@ export function LibraryDetailPane({ item, onClose }: LibraryDetailPaneProps) {
               />
             </PopoverContent>
           </Popover>
+
+          {/* Icon */}
+          {(() => {
+            const inheritedIcon = resolveCategoryIcon(category, categories);
+            const ResolvedIcon = getIconByName(icon) ?? inheritedIcon;
+            return (
+              <Popover open={showIconPicker} onOpenChange={setShowIconPicker}>
+                <PopoverTrigger asChild>
+                  <button className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
+                    icon
+                      ? 'text-foreground/80 bg-muted/40 hover:bg-muted/60'
+                      : 'text-muted-foreground/40 bg-muted/30 hover:bg-muted/50'
+                  }`}>
+                    {ResolvedIcon
+                      ? <ResolvedIcon size={11} strokeWidth={1.5} />
+                      : <Sparkles size={10} strokeWidth={1.5} />}
+                    {icon ? 'Icon' : (inheritedIcon ? 'Inherit' : 'Icon')}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="p-0 z-[10000]" align="start" onClick={(e) => e.stopPropagation()}>
+                  <IconPicker
+                    value={icon}
+                    suggestFor={`${title} ${catLabel}`}
+                    clearLabel={inheritedIcon ? 'Inherit from tag' : 'No icon'}
+                    onChange={(name) => setIcon(name)}
+                    onClose={() => setShowIconPicker(false)}
+                  />
+                </PopoverContent>
+              </Popover>
+            );
+          })()}
 
           <button
             onClick={() => setIsUrgent(!isUrgent)}
