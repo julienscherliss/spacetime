@@ -821,6 +821,7 @@ function Cell({
               ? 'inset 0 1px 0 rgba(255,255,255,0.5), 0 1px 0 rgba(0,0,0,0.03)'
               : 'none',
           cursor: occupied ? 'grab' : 'default',
+          touchAction: occupied ? 'none' : 'auto',
           opacity: hidden ? 0 : 1,
         }}
       >
