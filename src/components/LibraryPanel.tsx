@@ -99,6 +99,23 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
     libState.setPanelOpen(false);
   }, [item]);
 
+  // Silent pickup used by click-and-drag: does NOT close the library and is
+  // immediately followed by a synthesized drop, so the user never sees the
+  // carry banner / "picked up" state — the task simply lands on the
+  // timeline/sequencer where they released.
+  const silentPickup = useCallback(() => {
+    incrementPlaceCount();
+    useCarryStore.getState().pickup({
+      taskId: item.id,
+      title: item.title,
+      duration: item.defaultDuration,
+      fromDate: '',
+      fromLibrary: true,
+      libraryItemId: item.id,
+      pickedUpAt: Date.now(),
+    });
+  }, [item]);
+
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('[data-touch-ignore]')) return;
     longPressFired.current = false;
@@ -118,14 +135,15 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
       if (!origin) return;
       const moved = Math.hypot(ev.clientX - origin.x, ev.clientY - origin.y);
       if (!dragModeRef.current && !longPressFired.current && moved > DRAG_THRESHOLD) {
-        // Promote to drag mode: cancel pending long-press, pick up now, and
-        // start tracking a ghost that follows the pointer until release.
+        // Promote to drag mode: cancel the pending long-press. Crucially we
+        // do NOT pick the task up (no carry banner, library stays open) —
+        // the item is only materialized on the timeline/sequencer at drop
+        // time via a brief silent pickup + synthesized tap.
         if (longPressTimer.current) {
           clearTimeout(longPressTimer.current);
           longPressTimer.current = null;
         }
         dragModeRef.current = true;
-        triggerPickup();
       }
       if (dragModeRef.current) {
         setDragGhost({ x: ev.clientX, y: ev.clientY });
@@ -147,16 +165,21 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
       setDragGhost(null);
 
       if (wasDrag) {
-        // Synthesize a tap at the release coordinates so the timeline /
-        // sequencer's existing "tap-while-carrying" drop logic schedules it.
-        // We delay slightly so the library's exit animation has time to
-        // clear its DOM out of the hit-test path.
+        // Drop-from-drag: figure out the element under the release point. If
+        // it is the timeline/sequencer grid, silently pick the task up and
+        // immediately synthesize a tap so the existing carry-drop logic
+        // schedules it at that location. If the release was outside any
+        // drop target, do nothing — the library stays open and the item is
+        // not consumed.
         const x = ev.clientX;
         const y = ev.clientY;
         const pointerType = (ev.pointerType as 'mouse' | 'touch' | 'pen') || 'mouse';
-        setTimeout(() => {
-          const target = document.elementFromPoint(x, y);
-          if (!target) return;
+        const target = document.elementFromPoint(x, y) as HTMLElement | null;
+        const dropEl = target?.closest('[data-carry-drop-target], [data-timeline-grid], [data-sequencer-grid]') as HTMLElement | null;
+        if (!dropEl) return;
+        silentPickup();
+        // Next frame so carry state is committed before the synthesized tap.
+        requestAnimationFrame(() => {
           const opts: PointerEventInit = {
             clientX: x,
             clientY: y,
@@ -167,12 +190,19 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
             pointerId: 9999,
           };
           try {
-            target.dispatchEvent(new PointerEvent('pointerdown', opts));
-            target.dispatchEvent(new PointerEvent('pointerup', opts));
+            const el = document.elementFromPoint(x, y) || dropEl;
+            el.dispatchEvent(new PointerEvent('pointerdown', opts));
+            el.dispatchEvent(new PointerEvent('pointerup', opts));
           } catch {
             // Older browsers may not support PointerEvent constructor — silently no-op.
           }
-        }, 320);
+          // Safety: if the synthesized tap didn't land on a real drop target
+          // (e.g. coordinates outside any timeline column), cancel the carry
+          // so we don't leave a stale carry banner behind.
+          if (useCarryStore.getState().carried) {
+            useCarryStore.getState().cancel?.();
+          }
+        });
         return;
       }
 
