@@ -1214,7 +1214,7 @@ function Cell({
           opacity: hidden ? 0 : 1,
         }}
       >
-        {inPreview && PreviewIcon ? (
+        {isPickupTarget ? null : inPreview && PreviewIcon ? (
           <PreviewIcon
             size={22}
             strokeWidth={1.4}
@@ -1233,6 +1233,14 @@ function Cell({
             className="block rounded-full bg-foreground/[0.12] pointer-events-none"
             style={{ width: 3, height: 3 }}
           />
+        )}
+        {showHoldRing && (
+          <div className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
+            <div className="bg-background/70 backdrop-blur-sm rounded-[2px] absolute inset-0" />
+            <div className="relative z-10">
+              <HoldToConfirmRing progress={pickupProgress} size={32} strokeWidth={2.5} label="HOLD TO PICK UP" />
+            </div>
+          </div>
         )}
         {inPreview && previewDuplicate && (
           <div
