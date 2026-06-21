@@ -660,7 +660,7 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
         holdTimer,
       };
     }
-  }, [hitTestSlot, cells, tasks, activateTaskDrag]);
+  }, [hitTestSlot, cells, tasks, activateTaskDrag, dateStr, routinesEnabled, addTask, updateTask]);
 
   const dateObj = new Date(dateStr + 'T12:00:00');
   const dateLabel = dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase();
