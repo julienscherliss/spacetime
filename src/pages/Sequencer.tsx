@@ -458,8 +458,14 @@ export default function Sequencer() {
   // Attach window listeners while a gesture is active.
   useEffect(() => {
     const move = (e: PointerEvent) => handlePointerMoveRef.current(e);
-    const up = (e: PointerEvent) => handlePointerUpRef.current(e);
-    const cancel = () => endGestureRef.current();
+    const up = (e: PointerEvent) => {
+      activePointersRef.current.delete(e.pointerId);
+      handlePointerUpRef.current(e);
+    };
+    const cancel = (e: PointerEvent) => {
+      activePointersRef.current.delete(e.pointerId);
+      endGestureRef.current();
+    };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
     window.addEventListener('pointercancel', cancel);
@@ -480,6 +486,14 @@ export default function Sequencer() {
   /** Grid-level pointerdown — dispatches to the right gesture based on the target. */
   const handleGridPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== undefined && e.button !== 0) return;
+
+    // Multi-touch (pinch zoom etc) — abort any in-progress gesture and ignore the new pointer.
+    activePointersRef.current.add(e.pointerId);
+    if (activePointersRef.current.size > 1) {
+      endGesture();
+      return;
+    }
+
     const target = e.target as HTMLElement;
     const slot = hitTestSlot(e.clientX, e.clientY);
     if (slot == null) return;
@@ -488,9 +502,14 @@ export default function Sequencer() {
     const cx = e.clientX;
     const cy = e.clientY;
     const pointerId = e.pointerId;
+    const isTouch = e.pointerType === 'touch';
 
-    // Ensure all subsequent pointer events fire on the grid (esp. touch).
-    try { e.currentTarget.setPointerCapture(pointerId); } catch {}
+    // On mouse, capture so a fast drag past the edge still tracks.
+    // On touch we deliberately skip capture so the browser can take over for
+    // native vertical scroll if the user starts panning before any hold timer fires.
+    if (!isTouch) {
+      try { e.currentTarget.setPointerCapture(pointerId); } catch {}
+    }
 
     // Resize handle?
     const handle = target.closest('[data-resize-handle]') as HTMLElement | null;
@@ -499,6 +518,10 @@ export default function Sequencer() {
       const edge = handle.getAttribute('data-resize-handle') as 'start' | 'end';
       const task = tasks.find((t) => t.id === taskId);
       if (!task || !task.time) return;
+      // Resize is an explicit edge grab — capture even on touch.
+      if (isTouch) {
+        try { e.currentTarget.setPointerCapture(pointerId); } catch {}
+      }
       const origStart = timeToMinutes(task.time);
       const origDuration = task.duration ?? 30;
       gestureRef.current = {
@@ -526,6 +549,10 @@ export default function Sequencer() {
       const pickupTimer = setTimeout(() => {
         const g = gestureRef.current;
         if (!g || g.kind !== 'task-pending') return;
+        // On touch we now own the gesture — capture so subsequent events stay here.
+        if (g.isTouch) {
+          try { gridRef.current?.setPointerCapture(g.pointerId); } catch {}
+        }
         activateTaskDrag(g, cx, cy);
       }, PICKUP_MS);
       gestureRef.current = {
@@ -536,11 +563,30 @@ export default function Sequencer() {
         x0: cx,
         y0: cy,
         t0: Date.now(),
+        isTouch,
         pickupTimer,
       };
-      e.preventDefault();
+      // Don't preventDefault on touch — let the browser scroll until hold activates.
+      if (!isTouch) e.preventDefault();
     } else {
-      // Press on empty cell → arm tap-to-create / drag-to-extend.
+      // Press on empty cell → arm tap-to-create / hold-to-extend.
+      // On touch, require a 500ms hold before drag-to-extend activates, so a plain
+      // pan scrolls the page instead of accidentally creating a task.
+      const holdTimer = isTouch
+        ? setTimeout(() => {
+            const g = gestureRef.current;
+            if (!g || g.kind !== 'idle-pending') return;
+            try { gridRef.current?.setPointerCapture(g.pointerId); } catch {}
+            gestureRef.current = {
+              kind: 'create-drag',
+              pointerId: g.pointerId,
+              startSlot: g.startSlot,
+              endSlot: g.startSlot,
+            };
+            setPreview({ cells: cellsBetween(g.startSlot, g.startSlot), blocked: false });
+            if (navigator.vibrate) navigator.vibrate(15);
+          }, 500)
+        : null;
       gestureRef.current = {
         kind: 'idle-pending',
         pointerId,
@@ -548,6 +594,8 @@ export default function Sequencer() {
         x0: cx,
         y0: cy,
         t0: Date.now(),
+        isTouch,
+        holdTimer,
       };
     }
   }, [hitTestSlot, cells, tasks, activateTaskDrag]);
