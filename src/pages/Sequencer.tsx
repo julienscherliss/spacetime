@@ -365,6 +365,14 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
       clearTimeout(dupTimerRef.current);
       dupTimerRef.current = null;
     }
+    // Cancel any in-flight pickup ring animation.
+    if (pickupRafRef.current != null) {
+      cancelAnimationFrame(pickupRafRef.current);
+      pickupRafRef.current = null;
+    }
+    pickupStartRef.current = null;
+    pickupCommittedRef.current = false;
+    setPickupRing(null);
     dupModeRef.current = false;
     gestureRef.current = null;
     setPreview(null);
