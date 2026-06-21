@@ -143,6 +143,7 @@ interface PreviewState {
 
 export default function Sequencer({ embedded = false }: { embedded?: boolean } = {}) {
   const tasks = useTaskStore((s) => s.tasks);
+  const showCompletedTasks = useTimezoneStore((s) => s.showCompletedTasks);
   // Re-render when the configured day window changes.
   useTaskStore((s) => s.dayStartHour);
   useTaskStore((s) => s.dayEndHour);
