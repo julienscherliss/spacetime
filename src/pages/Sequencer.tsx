@@ -1022,7 +1022,7 @@ function Cell({
   return (
     <div className="p-[3px]" data-slot-idx={slotIdx}>
       <div
-        title={occupied && !inPreview ? cell?.task.name : undefined}
+        title={occupied && !inPreview ? cell?.task.title : undefined}
         className="relative w-full h-full rounded-sm flex items-center justify-center transition-all duration-150"
         style={{
           background: previewBg ?? (occupied ? 'hsl(var(--muted))' : 'transparent'),
