@@ -72,6 +72,12 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const dayStartHour = useTaskStore(s => s.dayStartHour);
   const dayEndHour = useTaskStore(s => s.dayEndHour);
   const setDayHours = useTaskStore(s => s.setDayHours);
+  const formatHour = (h: number): string => {
+    if (h === 0) return '12 AM';
+    if (h === 12) return '12 PM';
+    if (h === 24) return '12 AM';
+    return h < 12 ? `${h} AM` : `${h - 12} PM`;
+  };
   const [showAdvanced, setShowAdvanced] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     return localStorage.getItem('settings.showAdvanced') === '1';
