@@ -216,9 +216,15 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
   }, [tasks, dateStr, categories, showCompletedTasks]);
 
   const completedOnDay = useMemo(() => {
-    const day = tasks.filter((t) => t.date === dateStr && !t.archivedAt && !t.inWaitingRoom && !t.groupId && t.time);
+    const day = tasks.filter((t) => {
+      if (t.date !== dateStr) return false;
+      if (t.inWaitingRoom || t.groupId || !t.time) return false;
+      const isCompletedArchive = !!t.archivedAt && t.completed && t.archiveReason === 'completed';
+      if (t.archivedAt && !(showCompletedTasks && isCompletedArchive)) return false;
+      return true;
+    });
     return { done: day.filter((t) => t.completed).length, total: day.length };
-  }, [tasks, dateStr]);
+  }, [tasks, dateStr, showCompletedTasks]);
 
   const visible = nowMin >= START_HOUR * 60 && nowMin <= END_HOUR * 60;
   const playFrac = Math.max(0, Math.min(1, (nowMin - START_HOUR * 60) / ((END_HOUR - START_HOUR) * 60)));
