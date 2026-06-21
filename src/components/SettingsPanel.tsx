@@ -365,6 +365,48 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
           {/* Appearance */}
           <div className="border-t border-border/30 pt-4">
 
+          {/* Day toggle target — advanced */}
+          {showAdvanced && (
+          <div className="mb-4">
+            <div className="flex items-center gap-1.5 mb-2">
+              <Sliders size={12} strokeWidth={1.5} className="text-muted-foreground" />
+              <span className="text-[11px] font-mono tracking-[0.12em] text-muted-foreground">DAY TAB TOGGLE</span>
+            </div>
+            <div className="text-[10px] font-mono text-muted-foreground/50 mb-2">
+              Tap the Day tab while on Day view to swap between Timeline and this view
+            </div>
+            <div className="flex gap-1 bg-muted/30 border border-border/50 rounded-sm p-1">
+              {([
+                { value: 'sequencer' as DayToggleTarget, label: 'Sequencer' },
+                { value: 'list' as DayToggleTarget, label: 'List' },
+              ]).map(opt => {
+                const current = useTaskStore.getState().dayToggleTarget;
+                const active = current === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => {
+                      useTaskStore.getState().setDayToggleTarget(opt.value);
+                      // If currently showing the other alt view, swap to the new target
+                      const s = useTaskStore.getState();
+                      if (s.viewMode === 'day' && s.daySubMode !== 'timeline' && s.daySubMode !== opt.value) {
+                        s.setDaySubMode(opt.value);
+                      }
+                    }}
+                    className={`flex-1 py-2 rounded-[2px] text-[11px] font-mono tracking-wider transition-colors ${
+                      active
+                        ? 'bg-primary/10 text-primary border border-primary/20'
+                        : 'text-muted-foreground/50 hover:text-foreground hover:bg-muted/40 border border-transparent'
+                    }`}
+                  >
+                    {opt.label.toUpperCase()}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          )}
+
           {/* Task Mobility — advanced */}
           {showAdvanced && (
           <div className="mb-4">
