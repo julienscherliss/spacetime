@@ -580,7 +580,7 @@ export function LibraryPanel() {
                   <div className="flex items-center gap-3">
                     <span className="text-[11px] font-mono text-muted-foreground/50">{totalCount}</span>
                     <button
-                      onClick={() => setSidebarMode((s) => !s)}
+                      onClick={() => setSidebarMode(!sidebarMode)}
                       className="p-1.5 text-muted-foreground/60 hover:text-foreground transition-colors"
                       title={sidebarMode ? 'Expand to full screen' : 'Collapse to sidebar'}
                     >
