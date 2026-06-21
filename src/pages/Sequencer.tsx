@@ -426,17 +426,24 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
         END_HOUR * 60
       );
       const finalStartSlot = blocked ? clamped : Math.max(0, minToSlot(startMin));
-      // If the landing slot changed, revert duplicate mode and re-arm the timer.
+      // Duplicate mode only applies when the task has been moved off its
+      // origin slot. Re-arm the 1s hover timer whenever the landing slot
+      // changes; cancel it (and clear dup mode) when back over the origin.
       if (finalStartSlot !== g.targetStart) {
         dupModeRef.current = false;
-        if (dupTimerRef.current) clearTimeout(dupTimerRef.current);
-        const taskId = g.taskId;
-        dupTimerRef.current = setTimeout(() => {
-          const cur = gestureRef.current;
-          if (!cur || cur.kind !== 'task-drag' || cur.taskId !== taskId) return;
-          dupModeRef.current = true;
-          setPreview((p) => (p ? { ...p, duplicate: true } : p));
-        }, 1000);
+        if (dupTimerRef.current) {
+          clearTimeout(dupTimerRef.current);
+          dupTimerRef.current = null;
+        }
+        if (finalStartSlot !== g.originStart) {
+          const taskId = g.taskId;
+          dupTimerRef.current = setTimeout(() => {
+            const cur = gestureRef.current;
+            if (!cur || cur.kind !== 'task-drag' || cur.taskId !== taskId) return;
+            dupModeRef.current = true;
+            setPreview((p) => (p ? { ...p, duplicate: true } : p));
+          }, 1000);
+        }
       }
       gestureRef.current = { ...g, targetStart: finalStartSlot, blocked };
       setPreview({
