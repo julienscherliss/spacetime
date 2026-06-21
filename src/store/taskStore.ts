@@ -119,6 +119,9 @@ interface TaskState {
   setDaySubMode: (mode: DaySubMode) => void;
   setWeekSubMode: (mode: WeekSubMode) => void;
   setDayToggleTarget: (target: DayToggleTarget) => void;
+  /** First-run flag for sub-mode defaults (week timeline on desktop, list on mobile). */
+  hasInitializedSubModes: boolean;
+  setHasInitializedSubModes: (v: boolean) => void;
   setDayHours: (startHour: number, endHour: number) => void;
   setNavigateToDate: (date: string | null) => void;
   setCurrentDate: (date: string | null) => void;
