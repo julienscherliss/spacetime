@@ -152,6 +152,8 @@ interface PreviewState {
 export default function Sequencer({ embedded = false }: { embedded?: boolean } = {}) {
   const tasks = useTaskStore((s) => s.tasks);
   const showCompletedTasks = useTimezoneStore((s) => s.showCompletedTasks);
+  // Hide a task's grid footprint while it sits in the inventory.
+  const carriedTaskId = useCarryStore((s) => s.carried?.taskId ?? null);
   // Re-render when the configured day window changes.
   useTaskStore((s) => s.dayStartHour);
   useTaskStore((s) => s.dayEndHour);
