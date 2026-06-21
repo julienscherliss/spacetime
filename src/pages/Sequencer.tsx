@@ -223,16 +223,22 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
     const rect = el.getBoundingClientRect();
     const relX = clientX - rect.left - LABEL_COL_W;
     const relY = clientY - rect.top;
+    if (horizontal) {
+      // Columns = hours (ROWS of them), rows = quarters (COLS of them)
+      const cellW = (rect.width - LABEL_COL_W) / ROWS;
+      const rowH = rect.height / COLS;
+      if (cellW <= 0 || rowH <= 0) return null;
+      const hourIdx = Math.max(0, Math.min(ROWS - 1, Math.floor(relX / cellW)));
+      const qIdx = Math.max(0, Math.min(COLS - 1, Math.floor(relY / rowH)));
+      return hourIdx * COLS + qIdx;
+    }
     const cellW = (rect.width - LABEL_COL_W) / COLS;
     const rowH = rect.height / ROWS;
     if (cellW <= 0 || rowH <= 0) return null;
     const col = Math.max(0, Math.min(COLS - 1, Math.floor(relX / cellW)));
     const row = Math.max(0, Math.min(ROWS - 1, Math.floor(relY / rowH)));
-    if (clientX < rect.left + LABEL_COL_W || clientY < rect.top || clientY > rect.bottom || clientX > rect.right) {
-      // Out of bounds → still clamp so dragging past the edge has nice behavior
-    }
     return row * COLS + col;
-  }, []);
+  }, [horizontal]);
 
   const cellsBetween = (a: number, b: number) => {
     const lo = Math.min(a, b);
