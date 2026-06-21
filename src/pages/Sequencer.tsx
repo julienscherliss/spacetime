@@ -710,7 +710,7 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
       {!embedded && <AppNav />}
       {!embedded && <TaskEditPanel />}
 
-      <div className="mx-auto max-w-md px-5 pt-6">
+      <div className="mx-auto max-w-md sm:max-w-5xl px-5 pt-6">
         {/* Header */}
         <div className="flex items-start justify-between">
           <div>
@@ -732,14 +732,38 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
           <ChromeBtn><ChevronRight size={16} strokeWidth={1.5} /></ChromeBtn>
         </div>
 
-        {/* Column header */}
-        <div className="mt-7 grid" style={{ gridTemplateColumns: '46px repeat(4, 1fr)' }}>
+        {/* Column / row header */}
+        <div
+          className="mt-7 grid"
+          style={{
+            gridTemplateColumns: horizontal
+              ? `46px repeat(${ROWS}, 1fr)`
+              : '46px repeat(4, 1fr)',
+          }}
+        >
           <div />
-          {[':00', ':15', ':30', ':45'].map((l) => (
-            <div key={l} className="text-[10px] font-mono tracking-[0.18em] text-center pb-2 text-muted-foreground/60">
-              {l}
-            </div>
-          ))}
+          {horizontal
+            ? Array.from({ length: ROWS }).map((_, rowIdx) => {
+                const hour = START_HOUR + rowIdx;
+                const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+                const period = hour >= 12 ? 'PM' : 'AM';
+                return (
+                  <div
+                    key={hour}
+                    className="text-[10px] font-mono tracking-[0.18em] text-center pb-2 text-muted-foreground/60"
+                  >
+                    {h12} {period}
+                  </div>
+                );
+              })
+            : [':00', ':15', ':30', ':45'].map((l) => (
+                <div
+                  key={l}
+                  className="text-[10px] font-mono tracking-[0.18em] text-center pb-2 text-muted-foreground/60"
+                >
+                  {l}
+                </div>
+              ))}
         </div>
 
         {/* Grid */}
@@ -748,28 +772,70 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
             ref={gridRef}
             className="grid relative select-none"
             style={{
-              gridTemplateColumns: '46px repeat(4, 1fr)',
-              gridAutoRows: '60px',
+              gridTemplateColumns: horizontal
+                ? `46px repeat(${ROWS}, 1fr)`
+                : '46px repeat(4, 1fr)',
+              gridTemplateRows: horizontal
+                ? 'repeat(4, 60px)'
+                : `repeat(${ROWS}, 60px)`,
               borderTop: '1px solid hsl(var(--border) / 0.4)',
               touchAction: 'pan-y',
             }}
             onPointerDown={handleGridPointerDown}
           >
-            {Array.from({ length: ROWS }).map((_, rowIdx) => {
-              const hour = START_HOUR + rowIdx;
-              const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-              const period = hour >= 12 ? 'PM' : 'AM';
-              return (
-                <RowFragment
-                  key={hour}
-                  label={`${h12} ${period}`}
-                  cells={cells}
-                  rowIdx={rowIdx}
-                  nowMin={nowMin}
-                  preview={preview}
-                />
-              );
-            })}
+            {horizontal
+              ? // Row-major across the horizontal grid: 4 quarter rows × ROWS hour columns
+                Array.from({ length: COLS }).flatMap((_, qIdx) => {
+                  const label = [':00', ':15', ':30', ':45'][qIdx];
+                  const labelEl = (
+                    <div
+                      key={`lbl-${qIdx}`}
+                      className="flex items-center justify-start pl-1 text-[10px] font-mono tracking-[0.18em] text-muted-foreground/60"
+                      style={{ borderBottom: '1px solid hsl(var(--border) / 0.25)' }}
+                    >
+                      {label}
+                    </div>
+                  );
+                  const cellsRow = Array.from({ length: ROWS }).map((_, hourIdx) => {
+                    const slotIdx = hourIdx * COLS + qIdx;
+                    const cell = cells[slotIdx];
+                    const slotStartMin = (START_HOUR + hourIdx) * 60 + qIdx * SLOT_MIN;
+                    const slotEndMin = slotStartMin + SLOT_MIN;
+                    const isPast = slotEndMin <= nowMin;
+                    const isCurrent = nowMin >= slotStartMin && nowMin < slotEndMin;
+                    const inPreview = preview?.cells.has(slotIdx) ?? false;
+                    const hidden = !!(preview?.hideTaskId && cell?.task.id === preview.hideTaskId);
+                    return (
+                      <Cell
+                        key={`c-${slotIdx}`}
+                        slotIdx={slotIdx}
+                        cell={cell}
+                        isPast={isPast}
+                        isCurrent={isCurrent}
+                        inPreview={inPreview}
+                        previewBlocked={preview?.blocked ?? false}
+                        PreviewIcon={preview?.PreviewIcon}
+                        hidden={hidden}
+                      />
+                    );
+                  });
+                  return [labelEl, ...cellsRow];
+                })
+              : Array.from({ length: ROWS }).map((_, rowIdx) => {
+                  const hour = START_HOUR + rowIdx;
+                  const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+                  const period = hour >= 12 ? 'PM' : 'AM';
+                  return (
+                    <RowFragment
+                      key={hour}
+                      label={`${h12} ${period}`}
+                      cells={cells}
+                      rowIdx={rowIdx}
+                      nowMin={nowMin}
+                      preview={preview}
+                    />
+                  );
+                })}
           </div>
 
           {visible && gridSize.h > 0 && (
@@ -778,6 +844,7 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
               width={gridSize.w}
               height={gridSize.h}
               labelColW={46}
+              horizontal={horizontal}
             />
           )}
         </div>
