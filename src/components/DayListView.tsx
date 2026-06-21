@@ -345,47 +345,36 @@ export function DayListView() {
     >
       {/* Sticky header: title + controls pinned together */}
       <div className="sticky top-[env(safe-area-inset-top)] sm:top-12 z-30 bg-background border-b border-border/30">
-        <div className="pt-3 pb-2">
-          <h2 className="text-lg sm:text-xl font-display font-bold text-foreground tracking-tight">
+        <div className="py-3 flex items-center justify-between gap-2">
+          <h2 className="text-base sm:text-lg font-display font-bold text-foreground tracking-tight truncate">
             {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', {
               weekday: 'long',
               month: 'long',
               day: 'numeric',
             })}
           </h2>
-          <p className="text-[10px] font-mono text-muted-foreground/50 mt-0.5 tracking-widest">
-            {completedCount}/{dayTasks.length} COMPLETED
-          </p>
-        </div>
-
-        {/* Navigation bar */}
-        <div className="py-1.5 flex items-center justify-between border-t border-border/20">
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-1 shrink-0">
             <button
               onClick={() => setSelectedDate(d => addDaysToDate(d, -1))}
-              className="p-1.5 rounded-sm text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors"
+              className="p-2 rounded-sm border border-border text-muted-foreground hover:text-foreground transition-colors"
             >
-              <ChevronLeft size={16} strokeWidth={1.5} />
+              <ChevronLeft size={14} strokeWidth={1.5} />
             </button>
             <button
               onClick={() => setSelectedDate(today)}
-              className={`px-2.5 py-1 rounded-sm text-[10px] font-mono tracking-widest transition-colors ${
-                isToday
-                  ? 'text-primary bg-primary/5'
-                  : 'text-muted-foreground/50 hover:text-foreground hover:bg-muted/50'
+              className={`px-2.5 py-1.5 rounded-sm border border-border text-[10px] font-mono tracking-widest transition-colors ${
+                isToday ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               TODAY
             </button>
             <button
               onClick={() => setSelectedDate(d => addDaysToDate(d, 1))}
-              className="p-1.5 rounded-sm text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors"
+              className="p-2 rounded-sm border border-border text-muted-foreground hover:text-foreground transition-colors"
             >
-              <ChevronRight size={16} strokeWidth={1.5} />
+              <ChevronRight size={14} strokeWidth={1.5} />
             </button>
           </div>
-
-          <div />
         </div>
       </div>
 
