@@ -946,6 +946,7 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
                     const isCurrent = nowMin >= slotStartMin && nowMin < slotEndMin;
                     const inPreview = preview?.cells.has(slotIdx) ?? false;
                     const hidden = !!(preview?.hideTaskId && cell?.task.id === preview.hideTaskId);
+                    const isOverdue = !!cell && !cell.task.completed && (dateStr < today || (dateStr === today && isPast));
                     return (
                       <Cell
                         key={`c-${slotIdx}`}
@@ -959,6 +960,7 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
                         previewDuplicate={!!preview?.duplicate && preview?.startSlot === slotIdx}
                         hidden={hidden}
                         horizontal={horizontal}
+                        isOverdue={isOverdue}
                       />
                     );
                   });
