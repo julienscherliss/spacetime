@@ -23,6 +23,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { TagManagerPanel } from '@/components/TagManagerPanel';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useLibraryDuePrompt } from '@/components/LibraryDueDatePrompt';
+import { IconPicker } from '@/components/IconPicker';
+import { getIconByName } from '@/lib/iconLibrary';
 import {
   Dialog,
   DialogContent,
@@ -395,7 +397,10 @@ function Chip({ active, label, onClick, onLongPress }: { active: boolean; label:
 }
 
 /* ── Vertical tag chip (desktop sidebar) ── */
-function VerticalTagChip({ active, label, onClick, onLongPress, hasChildren, onDrilldown }: { active: boolean; label: string; onClick: () => void; onLongPress?: () => void; hasChildren?: boolean; onDrilldown?: () => void }) {
+function VerticalTagChip({ active, label, onClick, onLongPress, hasChildren, onDrilldown, iconName, catValue, suggestFor }: { active: boolean; label: string; onClick: () => void; onLongPress?: () => void; hasChildren?: boolean; onDrilldown?: () => void; iconName?: string | null; catValue?: string; suggestFor?: string }) {
+  const setCategoryIcon = useLibraryStore((s) => s.setCategoryIcon);
+  const [iconOpen, setIconOpen] = useState(false);
+  const TagIcon = getIconByName(iconName);
   return (
     <button
       onClick={onClick}
@@ -406,7 +411,39 @@ function VerticalTagChip({ active, label, onClick, onLongPress, hasChildren, onD
           : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30 border border-transparent'
       }`}
     >
-      <span className="truncate">{label}</span>
+      <span className="flex items-center gap-1.5 min-w-0">
+        {catValue ? (
+          <Popover open={iconOpen} onOpenChange={setIconOpen}>
+            <PopoverTrigger asChild>
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={(e) => { e.stopPropagation(); setIconOpen(true); }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); setIconOpen(true); } }}
+                className="p-0.5 rounded-sm text-muted-foreground/60 hover:text-foreground hover:bg-muted/40 transition-colors shrink-0 cursor-pointer"
+                aria-label="Change tag icon"
+              >
+                {TagIcon ? <TagIcon size={11} strokeWidth={1.5} /> : <Tag size={11} strokeWidth={1.5} className="opacity-50" />}
+              </span>
+            </PopoverTrigger>
+            <PopoverContent
+              align="start"
+              side="right"
+              className="p-0 w-auto z-[80]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <IconPicker
+                value={iconName ?? null}
+                suggestFor={suggestFor || label}
+                clearLabel="No icon"
+                onChange={(name) => setCategoryIcon(catValue, name)}
+                onClose={() => setIconOpen(false)}
+              />
+            </PopoverContent>
+          </Popover>
+        ) : null}
+        <span className="truncate">{label}</span>
+      </span>
       {hasChildren && (
         <span
           onClick={(e) => { e.stopPropagation(); onDrilldown?.(); }}
