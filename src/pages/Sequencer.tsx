@@ -66,9 +66,52 @@ interface CellAssignment {
   isEnd: boolean;
 }
 
+type Gesture =
+  | { kind: 'idle-pending'; pointerId: number; startSlot: number; x0: number; y0: number; t0: number }
+  | { kind: 'create-drag'; pointerId: number; startSlot: number; endSlot: number }
+  | {
+      kind: 'task-pending';
+      pointerId: number;
+      taskId: string;
+      grabSlot: number;
+      x0: number;
+      y0: number;
+      t0: number;
+      pickupTimer: ReturnType<typeof setTimeout> | null;
+    }
+  | {
+      kind: 'task-drag';
+      pointerId: number;
+      taskId: string;
+      duration: number;
+      grabOffsetSlots: number;
+      targetStart: number;
+      blocked: boolean;
+    }
+  | {
+      kind: 'resize';
+      pointerId: number;
+      taskId: string;
+      edge: 'start' | 'end';
+      origStart: number;
+      origDuration: number;
+      previewStart: number;
+      previewDuration: number;
+    };
+
+interface PreviewState {
+  cells: Set<number>;
+  blocked: boolean;
+  hideTaskId?: string;
+}
+
 export default function Sequencer() {
   const tasks = useTaskStore((s) => s.tasks);
   const setEditingTask = useTaskStore((s) => s.setEditingTask);
+  const addTask = useTaskStore((s) => s.addTask);
+  const updateTask = useTaskStore((s) => s.updateTask);
+  const resizeTask = useTaskStore((s) => s.resizeTask);
+  const routinesEnabled = useTaskStore((s) => s.routinesEnabled);
   const categories = useLibraryStore((s) => s.categories);
   const { minutes: nowMin, dateStr } = useCurrentTime(15000);
 
@@ -115,6 +158,348 @@ export default function Sequencer() {
     setGridSize({ w: el.offsetWidth, h: el.offsetHeight });
     return () => ro.disconnect();
   }, []);
+
+  // ─── Interaction state ─────────────────────────────────
+  const gestureRef = useRef<Gesture | null>(null);
+  const [preview, setPreview] = useState<PreviewState | null>(null);
+
+  /** Convert client coordinates into a slot index, or null if outside the grid. */
+  const hitTestSlot = useCallback((clientX: number, clientY: number): number | null => {
+    const el = gridRef.current;
+    if (!el) return null;
+    const rect = el.getBoundingClientRect();
+    const relX = clientX - rect.left - LABEL_COL_W;
+    const relY = clientY - rect.top;
+    const cellW = (rect.width - LABEL_COL_W) / COLS;
+    const rowH = rect.height / ROWS;
+    if (cellW <= 0 || rowH <= 0) return null;
+    const col = Math.max(0, Math.min(COLS - 1, Math.floor(relX / cellW)));
+    const row = Math.max(0, Math.min(ROWS - 1, Math.floor(relY / rowH)));
+    if (clientX < rect.left + LABEL_COL_W || clientY < rect.top || clientY > rect.bottom || clientX > rect.right) {
+      // Out of bounds → still clamp so dragging past the edge has nice behavior
+    }
+    return row * COLS + col;
+  }, []);
+
+  const cellsBetween = (a: number, b: number) => {
+    const lo = Math.min(a, b);
+    const hi = Math.max(a, b);
+    const s = new Set<number>();
+    for (let i = lo; i <= hi; i++) s.add(i);
+    return s;
+  };
+
+  const cellsForRange = (startSlot: number, slotCount: number) => {
+    const s = new Set<number>();
+    for (let i = 0; i < slotCount; i++) {
+      const idx = startSlot + i;
+      if (idx >= 0 && idx < SLOTS_PER_DAY) s.add(idx);
+    }
+    return s;
+  };
+
+  // ─── Pointer lifecycle ─────────────────────────────────
+  const endGesture = useCallback(() => {
+    const g = gestureRef.current;
+    if (g && 'pickupTimer' in g && g.pickupTimer) clearTimeout(g.pickupTimer);
+    gestureRef.current = null;
+    setPreview(null);
+  }, []);
+
+  const handlePointerMove = useCallback((e: PointerEvent) => {
+    const g = gestureRef.current;
+    if (!g || e.pointerId !== g.pointerId) return;
+
+    if (g.kind === 'idle-pending') {
+      // Convert to create-drag once we cross a slot boundary
+      const slot = hitTestSlot(e.clientX, e.clientY);
+      if (slot == null) return;
+      const moved = Math.hypot(e.clientX - g.x0, e.clientY - g.y0) > MOVE_THRESHOLD_PX;
+      if (!moved && slot === g.startSlot) return;
+      gestureRef.current = {
+        kind: 'create-drag',
+        pointerId: g.pointerId,
+        startSlot: g.startSlot,
+        endSlot: slot,
+      };
+      setPreview({ cells: cellsBetween(g.startSlot, slot), blocked: false });
+      e.preventDefault();
+      return;
+    }
+
+    if (g.kind === 'create-drag') {
+      const slot = hitTestSlot(e.clientX, e.clientY);
+      if (slot == null) return;
+      if (slot === g.endSlot) return;
+      gestureRef.current = { ...g, endSlot: slot };
+      setPreview({ cells: cellsBetween(g.startSlot, slot), blocked: false });
+      e.preventDefault();
+      return;
+    }
+
+    if (g.kind === 'task-pending') {
+      // Movement before pickup timer fires → upgrade immediately to drag.
+      const moved = Math.hypot(e.clientX - g.x0, e.clientY - g.y0) > MOVE_THRESHOLD_PX;
+      if (!moved) return;
+      if (g.pickupTimer) clearTimeout(g.pickupTimer);
+      activateTaskDrag(g, e.clientX, e.clientY);
+      e.preventDefault();
+      return;
+    }
+
+    if (g.kind === 'task-drag') {
+      const slot = hitTestSlot(e.clientX, e.clientY);
+      if (slot == null) return;
+      const requestedStart = slot - g.grabOffsetSlots;
+      const maxStart = SLOTS_PER_DAY - Math.ceil(g.duration / SLOT_MIN);
+      const clamped = Math.max(0, Math.min(maxStart, requestedStart));
+      const slots = getOccupiedSlots(tasks, dateStr, g.taskId, routinesEnabled);
+      const { startMin, blocked } = findValidPosition(
+        slotToMin(clamped),
+        g.duration,
+        slots,
+        START_HOUR * 60,
+        END_HOUR * 60
+      );
+      const finalStartSlot = blocked ? clamped : Math.max(0, minToSlot(startMin));
+      gestureRef.current = { ...g, targetStart: finalStartSlot, blocked };
+      setPreview({
+        cells: cellsForRange(finalStartSlot, Math.ceil(g.duration / SLOT_MIN)),
+        blocked,
+        hideTaskId: g.taskId,
+      });
+      e.preventDefault();
+      return;
+    }
+
+    if (g.kind === 'resize') {
+      const slot = hitTestSlot(e.clientX, e.clientY);
+      if (slot == null) return;
+      const slots = getOccupiedSlots(tasks, dateStr, g.taskId, routinesEnabled);
+      const { minStart, maxEnd } = clampResize(
+        g.taskId,
+        g.edge === 'start' ? 'top' : 'bottom',
+        g.origStart,
+        g.origStart + g.origDuration,
+        slots,
+        START_HOUR * 60,
+        END_HOUR * 60
+      );
+      let previewStart = g.origStart;
+      let previewDuration = g.origDuration;
+      if (g.edge === 'start') {
+        const targetMin = snapTo15(slotToMin(slot));
+        const newStart = Math.max(minStart, Math.min(targetMin, g.origStart + g.origDuration - SLOT_MIN));
+        previewStart = newStart;
+        previewDuration = g.origStart + g.origDuration - newStart;
+      } else {
+        const targetEndMin = snapTo15(slotToMin(slot) + SLOT_MIN);
+        const newEnd = Math.min(maxEnd, Math.max(targetEndMin, g.origStart + SLOT_MIN));
+        previewDuration = newEnd - g.origStart;
+      }
+      gestureRef.current = { ...g, previewStart, previewDuration };
+      const startSlot = minToSlot(previewStart);
+      setPreview({
+        cells: cellsForRange(startSlot, Math.ceil(previewDuration / SLOT_MIN)),
+        blocked: false,
+        hideTaskId: g.taskId,
+      });
+      e.preventDefault();
+      return;
+    }
+  }, [hitTestSlot, tasks, dateStr, routinesEnabled]);
+
+  const activateTaskDrag = useCallback(
+    (g: Extract<Gesture, { kind: 'task-pending' }>, clientX: number, clientY: number) => {
+      const task = useTaskStore.getState().tasks.find((t) => t.id === g.taskId);
+      if (!task || !task.time) return;
+      const startMin = timeToMinutes(task.time);
+      const duration = task.duration ?? 30;
+      const startSlot = minToSlot(startMin);
+      const grabOffsetSlots = Math.max(0, g.grabSlot - startSlot);
+      const slot = hitTestSlot(clientX, clientY) ?? g.grabSlot;
+      const requestedStart = slot - grabOffsetSlots;
+      gestureRef.current = {
+        kind: 'task-drag',
+        pointerId: g.pointerId,
+        taskId: g.taskId,
+        duration,
+        grabOffsetSlots,
+        targetStart: requestedStart,
+        blocked: false,
+      };
+      setPreview({
+        cells: cellsForRange(requestedStart, Math.ceil(duration / SLOT_MIN)),
+        blocked: false,
+        hideTaskId: g.taskId,
+      });
+      if (navigator.vibrate) navigator.vibrate(12);
+    },
+    [hitTestSlot]
+  );
+
+  const handlePointerUp = useCallback((e: PointerEvent) => {
+    const g = gestureRef.current;
+    if (!g || e.pointerId !== g.pointerId) return;
+
+    if (g.kind === 'idle-pending') {
+      // Pure tap on empty cell → create a 15-min task at that slot.
+      const slots = getOccupiedSlots(tasks, dateStr, undefined, routinesEnabled);
+      const { startMin, blocked } = findValidPosition(
+        slotToMin(g.startSlot),
+        SLOT_MIN,
+        slots,
+        START_HOUR * 60,
+        END_HOUR * 60
+      );
+      if (!blocked) {
+        const id = addTask({
+          title: '',
+          date: dateStr,
+          time: minutesToTime(startMin),
+          duration: SLOT_MIN,
+          priority: 0,
+          type: 'one-time',
+        });
+        setEditingTask(id);
+      }
+      endGesture();
+      return;
+    }
+
+    if (g.kind === 'create-drag') {
+      const lo = Math.min(g.startSlot, g.endSlot);
+      const hi = Math.max(g.startSlot, g.endSlot);
+      const duration = (hi - lo + 1) * SLOT_MIN;
+      const slots = getOccupiedSlots(tasks, dateStr, undefined, routinesEnabled);
+      const { startMin, blocked } = findValidPosition(
+        slotToMin(lo),
+        duration,
+        slots,
+        START_HOUR * 60,
+        END_HOUR * 60
+      );
+      if (!blocked) {
+        const id = addTask({
+          title: '',
+          date: dateStr,
+          time: minutesToTime(startMin),
+          duration,
+          priority: 0,
+          type: 'one-time',
+        });
+        setEditingTask(id);
+      }
+      endGesture();
+      return;
+    }
+
+    if (g.kind === 'task-pending') {
+      // Released before pickup → treat as tap → open edit panel.
+      if (g.pickupTimer) clearTimeout(g.pickupTimer);
+      setEditingTask(g.taskId);
+      endGesture();
+      return;
+    }
+
+    if (g.kind === 'task-drag') {
+      if (!g.blocked) {
+        const newTime = minutesToTime(slotToMin(g.targetStart));
+        updateTask(g.taskId, { time: newTime, date: dateStr });
+      }
+      endGesture();
+      return;
+    }
+
+    if (g.kind === 'resize') {
+      const newTime = minutesToTime(g.previewStart);
+      const duration = Math.max(SLOT_MIN, g.previewDuration);
+      resizeTask(g.taskId, newTime, duration);
+      endGesture();
+      return;
+    }
+  }, [tasks, dateStr, routinesEnabled, addTask, updateTask, resizeTask, setEditingTask, endGesture]);
+
+  // Attach window listeners while a gesture is active.
+  useEffect(() => {
+    const move = (e: PointerEvent) => handlePointerMove(e);
+    const up = (e: PointerEvent) => handlePointerUp(e);
+    const cancel = () => endGesture();
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', cancel);
+    return () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', cancel);
+    };
+  }, [handlePointerMove, handlePointerUp, endGesture]);
+
+  /** Grid-level pointerdown — dispatches to the right gesture based on the target. */
+  const handleGridPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== undefined && e.button !== 0) return;
+    const target = e.target as HTMLElement;
+    const slot = hitTestSlot(e.clientX, e.clientY);
+    if (slot == null) return;
+
+    // Resize handle?
+    const handle = target.closest('[data-resize-handle]') as HTMLElement | null;
+    if (handle) {
+      const taskId = handle.getAttribute('data-task-id')!;
+      const edge = handle.getAttribute('data-resize-handle') as 'start' | 'end';
+      const task = tasks.find((t) => t.id === taskId);
+      if (!task || !task.time) return;
+      const origStart = timeToMinutes(task.time);
+      const origDuration = task.duration ?? 30;
+      gestureRef.current = {
+        kind: 'resize',
+        pointerId: e.pointerId,
+        taskId,
+        edge,
+        origStart,
+        origDuration,
+        previewStart: origStart,
+        previewDuration: origDuration,
+      };
+      setPreview({
+        cells: cellsForRange(minToSlot(origStart), Math.ceil(origDuration / SLOT_MIN)),
+        blocked: false,
+        hideTaskId: taskId,
+      });
+      e.preventDefault();
+      return;
+    }
+
+    const cell = cells[slot];
+    if (cell) {
+      // Press on a task → arm tap/hold/drag.
+      const pickupTimer = setTimeout(() => {
+        const g = gestureRef.current;
+        if (!g || g.kind !== 'task-pending') return;
+        activateTaskDrag(g, e.clientX, e.clientY);
+      }, PICKUP_MS);
+      gestureRef.current = {
+        kind: 'task-pending',
+        pointerId: e.pointerId,
+        taskId: cell.task.id,
+        grabSlot: slot,
+        x0: e.clientX,
+        y0: e.clientY,
+        t0: Date.now(),
+        pickupTimer,
+      };
+    } else {
+      // Press on empty cell → arm tap-to-create / drag-to-extend.
+      gestureRef.current = {
+        kind: 'idle-pending',
+        pointerId: e.pointerId,
+        startSlot: slot,
+        x0: e.clientX,
+        y0: e.clientY,
+        t0: Date.now(),
+      };
+    }
+  }, [hitTestSlot, cells, tasks, activateTaskDrag]);
 
   const dateObj = new Date(dateStr + 'T12:00:00');
   const dateLabel = dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase();
@@ -164,12 +549,13 @@ export default function Sequencer() {
         <div className="relative">
           <div
             ref={gridRef}
-            className="grid relative"
+            className="grid relative touch-none select-none"
             style={{
               gridTemplateColumns: '46px repeat(4, 1fr)',
               gridAutoRows: '60px',
               borderTop: '1px solid hsl(var(--border) / 0.4)',
             }}
+            onPointerDown={handleGridPointerDown}
           >
             {Array.from({ length: ROWS }).map((_, rowIdx) => {
               const hour = START_HOUR + rowIdx;
@@ -182,7 +568,7 @@ export default function Sequencer() {
                   cells={cells}
                   rowIdx={rowIdx}
                   nowMin={nowMin}
-                  onOpen={(id) => setEditingTask(id)}
+                  preview={preview}
                 />
               );
             })}
