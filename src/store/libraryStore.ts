@@ -555,6 +555,14 @@ export const useLibraryStore = create<LibraryState>()(
         }));
       },
 
+      setCategoryIcon: (value, icon) => {
+        set((s) => ({
+          categories: s.categories.map(c =>
+            c.value === value ? { ...c, icon: icon || undefined } : c
+          ),
+        }));
+      },
+
       unarchiveCategory: (value) => {
         set((s) => ({
           categories: s.categories.map(c => {
