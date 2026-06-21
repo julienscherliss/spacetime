@@ -946,6 +946,7 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
                     const isCurrent = nowMin >= slotStartMin && nowMin < slotEndMin;
                     const inPreview = preview?.cells.has(slotIdx) ?? false;
                     const hidden = !!(preview?.hideTaskId && cell?.task.id === preview.hideTaskId);
+                    const isOverdue = !!cell && !cell.task.completed && (dateStr < today || (dateStr === today && isPast));
                     return (
                       <Cell
                         key={`c-${slotIdx}`}
@@ -959,6 +960,7 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
                         previewDuplicate={!!preview?.duplicate && preview?.startSlot === slotIdx}
                         hidden={hidden}
                         horizontal={horizontal}
+                        isOverdue={isOverdue}
                       />
                     );
                   });
@@ -976,6 +978,8 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
                       rowIdx={rowIdx}
                       nowMin={nowMin}
                       preview={preview}
+                      dateStr={dateStr}
+                      today={today}
                     />
                   );
                 })}
@@ -1012,13 +1016,15 @@ function ChromeBtn({ children, onClick, ariaLabel }: { children: React.ReactNode
 }
 
 function RowFragment({
-  label, cells, rowIdx, nowMin, preview,
+  label, cells, rowIdx, nowMin, preview, dateStr, today,
 }: {
   label: string;
   cells: (CellAssignment | null)[];
   rowIdx: number;
   nowMin: number;
   preview: PreviewState | null;
+  dateStr: string;
+  today: string;
 }) {
   return (
     <>
@@ -1037,6 +1043,7 @@ function RowFragment({
         const isCurrent = nowMin >= slotStartMin && nowMin < slotEndMin;
         const inPreview = preview?.cells.has(slotIdx) ?? false;
         const hidden = !!(preview?.hideTaskId && cell?.task.id === preview.hideTaskId);
+        const isOverdue = !!cell && !cell.task.completed && (dateStr < today || (dateStr === today && isPast));
         return (
           <Cell
             key={colIdx}
@@ -1049,6 +1056,7 @@ function RowFragment({
             PreviewIcon={preview?.PreviewIcon}
             previewDuplicate={!!preview?.duplicate && preview?.startSlot === slotIdx}
             hidden={hidden}
+            isOverdue={isOverdue}
           />
         );
       })}
@@ -1058,7 +1066,7 @@ function RowFragment({
 
 function Cell({
   slotIdx, cell, isPast, isCurrent, inPreview, previewBlocked, PreviewIcon, previewDuplicate, hidden,
-  horizontal = false,
+  horizontal = false, isOverdue = false,
 }: {
   slotIdx: number;
   cell: CellAssignment | null;
@@ -1070,6 +1078,7 @@ function Cell({
   previewDuplicate?: boolean;
   hidden: boolean;
   horizontal?: boolean;
+  isOverdue?: boolean;
 }) {
   const occupied = !!cell && !hidden;
   const completed = cell?.task.completed;
@@ -1085,19 +1094,39 @@ function Cell({
       : '1px dashed hsl(var(--primary) / 0.7)'
     : null;
 
+  const cellBg = completed
+    ? 'hsl(var(--surface-inset))'
+    : isOverdue
+      ? 'hsl(var(--destructive) / 0.08)'
+      : occupied
+        ? 'hsl(var(--muted))'
+        : 'transparent';
+
+  const cellBorder = completed
+    ? '1px solid hsl(0 0% 0% / 0.12)'
+    : isOverdue
+      ? '1px solid hsl(var(--destructive) / 0.35)'
+      : occupied
+        ? '1px solid hsl(var(--border) / 0.5)'
+        : '1px solid transparent';
+
+  const cellShadow = !inPreview && isCurrent && occupied
+    ? 'inset 0 0 0 1px hsl(var(--primary) / 0.45), 0 2px 8px -4px hsl(var(--primary) / 0.25)'
+    : !inPreview && occupied
+      ? completed
+        ? 'inset 0 1px 2px hsl(0 0% 0% / 0.14), inset 0 3px 8px hsl(0 0% 0% / 0.10)'
+        : 'inset 0 1px 0 rgba(255,255,255,0.5), 0 1px 0 rgba(0,0,0,0.03)'
+      : 'none';
+
   return (
     <div className="p-[3px]" data-slot-idx={slotIdx}>
       <div
         data-tooltip={occupied && !inPreview ? cell?.task.title : undefined}
         className={`cell-tooltip relative w-full h-full rounded-sm flex items-center justify-center transition-all duration-150 ${occupied && !inPreview ? 'cell-tooltip' : ''}`}
         style={{
-          background: previewBg ?? (occupied ? 'hsl(var(--muted))' : 'transparent'),
-          border: previewBorder ?? (occupied ? '1px solid hsl(var(--border) / 0.5)' : '1px solid transparent'),
-          boxShadow: !inPreview && isCurrent && occupied
-            ? 'inset 0 0 0 1px hsl(var(--primary) / 0.45), 0 2px 8px -4px hsl(var(--primary) / 0.25)'
-            : !inPreview && occupied
-              ? 'inset 0 1px 0 rgba(255,255,255,0.5), 0 1px 0 rgba(0,0,0,0.03)'
-              : 'none',
+          background: previewBg ?? cellBg,
+          border: previewBorder ?? cellBorder,
+          boxShadow: cellShadow,
           cursor: occupied ? 'grab' : 'default',
           touchAction: occupied ? 'none' : 'auto',
           opacity: hidden ? 0 : 1,
@@ -1114,7 +1143,7 @@ function Cell({
           <cell.Icon
             size={22}
             strokeWidth={1.4}
-            className="text-foreground pointer-events-none"
+            className={`pointer-events-none ${isOverdue ? 'text-destructive' : 'text-foreground'}`}
             style={{ opacity: completed ? 0.35 : isPast ? 0.55 : 1 }}
           />
         ) : (
