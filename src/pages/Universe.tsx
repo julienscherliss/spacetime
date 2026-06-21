@@ -822,14 +822,11 @@ function PlanetWorldView({
 
         {/* Legend */}
         <div className="absolute bottom-20 left-6 z-10 text-[10px] font-mono uppercase tracking-[0.2em] text-foreground/60 space-y-1 pointer-events-none max-w-xs">
-          <div>· west → east = oldest → newest</div>
-          <div>· hills rise where you worked</div>
-          <div>· forests grow with sustained effort</div>
-          <div>· settlements form around long sessions</div>
-          <div>· landmarks mark milestones</div>
-          {world3d.bestStreakDays > 2 && (
-            <div>· river carved by your {world3d.bestStreakDays}-day streak</div>
-          )}
+          <div>· one cell per chunk of effort</div>
+          <div>· cluster grows as you complete tasks</div>
+          <div>· larger nuclei = longer sessions</div>
+          <div>· accent rings = recent activity</div>
+          <div>· drag to orbit · scroll to zoom</div>
         </div>
 
         {/* Investment progress bar */}
