@@ -501,7 +501,18 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
         cells: cellsForRange(requestedStart, Math.ceil(duration / SLOT_MIN)),
         blocked: false,
         PreviewIcon,
+        startSlot: requestedStart,
       });
+      // Arm the 2s duplicate-mode timer for the initial drop target.
+      dupModeRef.current = false;
+      if (dupTimerRef.current) clearTimeout(dupTimerRef.current);
+      const taskId = g.taskId;
+      dupTimerRef.current = setTimeout(() => {
+        const cur = gestureRef.current;
+        if (!cur || cur.kind !== 'task-drag' || cur.taskId !== taskId) return;
+        dupModeRef.current = true;
+        setPreview((p) => (p ? { ...p, duplicate: true } : p));
+      }, 2000);
       if (navigator.vibrate) navigator.vibrate(12);
     },
     [hitTestSlot, categories]
