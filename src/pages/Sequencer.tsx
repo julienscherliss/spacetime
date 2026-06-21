@@ -1067,13 +1067,6 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
         </div>
 
       </div>
-      {pickupRing && pickupRing.slotIdx >= 0 && (
-        <PickupRingSlot
-          slotIdx={pickupRing.slotIdx}
-          progress={pickupRing.progress}
-          cells={cells}
-        />
-      )}
     </div>
   );
 }
