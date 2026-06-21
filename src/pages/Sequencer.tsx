@@ -1,6 +1,8 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
 import { AppNav } from '@/components/AppNav';
 import { useTaskStore, type Task } from '@/store/taskStore';
+import { useLibraryStore } from '@/store/libraryStore';
+import { resolveTaskIcon } from '@/lib/resolveTaskIcon';
 import { useCurrentTime, timeToMinutes } from '@/hooks/useCurrentTime';
 import { TaskEditPanel } from '@/components/TaskEditPanel';
 import {
@@ -56,6 +58,7 @@ interface CellAssignment {
 export default function Sequencer() {
   const tasks = useTaskStore((s) => s.tasks);
   const setEditingTask = useTaskStore((s) => s.setEditingTask);
+  const categories = useLibraryStore((s) => s.categories);
   const { minutes: nowMin, dateStr } = useCurrentTime(15000);
 
   const cells = useMemo(() => {
@@ -71,7 +74,7 @@ export default function Sequencer() {
       const fromSlot = Math.floor((start - dayStartMin) / SLOT_MIN);
       const toSlot = Math.ceil((end - dayStartMin) / SLOT_MIN) - 1;
       if (toSlot < 0 || fromSlot >= SLOTS_PER_DAY) continue;
-      const Icon = pickIcon(t);
+      const Icon = resolveTaskIcon(t, categories) ?? pickIcon(t);
       const lo = Math.max(0, fromSlot);
       const hi = Math.min(SLOTS_PER_DAY - 1, toSlot);
       for (let i = lo; i <= hi; i++) {
@@ -79,7 +82,7 @@ export default function Sequencer() {
       }
     }
     return arr;
-  }, [tasks, dateStr]);
+  }, [tasks, dateStr, categories]);
 
   const completedOnDay = useMemo(() => {
     const day = tasks.filter((t) => t.date === dateStr && !t.archivedAt && !t.inWaitingRoom && !t.groupId && t.time);

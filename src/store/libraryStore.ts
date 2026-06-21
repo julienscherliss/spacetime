@@ -7,6 +7,8 @@ export interface CategoryDef {
   value: string;
   label: string;
   archived?: boolean;
+  /** Optional Lucide icon name from src/lib/iconLibrary.ts. */
+  icon?: string;
 }
 
 export type TaskUrgency = 'none' | 'urgent' | 'important';
@@ -92,6 +94,7 @@ interface LibraryState {
   reorderCategory: (value: string, direction: 'left' | 'right') => void;
   moveCategory: (fromValue: string, toValue: string) => void;
   reparentTag: (tagValue: string, newParent: string | null) => void;
+  setCategoryIcon: (value: string, icon: string | null) => void;
   archiveCategory: (value: string) => void;
   unarchiveCategory: (value: string) => void;
   repairCategoryDrift: () => void;
@@ -121,6 +124,7 @@ const mergeCategories = (items: LibraryTask[], categories: CategoryDef[]) => {
       value,
       label: category.label?.trim() || humanizeCategoryValue(value),
       archived: category.archived ?? false,
+      icon: category.icon || undefined,
     });
   });
 
@@ -547,6 +551,14 @@ export const useLibraryStore = create<LibraryState>()(
             c.value === value || c.value.startsWith(value + '/')
               ? { ...c, archived: true }
               : c
+          ),
+        }));
+      },
+
+      setCategoryIcon: (value, icon) => {
+        set((s) => ({
+          categories: s.categories.map(c =>
+            c.value === value ? { ...c, icon: icon || undefined } : c
           ),
         }));
       },

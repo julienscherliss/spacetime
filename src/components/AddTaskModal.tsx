@@ -9,6 +9,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { TagAutocomplete } from '@/components/TagAutocomplete';
 import { DateAutocomplete } from '@/components/DateAutocomplete';
+import { IconPicker } from '@/components/IconPicker';
+import { getIconByName } from '@/lib/iconLibrary';
+import { resolveCategoryIcon } from '@/lib/resolveTaskIcon';
+import { Sparkles } from 'lucide-react';
 
 const PRIORITY_LABELS = ['Flex', 'Semi', 'Fixed', 'Lock'] as const;
 const PRIORITY_COLORS = [
@@ -30,7 +34,9 @@ export function AddTaskModal() {
   const [duration] = useState(30);
   const [priority, setPriority] = useState<Priority>(0);
   const [category, setCategory] = useState('');
+  const [icon, setIcon] = useState<string | null>(null);
   const [showCatPicker, setShowCatPicker] = useState(false);
+  const [showIconPicker, setShowIconPicker] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showNewCatInput, setShowNewCatInput] = useState(false);
   const [newCatInline, setNewCatInline] = useState('');
@@ -39,13 +45,23 @@ export function AddTaskModal() {
   const handleSubmit = () => {
     const cleanTitle = title.replace(/#\S*$/, '').replace(/@\S*$/, '').replace(/\/\/\S*$/, '').trim();
     if (!cleanTitle) return;
-    addTask({ title: cleanTitle, date, time, duration, priority, type: 'one-time', category: category || undefined });
+    addTask({
+      title: cleanTitle,
+      date,
+      time,
+      duration,
+      priority,
+      type: 'one-time',
+      category: category || undefined,
+      icon: icon || undefined,
+    });
     incrementEntryCount();
     setTitle('');
     setDate(new Date().toISOString().split('T')[0]);
     setTime('09:00');
     setPriority(0);
     setCategory('');
+    setIcon(null);
     setOpen(false);
   };
 
@@ -59,6 +75,8 @@ export function AddTaskModal() {
   };
 
   const catLabel = categories.find(c => c.value === category)?.label || (category || '');
+  const inheritedIcon = resolveCategoryIcon(category, categories);
+  const ResolvedIcon = getIconByName(icon) ?? inheritedIcon;
 
   const formatDateLabel = () => {
     const d = new Date(date + 'T12:00:00');
@@ -163,7 +181,10 @@ export function AddTaskModal() {
                         ? 'text-foreground/70 bg-muted/40 hover:bg-muted/60'
                         : 'text-muted-foreground/40 bg-muted/30 hover:bg-muted/50'
                     }`}>
-                      <Tag size={10} strokeWidth={1.5} />
+                      {(() => {
+                        const TagI = getIconByName(categories.find(c => c.value === category)?.icon);
+                        return TagI ? <TagI size={10} strokeWidth={1.5} /> : <Tag size={10} strokeWidth={1.5} />;
+                      })()}
                       {catLabel || 'Tag'}
                     </button>
                   </PopoverTrigger>
@@ -205,6 +226,31 @@ export function AddTaskModal() {
                         </button>
                       )}
                     </div>
+                  </PopoverContent>
+                </Popover>
+
+                {/* Icon */}
+                <Popover open={showIconPicker} onOpenChange={setShowIconPicker}>
+                  <PopoverTrigger asChild>
+                    <button className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
+                      icon
+                        ? 'text-foreground/80 bg-muted/40 hover:bg-muted/60'
+                        : 'text-muted-foreground/40 bg-muted/30 hover:bg-muted/50'
+                    }`}>
+                      {ResolvedIcon
+                        ? <ResolvedIcon size={11} strokeWidth={1.5} />
+                        : <Sparkles size={10} strokeWidth={1.5} />}
+                      {icon ? 'Icon' : (inheritedIcon ? 'Inherit' : 'Icon')}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="p-0 z-[70]" align="start" onClick={(e) => e.stopPropagation()}>
+                    <IconPicker
+                      value={icon}
+                      suggestFor={`${title} ${catLabel}`}
+                      clearLabel={inheritedIcon ? 'Inherit from tag' : 'No icon'}
+                      onChange={(name) => setIcon(name)}
+                      onClose={() => setShowIconPicker(false)}
+                    />
                   </PopoverContent>
                 </Popover>
               </div>

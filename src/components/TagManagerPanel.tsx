@@ -4,6 +4,9 @@ import { useLibraryStore, CategoryDef } from '@/store/libraryStore';
 import {
   X, Plus, Archive, Tag, ChevronRight, GripVertical,
 } from 'lucide-react';
+import { getIconByName } from '@/lib/iconLibrary';
+import { IconPicker } from '@/components/IconPicker';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Dialog,
   DialogContent,
@@ -41,6 +44,7 @@ export function TagManagerPanel({ open, onClose }: TagManagerPanelProps) {
   const addCategory = useLibraryStore((s) => s.addCategory);
   const moveCategory = useLibraryStore((s) => s.moveCategory);
   const reparentTag = useLibraryStore((s) => s.reparentTag);
+  const setCategoryIcon = useLibraryStore((s) => s.setCategoryIcon);
 
   const [columnPath, setColumnPath] = useState<(string | null)[]>([null]);
   const [editingTag, setEditingTag] = useState<string | null>(null);
@@ -333,7 +337,34 @@ export function TagManagerPanel({ open, onClose }: TagManagerPanelProps) {
                                 size={12}
                                 className="text-muted-foreground/20 shrink-0 cursor-grab opacity-0 group-hover:opacity-100 transition-opacity"
                               />
-                              <Tag size={11} className="text-muted-foreground/30 shrink-0" />
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <button
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="shrink-0 p-0.5 rounded-sm hover:bg-muted/40 text-muted-foreground/60 hover:text-foreground transition-colors"
+                                    title="Set icon"
+                                  >
+                                    {(() => {
+                                      const TagIcon = getIconByName(cat.icon);
+                                      return TagIcon
+                                        ? <TagIcon size={12} strokeWidth={1.5} className="text-foreground" />
+                                        : <Tag size={11} className="text-muted-foreground/40" />;
+                                    })()}
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                  className="p-0 z-[10000]"
+                                  align="start"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <IconPicker
+                                    value={cat.icon}
+                                    suggestFor={cat.label}
+                                    clearLabel="No icon"
+                                    onChange={(name) => setCategoryIcon(cat.value, name)}
+                                  />
+                                </PopoverContent>
+                              </Popover>
 
                               {editingTag === cat.value ? (
                                 <input
