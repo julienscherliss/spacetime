@@ -15,6 +15,7 @@ import { TagAutocomplete, isSubtagOf, hasSubtags, getParentValue } from '@/compo
 import { DateAutocomplete } from '@/components/DateAutocomplete';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useCarryStore } from '@/store/carryStore';
+import { useLibraryDragStore } from '@/store/libraryDragStore';
 import { useTaskStore } from '@/store/taskStore';
 import { LibraryEditModal } from '@/components/LibraryEditModal';
 import { LibraryDetailPane } from '@/components/LibraryDetailPane';
