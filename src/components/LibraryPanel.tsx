@@ -870,6 +870,8 @@ export function LibraryPanel() {
                               <VerticalTagChip
                                 active={filters.category === drilldownParent}
                                 label={categories.find(c => c.value === drilldownParent)?.label || drilldownParent}
+                                catValue={drilldownParent}
+                                iconName={categories.find(c => c.value === drilldownParent)?.icon}
                                 onClick={() => setFilter({ category: filters.category === drilldownParent ? 'all' : drilldownParent })}
                               />
                               {categories.filter(c => isSubtagOf(c.value, drilldownParent) && !c.archived).map((cat) => {
@@ -879,6 +881,9 @@ export function LibraryPanel() {
                                     key={cat.value}
                                     active={filters.category === cat.value}
                                     label={subLabel}
+                                    catValue={cat.value}
+                                    iconName={cat.icon}
+                                    suggestFor={cat.label}
                                     onClick={() => setFilter({ category: filters.category === cat.value ? 'all' : cat.value })}
                                   />
                                 );
@@ -905,6 +910,9 @@ export function LibraryPanel() {
                                       key={cat.value}
                                       active={filters.category === cat.value}
                                       label={cat.label}
+                                      catValue={cat.value}
+                                      iconName={cat.icon}
+                                      suggestFor={cat.label}
                                       hasChildren={catHasChildren}
                                       onDrilldown={() => setDrilldownParent(cat.value)}
                                       onClick={() => {
