@@ -90,7 +90,17 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
         libraryItemId: item.id,
         pickedUpAt: Date.now(),
       });
-      useLibraryStore.getState().setPanelOpen(false);
+      // On desktop sidebar mode, the timeline is visible alongside the
+      // library — keep the panel open so the user can drop directly. On
+      // mobile (or fullscreen), close it so the user can see the schedule,
+      // and flag it to re-open automatically after the carry is dropped.
+      const libState = useLibraryStore.getState();
+      const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 768;
+      const keepOpen = isDesktop && libState.sidebarMode;
+      if (!keepOpen) {
+        libState.setReopenAfterCarryDrop(true);
+        libState.setPanelOpen(false);
+      }
     }, 400);
   }, [item]);
 
