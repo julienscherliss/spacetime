@@ -1043,7 +1043,7 @@ function RowFragment({
         const isCurrent = nowMin >= slotStartMin && nowMin < slotEndMin;
         const inPreview = preview?.cells.has(slotIdx) ?? false;
         const hidden = !!(preview?.hideTaskId && cell?.task.id === preview.hideTaskId);
-        const isOverdue = !!cell && !cell.task.completed && (dateStr < today || (dateStr === today && isPast));
+        const isOverdue = !!cell && !cell.task.completed && cell.isEnd && (dateStr < today || (dateStr === today && isPast));
         return (
           <Cell
             key={colIdx}
