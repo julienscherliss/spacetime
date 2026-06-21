@@ -12,7 +12,7 @@ import {
   type Tile,
 } from "@/utils/planetWorld";
 import { buildLandscape, type LandscapeData } from "@/utils/planetWorld3D";
-import { World3D } from "@/components/universe/World3D";
+import { World3D, STAGE_LABELS, planetStage } from "@/components/universe/World3D";
 
 type PlanetStatus = "healthy" | "due-soon" | "overdue";
 
@@ -775,6 +775,8 @@ function PlanetWorldView({
     () => buildLandscape(planet.value, allTasks),
     [planet.value, allTasks]
   );
+  const stage = planetStage(world3d);
+  const stageLabel = STAGE_LABELS[stage];
   const completionPct =
     metrics.activeTasks + metrics.completedTasks === 0
       ? 0
@@ -808,7 +810,7 @@ function PlanetWorldView({
           className="absolute top-5 right-5 z-10 text-right"
         >
           <div className="text-[10px] font-mono tracking-[0.3em] uppercase text-foreground/50">
-            Tier {scene.tier} · {TIER_LABEL[scene.tier]}
+            Stage {stage} · {stageLabel}
           </div>
         </div>
         <div
@@ -817,15 +819,19 @@ function PlanetWorldView({
             animation: "universe-zoom-in 700ms cubic-bezier(0.16, 1, 0.3, 1)",
           }}
         >
-          <World3D world={world3d} />
+          <World3D
+            world={world3d}
+            overdueCount={metrics.overdueTasks}
+            dueSoonCount={metrics.dueSoonTasks}
+            activeCount={metrics.activeTasks}
+          />
         </div>
 
         {/* Legend */}
         <div className="absolute bottom-20 left-6 z-10 text-[10px] font-mono uppercase tracking-[0.2em] text-foreground/60 space-y-1 pointer-events-none max-w-xs">
-          <div>· one cell per chunk of effort</div>
-          <div>· cluster grows as you complete tasks</div>
-          <div>· larger nuclei = longer sessions</div>
-          <div>· accent rings = recent activity</div>
+          <div>· a living world shaped by accumulated effort</div>
+          <div>· evolves through 7 ecological stages</div>
+          <div>· red marker = overdue · amber = due soon</div>
           <div>· drag to orbit · scroll to zoom</div>
         </div>
 
