@@ -214,9 +214,16 @@ export default function Sequencer() {
   };
 
   // ─── Pointer lifecycle ─────────────────────────────────
+  // Track every active pointer on the grid so we can detect multi-touch (pinch/zoom)
+  // and cancel any in-progress gesture instead of treating the second finger as input.
+  const activePointersRef = useRef<Set<number>>(new Set());
+
   const endGesture = useCallback(() => {
     const g = gestureRef.current;
-    if (g && 'pickupTimer' in g && g.pickupTimer) clearTimeout(g.pickupTimer);
+    if (g) {
+      if ('pickupTimer' in g && g.pickupTimer) clearTimeout(g.pickupTimer);
+      if ('holdTimer' in g && g.holdTimer) clearTimeout(g.holdTimer);
+    }
     gestureRef.current = null;
     setPreview(null);
   }, []);
