@@ -1090,7 +1090,7 @@ function ChromeBtn({ children, onClick, ariaLabel }: { children: React.ReactNode
 }
 
 function RowFragment({
-  label, cells, rowIdx, nowMin, preview, dateStr, today,
+  label, cells, rowIdx, nowMin, preview, dateStr, today, pickupSlot, pickupProgress,
 }: {
   label: string;
   cells: (CellAssignment | null)[];
@@ -1099,6 +1099,8 @@ function RowFragment({
   preview: PreviewState | null;
   dateStr: string;
   today: string;
+  pickupSlot: number | null;
+  pickupProgress: number;
 }) {
   return (
     <>
