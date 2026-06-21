@@ -504,6 +504,7 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
         duration,
         grabOffsetSlots,
         targetStart: requestedStart,
+        originStart: startSlot,
         blocked: false,
         PreviewIcon,
       };
@@ -513,16 +514,13 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
         PreviewIcon,
         startSlot: requestedStart,
       });
-      // Arm the 2s duplicate-mode timer for the initial drop target.
+      // Duplicate mode arms only after the task has been moved to a different
+      // slot than its origin (see task-drag handler in handlePointerMove).
       dupModeRef.current = false;
-      if (dupTimerRef.current) clearTimeout(dupTimerRef.current);
-      const taskId = g.taskId;
-      dupTimerRef.current = setTimeout(() => {
-        const cur = gestureRef.current;
-        if (!cur || cur.kind !== 'task-drag' || cur.taskId !== taskId) return;
-        dupModeRef.current = true;
-        setPreview((p) => (p ? { ...p, duplicate: true } : p));
-      }, 1000);
+      if (dupTimerRef.current) {
+        clearTimeout(dupTimerRef.current);
+        dupTimerRef.current = null;
+      }
       if (navigator.vibrate) navigator.vibrate(12);
     },
     [hitTestSlot, categories]
