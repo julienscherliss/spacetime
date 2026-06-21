@@ -690,7 +690,7 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
       endGesture();
       return;
     }
-  }, [tasks, dateStr, routinesEnabled, addTask, updateTask, resizeTask, setEditingTask, endGesture]);
+  }, [tasks, dateStr, routinesEnabled, addTask, updateTask, resizeTask, setEditingTask, endGesture, handleTaskDoubleComplete]);
 
   // Attach window listeners while a gesture is active.
   useEffect(() => {
