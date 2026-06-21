@@ -21,6 +21,8 @@ import { shouldShowScheduledTask } from '@/utils/taskVisibility';
 
 export function WeekView() {
   const { tasks, routinesEnabled, generateRecurringInstances } = useTaskStore();
+  useTaskStore((s) => s.dayStartHour);
+  useTaskStore((s) => s.dayEndHour);
   const { minutes: nowMinutes, dateStr: today } = useCurrentTime(15000);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [weekOffset, setWeekOffset] = useState(0);

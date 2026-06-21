@@ -28,6 +28,8 @@ export function DayView() {
   const { tasks, routinesEnabled, generateRecurringInstances, navigateToDate, setNavigateToDate,
     currentDate, setCurrentDate,
     listReturnZoom, setListReturnZoom, showListReturn, setShowListReturn, setDaySubMode } = useTaskStore();
+  useTaskStore((s) => s.dayStartHour);
+  useTaskStore((s) => s.dayEndHour);
   const isMobile = useIsMobile();
   const { minutes: nowMinutes, dateStr: today } = useCurrentTime(15000);
   const [selectedDate, _setSelectedDate] = useState(navigateToDate || currentDate || today);
