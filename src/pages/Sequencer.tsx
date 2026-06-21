@@ -233,11 +233,18 @@ export default function Sequencer() {
     if (!g || e.pointerId !== g.pointerId) return;
 
     if (g.kind === 'idle-pending') {
-      // Convert to create-drag once we cross a slot boundary
+      const moved = Math.hypot(e.clientX - g.x0, e.clientY - g.y0) > MOVE_THRESHOLD_PX;
+      if (!moved) return;
+      // On touch: any movement before the hold timer fires = scroll intent.
+      // Release the gesture so the browser can take over and pan the page.
+      if (g.isTouch) {
+        if (g.holdTimer) clearTimeout(g.holdTimer);
+        endGesture();
+        return;
+      }
+      // Mouse: promote to create-drag immediately on movement.
       const slot = hitTestSlot(e.clientX, e.clientY);
       if (slot == null) return;
-      const moved = Math.hypot(e.clientX - g.x0, e.clientY - g.y0) > MOVE_THRESHOLD_PX;
-      if (!moved && slot === g.startSlot) return;
       gestureRef.current = {
         kind: 'create-drag',
         pointerId: g.pointerId,
@@ -260,9 +267,15 @@ export default function Sequencer() {
     }
 
     if (g.kind === 'task-pending') {
-      // Movement before pickup timer fires → upgrade immediately to drag.
       const moved = Math.hypot(e.clientX - g.x0, e.clientY - g.y0) > MOVE_THRESHOLD_PX;
       if (!moved) return;
+      // On touch: movement before pickup = scroll intent → release gesture.
+      if (g.isTouch) {
+        if (g.pickupTimer) clearTimeout(g.pickupTimer);
+        endGesture();
+        return;
+      }
+      // Mouse: pick up immediately.
       if (g.pickupTimer) clearTimeout(g.pickupTimer);
       activateTaskDrag(g, e.clientX, e.clientY);
       e.preventDefault();
