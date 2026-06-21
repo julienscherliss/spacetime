@@ -755,7 +755,7 @@ function Cell({
           <div
             data-resize-handle="start"
             data-task-id={cell.task.id}
-            className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize"
+            className="absolute left-0 top-0 bottom-0 w-3 cursor-ew-resize z-10"
             style={{ touchAction: 'none' }}
           />
         )}
@@ -763,7 +763,7 @@ function Cell({
           <div
             data-resize-handle="end"
             data-task-id={cell.task.id}
-            className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize"
+            className="absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize z-10"
             style={{ touchAction: 'none' }}
           />
         )}
