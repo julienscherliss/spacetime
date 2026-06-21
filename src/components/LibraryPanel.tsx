@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useEntryHint, incrementEntryCount } from '@/hooks/useEntryHint';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
