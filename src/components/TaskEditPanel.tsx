@@ -11,7 +11,7 @@ import { useTimezoneStore } from '@/store/timezoneStore';
 import { supabase } from '@/integrations/supabase/client';
 import { useLibraryStore } from '@/store/libraryStore';
 import { IconPicker } from '@/components/IconPicker';
-import { getIconByName } from '@/lib/iconLibrary';
+import { getIconByName, suggestIcons } from '@/lib/iconLibrary';
 import { resolveCategoryIcon } from '@/lib/resolveTaskIcon';
 import { TagAutocomplete } from '@/components/TagAutocomplete';
 import { TagPickerMenu } from '@/components/TagPickerMenu';
@@ -212,6 +212,11 @@ export function TaskEditPanel() {
   const titleInputRef = useRef<HTMLInputElement>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const subtaskListRef = useRef<SubtaskListHandle>(null);
+  // Tracks the last icon name auto-picked for this task from its title.
+  // While taskIcon equals this value (or null), we'll keep refreshing the
+  // suggestion as the title changes. If the user picks a different icon
+  // manually, taskIcon diverges from the ref and we stop auto-suggesting.
+  const autoIconRef = useRef<string | null>(null);
 
   const isRecurring = !!(task?.recurrence || task?.isRecurrenceInstance) && recurrenceType !== 'none';
 
@@ -244,6 +249,7 @@ export function TaskEditPanel() {
       setDueDate(task.dueDate || '');
       setTaskCategory(task.category || '');
       setTaskIcon(task.icon || null);
+      autoIconRef.current = null;
       setShowDuePicker(false);
       setShowCatPicker(false);
       setSaveStatus('idle');
