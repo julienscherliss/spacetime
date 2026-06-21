@@ -532,7 +532,11 @@ export function TaskEditPanel() {
                       ? 'text-foreground/70 bg-muted/40 hover:bg-muted/60'
                       : 'text-muted-foreground/40 bg-muted/30 hover:bg-muted/50'
                   }`}>
-                    <Tag size={10} strokeWidth={1.5} />
+                    {(() => {
+                      const cats = useLibraryStore.getState().categories;
+                      const TagI = getIconByName(cats.find(c => c.value === taskCategory)?.icon);
+                      return TagI ? <TagI size={10} strokeWidth={1.5} /> : <Tag size={10} strokeWidth={1.5} />;
+                    })()}
                     {taskCategory ? (useLibraryStore.getState().categories.find(c => c.value === taskCategory)?.label || taskCategory) : 'Tag'}
                   </button>
                 </PopoverTrigger>
@@ -541,6 +545,36 @@ export function TaskEditPanel() {
                     value={taskCategory}
                     onChange={(v) => setTaskCategory(v)}
                     onClose={() => setShowCatPicker(false)}
+                  />
+                </PopoverContent>
+              </Popover>
+
+              {/* Icon */}
+              <Popover open={showIconPicker} onOpenChange={setShowIconPicker}>
+                <PopoverTrigger asChild>
+                  <button className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
+                    taskIcon
+                      ? 'text-foreground/80 bg-muted/40 hover:bg-muted/60'
+                      : 'text-muted-foreground/40 bg-muted/30 hover:bg-muted/50'
+                  }`}>
+                    {(() => {
+                      const cats = useLibraryStore.getState().categories;
+                      const inherited = resolveCategoryIcon(taskCategory, cats);
+                      const Resolved = getIconByName(taskIcon) ?? inherited;
+                      return Resolved
+                        ? <Resolved size={11} strokeWidth={1.5} />
+                        : <Sparkles size={10} strokeWidth={1.5} />;
+                    })()}
+                    {taskIcon ? 'Icon' : (resolveCategoryIcon(taskCategory, useLibraryStore.getState().categories) ? 'Inherit' : 'Icon')}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="p-0 z-[10000]" align="start" onClick={(e) => e.stopPropagation()}>
+                  <IconPicker
+                    value={taskIcon}
+                    suggestFor={`${title} ${taskCategory}`}
+                    clearLabel={resolveCategoryIcon(taskCategory, useLibraryStore.getState().categories) ? 'Inherit from tag' : 'No icon'}
+                    onChange={(name) => setTaskIcon(name)}
+                    onClose={() => setShowIconPicker(false)}
                   />
                 </PopoverContent>
               </Popover>
