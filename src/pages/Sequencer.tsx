@@ -149,6 +149,20 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
   const categories = useLibraryStore((s) => s.categories);
   const { minutes: nowMin, dateStr } = useCurrentTime(15000);
 
+  // Desktop (sm+) flips the grid 90°: hours become columns, 15-min quarters
+  // become rows. The slotIdx semantics stay identical; only the geometry
+  // (axis mapping in hit-testing and CSS grid placement) changes.
+  const [horizontal, setHorizontal] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(min-width: 640px)').matches : false
+  );
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(min-width: 640px)');
+    const onChange = () => setHorizontal(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
   const cells = useMemo(() => {
     const arr: (CellAssignment | null)[] = Array(SLOTS_PER_DAY).fill(null);
     const dayStartMin = START_HOUR * 60;
@@ -209,16 +223,22 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
     const rect = el.getBoundingClientRect();
     const relX = clientX - rect.left - LABEL_COL_W;
     const relY = clientY - rect.top;
+    if (horizontal) {
+      // Columns = hours (ROWS of them), rows = quarters (COLS of them)
+      const cellW = (rect.width - LABEL_COL_W) / ROWS;
+      const rowH = rect.height / COLS;
+      if (cellW <= 0 || rowH <= 0) return null;
+      const hourIdx = Math.max(0, Math.min(ROWS - 1, Math.floor(relX / cellW)));
+      const qIdx = Math.max(0, Math.min(COLS - 1, Math.floor(relY / rowH)));
+      return hourIdx * COLS + qIdx;
+    }
     const cellW = (rect.width - LABEL_COL_W) / COLS;
     const rowH = rect.height / ROWS;
     if (cellW <= 0 || rowH <= 0) return null;
     const col = Math.max(0, Math.min(COLS - 1, Math.floor(relX / cellW)));
     const row = Math.max(0, Math.min(ROWS - 1, Math.floor(relY / rowH)));
-    if (clientX < rect.left + LABEL_COL_W || clientY < rect.top || clientY > rect.bottom || clientX > rect.right) {
-      // Out of bounds → still clamp so dragging past the edge has nice behavior
-    }
     return row * COLS + col;
-  }, []);
+  }, [horizontal]);
 
   const cellsBetween = (a: number, b: number) => {
     const lo = Math.min(a, b);
@@ -690,7 +710,7 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
       {!embedded && <AppNav />}
       {!embedded && <TaskEditPanel />}
 
-      <div className="mx-auto max-w-md px-5 pt-6">
+      <div className="mx-auto max-w-md sm:max-w-5xl px-5 pt-6">
         {/* Header */}
         <div className="flex items-start justify-between">
           <div>
@@ -712,14 +732,38 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
           <ChromeBtn><ChevronRight size={16} strokeWidth={1.5} /></ChromeBtn>
         </div>
 
-        {/* Column header */}
-        <div className="mt-7 grid" style={{ gridTemplateColumns: '46px repeat(4, 1fr)' }}>
+        {/* Column / row header */}
+        <div
+          className="mt-7 grid"
+          style={{
+            gridTemplateColumns: horizontal
+              ? `46px repeat(${ROWS}, 1fr)`
+              : '46px repeat(4, 1fr)',
+          }}
+        >
           <div />
-          {[':00', ':15', ':30', ':45'].map((l) => (
-            <div key={l} className="text-[10px] font-mono tracking-[0.18em] text-center pb-2 text-muted-foreground/60">
-              {l}
-            </div>
-          ))}
+          {horizontal
+            ? Array.from({ length: ROWS }).map((_, rowIdx) => {
+                const hour = START_HOUR + rowIdx;
+                const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+                const period = hour >= 12 ? 'PM' : 'AM';
+                return (
+                  <div
+                    key={hour}
+                    className="text-[10px] font-mono tracking-[0.18em] text-center pb-2 text-muted-foreground/60"
+                  >
+                    {h12} {period}
+                  </div>
+                );
+              })
+            : [':00', ':15', ':30', ':45'].map((l) => (
+                <div
+                  key={l}
+                  className="text-[10px] font-mono tracking-[0.18em] text-center pb-2 text-muted-foreground/60"
+                >
+                  {l}
+                </div>
+              ))}
         </div>
 
         {/* Grid */}
@@ -728,28 +772,70 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
             ref={gridRef}
             className="grid relative select-none"
             style={{
-              gridTemplateColumns: '46px repeat(4, 1fr)',
-              gridAutoRows: '60px',
+              gridTemplateColumns: horizontal
+                ? `46px repeat(${ROWS}, 1fr)`
+                : '46px repeat(4, 1fr)',
+              gridTemplateRows: horizontal
+                ? 'repeat(4, 60px)'
+                : `repeat(${ROWS}, 60px)`,
               borderTop: '1px solid hsl(var(--border) / 0.4)',
               touchAction: 'pan-y',
             }}
             onPointerDown={handleGridPointerDown}
           >
-            {Array.from({ length: ROWS }).map((_, rowIdx) => {
-              const hour = START_HOUR + rowIdx;
-              const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-              const period = hour >= 12 ? 'PM' : 'AM';
-              return (
-                <RowFragment
-                  key={hour}
-                  label={`${h12} ${period}`}
-                  cells={cells}
-                  rowIdx={rowIdx}
-                  nowMin={nowMin}
-                  preview={preview}
-                />
-              );
-            })}
+            {horizontal
+              ? // Row-major across the horizontal grid: 4 quarter rows × ROWS hour columns
+                Array.from({ length: COLS }).flatMap((_, qIdx) => {
+                  const label = [':00', ':15', ':30', ':45'][qIdx];
+                  const labelEl = (
+                    <div
+                      key={`lbl-${qIdx}`}
+                      className="flex items-center justify-start pl-1 text-[10px] font-mono tracking-[0.18em] text-muted-foreground/60"
+                      style={{ borderBottom: '1px solid hsl(var(--border) / 0.25)' }}
+                    >
+                      {label}
+                    </div>
+                  );
+                  const cellsRow = Array.from({ length: ROWS }).map((_, hourIdx) => {
+                    const slotIdx = hourIdx * COLS + qIdx;
+                    const cell = cells[slotIdx];
+                    const slotStartMin = (START_HOUR + hourIdx) * 60 + qIdx * SLOT_MIN;
+                    const slotEndMin = slotStartMin + SLOT_MIN;
+                    const isPast = slotEndMin <= nowMin;
+                    const isCurrent = nowMin >= slotStartMin && nowMin < slotEndMin;
+                    const inPreview = preview?.cells.has(slotIdx) ?? false;
+                    const hidden = !!(preview?.hideTaskId && cell?.task.id === preview.hideTaskId);
+                    return (
+                      <Cell
+                        key={`c-${slotIdx}`}
+                        slotIdx={slotIdx}
+                        cell={cell}
+                        isPast={isPast}
+                        isCurrent={isCurrent}
+                        inPreview={inPreview}
+                        previewBlocked={preview?.blocked ?? false}
+                        PreviewIcon={preview?.PreviewIcon}
+                        hidden={hidden}
+                      />
+                    );
+                  });
+                  return [labelEl, ...cellsRow];
+                })
+              : Array.from({ length: ROWS }).map((_, rowIdx) => {
+                  const hour = START_HOUR + rowIdx;
+                  const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+                  const period = hour >= 12 ? 'PM' : 'AM';
+                  return (
+                    <RowFragment
+                      key={hour}
+                      label={`${h12} ${period}`}
+                      cells={cells}
+                      rowIdx={rowIdx}
+                      nowMin={nowMin}
+                      preview={preview}
+                    />
+                  );
+                })}
           </div>
 
           {visible && gridSize.h > 0 && (
@@ -758,6 +844,7 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
               width={gridSize.w}
               height={gridSize.h}
               labelColW={46}
+              horizontal={horizontal}
             />
           )}
         </div>
@@ -908,18 +995,34 @@ function Cell({
 }
 
 function Playhead({
-  nowMin, width, height, labelColW,
-}: { nowMin: number; width: number; height: number; labelColW: number }) {
-  const rowH = height / ROWS;
+  nowMin, width, height, labelColW, horizontal = false,
+}: { nowMin: number; width: number; height: number; labelColW: number; horizontal?: boolean }) {
   const dayStartMin = START_HOUR * 60;
   const minsIntoDay = nowMin - dayStartMin;
-  const currentRow = Math.floor(minsIntoDay / 60);
+  const currentHourIdx = Math.floor(minsIntoDay / 60);
   const minsIntoHour = minsIntoDay % 60;
-  const colFrac = minsIntoHour / 60;
+  const hourFrac = minsIntoHour / 60;
 
-  const gridW = width - labelColW;
-  const x = labelColW + colFrac * gridW;
-  const y = currentRow * rowH;
+  let x: number;
+  let y: number;
+  let segW: number;
+  let segH: number;
+  if (horizontal) {
+    // Hours laid across columns; the playhead is a horizontal line spanning
+    // all 4 quarter rows inside the current hour column.
+    const colW = (width - labelColW) / ROWS;
+    x = labelColW + currentHourIdx * colW + hourFrac * colW;
+    y = 0;
+    segW = 1;
+    segH = height;
+  } else {
+    const rowH = height / ROWS;
+    const gridW = width - labelColW;
+    x = labelColW + hourFrac * gridW;
+    y = currentHourIdx * rowH;
+    segW = 1;
+    segH = rowH;
+  }
 
   return (
     <div className="pointer-events-none absolute inset-0">
@@ -929,8 +1032,8 @@ function Playhead({
           position: 'absolute',
           left: x,
           top: y,
-          width: 1,
-          height: rowH,
+          width: segW,
+          height: segH,
           background: 'hsl(var(--primary))',
           opacity: 0.45,
         }}
@@ -940,7 +1043,7 @@ function Playhead({
         style={{
           position: 'absolute',
           left: x,
-          top: y + rowH / 2,
+          top: y + segH / 2,
           width: 7,
           height: 7,
           borderRadius: 9999,
