@@ -187,7 +187,7 @@ export function TutorialRoot() {
     const prompts = [
       'Add a task that is due today. Type a name, set the date to today, and hit enter.',
       'Nice. Now add a task that is due later this week. Pick a date within the next 7 days.',
-      'One more — add a task due later this year. Pick a date more than a week out.',
+      'One more — add a task due 3+ months from now. Pick a date that far out.',
     ];
     const nextIdx = checklistProgress.findIndex((v) => !v);
     const body =
