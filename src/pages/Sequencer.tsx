@@ -775,6 +775,7 @@ function RowFragment({
             isCurrent={isCurrent}
             inPreview={inPreview}
             previewBlocked={preview?.blocked ?? false}
+            PreviewIcon={preview?.PreviewIcon}
             hidden={hidden}
           />
         );
@@ -784,7 +785,7 @@ function RowFragment({
 }
 
 function Cell({
-  slotIdx, cell, isPast, isCurrent, inPreview, previewBlocked, hidden,
+  slotIdx, cell, isPast, isCurrent, inPreview, previewBlocked, PreviewIcon, hidden,
 }: {
   slotIdx: number;
   cell: CellAssignment | null;
@@ -792,6 +793,7 @@ function Cell({
   isCurrent: boolean;
   inPreview: boolean;
   previewBlocked: boolean;
+  PreviewIcon?: LucideIcon;
   hidden: boolean;
 }) {
   const occupied = !!cell && !hidden;
