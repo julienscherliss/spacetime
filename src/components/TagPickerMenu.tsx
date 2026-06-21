@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLibraryStore } from '@/store/libraryStore';
 import { Plus, ChevronRight, ArrowLeft } from 'lucide-react';
+import { getIconByName } from '@/lib/iconLibrary';
 
 /** Check if child is a DIRECT subtag of parent (one level only) */
 function isDirectChild(childValue: string, parentValue: string): boolean {
@@ -90,14 +91,21 @@ export function TagPickerMenu({ value, onChange, onClose, showNewOption = true }
 
       {/* Current parent as a selectable option when drilled in */}
       {currentParent && (
-        <button
-          onClick={() => { onChange(currentParent); onClose(); }}
-          className={`w-full text-left px-3 py-2 text-[11px] font-mono rounded-sm font-medium ${
-            value === currentParent ? 'text-foreground bg-muted/50' : 'text-foreground/80 hover:bg-muted/30'
-          }`}
-        >
-          {categories.find(c => c.value === currentParent)?.label || currentParent}
-        </button>
+        (() => {
+          const parentCat = categories.find(c => c.value === currentParent);
+          const ParentIcon = getIconByName(parentCat?.icon);
+          return (
+            <button
+              onClick={() => { onChange(currentParent); onClose(); }}
+              className={`w-full text-left px-3 py-2 text-[11px] font-mono rounded-sm font-medium flex items-center gap-2 ${
+                value === currentParent ? 'text-foreground bg-muted/50' : 'text-foreground/80 hover:bg-muted/30'
+              }`}
+            >
+              {ParentIcon && <ParentIcon size={11} strokeWidth={1.5} className="text-foreground/70 shrink-0" />}
+              <span className="truncate">{parentCat?.label || currentParent}</span>
+            </button>
+          );
+        })()
       )}
 
       {/* "No tag" option only at top level */}
@@ -115,6 +123,7 @@ export function TagPickerMenu({ value, onChange, onClose, showNewOption = true }
         const label = currentParent ? getLastSegment(cat.label) : cat.label;
         const hasChildren = hasDirectChildren(cat.value, categories);
         const canShowChevron = canDrillDeeper || hasChildren;
+        const TagIcon = getIconByName(cat.icon);
 
         return (
           <button
@@ -124,7 +133,10 @@ export function TagPickerMenu({ value, onChange, onClose, showNewOption = true }
               value === cat.value ? 'text-foreground bg-muted/50' : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30'
             }`}
           >
-            <span>{label}</span>
+            <span className="flex items-center gap-2 min-w-0">
+              {TagIcon && <TagIcon size={11} strokeWidth={1.5} className="text-foreground/60 shrink-0" />}
+              <span className="truncate">{label}</span>
+            </span>
             {canShowChevron && (
               <button
                 onClick={(e) => { e.stopPropagation(); drillInto(cat.value); }}
