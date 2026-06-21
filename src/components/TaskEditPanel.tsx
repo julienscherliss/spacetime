@@ -193,6 +193,8 @@ export function TaskEditPanel() {
   const [showRecurrence, setShowRecurrence] = useState(false);
   const [showCatPicker, setShowCatPicker] = useState(false);
   const [taskCategory, setTaskCategory] = useState(task?.category || '');
+  const [taskIcon, setTaskIcon] = useState<string | null>(task?.icon || null);
+  const [showIconPicker, setShowIconPicker] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [dueDate, setDueDate] = useState<string>(task?.dueDate || '');
   const [showDuePicker, setShowDuePicker] = useState(false);
@@ -241,6 +243,7 @@ export function TaskEditPanel() {
       setShowDeleteConfirm(false);
       setDueDate(task.dueDate || '');
       setTaskCategory(task.category || '');
+      setTaskIcon(task.icon || null);
       setShowDuePicker(false);
       setShowCatPicker(false);
       setSaveStatus('idle');
@@ -310,6 +313,7 @@ export function TaskEditPanel() {
       detachedFromSeries: false,
       dueDate: dueDate || undefined,
       category: taskCategory || undefined,
+      icon: taskIcon || undefined,
       reminders: reminders.length > 0 ? reminders : undefined,
       attachments: attachments.length > 0 ? attachments : undefined,
     };
