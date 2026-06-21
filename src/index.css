@@ -401,11 +401,11 @@
   100% { opacity: 0.3; }
 }
 
-/* ── Tooltip with 250ms delay ── */
+/* ── Tooltip with 250ms delay, 2s auto-hide ── */
 .cell-tooltip {
   position: relative;
 }
-.cell-tooltip::after {
+.cell-tooltip[data-tooltip]:not([data-tooltip=""])::after {
   content: attr(data-tooltip);
   position: absolute;
   bottom: calc(100% + 4px);
@@ -422,10 +422,9 @@
   pointer-events: none;
   opacity: 0;
   transition: opacity 120ms ease;
-  transition-delay: 250ms;
   z-index: 100;
 }
-.cell-tooltip:hover::after {
+.cell-tooltip.show-tip[data-tooltip]:not([data-tooltip=""])::after {
   opacity: 1;
 }
 

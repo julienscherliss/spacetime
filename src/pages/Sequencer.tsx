@@ -1189,6 +1189,30 @@ function Cell({
   const occupied = !!cell && !hidden;
   const completed = cell?.task.completed;
   const isPickupTarget = slotIdx === pickupSlot;
+
+  const [tipVisible, setTipVisible] = useState(false);
+  const tipTimers = useRef<{ show?: ReturnType<typeof setTimeout>; hide?: ReturnType<typeof setTimeout> }>({});
+
+  useEffect(() => {
+    return () => {
+      if (tipTimers.current.show) clearTimeout(tipTimers.current.show);
+      if (tipTimers.current.hide) clearTimeout(tipTimers.current.hide);
+    };
+  }, []);
+
+  const handleMouseEnter = useCallback(() => {
+    if (!occupied || inPreview || hidden) return;
+    tipTimers.current.show = setTimeout(() => {
+      setTipVisible(true);
+      tipTimers.current.hide = setTimeout(() => setTipVisible(false), 2000);
+    }, 250);
+  }, [occupied, inPreview, hidden]);
+
+  const handleMouseLeave = useCallback(() => {
+    if (tipTimers.current.show) clearTimeout(tipTimers.current.show);
+    if (tipTimers.current.hide) clearTimeout(tipTimers.current.hide);
+    setTipVisible(false);
+  }, []);
   const showHoldRing = isPickupTarget && pickupProgress > 0;
 
   const previewBg = inPreview
@@ -1230,7 +1254,9 @@ function Cell({
     <div className="p-[3px]" data-slot-idx={slotIdx}>
       <div
         data-tooltip={occupied && !inPreview ? cell?.task.title : undefined}
-        className={`cell-tooltip relative w-full h-full rounded-sm flex items-center justify-center transition-all duration-150 ${occupied && !inPreview ? 'cell-tooltip' : ''}`}
+        className={`cell-tooltip relative w-full h-full rounded-sm flex items-center justify-center transition-all duration-150 ${occupied && !inPreview ? 'cell-tooltip' : ''} ${tipVisible ? 'show-tip' : ''}`}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
         style={{
           background: previewBg ?? cellBg,
           border: previewBorder ?? cellBorder,
