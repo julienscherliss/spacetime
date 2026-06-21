@@ -7,6 +7,7 @@ import { useTaskStore, Task } from '@/store/taskStore';
 import { useCalendarStore, CalendarEvent, eventSpansDate } from '@/store/calendarStore';
 import { useLibraryStore } from '@/store/libraryStore';
 import { useTouchDragStore } from '@/store/touchDragStore';
+import { useLibraryDragStore } from '@/store/libraryDragStore';
 import { useTimezoneStore, getTodayInTz } from '@/store/timezoneStore';
 import { useScheduledDragStore } from '@/store/scheduledDragStore';
 import { useCarryStore, isInScrollCooldown, isInDropCooldown, roundCarriedDuration } from '@/store/carryStore';
