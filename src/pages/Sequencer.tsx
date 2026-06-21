@@ -204,6 +204,9 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
     const dayStartMin = START_HOUR * 60;
     for (const t of tasks) {
       if (t.date !== dateStr) continue;
+      // While a task is in the inventory (carry mode), hide its scheduled
+      // footprint on the grid so the slot reads as empty until it's dropped.
+      if (carriedTaskId && t.id === carriedTaskId) continue;
       const isCompletedArchive = !!t.archivedAt && t.completed && t.archiveReason === 'completed';
       if ((t.archivedAt && !(showCompletedTasks && isCompletedArchive)) || t.inWaitingRoom || t.groupId) continue;
       if (!t.time) continue;
@@ -221,7 +224,7 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
       }
     }
     return arr;
-  }, [tasks, dateStr, categories, showCompletedTasks]);
+  }, [tasks, dateStr, categories, showCompletedTasks, carriedTaskId]);
 
   const completedOnDay = useMemo(() => {
     const day = tasks.filter((t) => {
