@@ -55,7 +55,7 @@ interface CellAssignment {
 
 export default function Sequencer() {
   const tasks = useTaskStore((s) => s.tasks);
-  const setEditingTaskId = useTaskStore((s) => s.setEditingTaskId);
+  const setEditingTask = useTaskStore((s) => s.setEditingTask);
   const { minutes: nowMin, dateStr } = useCurrentTime(15000);
 
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
@@ -173,7 +173,7 @@ export default function Sequencer() {
                   nowMin={nowMin}
                   hoverIdx={hoverIdx}
                   setHoverIdx={setHoverIdx}
-                  onOpen={(id) => setEditingTaskId(id)}
+                  onOpen={(id) => setEditingTask(id)}
                 />
               );
             })}
