@@ -90,7 +90,17 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
         libraryItemId: item.id,
         pickedUpAt: Date.now(),
       });
-      useLibraryStore.getState().setPanelOpen(false);
+      // On desktop sidebar mode, the timeline is visible alongside the
+      // library — keep the panel open so the user can drop directly. On
+      // mobile (or fullscreen), close it so the user can see the schedule,
+      // and flag it to re-open automatically after the carry is dropped.
+      const libState = useLibraryStore.getState();
+      const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 768;
+      const keepOpen = isDesktop && libState.sidebarMode;
+      if (!keepOpen) {
+        libState.setReopenAfterCarryDrop(true);
+        libState.setPanelOpen(false);
+      }
     }, 400);
   }, [item]);
 
@@ -392,7 +402,8 @@ export function LibraryPanel() {
   const isMobile = useIsMobile();
   const { hint: entryHint } = useEntryHint();
   const viewMode = useTaskStore((s) => s.viewMode);
-  const [sidebarMode, setSidebarMode] = useState(false);
+  const sidebarMode = useLibraryStore((s) => s.sidebarMode);
+  const setSidebarMode = useLibraryStore((s) => s.setSidebarMode);
 
   // When panel opens, default to sidebar mode in day/week views, full-screen in focus/calendar.
   const prevPanelOpen = useRef(false);
@@ -409,6 +420,29 @@ export function LibraryPanel() {
     }
     prevPanelOpen.current = panelOpen;
   }, [panelOpen, viewMode]);
+
+  // After a carry drop, if the library was auto-closed when the user picked
+  // an item up, bring it back so they can grab another task or keep editing.
+  useEffect(() => {
+    let wasCarrying = !!useCarryStore.getState().carried;
+    const unsub = useCarryStore.subscribe((s) => {
+      const isCarrying = !!s.carried;
+      // Transition from carrying → not carrying = a drop (or cancel) just happened.
+      if (wasCarrying && !isCarrying) {
+        const lib = useLibraryStore.getState();
+        if (lib.reopenAfterCarryDrop) {
+          lib.setReopenAfterCarryDrop(false);
+          // Only auto-reopen on an actual drop, not on cancel. The carry store
+          // bumps lastDropAt only on drop(), so use that as the signal.
+          if (Date.now() - s.lastDropAt < 500) {
+            lib.setPanelOpen(true);
+          }
+        }
+      }
+      wasCarrying = isCarrying;
+    });
+    return () => unsub();
+  }, []);
 
   // Tab hotkey requests opening the library in full-screen (non-sidebar) mode.
   useEffect(() => {
@@ -579,7 +613,7 @@ export function LibraryPanel() {
                   <div className="flex items-center gap-3">
                     <span className="text-[11px] font-mono text-muted-foreground/50">{totalCount}</span>
                     <button
-                      onClick={() => setSidebarMode((s) => !s)}
+                      onClick={() => setSidebarMode(!sidebarMode)}
                       className="p-1.5 text-muted-foreground/60 hover:text-foreground transition-colors"
                       title={sidebarMode ? 'Expand to full screen' : 'Collapse to sidebar'}
                     >

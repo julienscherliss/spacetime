@@ -343,14 +343,27 @@ export class ElectronCapacitorApp {
     }
 
     // Security
+    // Route any http(s) link (attachment downloads, external URLs, signed
+    // Supabase URLs, etc.) to the user's default system browser. Without this,
+    // Electron opens a child BrowserWindow that can render *behind* the parent
+    // window and gets visually trapped behind any open modal.
+    const { shell } = require('electron');
     this.MainWindow.webContents.setWindowOpenHandler((details) => {
+      if (/^https?:\/\//i.test(details.url)) {
+        void shell.openExternal(details.url);
+        return { action: 'deny' };
+      }
       if (!details.url.includes(this.customScheme)) {
         return { action: 'deny' };
-      } else {
-        return { action: 'allow' };
       }
+      return { action: 'allow' };
     });
-    this.MainWindow.webContents.on('will-navigate', (event, _newURL) => {
+    this.MainWindow.webContents.on('will-navigate', (event, newURL) => {
+      if (/^https?:\/\//i.test(newURL)) {
+        event.preventDefault();
+        void shell.openExternal(newURL);
+        return;
+      }
       if (!this.MainWindow.webContents.getURL().includes(this.customScheme)) {
         event.preventDefault();
       }

@@ -123,6 +123,7 @@ interface TaskState {
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'completed' | 'moveCount' | 'originalPriority'> & { isRoutine?: boolean }) => string;
   updateTask: (id: string, updates: Partial<Task>) => void;
   updateFutureInstances: (taskId: string, fromDate: string, updates: Partial<Task>) => void;
+  updateLinkedSeries: (taskId: string, updates: Partial<Task>) => void;
   completeTask: (id: string) => void;
   uncompleteTask: (id: string) => void;
   deleteTask: (id: string) => void;
@@ -663,6 +664,23 @@ export const useTaskStore = create<TaskState>()(
             }
 
             return t;
+          }),
+        }));
+      },
+
+      // Apply a partial update to EVERY task in the same linked series
+      // (past, present, and future). Used for changes like reminders that
+      // should propagate across the entire recurring chain when linked.
+      updateLinkedSeries: (taskId, updates) => {
+        const sourceTask = get().tasks.find((t) => t.id === taskId);
+        if (!sourceTask) return;
+        const seriesId = getTaskSeriesId(sourceTask);
+        set((s) => ({
+          tasks: s.tasks.map((t) => {
+            if (!isTaskInSameSeries(t, seriesId)) return t;
+            // Respect detached/unlinked instances — never overwrite their fields.
+            if (t.id !== taskId && t.detachedFromSeries) return t;
+            return enforceRecurringLinkInvariant({ ...t, ...updates });
           }),
         }));
       },

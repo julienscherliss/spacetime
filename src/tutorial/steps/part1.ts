@@ -47,7 +47,7 @@ export const part1Steps: TutorialStep[] = [
     dimExclude: 'library-panel',
     title: 'Add three real tasks',
     body: '',
-    checklist: ['Today', 'This week', 'This year'],
+    checklist: ['Today', 'This week', '3+ months'],
     cta: null,
     dockBottom: true,
   },

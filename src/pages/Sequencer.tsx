@@ -10,6 +10,7 @@ import {
   clampResize,
 } from '@/utils/collisionDetection';
 import { TaskEditPanel } from '@/components/TaskEditPanel';
+import { useCarryStore, roundCarriedDuration } from '@/store/carryStore';
 import {
   Footprints, Users, Camera, Film, Dumbbell, BookOpen, PenLine,
   Home, Plane, HeartHandshake, Phone, Sparkles, Coffee, Utensils,
@@ -491,6 +492,59 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
   const handleGridPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== undefined && e.button !== 0) return;
 
+    // Carry-drop: if the user is currently carrying a task (e.g. picked up
+    // from the Library or Waiting Room), a tap on the grid drops it at the
+    // tapped slot. We handle this up-front so the normal gestures (create,
+    // drag, resize) don't fire and the existing tile is left alone.
+    if (useCarryStore.getState().carried) {
+      const slot = hitTestSlot(e.clientX, e.clientY);
+      if (slot == null) return;
+      const carried = useCarryStore.getState().carried!;
+      const startMinTarget = slotToMin(slot);
+      const dropDuration = roundCarriedDuration(carried.duration);
+      const occupied = getOccupiedSlots(
+        useTaskStore.getState().tasks,
+        dateStr,
+        carried.fromLibrary ? undefined : carried.taskId,
+        routinesEnabled,
+      );
+      const { startMin, blocked } = findValidPosition(startMinTarget, dropDuration, occupied);
+      if (blocked) return;
+      const newTime = minutesToTime(startMin);
+      const dropped = useCarryStore.getState().drop();
+      if (!dropped) return;
+      if (dropped.fromLibrary && dropped.libraryItemId) {
+        const libItem = useLibraryStore.getState().items.find((i) => i.id === dropped.libraryItemId);
+        addTask({
+          title: dropped.title,
+          date: dateStr,
+          time: newTime,
+          duration: dropDuration,
+          priority: 0,
+          type: 'one-time',
+          ...(libItem
+            ? {
+                dueDate: libItem.dueDate ?? undefined,
+                description: libItem.note || undefined,
+                category: libItem.category || undefined,
+                subtasks: libItem.subtasks,
+                attachments: libItem.attachments,
+              }
+            : {}),
+        });
+        useLibraryStore.getState().removeItem(dropped.libraryItemId);
+      } else {
+        updateTask(dropped.taskId, {
+          date: dateStr,
+          time: newTime,
+          duration: dropDuration,
+          inWaitingRoom: false,
+        });
+      }
+      e.preventDefault();
+      return;
+    }
+
     // Multi-touch (pinch zoom etc) — abort any in-progress gesture and ignore the new pointer.
     activePointersRef.current.add(e.pointerId);
     if (activePointersRef.current.size > 1) {
@@ -606,7 +660,7 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
         holdTimer,
       };
     }
-  }, [hitTestSlot, cells, tasks, activateTaskDrag]);
+  }, [hitTestSlot, cells, tasks, activateTaskDrag, dateStr, routinesEnabled, addTask, updateTask]);
 
   const dateObj = new Date(dateStr + 'T12:00:00');
   const dateLabel = dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase();
