@@ -421,6 +421,29 @@ export function LibraryPanel() {
     prevPanelOpen.current = panelOpen;
   }, [panelOpen, viewMode]);
 
+  // After a carry drop, if the library was auto-closed when the user picked
+  // an item up, bring it back so they can grab another task or keep editing.
+  useEffect(() => {
+    let wasCarrying = !!useCarryStore.getState().carried;
+    const unsub = useCarryStore.subscribe((s) => {
+      const isCarrying = !!s.carried;
+      // Transition from carrying → not carrying = a drop (or cancel) just happened.
+      if (wasCarrying && !isCarrying) {
+        const lib = useLibraryStore.getState();
+        if (lib.reopenAfterCarryDrop) {
+          lib.setReopenAfterCarryDrop(false);
+          // Only auto-reopen on an actual drop, not on cancel. The carry store
+          // bumps lastDropAt only on drop(), so use that as the signal.
+          if (Date.now() - s.lastDropAt < 500) {
+            lib.setPanelOpen(true);
+          }
+        }
+      }
+      wasCarrying = isCarrying;
+    });
+    return () => unsub();
+  }, []);
+
   // Tab hotkey requests opening the library in full-screen (non-sidebar) mode.
   useEffect(() => {
     const handler = () => {
