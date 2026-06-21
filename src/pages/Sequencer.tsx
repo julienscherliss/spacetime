@@ -612,9 +612,9 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
   const dateLabel = dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase();
 
   return (
-    <div className="min-h-screen pb-20 sm:pb-0 bg-background text-foreground">
-      <AppNav />
-      <TaskEditPanel />
+    <div className={embedded ? "text-foreground" : "min-h-screen pb-20 sm:pb-0 bg-background text-foreground"}>
+      {!embedded && <AppNav />}
+      {!embedded && <TaskEditPanel />}
 
       <div className="mx-auto max-w-md px-5 pt-6">
         {/* Header */}
