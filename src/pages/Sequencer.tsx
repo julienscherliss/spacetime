@@ -1186,6 +1186,10 @@ function Cell({
   pickupSlot?: number | null;
   pickupProgress?: number;
 }) {
+  const occupied = !!cell && !hidden;
+  const completed = cell?.task.completed;
+  const isPickupTarget = slotIdx === pickupSlot;
+
   const [tipVisible, setTipVisible] = useState(false);
   const tipTimers = useRef<{ show?: ReturnType<typeof setTimeout>; hide?: ReturnType<typeof setTimeout> }>({});
 
@@ -1209,10 +1213,6 @@ function Cell({
     if (tipTimers.current.hide) clearTimeout(tipTimers.current.hide);
     setTipVisible(false);
   }, []);
-
-  const occupied = !!cell && !hidden;
-  const completed = cell?.task.completed;
-  const isPickupTarget = slotIdx === pickupSlot;
   const showHoldRing = isPickupTarget && pickupProgress > 0;
 
   const previewBg = inPreview
