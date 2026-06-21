@@ -175,8 +175,11 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
         const y = ev.clientY;
         const pointerType = (ev.pointerType as 'mouse' | 'touch' | 'pen') || 'mouse';
         const target = document.elementFromPoint(x, y) as HTMLElement | null;
-        const dropEl = target?.closest('[data-carry-drop-target], [data-timeline-grid], [data-sequencer-grid]') as HTMLElement | null;
-        if (!dropEl) return;
+        // Bail if released over the library itself or outside any timeline /
+        // sequencer surface — keeps the item in the library, no carry banner.
+        const overLibrary = !!target?.closest('[data-library-panel]');
+        const overDropZone = !!target?.closest('[data-timeline-column], [data-sequencer-grid]');
+        if (overLibrary || !overDropZone) return;
         silentPickup();
         // Next frame so carry state is committed before the synthesized tap.
         requestAnimationFrame(() => {
@@ -190,9 +193,11 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
             pointerId: 9999,
           };
           try {
-            const el = document.elementFromPoint(x, y) || dropEl;
-            el.dispatchEvent(new PointerEvent('pointerdown', opts));
-            el.dispatchEvent(new PointerEvent('pointerup', opts));
+            const el = document.elementFromPoint(x, y);
+            if (el) {
+              el.dispatchEvent(new PointerEvent('pointerdown', opts));
+              el.dispatchEvent(new PointerEvent('pointerup', opts));
+            }
           } catch {
             // Older browsers may not support PointerEvent constructor — silently no-op.
           }
