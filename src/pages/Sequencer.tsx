@@ -277,6 +277,9 @@ export default function Sequencer() {
       }
       // Movement after the short lock window starts a task move; empty-cell pans still scroll.
       if (g.pickupTimer) clearTimeout(g.pickupTimer);
+      if (g.isTouch) {
+        try { gridRef.current?.setPointerCapture(g.pointerId); } catch {}
+      }
       activateTaskDrag(g, e.clientX, e.clientY);
       e.preventDefault();
       return;
