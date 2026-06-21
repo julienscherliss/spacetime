@@ -24,9 +24,24 @@ import { requestPendingMove } from '@/store/reflectionStore';
 
 export const DEFAULT_HOUR_HEIGHT = 56;
 export const HOUR_HEIGHT = DEFAULT_HOUR_HEIGHT;
-export const START_HOUR = 6;
-export const END_HOUR = 23;
-export const HOURS = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
+// Day window is user-configurable via Settings → Advanced. These exports are
+// live bindings — they update whenever the store changes, and components that
+// subscribe to `dayStartHour`/`dayEndHour` will re-render with fresh values.
+export let START_HOUR = 6;
+export let END_HOUR = 21;
+export let HOURS: number[] = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
+
+function _syncHoursFromStore(s: { dayStartHour: number; dayEndHour: number }) {
+  START_HOUR = s.dayStartHour;
+  END_HOUR = s.dayEndHour;
+  HOURS = Array.from({ length: Math.max(0, END_HOUR - START_HOUR) }, (_, i) => START_HOUR + i);
+}
+_syncHoursFromStore(useTaskStore.getState());
+useTaskStore.subscribe((state, prev) => {
+  if (state.dayStartHour !== prev.dayStartHour || state.dayEndHour !== prev.dayEndHour) {
+    _syncHoursFromStore(state);
+  }
+});
 
 interface TimelineColumnProps {
   date: string;
