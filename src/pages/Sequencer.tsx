@@ -693,14 +693,6 @@ export default function Sequencer() {
   );
 }
 
-const CATEGORIES: { label: string; icon: LucideIcon }[] = [
-  { label: 'HEALTH', icon: Footprints },
-  { label: 'MEETINGS', icon: Users },
-  { label: 'WEDDING', icon: HeartHandshake },
-  { label: 'COMMUNICATION', icon: Phone },
-  { label: 'WORK', icon: Code2 },
-  { label: 'PERSONAL', icon: Sparkles },
-];
 
 function ChromeBtn({ children }: { children: React.ReactNode }) {
   return (
