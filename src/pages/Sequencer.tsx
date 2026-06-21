@@ -11,8 +11,8 @@ import {
 } from '@/utils/collisionDetection';
 import { TaskEditPanel } from '@/components/TaskEditPanel';
 import {
-  Camera, Film, Dumbbell, BookOpen, PenLine,
-  Home, Plane, Coffee, Utensils,
+  Footprints, Users, Camera, Film, Dumbbell, BookOpen, PenLine,
+  Home, Plane, HeartHandshake, Phone, Sparkles, Coffee, Utensils,
   Code2, Music, Mail, ShoppingCart, Briefcase, Brush, Calendar,
   ChevronLeft, ChevronRight,
   type LucideIcon,
