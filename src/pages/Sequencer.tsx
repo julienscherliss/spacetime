@@ -19,19 +19,12 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
-const START_HOUR = 8;
-const END_HOUR = 18;
-const ROWS = END_HOUR - START_HOUR; // 10
 const COLS = 4;
 const SLOT_MIN = 15;
-const SLOTS_PER_DAY = ROWS * COLS;
 const LABEL_COL_W = 46;
 const PICKUP_MS = 1000;
 const LOCK_MS = 250;
 const MOVE_THRESHOLD_PX = 8;
-
-const slotToMin = (slot: number) => START_HOUR * 60 + slot * SLOT_MIN;
-const minToSlot = (min: number) => Math.floor((min - START_HOUR * 60) / SLOT_MIN);
 
 function pickIcon(task: Task): LucideIcon {
   const s = `${task.title} ${task.category ?? ''}`.toLowerCase();
