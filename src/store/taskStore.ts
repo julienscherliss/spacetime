@@ -68,6 +68,8 @@ export interface Task {
   archiveReason?: 'completed' | 'deleted';
   attachments?: { name: string; url: string; type: string }[];
   reminders?: number[];
+  /** Optional Lucide icon name override; falls back to the tag's icon. */
+  icon?: string;
   /** ID of the parent Group container (if this task lives inside a Group). */
   groupId?: string;
   /** Original duration captured when the task entered a Group; drives squeeze. */
