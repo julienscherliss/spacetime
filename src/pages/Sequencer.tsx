@@ -318,19 +318,29 @@ function Cell({
 }
 
 function Playhead({
-  frac, width, height, labelColW,
-}: { frac: number; width: number; height: number; labelColW: number }) {
-  const y = frac * height;
+  nowMin, width, height, labelColW,
+}: { nowMin: number; width: number; height: number; labelColW: number }) {
+  const rowH = height / ROWS;
+  const dayStartMin = START_HOUR * 60;
+  const minsIntoDay = nowMin - dayStartMin;
+  const currentRow = Math.floor(minsIntoDay / 60);
+  const minsIntoHour = minsIntoDay % 60;
+  const colFrac = minsIntoHour / 60;
+
+  const gridW = width - labelColW;
+  const x = labelColW + colFrac * gridW;
+  const y = currentRow * rowH;
+
   return (
     <div className="pointer-events-none absolute inset-0">
-      {/* Horizontal line at current time */}
+      {/* Vertical line within the current row */}
       <div
         style={{
           position: 'absolute',
-          left: labelColW,
+          left: x,
           top: y,
-          width: width - labelColW,
-          height: 1,
+          width: 1,
+          height: rowH,
           background: 'hsl(var(--primary))',
           opacity: 0.45,
         }}
@@ -339,15 +349,15 @@ function Playhead({
       <div
         style={{
           position: 'absolute',
-          left: labelColW + 6,
-          top: y,
+          left: x,
+          top: y + rowH / 2,
           width: 7,
           height: 7,
           borderRadius: 9999,
           background: 'hsl(var(--primary))',
           transform: 'translate(-50%, -50%)',
           boxShadow: '0 0 0 2px hsl(var(--primary) / 0.25), 0 0 10px hsl(var(--primary) / 0.4)',
-          transition: 'top 800ms cubic-bezier(0.22, 1, 0.36, 1)',
+          transition: 'left 800ms cubic-bezier(0.22, 1, 0.36, 1), top 800ms cubic-bezier(0.22, 1, 0.36, 1)',
         }}
       />
     </div>
