@@ -537,6 +537,7 @@ export type Database = {
         Row: {
           archived: boolean
           created_at: string
+          icon: string | null
           id: string
           label: string
           updated_at: string
@@ -546,6 +547,7 @@ export type Database = {
         Insert: {
           archived?: boolean
           created_at?: string
+          icon?: string | null
           id?: string
           label: string
           updated_at?: string
@@ -555,6 +557,7 @@ export type Database = {
         Update: {
           archived?: boolean
           created_at?: string
+          icon?: string | null
           id?: string
           label?: string
           updated_at?: string
@@ -903,6 +906,7 @@ export type Database = {
           duration: number | null
           group_id: string | null
           group_order: number | null
+          icon: string | null
           id: string
           in_waiting_room: boolean | null
           is_recurrence_instance: boolean | null
@@ -938,6 +942,7 @@ export type Database = {
           duration?: number | null
           group_id?: string | null
           group_order?: number | null
+          icon?: string | null
           id?: string
           in_waiting_room?: boolean | null
           is_recurrence_instance?: boolean | null
@@ -973,6 +978,7 @@ export type Database = {
           duration?: number | null
           group_id?: string | null
           group_order?: number | null
+          icon?: string | null
           id?: string
           in_waiting_room?: boolean | null
           is_recurrence_instance?: boolean | null
