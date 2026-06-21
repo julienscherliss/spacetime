@@ -25,8 +25,9 @@ const COLS = 4;
 const SLOT_MIN = 15;
 const SLOTS_PER_DAY = ROWS * COLS;
 const LABEL_COL_W = 46;
-const PICKUP_MS = 350;
-const MOVE_THRESHOLD_PX = 6;
+const PICKUP_MS = 1000;
+const LOCK_MS = 250;
+const MOVE_THRESHOLD_PX = 8;
 
 const slotToMin = (slot: number) => START_HOUR * 60 + slot * SLOT_MIN;
 const minToSlot = (min: number) => Math.floor((min - START_HOUR * 60) / SLOT_MIN);
@@ -97,6 +98,7 @@ type Gesture =
       grabOffsetSlots: number;
       targetStart: number;
       blocked: boolean;
+      PreviewIcon: LucideIcon;
     }
   | {
       kind: 'resize';
@@ -113,6 +115,7 @@ interface PreviewState {
   cells: Set<number>;
   blocked: boolean;
   hideTaskId?: string;
+  PreviewIcon?: LucideIcon;
 }
 
 export default function Sequencer() {
