@@ -1088,13 +1088,15 @@ function Playhead({
   let segW: number;
   let segH: number;
   if (horizontal) {
-    // Hours laid across columns; the playhead is a horizontal line spanning
-    // all 4 quarter rows inside the current hour column.
+    // Hours laid across columns; the playhead is a thin vertical bar
+    // inside the current 15-minute slot box.
     const colW = (width - labelColW) / ROWS;
+    const rowH = height / COLS;
+    const currentQuarterIdx = Math.floor(minsIntoHour / SLOT_MIN);
     x = labelColW + currentHourIdx * colW + hourFrac * colW;
-    y = 0;
+    y = currentQuarterIdx * rowH;
     segW = 1;
-    segH = height;
+    segH = rowH;
   } else {
     const rowH = height / ROWS;
     const gridW = width - labelColW;
