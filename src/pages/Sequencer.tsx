@@ -1142,7 +1142,7 @@ function RowFragment({
 
 function Cell({
   slotIdx, cell, isPast, isCurrent, inPreview, previewBlocked, PreviewIcon, previewDuplicate, hidden,
-  horizontal = false, isOverdue = false,
+  horizontal = false, isOverdue = false, pickupSlot = null, pickupProgress = 0,
 }: {
   slotIdx: number;
   cell: CellAssignment | null;
@@ -1155,6 +1155,8 @@ function Cell({
   hidden: boolean;
   horizontal?: boolean;
   isOverdue?: boolean;
+  pickupSlot?: number | null;
+  pickupProgress?: number;
 }) {
   const occupied = !!cell && !hidden;
   const completed = cell?.task.completed;
