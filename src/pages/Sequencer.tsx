@@ -890,11 +890,13 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
 }
 
 
-function ChromeBtn({ children }: { children: React.ReactNode }) {
+function ChromeBtn({ children, onClick, ariaLabel }: { children: React.ReactNode; onClick?: () => void; ariaLabel?: string }) {
   return (
     <button
       type="button"
-      className="h-9 w-9 rounded-md flex items-center justify-center border border-border text-foreground"
+      onClick={onClick}
+      aria-label={ariaLabel}
+      className="h-9 w-9 rounded-md flex items-center justify-center border border-border text-foreground hover:bg-muted/40 transition-colors"
     >
       {children}
     </button>
