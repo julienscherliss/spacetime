@@ -17,7 +17,7 @@ import {
   Footprints, Users, Camera, Film, Dumbbell, BookOpen, PenLine,
   Home, Plane, HeartHandshake, Phone, Sparkles, Coffee, Utensils,
   Code2, Music, Mail, ShoppingCart, Briefcase, Brush, Calendar,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Copy,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -426,7 +426,7 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
           if (!cur || cur.kind !== 'task-drag' || cur.taskId !== taskId) return;
           dupModeRef.current = true;
           setPreview((p) => (p ? { ...p, duplicate: true } : p));
-        }, 2000);
+        }, 1000);
       }
       gestureRef.current = { ...g, targetStart: finalStartSlot, blocked };
       setPreview({
@@ -512,7 +512,7 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
         if (!cur || cur.kind !== 'task-drag' || cur.taskId !== taskId) return;
         dupModeRef.current = true;
         setPreview((p) => (p ? { ...p, duplicate: true } : p));
-      }, 2000);
+      }, 1000);
       if (navigator.vibrate) navigator.vibrate(12);
     },
     [hitTestSlot, categories]
@@ -1116,11 +1116,11 @@ function Cell({
         )}
         {inPreview && previewDuplicate && (
           <div
-            className="absolute top-0.5 right-0.5 rounded-full bg-primary text-primary-foreground text-[9px] font-mono leading-none flex items-center justify-center pointer-events-none"
-            style={{ width: 12, height: 12 }}
+            className="absolute top-0.5 right-0.5 rounded-full bg-primary text-primary-foreground flex items-center justify-center pointer-events-none"
+            style={{ width: 16, height: 16 }}
             aria-label="Duplicate"
           >
-            +
+            <Copy size={10} strokeWidth={2.5} />
           </div>
         )}
         {cell && !hidden && cell.isStart && (
