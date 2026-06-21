@@ -416,11 +416,25 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
         END_HOUR * 60
       );
       const finalStartSlot = blocked ? clamped : Math.max(0, minToSlot(startMin));
+      // If the landing slot changed, revert duplicate mode and re-arm the timer.
+      if (finalStartSlot !== g.targetStart) {
+        dupModeRef.current = false;
+        if (dupTimerRef.current) clearTimeout(dupTimerRef.current);
+        const taskId = g.taskId;
+        dupTimerRef.current = setTimeout(() => {
+          const cur = gestureRef.current;
+          if (!cur || cur.kind !== 'task-drag' || cur.taskId !== taskId) return;
+          dupModeRef.current = true;
+          setPreview((p) => (p ? { ...p, duplicate: true } : p));
+        }, 2000);
+      }
       gestureRef.current = { ...g, targetStart: finalStartSlot, blocked };
       setPreview({
         cells: cellsForRange(finalStartSlot, Math.ceil(g.duration / SLOT_MIN)),
         blocked,
         PreviewIcon: g.PreviewIcon,
+        duplicate: dupModeRef.current,
+        startSlot: finalStartSlot,
       });
       e.preventDefault();
       return;
