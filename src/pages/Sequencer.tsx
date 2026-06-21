@@ -627,10 +627,6 @@ export default function Sequencer() {
               {completedOnDay.done}/{completedOnDay.total || 0} COMPLETED
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <ChromeBtn><SlidersVertical size={16} strokeWidth={1.5} /></ChromeBtn>
-            <ChromeBtn><MoreHorizontal size={16} strokeWidth={1.5} /></ChromeBtn>
-          </div>
         </div>
 
         {/* Day nav */}
