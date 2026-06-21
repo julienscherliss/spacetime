@@ -272,13 +272,10 @@ export default function Sequencer() {
     if (g.kind === 'task-pending') {
       const moved = Math.hypot(e.clientX - g.x0, e.clientY - g.y0) > MOVE_THRESHOLD_PX;
       if (!moved) return;
-      // On touch: movement before pickup = scroll intent → release gesture.
-      if (g.isTouch) {
-        if (g.pickupTimer) clearTimeout(g.pickupTimer);
-        endGesture();
+      if (g.isTouch && Date.now() - g.t0 < LOCK_MS) {
         return;
       }
-      // Mouse: pick up immediately.
+      // Movement after the short lock window starts a task move; empty-cell pans still scroll.
       if (g.pickupTimer) clearTimeout(g.pickupTimer);
       activateTaskDrag(g, e.clientX, e.clientY);
       e.preventDefault();
@@ -304,7 +301,7 @@ export default function Sequencer() {
       setPreview({
         cells: cellsForRange(finalStartSlot, Math.ceil(g.duration / SLOT_MIN)),
         blocked,
-        hideTaskId: g.taskId,
+        PreviewIcon: g.PreviewIcon,
       });
       e.preventDefault();
       return;
