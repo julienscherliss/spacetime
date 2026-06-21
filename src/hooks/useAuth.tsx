@@ -45,9 +45,13 @@ export function useAuth() {
       // On a fresh sign-in, always land on Day view at "today".
       if (event === 'SIGNED_IN') {
         import('@/store/taskStore').then(({ useTaskStore }) => {
+          // Preserve the user's last daySubMode (timeline vs sequencer) across
+          // app relaunches — iOS fires SIGNED_IN on session restore, so we
+          // must not clobber it here.
+          const prev = useTaskStore.getState().daySubMode;
           useTaskStore.setState({
             viewMode: 'day',
-            daySubMode: 'timeline',
+            daySubMode: prev === 'sequencer' ? 'sequencer' : 'timeline',
             navigateToDate: null,
             currentDate: null,
             focusTaskId: null,
