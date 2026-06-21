@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, X, type LucideIcon } from 'lucide-react';
 import { ICON_LIBRARY, searchIcons, suggestIcons, getIconByName } from '@/lib/iconLibrary';
 
 interface IconPickerProps {
@@ -107,7 +107,7 @@ function IconGrid({
   value,
   onPick,
 }: {
-  entries: ReadonlyArray<{ name: string; Icon: React.ComponentType<{ size?: number; strokeWidth?: number }> }>;
+  entries: ReadonlyArray<{ name: string; Icon: LucideIcon }>;
   value?: string | null;
   onPick: (name: string) => void;
 }) {
