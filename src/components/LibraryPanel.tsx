@@ -72,8 +72,28 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
   const { completeItem } = useLibraryStore();
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFired = useRef(false);
+  const pointerDownPos = useRef<{ x: number; y: number } | null>(null);
   const [isHovered, setIsHovered] = useState(false);
   const showHoldHint = !isMobile && isHovered && getPlaceCount() < 10;
+
+  const triggerPickup = useCallback(() => {
+    longPressFired.current = true;
+    incrementPlaceCount();
+    useCarryStore.getState().pickup({
+      taskId: item.id,
+      title: item.title,
+      duration: item.defaultDuration,
+      fromDate: '',
+      fromLibrary: true,
+      libraryItemId: item.id,
+      pickedUpAt: Date.now(),
+    });
+    // Always close the library on pickup; the panel will auto-reopen once
+    // the carry is dropped (cancels do not trigger re-open).
+    const libState = useLibraryStore.getState();
+    libState.setReopenAfterCarryDrop(true);
+    libState.setPanelOpen(false);
+  }, [item]);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('[data-touch-ignore]')) return;
