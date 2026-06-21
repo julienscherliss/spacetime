@@ -995,18 +995,34 @@ function Cell({
 }
 
 function Playhead({
-  nowMin, width, height, labelColW,
-}: { nowMin: number; width: number; height: number; labelColW: number }) {
-  const rowH = height / ROWS;
+  nowMin, width, height, labelColW, horizontal = false,
+}: { nowMin: number; width: number; height: number; labelColW: number; horizontal?: boolean }) {
   const dayStartMin = START_HOUR * 60;
   const minsIntoDay = nowMin - dayStartMin;
-  const currentRow = Math.floor(minsIntoDay / 60);
+  const currentHourIdx = Math.floor(minsIntoDay / 60);
   const minsIntoHour = minsIntoDay % 60;
-  const colFrac = minsIntoHour / 60;
+  const hourFrac = minsIntoHour / 60;
 
-  const gridW = width - labelColW;
-  const x = labelColW + colFrac * gridW;
-  const y = currentRow * rowH;
+  let x: number;
+  let y: number;
+  let segW: number;
+  let segH: number;
+  if (horizontal) {
+    // Hours laid across columns; the playhead is a horizontal line spanning
+    // all 4 quarter rows inside the current hour column.
+    const colW = (width - labelColW) / ROWS;
+    x = labelColW + currentHourIdx * colW + hourFrac * colW;
+    y = 0;
+    segW = 1;
+    segH = height;
+  } else {
+    const rowH = height / ROWS;
+    const gridW = width - labelColW;
+    x = labelColW + hourFrac * gridW;
+    y = currentHourIdx * rowH;
+    segW = 1;
+    segH = rowH;
+  }
 
   return (
     <div className="pointer-events-none absolute inset-0">
@@ -1016,8 +1032,8 @@ function Playhead({
           position: 'absolute',
           left: x,
           top: y,
-          width: 1,
-          height: rowH,
+          width: segW,
+          height: segH,
           background: 'hsl(var(--primary))',
           opacity: 0.45,
         }}
@@ -1027,7 +1043,7 @@ function Playhead({
         style={{
           position: 'absolute',
           left: x,
-          top: y + rowH / 2,
+          top: y + segH / 2,
           width: 7,
           height: 7,
           borderRadius: 9999,
