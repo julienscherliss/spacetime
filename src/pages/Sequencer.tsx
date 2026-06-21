@@ -270,6 +270,21 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
   const dupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dupModeRef = useRef<boolean>(false);
 
+  // Double-tap to complete (mirrors TimelineTaskBlock). A tap on a scheduled
+  // task is deferred ~250ms; a second tap within that window completes (or
+  // uncompletes) the task instead of opening the edit panel.
+  const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleTaskDoubleComplete = useCallback((taskId: string) => {
+    const t = useTaskStore.getState().tasks.find((x) => x.id === taskId);
+    if (!t) return;
+    if (navigator.vibrate) navigator.vibrate(20);
+    if (t.completed) {
+      useTaskStore.getState().uncompleteTask(taskId);
+    } else {
+      useTaskStore.getState().completeTask(taskId);
+    }
+  }, []);
+
   // Stable refs so window listeners attach only once.
   const handlePointerMoveRef = useRef<(e: PointerEvent) => void>(() => {});
   const handlePointerUpRef = useRef<(e: PointerEvent) => void>(() => {});
@@ -624,9 +639,20 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
     }
 
     if (g.kind === 'task-pending') {
-      // Released before pickup → treat as tap → open edit panel.
+      // Released before pickup → treat as tap. Defer to detect a double-tap:
+      // a second tap within the window completes (or uncompletes) the task.
       if (g.pickupTimer) clearTimeout(g.pickupTimer);
-      setEditingTask(g.taskId);
+      const taskId = g.taskId;
+      if (clickTimerRef.current) {
+        clearTimeout(clickTimerRef.current);
+        clickTimerRef.current = null;
+        handleTaskDoubleComplete(taskId);
+      } else {
+        clickTimerRef.current = setTimeout(() => {
+          clickTimerRef.current = null;
+          setEditingTask(taskId);
+        }, 250);
+      }
       endGesture();
       return;
     }
@@ -664,7 +690,7 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
       endGesture();
       return;
     }
-  }, [tasks, dateStr, routinesEnabled, addTask, updateTask, resizeTask, setEditingTask, endGesture]);
+  }, [tasks, dateStr, routinesEnabled, addTask, updateTask, resizeTask, setEditingTask, endGesture, handleTaskDoubleComplete]);
 
   // Attach window listeners while a gesture is active.
   useEffect(() => {
