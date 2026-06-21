@@ -359,6 +359,14 @@ export function TaskEditPanel() {
     // Unlinked → edits stay local (no prompt needed).
     if (isRecurring && wasLinked && isLinked) {
       updateFutureInstances(task.id, task.date, updates);
+      // Reminders should apply to the entire linked chain (past instances
+      // too) — not just future ones — so a new alert is reflected across
+      // every event in the series unless an instance is unlinked.
+      const remindersChanged =
+        JSON.stringify(task.reminders || []) !== JSON.stringify(updates.reminders || []);
+      if (remindersChanged) {
+        updateLinkedSeries(task.id, { reminders: updates.reminders });
+      }
     } else {
       updateTask(task.id, updates);
     }
