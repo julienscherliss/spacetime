@@ -354,6 +354,7 @@ export default function Sequencer() {
       const grabOffsetSlots = Math.max(0, g.grabSlot - startSlot);
       const slot = hitTestSlot(clientX, clientY) ?? g.grabSlot;
       const requestedStart = slot - grabOffsetSlots;
+      const PreviewIcon = resolveTaskIcon(task, categories) ?? pickIcon(task);
       gestureRef.current = {
         kind: 'task-drag',
         pointerId: g.pointerId,
@@ -362,15 +363,16 @@ export default function Sequencer() {
         grabOffsetSlots,
         targetStart: requestedStart,
         blocked: false,
+        PreviewIcon,
       };
       setPreview({
         cells: cellsForRange(requestedStart, Math.ceil(duration / SLOT_MIN)),
         blocked: false,
-        hideTaskId: g.taskId,
+        PreviewIcon,
       });
       if (navigator.vibrate) navigator.vibrate(12);
     },
-    [hitTestSlot]
+    [hitTestSlot, categories]
   );
 
   const handlePointerUp = useCallback((e: PointerEvent) => {
