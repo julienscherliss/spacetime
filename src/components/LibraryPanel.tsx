@@ -145,9 +145,25 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
           longPressTimer.current = null;
         }
         dragModeRef.current = true;
+        useLibraryDragStore.getState().start(
+          {
+            id: item.id,
+            title: item.title,
+            duration: item.defaultDuration,
+            icon: item.icon,
+            category: item.category,
+          },
+          ev.clientX,
+          ev.clientY,
+        );
       }
       if (dragModeRef.current) {
-        setDragGhost({ x: ev.clientX, y: ev.clientY });
+        // Hide the floating mini-ghost while the pointer is over a drop
+        // surface; the surface renders its own snapped task-block preview.
+        const hit = document.elementFromPoint(ev.clientX, ev.clientY) as HTMLElement | null;
+        const overSurface = !!hit?.closest('[data-timeline-column], [data-sequencer-grid]');
+        useLibraryDragStore.getState().move(ev.clientX, ev.clientY, overSurface);
+        setDragGhost(overSurface ? null : { x: ev.clientX, y: ev.clientY });
       }
     };
 
@@ -166,6 +182,9 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
       setDragGhost(null);
 
       if (wasDrag) {
+        // Clear the live preview before the synthesized drop so surfaces
+        // don't briefly render both the preview and the real task block.
+        useLibraryDragStore.getState().end();
         // Drop-from-drag: figure out the element under the release point. If
         // it is the timeline/sequencer grid, silently pick the task up and
         // immediately synthesize a tap so the existing carry-drop logic
