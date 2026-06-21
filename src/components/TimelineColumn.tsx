@@ -266,6 +266,9 @@ export function TimelineColumn({
   onZoomToCluster,
 }: TimelineColumnProps) {
   const HOUR_HEIGHT = hourHeightProp ?? DEFAULT_HOUR_HEIGHT;
+  // Subscribe so the column re-renders when the day window changes.
+  useTaskStore((s) => s.dayStartHour);
+  useTaskStore((s) => s.dayEndHour);
   const { setEditingTask, reorderTask, moveTask, resizeTask, completeTask, canMoveTask, addTask, routinesEnabled, createEmptyGroup } = useTaskStore();
   const allStoreTasks = useTaskStore((s) => s.tasks);
   const colRef = useRef<HTMLDivElement>(null);
