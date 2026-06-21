@@ -978,6 +978,8 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
                       rowIdx={rowIdx}
                       nowMin={nowMin}
                       preview={preview}
+                      dateStr={dateStr}
+                      today={today}
                     />
                   );
                 })}
