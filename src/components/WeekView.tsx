@@ -210,14 +210,18 @@ export function WeekView() {
   const goToCurrentWeek = () => setWeekOffset(0);
   const isCurrentWeek = weekOffset === 0;
 
-  // Month label
-  const monthLabel = (() => {
+  // Week range label, e.g. "Jun 16 – Jun 22"
+  const weekRangeLabel = (() => {
     if (week.length === 0) return '';
     const startDate = new Date(week[0].date + 'T12:00:00');
     const endDate = new Date(week[week.length - 1].date + 'T12:00:00');
-    const startMonth = startDate.toLocaleDateString('en-US', { month: 'long' });
-    const endMonth = endDate.toLocaleDateString('en-US', { month: 'long' });
-    return startMonth === endMonth ? startMonth : `${startDate.toLocaleDateString('en-US', { month: 'short' })} / ${endDate.toLocaleDateString('en-US', { month: 'short' })}`;
+    const startMonth = startDate.toLocaleDateString('en-US', { month: 'short' });
+    const endMonth = endDate.toLocaleDateString('en-US', { month: 'short' });
+    const startDay = startDate.getDate();
+    const endDay = endDate.getDate();
+    return startMonth === endMonth
+      ? `${startMonth} ${startDay} – ${endDay}`
+      : `${startMonth} ${startDay} – ${endMonth} ${endDay}`;
   })();
 
   // Visible tasks for fit button
@@ -237,36 +241,44 @@ export function WeekView() {
     >
       {/* Sticky header: title row + weekday headers pinned together */}
       <div className="sticky top-[env(safe-area-inset-top)] sm:top-12 z-30 bg-background border-b border-border/30">
-        <div className="pt-3 pb-2 flex items-center gap-2">
-          <button onClick={goToCurrentWeek} className="text-lg sm:text-xl font-display font-bold text-foreground tracking-tight hover:text-primary transition-colors">
-            {monthLabel}
-          </button>
-          <button
-            onClick={() => setWeekOffset(o => o - 1)}
-            className="p-1 rounded-sm text-muted-foreground/40 hover:text-foreground transition-colors"
-          >
-            <ChevronLeft size={16} strokeWidth={1.5} />
-          </button>
-          {!isMobile && (
+        <div className="py-3 flex items-center justify-between gap-2">
+          <h2 className="text-base sm:text-lg font-display font-bold text-foreground tracking-tight truncate">
+            {weekRangeLabel}
+          </h2>
+          <div className="flex items-center gap-1 shrink-0">
             <button
-              onClick={() => setDayShift(s => (s === 0 ? 3 : 0))}
-              title={dayShift === 0 ? 'Shift forward 3 days' : 'Shift back 3 days'}
-              aria-label={dayShift === 0 ? 'Shift forward 3 days' : 'Shift back 3 days'}
-              className={`p-1 rounded-sm transition-colors ${
-                dayShift !== 0
-                  ? 'text-primary hover:text-primary/80'
-                  : 'text-muted-foreground/40 hover:text-foreground'
+              onClick={() => setWeekOffset(o => o - 1)}
+              className="p-2 rounded-sm border border-border text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronLeft size={14} strokeWidth={1.5} />
+            </button>
+            <button
+              onClick={goToCurrentWeek}
+              className={`px-2.5 py-1.5 rounded-sm border border-border text-[10px] font-mono tracking-widest transition-colors ${
+                isCurrentWeek ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              <ChevronsRight size={14} strokeWidth={1.5} />
+              TODAY
             </button>
-          )}
-          <button
-            onClick={() => setWeekOffset(o => o + 1)}
-            className="p-1 rounded-sm text-muted-foreground/40 hover:text-foreground transition-colors"
-          >
-            <ChevronRight size={16} strokeWidth={1.5} />
-          </button>
+            {!isMobile && (
+              <button
+                onClick={() => setDayShift(s => (s === 0 ? 3 : 0))}
+                title={dayShift === 0 ? 'Shift forward 3 days' : 'Shift back 3 days'}
+                aria-label={dayShift === 0 ? 'Shift forward 3 days' : 'Shift back 3 days'}
+                className={`p-2 rounded-sm border border-border transition-colors ${
+                  dayShift !== 0 ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <ChevronsRight size={14} strokeWidth={1.5} />
+              </button>
+            )}
+            <button
+              onClick={() => setWeekOffset(o => o + 1)}
+              className="p-2 rounded-sm border border-border text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronRight size={14} strokeWidth={1.5} />
+            </button>
+          </div>
         </div>
         <div className="flex items-center justify-between">
           <div className="flex-1 min-w-0">

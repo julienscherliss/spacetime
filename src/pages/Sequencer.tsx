@@ -926,51 +926,54 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
   }, [hitTestSlot, cells, tasks, activateTaskDrag, dateStr, routinesEnabled, addTask, updateTask]);
 
   const dateObj = new Date(dateStr + 'T12:00:00');
-  const dateLabel = dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase();
+  const dateLabel = dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
   return (
     <div className={embedded ? "text-foreground" : "min-h-screen pb-20 sm:pb-0 bg-background text-foreground"}>
       {!embedded && <AppNav />}
       {!embedded && <TaskEditPanel />}
 
-      <div className="mx-auto max-w-md sm:max-w-5xl px-5 pt-6">
-        {/* Header */}
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="font-display text-[22px] leading-none font-bold tracking-[0.04em]">
-              {dateLabel}
-            </h1>
-            <div className="mt-2 text-[11px] font-mono tracking-[0.18em] text-muted-foreground">
-              {completedOnDay.done}/{completedOnDay.total || 0} COMPLETED
-            </div>
+      <div className="mx-auto max-w-md sm:max-w-5xl px-5 pt-4">
+        {/* Header — matches month view styling */}
+        <div className="py-3 flex items-center justify-between gap-2">
+          <h1 className="text-base sm:text-lg font-display font-bold text-foreground tracking-tight truncate">
+            {dateLabel}
+          </h1>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={() => shiftDay(-1)}
+              aria-label="Previous day"
+              className="p-2 rounded-sm border border-border text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronLeft size={14} strokeWidth={1.5} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setDateStr(today)}
+              disabled={dateStr === today}
+              className={`px-2.5 py-1.5 rounded-sm border border-border text-[10px] font-mono tracking-widest transition-colors ${
+                dateStr === today
+                  ? 'text-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              TODAY
+            </button>
+            <button
+              type="button"
+              onClick={() => shiftDay(1)}
+              aria-label="Next day"
+              className="p-2 rounded-sm border border-border text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronRight size={14} strokeWidth={1.5} />
+            </button>
           </div>
-        </div>
-
-        {/* Day nav */}
-        <div className="mt-5 flex items-center gap-2">
-          <ChromeBtn onClick={() => shiftDay(-1)} ariaLabel="Previous day">
-            <ChevronLeft size={16} strokeWidth={1.5} />
-          </ChromeBtn>
-          <button
-            type="button"
-            onClick={() => setDateStr(today)}
-            disabled={dateStr === today}
-            className={`px-5 py-2 rounded-md text-[11px] font-mono tracking-[0.22em] border border-border transition-colors ${
-              dateStr === today
-                ? 'opacity-50 cursor-default'
-                : 'hover:bg-muted/40'
-            }`}
-          >
-            TODAY
-          </button>
-          <ChromeBtn onClick={() => shiftDay(1)} ariaLabel="Next day">
-            <ChevronRight size={16} strokeWidth={1.5} />
-          </ChromeBtn>
         </div>
 
         {/* Column / row header */}
         <div
-          className="mt-7 grid sticky top-[env(safe-area-inset-top)] sm:top-12 z-20 bg-background"
+          className="grid sticky top-[env(safe-area-inset-top)] sm:top-12 z-20 bg-background"
           style={{
             gridTemplateColumns: horizontal
               ? `46px repeat(${ROWS}, 1fr)`
