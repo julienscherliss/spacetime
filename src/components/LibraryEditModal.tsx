@@ -349,6 +349,37 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
             </PopoverContent>
           </Popover>
 
+          {/* Icon */}
+          {(() => {
+            const inheritedIcon = resolveCategoryIcon(category, categories);
+            const ResolvedIcon = getIconByName(icon) ?? inheritedIcon;
+            return (
+              <Popover open={showIconPicker} onOpenChange={setShowIconPicker}>
+                <PopoverTrigger asChild>
+                  <button className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
+                    icon
+                      ? 'text-foreground/80 bg-muted/40 hover:bg-muted/60'
+                      : 'text-muted-foreground/40 bg-muted/30 hover:bg-muted/50'
+                  }`}>
+                    {ResolvedIcon
+                      ? <ResolvedIcon size={11} strokeWidth={1.5} />
+                      : <Sparkles size={10} strokeWidth={1.5} />}
+                    {icon ? 'Icon' : (inheritedIcon ? 'Inherit' : 'Icon')}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="p-0 z-[10000]" align="start" onClick={(e) => e.stopPropagation()}>
+                  <IconPicker
+                    value={icon}
+                    suggestFor={`${title} ${catLabel}`}
+                    clearLabel={inheritedIcon ? 'Inherit from tag' : 'No icon'}
+                    onChange={(name) => setIcon(name)}
+                    onClose={() => setShowIconPicker(false)}
+                  />
+                </PopoverContent>
+              </Popover>
+            );
+          })()}
+
           {/* Urgent */}
           <button
             onClick={() => setIsUrgent(!isUrgent)}
