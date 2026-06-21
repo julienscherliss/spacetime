@@ -24,7 +24,7 @@ import {
   getWebNotificationPermission,
   syncWebNotifications,
 } from '@/utils/webNotificationService';
-import { useTaskStore } from '@/store/taskStore';
+import { useTaskStore, type DayToggleTarget } from '@/store/taskStore';
 import { useBillingStore } from '@/store/billingStore';
 import { useInvoiceStyleStore } from '@/store/invoiceStyleStore';
 import { currencySymbol } from '@/lib/billingFormat';
