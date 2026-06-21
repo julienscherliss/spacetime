@@ -337,7 +337,6 @@ export default function Sequencer() {
       setPreview({
         cells: cellsForRange(startSlot, Math.ceil(previewDuration / SLOT_MIN)),
         blocked: false,
-        hideTaskId: g.taskId,
       });
       e.preventDefault();
       return;
@@ -539,7 +538,6 @@ export default function Sequencer() {
       setPreview({
         cells: cellsForRange(minToSlot(origStart), Math.ceil(origDuration / SLOT_MIN)),
         blocked: false,
-        hideTaskId: taskId,
       });
       e.preventDefault();
       return;
