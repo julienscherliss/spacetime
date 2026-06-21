@@ -648,11 +648,12 @@ export default function Sequencer() {
         <div className="relative">
           <div
             ref={gridRef}
-            className="grid relative touch-none select-none"
+            className="grid relative select-none"
             style={{
               gridTemplateColumns: '46px repeat(4, 1fr)',
               gridAutoRows: '60px',
               borderTop: '1px solid hsl(var(--border) / 0.4)',
+              touchAction: 'pan-y',
             }}
             onPointerDown={handleGridPointerDown}
           >
