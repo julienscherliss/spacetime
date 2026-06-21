@@ -305,7 +305,10 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
     }
     const duration = Math.max(SLOT_MIN, libDragItem.duration || 30);
     const slotCount = Math.ceil(duration / SLOT_MIN);
-    const desiredStart = Math.max(0, Math.min(SLOTS_PER_DAY - slotCount, slot - Math.floor(slotCount / 2)));
+    // Match the actual drop logic: the hovered slot is the START of the block,
+    // not its center. Previously we centered the preview on the cursor which
+    // caused the dashed block to appear one slot earlier than the eventual drop.
+    const desiredStart = Math.max(0, Math.min(SLOTS_PER_DAY - slotCount, slot));
     const occupied = getOccupiedSlots(useTaskStore.getState().tasks, dateStr, undefined, routinesEnabled);
     const { startMin, blocked } = findValidPosition(slotToMin(desiredStart), duration, occupied);
     const startSlot = minToSlot(startMin);
