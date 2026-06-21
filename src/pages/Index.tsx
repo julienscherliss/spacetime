@@ -10,6 +10,7 @@ import { isNativePlatform } from '@/utils/nativePlatform';
 import { FocusView } from '@/components/FocusView';
 import { DayView } from '@/components/DayView';
 import { DayListView } from '@/components/DayListView';
+import Sequencer from '@/pages/Sequencer';
 import { WeekView } from '@/components/WeekView';
 import { WeekListView } from '@/components/WeekListView';
 import { CalendarView } from '@/components/CalendarView';
@@ -75,7 +76,7 @@ const Index = () => {
     const isMobileViewport = typeof window !== 'undefined' && window.innerWidth < 768;
     // Day always defaults to schedule (timeline). Week defaults to schedule on
     // desktop, list on mobile.
-    if (s.daySubMode !== 'timeline') s.setDaySubMode('timeline');
+    if (s.daySubMode !== 'timeline' && s.daySubMode !== 'sequencer') s.setDaySubMode('timeline');
     const desiredWeek = isMobileViewport ? 'list' : 'timeline';
     if (s.weekSubMode !== desiredWeek) s.setWeekSubMode(desiredWeek);
     if (s.viewMode === 'focus') s.setViewMode('day');
@@ -229,7 +230,13 @@ const Index = () => {
           style={{ willChange: 'opacity' }}
         >
           {viewMode === 'focus' && <FocusView />}
-          {viewMode === 'day' && (daySubMode === 'list' ? <DayListView /> : <DayView />)}
+          {viewMode === 'day' && (
+            daySubMode === 'list'
+              ? <DayListView />
+              : daySubMode === 'sequencer'
+                ? <Sequencer embedded />
+                : <DayView />
+          )}
           {viewMode === 'week' && (weekSubMode === 'list' ? <WeekListView /> : <WeekView />)}
           {viewMode === 'calendar' && <CalendarView />}
         </motion.div>
