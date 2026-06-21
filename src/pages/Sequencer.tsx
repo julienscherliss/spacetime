@@ -894,6 +894,7 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
                         previewBlocked={preview?.blocked ?? false}
                         PreviewIcon={preview?.PreviewIcon}
                         hidden={hidden}
+                        horizontal={horizontal}
                       />
                     );
                   });
