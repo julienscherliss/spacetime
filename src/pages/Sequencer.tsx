@@ -1012,13 +1012,15 @@ function ChromeBtn({ children, onClick, ariaLabel }: { children: React.ReactNode
 }
 
 function RowFragment({
-  label, cells, rowIdx, nowMin, preview,
+  label, cells, rowIdx, nowMin, preview, dateStr, today,
 }: {
   label: string;
   cells: (CellAssignment | null)[];
   rowIdx: number;
   nowMin: number;
   preview: PreviewState | null;
+  dateStr: string;
+  today: string;
 }) {
   return (
     <>
@@ -1037,6 +1039,7 @@ function RowFragment({
         const isCurrent = nowMin >= slotStartMin && nowMin < slotEndMin;
         const inPreview = preview?.cells.has(slotIdx) ?? false;
         const hidden = !!(preview?.hideTaskId && cell?.task.id === preview.hideTaskId);
+        const isOverdue = !!cell && !cell.task.completed && (dateStr < today || (dateStr === today && isPast));
         return (
           <Cell
             key={colIdx}
@@ -1049,6 +1052,7 @@ function RowFragment({
             PreviewIcon={preview?.PreviewIcon}
             previewDuplicate={!!preview?.duplicate && preview?.startSlot === slotIdx}
             hidden={hidden}
+            isOverdue={isOverdue}
           />
         );
       })}
