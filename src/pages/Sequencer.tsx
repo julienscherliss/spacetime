@@ -1162,6 +1162,8 @@ function Cell({
 }) {
   const occupied = !!cell && !hidden;
   const completed = cell?.task.completed;
+  const isPickupTarget = slotIdx === pickupSlot;
+  const showHoldRing = isPickupTarget && pickupProgress > 0;
 
   const previewBg = inPreview
     ? previewBlocked
