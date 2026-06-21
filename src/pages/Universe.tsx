@@ -11,6 +11,8 @@ import {
   type Feature,
   type Tile,
 } from "@/utils/planetWorld";
+import { buildWorldData, type WorldData } from "@/utils/planetWorld3D";
+import { World3D } from "@/components/universe/World3D";
 
 type PlanetStatus = "healthy" | "due-soon" | "overdue";
 
@@ -768,6 +770,11 @@ function PlanetWorldView({
 }) {
   const data = useTagInvestment(planet.value);
   const { scene, metrics, tasks, firstCompletedAt, minutesThisMonth } = data;
+  const allTasks = useTaskStore((s) => s.tasks);
+  const world3d: WorldData = useMemo(
+    () => buildWorldData(planet.value, allTasks),
+    [planet.value, allTasks]
+  );
   const completionPct =
     metrics.activeTasks + metrics.completedTasks === 0
       ? 0
@@ -805,21 +812,33 @@ function PlanetWorldView({
           </div>
         </div>
         <div
-          className="w-full h-full flex items-center justify-center p-12"
+          className="absolute inset-0"
           style={{
-            animation: "universe-zoom-in 600ms cubic-bezier(0.16, 1, 0.3, 1)",
+            animation: "universe-zoom-in 700ms cubic-bezier(0.16, 1, 0.3, 1)",
           }}
         >
-          <div style={{ width: "min(92%, 780px)", aspectRatio: "1.4" }}>
-            <IsoWorld scene={scene} />
-          </div>
+          <World3D world={world3d} />
+        </div>
+
+        {/* Legend */}
+        <div className="absolute bottom-20 left-6 z-10 text-[10px] font-mono uppercase tracking-[0.2em] text-foreground/60 space-y-1 pointer-events-none">
+          <div>· terrain height = hours completed that week</div>
+          <div>· tree = short task &lt; 60 min</div>
+          <div>· building = task ≥ 60 min</div>
+          <div>· obelisk = every 25 completions</div>
+          <div>· red beacon = overdue · amber = due soon</div>
+          {world3d.longestStreakDays > 1 && (
+            <div>· orange line = longest streak ({world3d.longestStreakDays} days)</div>
+          )}
         </div>
 
         {/* Investment progress bar */}
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[min(560px,80%)]">
           <div className="flex justify-between text-[10px] font-mono uppercase tracking-[0.25em] text-foreground/50 mb-1.5">
             <span>Investment</span>
-            <span>{Math.round(metrics.completedMinutes / 60)}h invested</span>
+            <span>
+              {world3d.totalCompleted} completions · {Math.round(world3d.totalMinutes / 60)}h
+            </span>
           </div>
           <div className="h-1 bg-foreground/10 relative overflow-hidden">
             <div
