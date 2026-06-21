@@ -591,6 +591,7 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
                 category: libItem.category || undefined,
                 subtasks: libItem.subtasks,
                 attachments: libItem.attachments,
+                icon: libItem.icon || undefined,
               }
             : {}),
         });
