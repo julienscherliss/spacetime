@@ -421,8 +421,7 @@ function Marker({ marker, radius }: { marker: ActiveMarker; radius: number }) {
             );
           }}
         />
-        {/* @ts-expect-error r3f line material */}
-        <lineBasicMaterial color={color} transparent opacity={0.6} />
+        <lineBasicMaterial color={color} transparent opacity={0.6} attach="material" />
       </line>
     </group>
   );
