@@ -1031,6 +1031,8 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
                         hidden={hidden}
                         horizontal={horizontal}
                         isOverdue={isOverdue}
+                        pickupSlot={pickupRing?.slotIdx ?? null}
+                        pickupProgress={pickupRing?.progress ?? 0}
                       />
                     );
                   });
