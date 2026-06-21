@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLibraryStore, LibraryTask, LibrarySubtask } from '@/store/libraryStore';
-import { X, Trash2, Clock, AlertTriangle, Tag, CalendarDays, Plus, Check, Paperclip, Upload, FileText } from 'lucide-react';
+import { X, Trash2, Clock, AlertTriangle, Tag, CalendarDays, Plus, Check, Paperclip, Upload, FileText, Sparkles } from 'lucide-react';
+import { IconPicker } from '@/components/IconPicker';
+import { getIconByName } from '@/lib/iconLibrary';
+import { resolveCategoryIcon } from '@/lib/resolveTaskIcon';
 import { AttachmentThumb } from '@/components/AttachmentThumb';
 import { AttachmentLightbox } from '@/components/AttachmentLightbox';
 import { supabase } from '@/integrations/supabase/client';
@@ -83,6 +86,7 @@ export function LibraryDetailPane({ item, onClose }: LibraryDetailPaneProps) {
   const [note, setNote] = useState(item.note || '');
   const [duration, setDuration] = useState(item.defaultDuration);
   const [category, setCategory] = useState(item.category || '');
+  const [icon, setIcon] = useState<string | null>(item.icon || null);
   const [isUrgent, setIsUrgent] = useState(item.isUrgent ?? false);
   const [isImportant, setIsImportant] = useState(item.isImportant ?? false);
   const [dueDate, setDueDate] = useState(item.dueDate || '');
@@ -92,6 +96,7 @@ export function LibraryDetailPane({ item, onClose }: LibraryDetailPaneProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [showCatPicker, setShowCatPicker] = useState(false);
+  const [showIconPicker, setShowIconPicker] = useState(false);
   const [showDurationPicker, setShowDurationPicker] = useState(false);
   const [showDuePicker, setShowDuePicker] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
@@ -106,6 +111,7 @@ export function LibraryDetailPane({ item, onClose }: LibraryDetailPaneProps) {
     setNote(item.note || '');
     setDuration(item.defaultDuration);
     setCategory(item.category || '');
+    setIcon(item.icon || null);
     setIsUrgent(item.isUrgent ?? false);
     setIsImportant(item.isImportant ?? false);
     setDueDate(item.dueDate || '');
@@ -140,6 +146,7 @@ export function LibraryDetailPane({ item, onClose }: LibraryDetailPaneProps) {
       dueDate: dueDate || null,
       subtasks,
       attachments,
+      icon: icon || undefined,
     });
   };
 
@@ -147,7 +154,7 @@ export function LibraryDetailPane({ item, onClose }: LibraryDetailPaneProps) {
     if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
     autoSaveRef.current = setTimeout(doSave, 600);
     return () => { if (autoSaveRef.current) clearTimeout(autoSaveRef.current); };
-  }, [title, note, duration, category, isUrgent, isImportant, dueDate, subtasks, attachments]);
+  }, [title, note, duration, category, icon, isUrgent, isImportant, dueDate, subtasks, attachments]);
 
   const MAX_FILE_SIZE = 25 * 1024 * 1024;
 
