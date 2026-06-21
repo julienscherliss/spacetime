@@ -70,6 +70,8 @@ interface LibraryState {
   items: LibraryTask[];
   categories: CategoryDef[];
   panelOpen: boolean;
+  sidebarMode: boolean;
+  reopenAfterCarryDrop: boolean;
   sortMode: SortMode;
   filters: FilterState;
 
@@ -77,6 +79,8 @@ interface LibraryState {
   filterCategory: FilterCategory;
 
   setPanelOpen: (open: boolean) => void;
+  setSidebarMode: (mode: boolean) => void;
+  setReopenAfterCarryDrop: (v: boolean) => void;
   setSortMode: (mode: SortMode) => void;
   setFilterCategory: (cat: FilterCategory) => void;
   setFilter: (patch: Partial<FilterState>) => void;
@@ -143,6 +147,8 @@ export const useLibraryStore = create<LibraryState>()(
       items: [],
       categories: [],
       panelOpen: false,
+      sidebarMode: false,
+      reopenAfterCarryDrop: false,
       sortMode: 'due',
       filterCategory: 'all',
       filters: {
@@ -152,6 +158,8 @@ export const useLibraryStore = create<LibraryState>()(
       },
 
       setPanelOpen: (open) => set({ panelOpen: open }),
+      setSidebarMode: (mode) => set({ sidebarMode: mode }),
+      setReopenAfterCarryDrop: (v) => set({ reopenAfterCarryDrop: v }),
       setSortMode: (mode) => set({ sortMode: mode }),
       setFilterCategory: (cat) => set((s) => ({
         filterCategory: cat,
