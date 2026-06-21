@@ -1114,6 +1114,15 @@ function Cell({
             style={{ width: 3, height: 3 }}
           />
         )}
+        {inPreview && previewDuplicate && (
+          <div
+            className="absolute top-0.5 right-0.5 rounded-full bg-primary text-primary-foreground text-[9px] font-mono leading-none flex items-center justify-center pointer-events-none"
+            style={{ width: 12, height: 12 }}
+            aria-label="Duplicate"
+          >
+            +
+          </div>
+        )}
         {cell && !hidden && cell.isStart && (
           <div
             data-resize-handle="start"
