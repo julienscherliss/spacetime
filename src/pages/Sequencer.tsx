@@ -11,6 +11,7 @@ import {
 } from '@/utils/collisionDetection';
 import { TaskEditPanel } from '@/components/TaskEditPanel';
 import { useCarryStore, roundCarriedDuration } from '@/store/carryStore';
+import { HoldToConfirmRing } from '@/components/HoldToConfirmRing';
 import { useLibraryDragStore } from '@/store/libraryDragStore';
 import { useTimezoneStore } from '@/store/timezoneStore';
 import { getIconByName } from '@/lib/iconLibrary';
@@ -25,8 +26,14 @@ import {
 const COLS = 4;
 const SLOT_MIN = 15;
 const LABEL_COL_W = 46;
-const PICKUP_MS = 1000;
+// Pickup ring (mirrors TimelineTaskBlock):
+//   0–LOCK_MS:                no movement / no ring
+//   LOCK_MS–PICKUP_START_MS:  movement starts in-place drag
+//   PICKUP_START_MS–onwards:  ring is visible and filling
+//   PICKUP_START_MS + FILL_MS: pickup commits → task goes into inventory
 const LOCK_MS = 250;
+const PICKUP_START_MS = 500;
+const PICKUP_FILL_MS = 500;
 const MOVE_THRESHOLD_PX = 8;
 
 // Day window is configurable via Settings → Advanced. These mirror the store
@@ -246,6 +253,12 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
   // ─── Interaction state ─────────────────────────────────
   const gestureRef = useRef<Gesture | null>(null);
   const [preview, setPreview] = useState<PreviewState | null>(null);
+  // Pickup ring: visual + progress while the user holds on a scheduled task.
+  // Rendered as an overlay centered on the press location.
+  const [pickupRing, setPickupRing] = useState<{ x: number; y: number; progress: number } | null>(null);
+  const pickupRafRef = useRef<number | null>(null);
+  const pickupStartRef = useRef<number | null>(null);
+  const pickupCommittedRef = useRef(false);
   // Duplicate-mode state: while in a task-drag, hovering on the same target
   // for 2s flips the drop action from "move" to "duplicate". Any movement
   // to a different slot reverts to "move" and re-arms the timer.
@@ -352,6 +365,14 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
       clearTimeout(dupTimerRef.current);
       dupTimerRef.current = null;
     }
+    // Cancel any in-flight pickup ring animation.
+    if (pickupRafRef.current != null) {
+      cancelAnimationFrame(pickupRafRef.current);
+      pickupRafRef.current = null;
+    }
+    pickupStartRef.current = null;
+    pickupCommittedRef.current = false;
+    setPickupRing(null);
     dupModeRef.current = false;
     gestureRef.current = null;
     setPreview(null);
@@ -401,8 +422,16 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
       if (g.isTouch && Date.now() - g.t0 < LOCK_MS) {
         return;
       }
-      // Movement after the short lock window starts a task move; empty-cell pans still scroll.
+      // Movement after the short lock window starts an in-place task move;
+      // empty-cell pans still scroll. Cancel the pickup ring — the user
+      // chose to drag instead of waiting for the hold-to-pick-up commit.
       if (g.pickupTimer) clearTimeout(g.pickupTimer);
+      if (pickupRafRef.current != null) {
+        cancelAnimationFrame(pickupRafRef.current);
+        pickupRafRef.current = null;
+      }
+      pickupStartRef.current = null;
+      setPickupRing(null);
       if (g.isTouch) {
         try { gridRef.current?.setPointerCapture(g.pointerId); } catch {}
       }
@@ -775,21 +804,9 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
 
     const cell = cells[slot];
     if (cell) {
-      // Press on a task → arm tap/hold/drag.
-      const pickupTimer = setTimeout(() => {
-        const g = gestureRef.current;
-        if (!g || g.kind !== 'task-pending') return;
-        // On touch we now own the gesture — capture so subsequent events stay here.
-        if (g.isTouch) {
-          try { gridRef.current?.setPointerCapture(g.pointerId); } catch {}
-        }
-            const latest = hitTestSlot(cx, cy) ?? g.grabSlot;
-            activateTaskDrag(g, cx, cy);
-            const current = gestureRef.current;
-            if (current?.kind === 'task-drag') {
-              gestureRef.current = { ...current, targetStart: latest - current.grabOffsetSlots };
-            }
-      }, PICKUP_MS);
+      // Press on a task → arm tap / hold-to-pick-up / in-place drag.
+      // The actual ring + carry pickup is driven by a RAF loop below; we just
+      // remember that we're pending so move/up handlers can branch correctly.
       gestureRef.current = {
         kind: 'task-pending',
         pointerId,
@@ -799,8 +816,50 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
         y0: cy,
         t0: Date.now(),
         isTouch,
-        pickupTimer,
+        pickupTimer: null,
       };
+      // Kick off the ring animation. It commits to a carry pickup at the end
+      // unless the user moves (→ in-place drag) or releases (→ tap-to-edit).
+      pickupStartRef.current = performance.now();
+      pickupCommittedRef.current = false;
+      setPickupRing({ x: cx, y: cy, progress: 0 });
+      const heldTaskId = cell.task.id;
+      const heldDuration = cell.task.duration || 30;
+      const heldDate = cell.task.date;
+      const heldTime = cell.task.time;
+      const heldTitle = cell.task.title;
+      const tick = () => {
+        if (pickupStartRef.current == null || pickupCommittedRef.current) return;
+        const g = gestureRef.current;
+        if (!g || g.kind !== 'task-pending') return;
+        const elapsed = performance.now() - pickupStartRef.current;
+        if (elapsed < PICKUP_START_MS) {
+          pickupRafRef.current = requestAnimationFrame(tick);
+          return;
+        }
+        const ringElapsed = elapsed - PICKUP_START_MS;
+        const progress = Math.min(1, ringElapsed / PICKUP_FILL_MS);
+        setPickupRing((r) => (r ? { ...r, progress } : r));
+        if (progress >= 1) {
+          // Commit → move task into the inventory (carry store).
+          pickupCommittedRef.current = true;
+          if (navigator.vibrate) navigator.vibrate(30);
+          useCarryStore.getState().pickup({
+            taskId: heldTaskId,
+            title: heldTitle,
+            duration: heldDuration,
+            fromDate: heldDate,
+            fromTime: heldTime,
+            pickedUpAt: Date.now(),
+          });
+          // Release the gesture so the next tap on the grid is interpreted
+          // by the carry-drop branch in handleGridPointerDown.
+          endGesture();
+          return;
+        }
+        pickupRafRef.current = requestAnimationFrame(tick);
+      };
+      pickupRafRef.current = requestAnimationFrame(tick);
       // Don't preventDefault on touch — let the browser scroll until hold activates.
       if (!isTouch) e.preventDefault();
     } else {
@@ -1003,6 +1062,25 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
         </div>
 
       </div>
+      {pickupRing && pickupRing.progress > 0 && (
+        <div
+          className="fixed z-50 pointer-events-none"
+          style={{
+            left: pickupRing.x,
+            top: pickupRing.y,
+            transform: 'translate(-50%, -50%)',
+          }}
+        >
+          <div className="relative bg-background/85 backdrop-blur-sm rounded-full p-1.5 shadow-md border border-border">
+            <HoldToConfirmRing
+              progress={pickupRing.progress}
+              size={36}
+              strokeWidth={2.5}
+              label="HOLD TO PICK UP"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
