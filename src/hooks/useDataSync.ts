@@ -59,6 +59,7 @@ function rowToTask(row: any): Task {
     groupId: row.group_id ?? undefined,
     preferredDuration: row.preferred_duration ?? undefined,
     groupOrder: row.group_order ?? undefined,
+    icon: row.icon ?? undefined,
   };
 }
 
@@ -95,6 +96,7 @@ export function taskToRow(task: Task, userId: string) {
     group_id: task.groupId ?? null,
     preferred_duration: task.preferredDuration ?? null,
     group_order: task.groupOrder ?? null,
+    icon: task.icon ?? null,
   } as any; // group_* columns exist in DB but the auto-generated types haven't regenerated yet
 }
 
@@ -137,11 +139,11 @@ function libraryItemToRow(item: LibraryTask, userId: string) {
 }
 
 function rowToCategory(row: any): CategoryDef {
-  return { value: row.value, label: row.label, archived: row.archived ?? false };
+  return { value: row.value, label: row.label, archived: row.archived ?? false, icon: row.icon ?? undefined };
 }
 
 function categoryToRow(cat: CategoryDef, userId: string) {
-  return { user_id: userId, value: cat.value, label: cat.label, archived: cat.archived ?? false };
+  return { user_id: userId, value: cat.value, label: cat.label, archived: cat.archived ?? false, icon: cat.icon ?? null };
 }
 
 // ─── Validation ────────────────────────────────────────
@@ -236,6 +238,7 @@ export function taskSnapshotFields(t: Task) {
     groupId: t.groupId ?? null,
     preferredDuration: t.preferredDuration ?? null,
     groupOrder: t.groupOrder ?? null,
+    icon: t.icon ?? null,
   };
 }
 
@@ -317,6 +320,7 @@ export const TASK_KEY_TO_COLUMN: Record<string, string> = {
   groupId: 'group_id',
   preferredDuration: 'preferred_duration',
   groupOrder: 'group_order',
+  icon: 'icon',
 };
 
 // Build a partial DB row containing only the columns whose projected values
