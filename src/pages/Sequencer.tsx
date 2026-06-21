@@ -118,6 +118,7 @@ type Gesture =
       duration: number;
       grabOffsetSlots: number;
       targetStart: number;
+      originStart: number;
       blocked: boolean;
       PreviewIcon: LucideIcon;
     }
