@@ -74,6 +74,9 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFired = useRef(false);
   const pointerDownPos = useRef<{ x: number; y: number } | null>(null);
+  const dragModeRef = useRef(false);
+  const dragPointerIdRef = useRef<number | null>(null);
+  const [dragGhost, setDragGhost] = useState<{ x: number; y: number } | null>(null);
   const [isHovered, setIsHovered] = useState(false);
   const showHoldHint = !isMobile && isHovered && getPlaceCount() < 10;
 
@@ -99,35 +102,88 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('[data-touch-ignore]')) return;
     longPressFired.current = false;
+    dragModeRef.current = false;
+    dragPointerIdRef.current = e.pointerId;
     pointerDownPos.current = { x: e.clientX, y: e.clientY };
     longPressTimer.current = setTimeout(() => {
+      // Hold-to-pickup: enter normal carry-banner mode (no ghost follow).
       triggerPickup();
     }, 400);
-  }, [item]);
 
-  const handlePointerUp = useCallback((e: React.PointerEvent) => {
-    if ((e.target as HTMLElement).closest('[data-touch-ignore]')) return;
-    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
-    if (!longPressFired.current) onEdit();
-  }, [onEdit]);
+    const DRAG_THRESHOLD = 6;
 
-  const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    // If the user started dragging before the long-press timer fired, treat
-    // it as a drag-to-place: trigger pickup immediately, which closes the
-    // library and flags it to reopen after the carry is dropped.
-    if (longPressFired.current) return;
-    const origin = pointerDownPos.current;
-    if (!origin) return;
-    const dx = e.clientX - origin.x;
-    const dy = e.clientY - origin.y;
-    if (Math.hypot(dx, dy) > 8) {
+    const onMove = (ev: PointerEvent) => {
+      if (ev.pointerId !== dragPointerIdRef.current) return;
+      const origin = pointerDownPos.current;
+      if (!origin) return;
+      const moved = Math.hypot(ev.clientX - origin.x, ev.clientY - origin.y);
+      if (!dragModeRef.current && !longPressFired.current && moved > DRAG_THRESHOLD) {
+        // Promote to drag mode: cancel pending long-press, pick up now, and
+        // start tracking a ghost that follows the pointer until release.
+        if (longPressTimer.current) {
+          clearTimeout(longPressTimer.current);
+          longPressTimer.current = null;
+        }
+        dragModeRef.current = true;
+        triggerPickup();
+      }
+      if (dragModeRef.current) {
+        setDragGhost({ x: ev.clientX, y: ev.clientY });
+      }
+    };
+
+    const onUp = (ev: PointerEvent) => {
+      if (ev.pointerId !== dragPointerIdRef.current) return;
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
       if (longPressTimer.current) {
         clearTimeout(longPressTimer.current);
         longPressTimer.current = null;
       }
-      triggerPickup();
-    }
-  }, []);
+      const wasDrag = dragModeRef.current;
+      dragModeRef.current = false;
+      dragPointerIdRef.current = null;
+      setDragGhost(null);
+
+      if (wasDrag) {
+        // Synthesize a tap at the release coordinates so the timeline /
+        // sequencer's existing "tap-while-carrying" drop logic schedules it.
+        // We delay slightly so the library's exit animation has time to
+        // clear its DOM out of the hit-test path.
+        const x = ev.clientX;
+        const y = ev.clientY;
+        const pointerType = (ev.pointerType as 'mouse' | 'touch' | 'pen') || 'mouse';
+        setTimeout(() => {
+          const target = document.elementFromPoint(x, y);
+          if (!target) return;
+          const opts: PointerEventInit = {
+            clientX: x,
+            clientY: y,
+            bubbles: true,
+            cancelable: true,
+            pointerType,
+            isPrimary: true,
+            pointerId: 9999,
+          };
+          try {
+            target.dispatchEvent(new PointerEvent('pointerdown', opts));
+            target.dispatchEvent(new PointerEvent('pointerup', opts));
+          } catch {
+            // Older browsers may not support PointerEvent constructor — silently no-op.
+          }
+        }, 320);
+        return;
+      }
+
+      // Plain tap with no movement and no hold → open editor.
+      if (!longPressFired.current) onEdit();
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+  }, [triggerPickup, onEdit]);
 
   const catLabel = useLibraryStore.getState().categories.find(c => c.value === item.category)?.label;
   const dueBadge = getDueBadge(item.dueDate);
