@@ -25,8 +25,9 @@ const COLS = 4;
 const SLOT_MIN = 15;
 const SLOTS_PER_DAY = ROWS * COLS;
 const LABEL_COL_W = 46;
-const PICKUP_MS = 350;
-const MOVE_THRESHOLD_PX = 6;
+const PICKUP_MS = 1000;
+const LOCK_MS = 250;
+const MOVE_THRESHOLD_PX = 8;
 
 const slotToMin = (slot: number) => START_HOUR * 60 + slot * SLOT_MIN;
 const minToSlot = (min: number) => Math.floor((min - START_HOUR * 60) / SLOT_MIN);
@@ -97,6 +98,7 @@ type Gesture =
       grabOffsetSlots: number;
       targetStart: number;
       blocked: boolean;
+      PreviewIcon: LucideIcon;
     }
   | {
       kind: 'resize';
@@ -113,6 +115,7 @@ interface PreviewState {
   cells: Set<number>;
   blocked: boolean;
   hideTaskId?: string;
+  PreviewIcon?: LucideIcon;
 }
 
 export default function Sequencer() {
@@ -269,14 +272,14 @@ export default function Sequencer() {
     if (g.kind === 'task-pending') {
       const moved = Math.hypot(e.clientX - g.x0, e.clientY - g.y0) > MOVE_THRESHOLD_PX;
       if (!moved) return;
-      // On touch: movement before pickup = scroll intent → release gesture.
-      if (g.isTouch) {
-        if (g.pickupTimer) clearTimeout(g.pickupTimer);
-        endGesture();
+      if (g.isTouch && Date.now() - g.t0 < LOCK_MS) {
         return;
       }
-      // Mouse: pick up immediately.
+      // Movement after the short lock window starts a task move; empty-cell pans still scroll.
       if (g.pickupTimer) clearTimeout(g.pickupTimer);
+      if (g.isTouch) {
+        try { gridRef.current?.setPointerCapture(g.pointerId); } catch {}
+      }
       activateTaskDrag(g, e.clientX, e.clientY);
       e.preventDefault();
       return;
@@ -301,7 +304,7 @@ export default function Sequencer() {
       setPreview({
         cells: cellsForRange(finalStartSlot, Math.ceil(g.duration / SLOT_MIN)),
         blocked,
-        hideTaskId: g.taskId,
+        PreviewIcon: g.PreviewIcon,
       });
       e.preventDefault();
       return;
@@ -337,7 +340,6 @@ export default function Sequencer() {
       setPreview({
         cells: cellsForRange(startSlot, Math.ceil(previewDuration / SLOT_MIN)),
         blocked: false,
-        hideTaskId: g.taskId,
       });
       e.preventDefault();
       return;
@@ -354,6 +356,7 @@ export default function Sequencer() {
       const grabOffsetSlots = Math.max(0, g.grabSlot - startSlot);
       const slot = hitTestSlot(clientX, clientY) ?? g.grabSlot;
       const requestedStart = slot - grabOffsetSlots;
+      const PreviewIcon = resolveTaskIcon(task, categories) ?? pickIcon(task);
       gestureRef.current = {
         kind: 'task-drag',
         pointerId: g.pointerId,
@@ -362,15 +365,16 @@ export default function Sequencer() {
         grabOffsetSlots,
         targetStart: requestedStart,
         blocked: false,
+        PreviewIcon,
       };
       setPreview({
         cells: cellsForRange(requestedStart, Math.ceil(duration / SLOT_MIN)),
         blocked: false,
-        hideTaskId: g.taskId,
+        PreviewIcon,
       });
       if (navigator.vibrate) navigator.vibrate(12);
     },
-    [hitTestSlot]
+    [hitTestSlot, categories]
   );
 
   const handlePointerUp = useCallback((e: PointerEvent) => {
@@ -537,7 +541,6 @@ export default function Sequencer() {
       setPreview({
         cells: cellsForRange(minToSlot(origStart), Math.ceil(origDuration / SLOT_MIN)),
         blocked: false,
-        hideTaskId: taskId,
       });
       e.preventDefault();
       return;
@@ -553,7 +556,12 @@ export default function Sequencer() {
         if (g.isTouch) {
           try { gridRef.current?.setPointerCapture(g.pointerId); } catch {}
         }
-        activateTaskDrag(g, cx, cy);
+            const latest = hitTestSlot(cx, cy) ?? g.grabSlot;
+            activateTaskDrag(g, cx, cy);
+            const current = gestureRef.current;
+            if (current?.kind === 'task-drag') {
+              gestureRef.current = { ...current, targetStart: latest - current.grabOffsetSlots };
+            }
       }, PICKUP_MS);
       gestureRef.current = {
         kind: 'task-pending',
@@ -768,6 +776,7 @@ function RowFragment({
             isCurrent={isCurrent}
             inPreview={inPreview}
             previewBlocked={preview?.blocked ?? false}
+            PreviewIcon={preview?.PreviewIcon}
             hidden={hidden}
           />
         );
@@ -777,7 +786,7 @@ function RowFragment({
 }
 
 function Cell({
-  slotIdx, cell, isPast, isCurrent, inPreview, previewBlocked, hidden,
+  slotIdx, cell, isPast, isCurrent, inPreview, previewBlocked, PreviewIcon, hidden,
 }: {
   slotIdx: number;
   cell: CellAssignment | null;
@@ -785,6 +794,7 @@ function Cell({
   isCurrent: boolean;
   inPreview: boolean;
   previewBlocked: boolean;
+  PreviewIcon?: LucideIcon;
   hidden: boolean;
 }) {
   const occupied = !!cell && !hidden;
@@ -814,10 +824,18 @@ function Cell({
               ? 'inset 0 1px 0 rgba(255,255,255,0.5), 0 1px 0 rgba(0,0,0,0.03)'
               : 'none',
           cursor: occupied ? 'grab' : 'default',
+          touchAction: occupied ? 'none' : 'auto',
           opacity: hidden ? 0 : 1,
         }}
       >
-        {cell && !hidden ? (
+        {inPreview && PreviewIcon ? (
+          <PreviewIcon
+            size={22}
+            strokeWidth={1.4}
+            className="text-primary pointer-events-none"
+            style={{ opacity: previewBlocked ? 0.28 : 0.42 }}
+          />
+        ) : cell && !hidden ? (
           <cell.Icon
             size={22}
             strokeWidth={1.4}
