@@ -1133,6 +1133,8 @@ function RowFragment({
             previewDuplicate={!!preview?.duplicate && preview?.startSlot === slotIdx}
             hidden={hidden}
             isOverdue={isOverdue}
+            pickupSlot={pickupSlot}
+            pickupProgress={pickupProgress}
           />
         );
       })}
