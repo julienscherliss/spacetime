@@ -196,7 +196,8 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
     const dayStartMin = START_HOUR * 60;
     for (const t of tasks) {
       if (t.date !== dateStr) continue;
-      if (t.archivedAt || t.inWaitingRoom || t.groupId) continue;
+      const isCompletedArchive = !!t.archivedAt && t.completed && t.archiveReason === 'completed';
+      if ((t.archivedAt && !(showCompletedTasks && isCompletedArchive)) || t.inWaitingRoom || t.groupId) continue;
       if (!t.time) continue;
       const start = timeToMinutes(t.time);
       const dur = t.duration ?? 30;
