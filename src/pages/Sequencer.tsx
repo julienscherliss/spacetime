@@ -934,75 +934,78 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
       {!embedded && <TaskEditPanel />}
 
       <div className="mx-auto max-w-md sm:max-w-5xl px-5 pt-4">
-        {/* Header — matches month view styling */}
-        <div className="py-3 flex items-center justify-between gap-2">
-          <h1 className="text-base sm:text-lg font-display font-bold text-foreground tracking-tight truncate">
-            {dateLabel}
-          </h1>
-          <div className="flex items-center gap-1 shrink-0">
-            <button
-              type="button"
-              onClick={() => shiftDay(-1)}
-              aria-label="Previous day"
-              className="p-2 rounded-sm border border-border text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ChevronLeft size={14} strokeWidth={1.5} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setDateStr(today)}
-              disabled={dateStr === today}
-              className={`px-2.5 py-1.5 rounded-sm border border-border text-[10px] font-mono tracking-widest transition-colors ${
-                dateStr === today
-                  ? 'text-primary'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              TODAY
-            </button>
-            <button
-              type="button"
-              onClick={() => shiftDay(1)}
-              aria-label="Next day"
-              className="p-2 rounded-sm border border-border text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ChevronRight size={14} strokeWidth={1.5} />
-            </button>
+        {/* Sticky top section: header + column/row labels */}
+        <div className="sticky top-[env(safe-area-inset-top)] sm:top-12 z-20 bg-background pb-2">
+          {/* Header — matches month view styling */}
+          <div className="py-3 flex items-center justify-between gap-2">
+            <h1 className="text-base sm:text-lg font-display font-bold text-foreground tracking-tight truncate">
+              {dateLabel}
+            </h1>
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => shiftDay(-1)}
+                aria-label="Previous day"
+                className="p-2 rounded-sm border border-border text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ChevronLeft size={14} strokeWidth={1.5} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setDateStr(today)}
+                disabled={dateStr === today}
+                className={`px-2.5 py-1.5 rounded-sm border border-border text-[10px] font-mono tracking-widest transition-colors ${
+                  dateStr === today
+                    ? 'text-primary'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                TODAY
+              </button>
+              <button
+                type="button"
+                onClick={() => shiftDay(1)}
+                aria-label="Next day"
+                className="p-2 rounded-sm border border-border text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ChevronRight size={14} strokeWidth={1.5} />
+              </button>
+            </div>
           </div>
-        </div>
 
-        {/* Column / row header */}
-        <div
-          className="grid sticky top-[env(safe-area-inset-top)] sm:top-12 z-20 bg-background"
-          style={{
-            gridTemplateColumns: horizontal
-              ? `46px repeat(${ROWS}, 1fr)`
-              : '46px repeat(4, 1fr)',
-          }}
-        >
-          <div />
-          {horizontal
-            ? Array.from({ length: ROWS }).map((_, rowIdx) => {
-                const hour = START_HOUR + rowIdx;
-                const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-                const period = hour >= 12 ? 'PM' : 'AM';
-                return (
+          {/* Column / row header */}
+          <div
+            className="grid"
+            style={{
+              gridTemplateColumns: horizontal
+                ? `46px repeat(${ROWS}, 1fr)`
+                : '46px repeat(4, 1fr)',
+            }}
+          >
+            <div />
+            {horizontal
+              ? Array.from({ length: ROWS }).map((_, rowIdx) => {
+                  const hour = START_HOUR + rowIdx;
+                  const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+                  const period = hour >= 12 ? 'PM' : 'AM';
+                  return (
+                    <div
+                      key={hour}
+                      className="text-[9px] font-mono tracking-[0.18em] text-center pb-2 pt-2 text-muted-foreground/60"
+                    >
+                      {h12} {period}
+                    </div>
+                  );
+                })
+              : [':00', ':15', ':30', ':45'].map((l) => (
                   <div
-                    key={hour}
+                    key={l}
                     className="text-[9px] font-mono tracking-[0.18em] text-center pb-2 pt-2 text-muted-foreground/60"
                   >
-                    {h12} {period}
+                    {l}
                   </div>
-                );
-              })
-            : [':00', ':15', ':30', ':45'].map((l) => (
-                <div
-                  key={l}
-                  className="text-[9px] font-mono tracking-[0.18em] text-center pb-2 pt-2 text-muted-foreground/60"
-                >
-                  {l}
-                </div>
-              ))}
+                ))}
+          </div>
         </div>
 
         {/* Grid */}
