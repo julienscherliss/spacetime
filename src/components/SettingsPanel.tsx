@@ -378,7 +378,6 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               Tap the Day tab while on Day view to swap between Timeline and this view
             </div>
             <div className="flex gap-1 bg-muted/30 border border-border/50 rounded-sm p-1">
-              {(() => null)()}
               {([
                 { value: 'sequencer' as DayToggleTarget, label: 'Sequencer' },
                 { value: 'list' as DayToggleTarget, label: 'List' },
