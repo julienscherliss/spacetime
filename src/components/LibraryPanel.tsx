@@ -211,8 +211,6 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
     <div
       
       onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
-      onPointerMove={handlePointerMove}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={`group flex items-center gap-3 rounded-md border bg-card/50 hover:bg-card transition-all cursor-pointer select-none ${getDueBorderClass()} ${
