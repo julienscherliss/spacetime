@@ -208,6 +208,7 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
   };
 
   return (
+    <>
     <div
       
       onPointerDown={handlePointerDown}
@@ -274,6 +275,26 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
         <Check size={13} strokeWidth={2} />
       </button>
     </div>
+    {dragGhost && typeof document !== 'undefined' && createPortal(
+      <div
+        className="fixed z-[300] pointer-events-none px-3 py-2 rounded-md border border-primary/60 bg-card/95 shadow-lg backdrop-blur-sm"
+        style={{
+          left: dragGhost.x + 12,
+          top: dragGhost.y + 12,
+          maxWidth: 240,
+        }}
+      >
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-primary animate-pulse shrink-0" />
+          <span className="text-[11px] font-mono text-foreground truncate">{item.title}</span>
+          {item.defaultDuration > 0 && (
+            <span className="text-[9px] font-mono text-muted-foreground/60 shrink-0">{item.defaultDuration}m</span>
+          )}
+        </div>
+      </div>,
+      document.body,
+    )}
+    </>
   );
 }
 
