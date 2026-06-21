@@ -1,376 +1,303 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls, Html } from "@react-three/drei";
+import { OrbitControls } from "@react-three/drei";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
-import {
-  WORLD_RADIUS,
-  PEAK_HEIGHT,
-  makeTerrainCtx,
-  terrainHeight,
-  type LandscapeData,
-  type TerrainCtx,
-} from "@/utils/planetWorld3D";
+import type { LandscapeData } from "@/utils/planetWorld3D";
 
 const PAPER = "#f3f0ea";
-const PAPER_DARK = "#dcd6cc";
 const INK = "#1c1b18";
-const STONE = "#9a958b";
 const ACCENT = "#c4663b";
-const WATER = "#b6bcc4";
+const SOFT = "#8a847a";
 
-const TERRAIN_SIZE = WORLD_RADIUS * 2.2;
-const TERRAIN_SEGMENTS = 200;
-
-// ---------- Terrain mesh with vertex displacement + vertex colours ----------
-
-function Terrain({ ctx }: { ctx: TerrainCtx }) {
-  const geom = useMemo(() => {
-    const g = new THREE.PlaneGeometry(
-      TERRAIN_SIZE,
-      TERRAIN_SIZE,
-      TERRAIN_SEGMENTS,
-      TERRAIN_SEGMENTS
-    );
-    g.rotateX(-Math.PI / 2);
-    const pos = g.attributes.position as THREE.BufferAttribute;
-    const colorArr = new Float32Array(pos.count * 3);
-    const tmp = new THREE.Color();
-    const lowColor = new THREE.Color("#cfc8bb");
-    const midColor = new THREE.Color("#efe9dd");
-    const highColor = new THREE.Color("#fbf7ee");
-    const waterColor = new THREE.Color(WATER);
-    for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i);
-      const z = pos.getZ(i);
-      const h = terrainHeight(x, z, ctx);
-      pos.setY(i, h);
-      // vertex colour: contour-style gradient
-      let n = Math.min(1, h / (PEAK_HEIGHT * 0.9));
-      if (h <= 0.001) {
-        const dist = Math.sqrt(x * x + z * z) / WORLD_RADIUS;
-        // river / sea
-        if (dist < 1) tmp.copy(waterColor);
-        else tmp.copy(lowColor);
-      } else if (n < 0.5) {
-        tmp.copy(lowColor).lerp(midColor, n / 0.5);
-      } else {
-        tmp.copy(midColor).lerp(highColor, (n - 0.5) / 0.5);
-      }
-      colorArr[i * 3] = tmp.r;
-      colorArr[i * 3 + 1] = tmp.g;
-      colorArr[i * 3 + 2] = tmp.b;
-    }
-    g.setAttribute("color", new THREE.BufferAttribute(colorArr, 3));
-    g.computeVertexNormals();
-    return g;
-  }, [ctx]);
-
-  return (
-    <mesh geometry={geom} receiveShadow castShadow>
-      <meshStandardMaterial
-        vertexColors
-        roughness={0.95}
-        metalness={0}
-        flatShading={false}
-      />
-    </mesh>
-  );
+// ------------------------------------------------------------------
+// Deterministic RNG
+// ------------------------------------------------------------------
+function mulberry32(seed: number) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }
 
-// ---------- Contour lines: thin rings at fixed elevations ----------
+// ------------------------------------------------------------------
+// Cell — a single nucleus in the organism. One per "chunk" of effort.
+// ------------------------------------------------------------------
+interface Cell {
+  pos: THREE.Vector3;
+  radius: number;
+  age: number;      // 0 = oldest, 1 = newest
+  hours: number;    // hours of effort represented
+  isAccent: boolean;
+  phase: number;    // breathing phase offset
+}
 
-function ContourLines({ ctx }: { ctx: TerrainCtx }) {
-  const lines = useMemo(() => {
-    const levels = [0.25, 0.6, 1.0, 1.4, 1.8].filter((l) => l < PEAK_HEIGHT);
-    const segs = 220;
-    const groups: THREE.BufferGeometry[] = [];
-    for (const level of levels) {
-      const points: number[] = [];
-      // March a grid and emit short segments where neighbours cross the level.
-      const N = 120;
-      const step = TERRAIN_SIZE / N;
-      const start = -TERRAIN_SIZE / 2;
-      for (let i = 0; i < N; i++) {
-        for (let j = 0; j < N; j++) {
-          const x = start + i * step;
-          const z = start + j * step;
-          const h00 = terrainHeight(x, z, ctx);
-          const h10 = terrainHeight(x + step, z, ctx);
-          const h01 = terrainHeight(x, z + step, ctx);
-          if ((h00 - level) * (h10 - level) < 0) {
-            const t = (level - h00) / (h10 - h00);
-            const px = x + t * step;
-            points.push(px, level + 0.005, z, px, level + 0.005, z + 0.0001);
-          }
-          if ((h00 - level) * (h01 - level) < 0) {
-            const t = (level - h00) / (h01 - h00);
-            const pz = z + t * step;
-            points.push(x, level + 0.005, pz, x + 0.0001, level + 0.005, pz);
-          }
+function buildOrganism(land: LandscapeData): Cell[] {
+  const rng = mulberry32(land.seed || 1);
+  const cells: Cell[] = [];
+
+  // Number of cells: every ~3 completions = 1 cell, capped at 80.
+  // Empty tags still get 1 small seed cell.
+  const n = Math.max(1, Math.min(80, Math.ceil(land.totalCompleted / 3)));
+
+  // First cell at origin
+  cells.push({
+    pos: new THREE.Vector3(0, 0, 0),
+    radius: 0.9,
+    age: 0,
+    hours: 0,
+    isAccent: false,
+    phase: rng() * Math.PI * 2,
+  });
+
+  // Sample hours per cell from the hours-histogram so denser-effort bins
+  // produce larger nuclei.
+  const hist = land.hoursHistogram;
+  const hoursTotal = Math.max(1, land.totalMinutes / 60);
+
+  for (let i = 1; i < n; i++) {
+    // pick a parent — biased toward recent cells so growth happens at the
+    // tips, not the core
+    const parentBias = Math.pow(rng(), 0.4);
+    const parentIdx = Math.min(cells.length - 1, Math.floor(parentBias * cells.length));
+    const parent = cells[parentIdx];
+
+    // sample bin to set hours / radius
+    const ageT = i / Math.max(1, n - 1);
+    const binIdx = Math.floor(ageT * (hist.length - 1));
+    const binWeight = hist[binIdx] ?? 0.3;
+    const hours = (hoursTotal / n) * (0.5 + binWeight * 1.8);
+    const radius = 0.55 + Math.min(1.2, Math.log(1 + hours) * 0.45);
+
+    // place adjacent to parent, on a random direction, distance = sum of radii
+    let dir: THREE.Vector3;
+    let pos: THREE.Vector3;
+    let tries = 0;
+    do {
+      dir = new THREE.Vector3(
+        rng() * 2 - 1,
+        (rng() * 2 - 1) * 0.6,    // flatter on Y for a more horizontal sprawl
+        rng() * 2 - 1
+      ).normalize();
+      const dist = parent.radius + radius * 0.78;
+      pos = parent.pos.clone().add(dir.multiplyScalar(dist));
+      tries++;
+      // avoid overlap with non-parent cells
+      let ok = true;
+      for (const c of cells) {
+        if (c === parent) continue;
+        if (c.pos.distanceTo(pos) < (c.radius + radius) * 0.75) {
+          ok = false;
+          break;
         }
       }
-      if (points.length) {
-        const g = new THREE.BufferGeometry();
-        g.setAttribute("position", new THREE.Float32BufferAttribute(points, 3));
-        groups.push(g);
-      }
-    }
-    return groups;
-  }, [ctx]);
+      if (ok || tries > 8) break;
+    } while (true);
 
-  return (
-    <group>
-      {lines.map((g, i) => (
-        <lineSegments key={i} geometry={g}>
-          <lineBasicMaterial color={INK} transparent opacity={0.12} />
-        </lineSegments>
-      ))}
-    </group>
-  );
-}
-
-// ---------- Water plane (slightly below sea level) ----------
-
-function Water() {
-  return (
-    <mesh position={[0, 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-      <circleGeometry args={[WORLD_RADIUS * 1.02, 96]} />
-      <meshStandardMaterial
-        color={WATER}
-        roughness={0.35}
-        metalness={0.1}
-        transparent
-        opacity={0.85}
-      />
-    </mesh>
-  );
-}
-
-// ---------- Instanced forests ----------
-
-function Forests({
-  points,
-  ctx,
-}: {
-  points: { x: number; z: number; scale: number; variant: number }[];
-  ctx: TerrainCtx;
-}) {
-  const ref = useRef<THREE.InstancedMesh>(null);
-  useEffect(() => {
-    if (!ref.current) return;
-    const dummy = new THREE.Object3D();
-    points.forEach((p, i) => {
-      const y = terrainHeight(p.x, p.z, ctx);
-      dummy.position.set(p.x, y, p.z);
-      const s = 0.22 + p.scale * 0.18;
-      dummy.scale.set(s, s + p.variant * 0.05, s);
-      dummy.rotation.y = (p.x + p.z) * 1.3;
-      dummy.updateMatrix();
-      ref.current!.setMatrixAt(i, dummy.matrix);
+    cells.push({
+      pos,
+      radius,
+      age: ageT,
+      hours,
+      isAccent: false,
+      phase: rng() * Math.PI * 2,
     });
-    ref.current.instanceMatrix.needsUpdate = true;
-  }, [points, ctx]);
+  }
+
+  // Mark the newest few cells as accent (recent activity)
+  const accentCount = Math.min(
+    cells.length,
+    Math.max(0, Math.min(8, Math.ceil(land.totalCompleted / 20)))
+  );
+  for (let i = cells.length - accentCount; i < cells.length; i++) {
+    cells[i].isAccent = true;
+  }
+
+  // Recenter cluster on origin
+  const centroid = new THREE.Vector3();
+  cells.forEach((c) => centroid.add(c.pos));
+  centroid.divideScalar(cells.length);
+  cells.forEach((c) => c.pos.sub(centroid));
+
+  return cells;
+}
+
+// ------------------------------------------------------------------
+// Latitude rings geometry — concentric horizontal rings around a sphere,
+// gives the topographic / contour-map look from the reference.
+// ------------------------------------------------------------------
+function makeRingsGeometry(rings = 14, segments = 64) {
+  const positions: number[] = [];
+  for (let i = 1; i < rings; i++) {
+    const phi = (i / rings) * Math.PI; // 0..PI
+    const y = Math.cos(phi);
+    const r = Math.sin(phi);
+    for (let s = 0; s < segments; s++) {
+      const a0 = (s / segments) * Math.PI * 2;
+      const a1 = ((s + 1) / segments) * Math.PI * 2;
+      positions.push(Math.cos(a0) * r, y, Math.sin(a0) * r);
+      positions.push(Math.cos(a1) * r, y, Math.sin(a1) * r);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  return g;
+}
+
+// ------------------------------------------------------------------
+// One cell — rings + a faint inner fill orb
+// ------------------------------------------------------------------
+function CellMesh({
+  cell,
+  ringsGeom,
+}: {
+  cell: Cell;
+  ringsGeom: THREE.BufferGeometry;
+}) {
+  const groupRef = useRef<THREE.Group>(null);
+  const lineColor = cell.isAccent ? ACCENT : INK;
+
+  useFrame(({ clock }) => {
+    if (!groupRef.current) return;
+    const t = clock.getElapsedTime();
+    // gentle breathing — recent cells breathe more
+    const amp = cell.isAccent ? 0.06 : 0.025;
+    const s = 1 + Math.sin(t * 0.6 + cell.phase) * amp;
+    groupRef.current.scale.setScalar(s);
+    // soft drift — each cell wobbles slightly around its position
+    groupRef.current.rotation.y = t * 0.05 + cell.phase;
+    groupRef.current.rotation.x = Math.sin(t * 0.2 + cell.phase) * 0.05;
+  });
 
   return (
-    <instancedMesh
-      ref={ref}
-      args={[undefined, undefined, points.length]}
-      castShadow
-      receiveShadow
-    >
-      <coneGeometry args={[0.9, 2.4, 7]} />
-      <meshStandardMaterial color="#2c2a26" roughness={1} />
-    </instancedMesh>
+    <group ref={groupRef} position={cell.pos.toArray()}>
+      {/* faint inner shell to give it body */}
+      <mesh>
+        <sphereGeometry args={[cell.radius * 0.985, 24, 18]} />
+        <meshBasicMaterial
+          color={PAPER}
+          transparent
+          opacity={cell.isAccent ? 0.55 : 0.7}
+        />
+      </mesh>
+      {/* contour rings */}
+      <lineSegments geometry={ringsGeom} scale={cell.radius}>
+        <lineBasicMaterial
+          color={lineColor}
+          transparent
+          opacity={cell.isAccent ? 0.85 : 0.55}
+        />
+      </lineSegments>
+    </group>
   );
 }
 
-// ---------- Settlements ----------
-
-function Settlement({
-  site,
-  ctx,
-}: {
-  site: { x: number; z: number; buildings: number; hours: number };
-  ctx: TerrainCtx;
-}) {
-  const ground = terrainHeight(site.x, site.z, ctx);
-  const buildings = useMemo(() => {
-    const arr: { dx: number; dz: number; w: number; h: number; d: number; r: number }[] =
-      [];
-    const n = site.buildings;
-    const seed = Math.floor(site.x * 73856093) ^ Math.floor(site.z * 19349663);
-    let s = seed >>> 0;
-    const rng = () => {
-      s = (s * 1664525 + 1013904223) >>> 0;
-      return s / 0x100000000;
-    };
-    for (let i = 0; i < n; i++) {
-      const a = (i / n) * Math.PI * 2 + rng() * 0.6;
-      const r = 0.2 + rng() * 0.5;
-      arr.push({
-        dx: Math.cos(a) * r,
-        dz: Math.sin(a) * r,
-        w: 0.28 + rng() * 0.2,
-        h: 0.45 + rng() * 0.7 + Math.log(1 + site.hours / 60) * 0.15,
-        d: 0.28 + rng() * 0.2,
-        r: rng() * Math.PI,
-      });
-    }
-    return arr;
-  }, [site]);
+// ------------------------------------------------------------------
+// Connective filaments — thin lines between neighbour cells to show
+// the organism is one body, not a pile of beads.
+// ------------------------------------------------------------------
+function Filaments({ cells }: { cells: Cell[] }) {
+  const geom = useMemo(() => {
+    const pts: number[] = [];
+    // connect each cell to its 2 nearest neighbours, no duplicates
+    const seen = new Set<string>();
+    cells.forEach((a, i) => {
+      const sorted = cells
+        .map((b, j) => ({ d: a.pos.distanceTo(b.pos), j }))
+        .filter((x) => x.j !== i)
+        .sort((x, y) => x.d - y.d)
+        .slice(0, 2);
+      for (const { j } of sorted) {
+        const key = i < j ? `${i}-${j}` : `${j}-${i}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const b = cells[j];
+        pts.push(a.pos.x, a.pos.y, a.pos.z, b.pos.x, b.pos.y, b.pos.z);
+      }
+    });
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+    return g;
+  }, [cells]);
   return (
-    <group position={[site.x, ground, site.z]}>
-      {buildings.map((b, i) => (
-        <group key={i} position={[b.dx, 0, b.dz]} rotation={[0, b.r, 0]}>
-          <mesh position={[0, b.h / 2, 0]} castShadow receiveShadow>
-            <boxGeometry args={[b.w, b.h, b.d]} />
-            <meshStandardMaterial color="#d2cabb" roughness={0.85} />
-          </mesh>
-          {/* gable roof */}
-          <mesh position={[0, b.h + 0.08, 0]} castShadow>
-            <coneGeometry args={[b.w * 0.78, 0.22, 4]} />
-            <meshStandardMaterial color={INK} roughness={0.9} />
-          </mesh>
-        </group>
+    <lineSegments geometry={geom}>
+      <lineBasicMaterial color={INK} transparent opacity={0.12} />
+    </lineSegments>
+  );
+}
+
+// ------------------------------------------------------------------
+// Slowly rotating cluster
+// ------------------------------------------------------------------
+function Organism({ land }: { land: LandscapeData }) {
+  const cells = useMemo(() => buildOrganism(land), [land]);
+  const ringsGeom = useMemo(() => makeRingsGeometry(14, 64), []);
+  const groupRef = useRef<THREE.Group>(null);
+
+  useFrame(({ clock }) => {
+    if (!groupRef.current) return;
+    groupRef.current.rotation.y = clock.getElapsedTime() * 0.035;
+  });
+
+  // Fit camera-friendly bounds: scale whole organism so the cluster spans ~10u
+  const fitScale = useMemo(() => {
+    let maxR = 0;
+    for (const c of cells) {
+      maxR = Math.max(maxR, c.pos.length() + c.radius);
+    }
+    if (maxR < 0.001) return 1;
+    return 5 / maxR;
+  }, [cells]);
+
+  return (
+    <group ref={groupRef} scale={fitScale}>
+      <Filaments cells={cells} />
+      {cells.map((c, i) => (
+        <CellMesh key={i} cell={c} ringsGeom={ringsGeom} />
       ))}
     </group>
   );
 }
 
-// ---------- Landmarks (milestones) ----------
-
-function Landmark({
-  site,
-  ctx,
-}: {
-  site: { x: number; z: number; threshold: number; label: string };
-  ctx: TerrainCtx;
-}) {
-  const ground = terrainHeight(site.x, site.z, ctx);
-  const h = 1.4 + Math.log10(site.threshold) * 0.7;
-  return (
-    <group position={[site.x, ground, site.z]}>
-      <mesh position={[0, h / 2, 0]} castShadow>
-        <cylinderGeometry args={[0.05, 0.14, h, 4]} />
-        <meshStandardMaterial color={INK} roughness={0.5} metalness={0.2} />
-      </mesh>
-      <mesh position={[0, h + 0.12, 0]}>
-        <octahedronGeometry args={[0.12, 0]} />
-        <meshStandardMaterial color={ACCENT} roughness={0.4} />
-      </mesh>
-      <Html
-        position={[0, h + 0.35, 0]}
-        center
-        distanceFactor={12}
-        style={{ pointerEvents: "none" }}
-      >
-        <div
-          style={{
-            fontFamily: "JetBrains Mono, monospace",
-            fontSize: 9,
-            letterSpacing: 1.5,
-            color: INK,
-            background: PAPER,
-            padding: "2px 5px",
-            border: `1px solid ${INK}`,
-            whiteSpace: "nowrap",
-            textTransform: "uppercase",
-          }}
-        >
-          {site.threshold}
-        </div>
-      </Html>
-    </group>
-  );
-}
-
-// ---------- First-completion marker ----------
-
-function FirstMarker({ x, z, ctx }: { x: number; z: number; ctx: TerrainCtx }) {
-  const y = terrainHeight(x, z, ctx);
-  return (
-    <group position={[x, y, z]}>
-      <mesh position={[0, 0.3, 0]}>
-        <cylinderGeometry args={[0.012, 0.012, 0.6, 6]} />
-        <meshStandardMaterial color={INK} />
-      </mesh>
-      <mesh position={[0.08, 0.5, 0]}>
-        <boxGeometry args={[0.16, 0.09, 0.005]} />
-        <meshStandardMaterial color={ACCENT} />
-      </mesh>
-    </group>
-  );
-}
-
-// ---------- Smooth camera intro ----------
-
+// ------------------------------------------------------------------
+// Camera intro — gentle dolly-in
+// ------------------------------------------------------------------
 function CameraIntro() {
   const { camera } = useThree();
   const start = useRef(performance.now());
   useFrame(() => {
-    const t = Math.min(1, (performance.now() - start.current) / 1400);
+    const t = Math.min(1, (performance.now() - start.current) / 1600);
     const e = 1 - Math.pow(1 - t, 3);
-    const radius = 30 - e * 14;
-    const y = 22 - e * 10;
-    camera.position.set(radius * 0.7, y, radius * 0.85);
-    camera.lookAt(0, 0.5, 0);
+    const r = 22 - e * 8;
+    camera.position.set(r * 0.5, r * 0.35, r * 0.85);
+    camera.lookAt(0, 0, 0);
   });
   return null;
 }
 
-// ---------- Main Scene ----------
-
+// ------------------------------------------------------------------
+// Scene
+// ------------------------------------------------------------------
 function Scene({ land }: { land: LandscapeData }) {
-  const ctx = useMemo(() => makeTerrainCtx(land), [land]);
-  const introDone = useRef(false);
   return (
     <>
       <color attach="background" args={[PAPER]} />
-      <fog attach="fog" args={[PAPER, 28, 60]} />
+      <fog attach="fog" args={[PAPER, 22, 50]} />
+      <ambientLight intensity={1} />
 
-      <ambientLight intensity={0.55} />
-      <hemisphereLight args={[PAPER, "#a89e8c", 0.5]} />
-      <directionalLight
-        position={[10, 16, 8]}
-        intensity={1.4}
-        castShadow
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
-        shadow-camera-left={-12}
-        shadow-camera-right={12}
-        shadow-camera-top={12}
-        shadow-camera-bottom={-12}
-        shadow-bias={-0.0005}
-      />
+      <Organism land={land} />
 
-      <Water />
-      <Terrain ctx={ctx} />
-      <ContourLines ctx={ctx} />
-      <Forests points={land.forest} ctx={ctx} />
-      {land.settlements.map((s, i) => (
-        <Settlement key={i} site={s} ctx={ctx} />
-      ))}
-      {land.landmarks.map((l, i) => (
-        <Landmark key={i} site={l} ctx={ctx} />
-      ))}
-      {land.firstT !== null && (
-        <FirstMarker
-          x={-WORLD_RADIUS * 0.85 + land.firstT * WORLD_RADIUS * 1.7}
-          z={0}
-          ctx={ctx}
-        />
-      )}
-
-      {!introDone.current && <CameraIntro />}
+      <CameraIntro />
       <OrbitControls
         enablePan={false}
-        minDistance={10}
-        maxDistance={32}
-        maxPolarAngle={Math.PI / 2.2}
-        minPolarAngle={Math.PI / 5}
-        target={[0, 0.4, 0]}
+        minDistance={8}
+        maxDistance={28}
         enableDamping
         dampingFactor={0.08}
+        target={[0, 0, 0]}
       />
     </>
   );
@@ -378,12 +305,7 @@ function Scene({ land }: { land: LandscapeData }) {
 
 export function World3D({ world }: { world: LandscapeData }) {
   return (
-    <Canvas
-      shadows
-      camera={{ position: [22, 18, 24], fov: 32 }}
-      dpr={[1, 2]}
-      gl={{ antialias: true }}
-    >
+    <Canvas camera={{ position: [12, 8, 14], fov: 35 }} dpr={[1, 2]} gl={{ antialias: true }}>
       <Scene land={world} />
     </Canvas>
   );
