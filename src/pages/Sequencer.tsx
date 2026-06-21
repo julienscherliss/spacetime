@@ -1186,6 +1186,30 @@ function Cell({
   pickupSlot?: number | null;
   pickupProgress?: number;
 }) {
+  const [tipVisible, setTipVisible] = useState(false);
+  const tipTimers = useRef<{ show?: ReturnType<typeof setTimeout>; hide?: ReturnType<typeof setTimeout> }>({});
+
+  useEffect(() => {
+    return () => {
+      if (tipTimers.current.show) clearTimeout(tipTimers.current.show);
+      if (tipTimers.current.hide) clearTimeout(tipTimers.current.hide);
+    };
+  }, []);
+
+  const handleMouseEnter = useCallback(() => {
+    if (!occupied || inPreview || hidden) return;
+    tipTimers.current.show = setTimeout(() => {
+      setTipVisible(true);
+      tipTimers.current.hide = setTimeout(() => setTipVisible(false), 2000);
+    }, 250);
+  }, [occupied, inPreview, hidden]);
+
+  const handleMouseLeave = useCallback(() => {
+    if (tipTimers.current.show) clearTimeout(tipTimers.current.show);
+    if (tipTimers.current.hide) clearTimeout(tipTimers.current.hide);
+    setTipVisible(false);
+  }, []);
+
   const occupied = !!cell && !hidden;
   const completed = cell?.task.completed;
   const isPickupTarget = slotIdx === pickupSlot;
