@@ -293,42 +293,36 @@ export function DayView() {
     >
       {/* Sticky header: title + controls pinned together */}
       <div className="sticky top-[env(safe-area-inset-top)] sm:top-12 z-30 bg-background border-b border-border/30">
-        <div className="pt-1 pb-0.5">
-          <h2 className="font-display font-bold text-foreground tracking-tight" style={{ fontSize: 'var(--ui-text-3xl)' }}>
+        <div className="py-3 flex items-center justify-between gap-2">
+          <h2 className="text-base sm:text-lg font-display font-bold text-foreground tracking-tight truncate">
             {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', {
               weekday: 'long',
               month: 'long',
               day: 'numeric',
             })}
           </h2>
-          <p className="font-mono text-muted-foreground/50 tracking-widest" style={{ fontSize: 'var(--ui-task-meta)' }}>
-            {completedCount}/{dayTasks.length} COMPLETED
-          </p>
-        </div>
-        <div className="py-1 flex items-center justify-between">
-        <div className="flex items-center gap-0.5">
-          <button
-            onClick={() => setSelectedDate(d => addDaysToDate(d, -1))}
-            className="p-1.5 rounded-sm text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors"
-          >
-            <ChevronLeft size={16} strokeWidth={1.5} />
-          </button>
-          <button
-            onClick={goToToday}
-            className={`px-2.5 py-1 rounded-sm text-[10px] font-mono tracking-widest transition-colors ${
-              isToday
-                ? 'text-primary bg-primary/5'
-                : 'text-muted-foreground/50 hover:text-foreground hover:bg-muted/50'
-            }`}
-          >
-            TODAY
-          </button>
-          <button
-            onClick={() => setSelectedDate(d => addDaysToDate(d, 1))}
-            className="p-1.5 rounded-sm text-muted-foreground/50 hover:text-foreground hover:bg-muted/50 transition-colors"
-          >
-            <ChevronRight size={16} strokeWidth={1.5} />
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              onClick={() => setSelectedDate(d => addDaysToDate(d, -1))}
+              className="p-2 rounded-sm border border-border text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronLeft size={14} strokeWidth={1.5} />
+            </button>
+            <button
+              onClick={goToToday}
+              className={`px-2.5 py-1.5 rounded-sm border border-border text-[10px] font-mono tracking-widest transition-colors ${
+                isToday ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              TODAY
+            </button>
+            <button
+              onClick={() => setSelectedDate(d => addDaysToDate(d, 1))}
+              className="p-2 rounded-sm border border-border text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronRight size={14} strokeWidth={1.5} />
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center gap-1">
@@ -362,7 +356,6 @@ export function DayView() {
             nowMinutes={nowMinutes}
             hideButton={isMobile}
           />
-        </div>
         </div>
       </div>
 
