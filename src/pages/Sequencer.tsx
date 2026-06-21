@@ -176,7 +176,7 @@ export default function Sequencer() {
 
           {visible && gridSize.h > 0 && (
             <Playhead
-              frac={playFrac}
+              nowMin={nowMin}
               width={gridSize.w}
               height={gridSize.h}
               labelColW={46}
