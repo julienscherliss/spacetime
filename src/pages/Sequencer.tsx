@@ -422,8 +422,16 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
       if (g.isTouch && Date.now() - g.t0 < LOCK_MS) {
         return;
       }
-      // Movement after the short lock window starts a task move; empty-cell pans still scroll.
+      // Movement after the short lock window starts an in-place task move;
+      // empty-cell pans still scroll. Cancel the pickup ring — the user
+      // chose to drag instead of waiting for the hold-to-pick-up commit.
       if (g.pickupTimer) clearTimeout(g.pickupTimer);
+      if (pickupRafRef.current != null) {
+        cancelAnimationFrame(pickupRafRef.current);
+        pickupRafRef.current = null;
+      }
+      pickupStartRef.current = null;
+      setPickupRing(null);
       if (g.isTouch) {
         try { gridRef.current?.setPointerCapture(g.pointerId); } catch {}
       }
