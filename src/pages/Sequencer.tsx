@@ -7,17 +7,39 @@ import {
   Footprints, Users, Camera, Film, Dumbbell, BookOpen, PenLine,
   Home, Plane, HeartHandshake, Phone, Sparkles, Coffee, Utensils,
   Code2, Music, Mail, ShoppingCart, Briefcase, Brush, Calendar,
+  ChevronLeft, ChevronRight, SlidersVertical, MoreHorizontal, Plus, Play,
   type LucideIcon,
 } from 'lucide-react';
 
 const START_HOUR = 8;
-const END_HOUR = 18; // exclusive — 10 rows (8 AM → 5 PM start, ending 6 PM)
+const END_HOUR = 18;
 const ROWS = END_HOUR - START_HOUR; // 10
-const COLS = 4; // :00 :15 :30 :45
+const COLS = 4;
 const SLOT_MIN = 15;
 const SLOTS_PER_DAY = ROWS * COLS;
 
-/** Map a task to a Tabler-style outline icon based on title/category keywords. */
+// Light-mode palette tuned to feel like the dark reference inverted.
+const C = {
+  bg: '#f3efe7',
+  ink: '#1a1814',
+  inkSoft: 'rgba(26,24,20,0.55)',
+  inkFaint: 'rgba(26,24,20,0.32)',
+  hair: 'rgba(26,24,20,0.14)',
+  hairSoft: 'rgba(26,24,20,0.08)',
+  cell: '#ebe5d8',
+  cellRaised: '#efe9dc',
+  glow: '#b87333',
+};
+
+const CATEGORIES: { label: string; icon: LucideIcon }[] = [
+  { label: 'HEALTH', icon: Footprints },
+  { label: 'MEETINGS', icon: Users },
+  { label: 'WEDDING', icon: HeartHandshake },
+  { label: 'COMMUNICATION', icon: Phone },
+  { label: 'WORK', icon: Code2 },
+  { label: 'PERSONAL', icon: Sparkles },
+];
+
 function pickIcon(task: Task): LucideIcon {
   const s = `${task.title} ${task.category ?? ''}`.toLowerCase();
   const rules: Array<[RegExp, LucideIcon]> = [
@@ -58,9 +80,6 @@ export default function Sequencer() {
   const setEditingTask = useTaskStore((s) => s.setEditingTask);
   const { minutes: nowMin, dateStr } = useCurrentTime(15000);
 
-  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
-
-  // Build a flat array indexed by slot (0..SLOTS_PER_DAY-1) → assignment.
   const cells = useMemo(() => {
     const arr: (CellAssignment | null)[] = Array(SLOTS_PER_DAY).fill(null);
     const dayStartMin = START_HOUR * 60;
@@ -78,140 +97,184 @@ export default function Sequencer() {
       const lo = Math.max(0, fromSlot);
       const hi = Math.min(SLOTS_PER_DAY - 1, toSlot);
       for (let i = lo; i <= hi; i++) {
-        arr[i] = {
-          task: t,
-          Icon,
-          isStart: i === fromSlot,
-          isEnd: i === toSlot,
-        };
+        arr[i] = { task: t, Icon, isStart: i === fromSlot, isEnd: i === toSlot };
       }
     }
     return arr;
   }, [tasks, dateStr]);
 
-  // Playhead position (vertical line through entire grid).
-  // Grid spans START_HOUR..END_HOUR. Convert nowMin → 0..1 across the grid height.
-  const playheadFrac = (() => {
-    const total = (END_HOUR - START_HOUR) * 60;
-    return Math.max(0, Math.min(1, (nowMin - START_HOUR * 60) / total));
-  })();
-  const playheadVisible = nowMin >= START_HOUR * 60 && nowMin <= END_HOUR * 60;
+  const completedOnDay = useMemo(() => {
+    const day = tasks.filter((t) => t.date === dateStr && !t.archivedAt && !t.inWaitingRoom && !t.groupId && t.time);
+    return { done: day.filter((t) => t.completed).length, total: day.length };
+  }, [tasks, dateStr]);
 
-  // Refs for measuring grid height for the playhead.
+  // Playhead: vertical line through current 15-min column, dot at exact minute.
+  const nowCol = Math.floor(((nowMin - START_HOUR * 60) % 60) / 15); // 0..3
+  const nowRow = Math.floor((nowMin - START_HOUR * 60) / 60); // 0..ROWS-1
+  const visible = nowMin >= START_HOUR * 60 && nowMin <= END_HOUR * 60;
+  const playFrac = Math.max(0, Math.min(1, (nowMin - START_HOUR * 60) / ((END_HOUR - START_HOUR) * 60)));
+
   const gridRef = useRef<HTMLDivElement>(null);
-  const [gridH, setGridH] = useState(0);
+  const [gridSize, setGridSize] = useState({ w: 0, h: 0 });
   useEffect(() => {
     if (!gridRef.current) return;
     const ro = new ResizeObserver(() => {
-      if (gridRef.current) setGridH(gridRef.current.offsetHeight);
+      if (gridRef.current) setGridSize({ w: gridRef.current.offsetWidth, h: gridRef.current.offsetHeight });
     });
     ro.observe(gridRef.current);
-    setGridH(gridRef.current.offsetHeight);
+    const el = gridRef.current;
+    setGridSize({ w: el.offsetWidth, h: el.offsetHeight });
     return () => ro.disconnect();
   }, []);
 
-  const fmtHour = (h: number) => {
-    const period = h >= 12 ? 'PM' : 'AM';
-    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-    return `${h12}:00 ${period}`;
-  };
+  const dateObj = new Date(dateStr + 'T12:00:00');
+  const dateLabel = dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase();
 
   return (
-    <div className="min-h-screen pb-16 sm:pb-0" style={{ background: '#f3efe7' }}>
+    <div className="min-h-screen pb-20 sm:pb-0" style={{ background: C.bg, color: C.ink }}>
       <AppNav />
       <TaskEditPanel />
 
-      <div className="mx-auto max-w-3xl px-6 py-10">
-        {/* Header strip — instrument panel */}
-        <div className="mb-8 flex items-end justify-between">
+      <div className="mx-auto max-w-md px-5 pt-6">
+        {/* Header */}
+        <div className="flex items-start justify-between">
           <div>
-            <div className="text-[10px] font-mono tracking-[0.3em] text-stone-500 uppercase">
-              Sequencer · Day
-            </div>
-            <div className="mt-2 text-3xl font-light tracking-tight text-stone-800" style={{ fontFamily: 'ui-serif, Georgia, serif' }}>
-              {new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            <h1 className="text-[22px] leading-none font-bold tracking-[0.04em]" style={{ fontFamily: 'ui-sans-serif, system-ui' }}>
+              {dateLabel}
+            </h1>
+            <div className="mt-2 text-[11px] font-mono tracking-[0.18em]" style={{ color: C.inkSoft }}>
+              {completedOnDay.done}/{completedOnDay.total || 0} COMPLETED
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="text-[10px] font-mono tracking-widest text-stone-500 uppercase">
-              {Math.floor(nowMin / 60).toString().padStart(2, '0')}:{(nowMin % 60).toString().padStart(2, '0')}
-            </div>
-            <span className="inline-block h-2 w-2 rounded-full bg-stone-400 animate-pulse" />
+          <div className="flex items-center gap-2">
+            <ChromeBtn><SlidersVertical size={16} strokeWidth={1.5} /></ChromeBtn>
+            <ChromeBtn><MoreHorizontal size={16} strokeWidth={1.5} /></ChromeBtn>
           </div>
         </div>
 
-        {/* Column header — :00 :15 :30 :45 */}
-        <div className="grid mb-3" style={{ gridTemplateColumns: '64px repeat(4, 1fr)' }}>
+        {/* Day nav */}
+        <div className="mt-5 flex items-center gap-2">
+          <ChromeBtn><ChevronLeft size={16} strokeWidth={1.5} /></ChromeBtn>
+          <div
+            className="px-5 py-2 rounded-[10px] text-[11px] font-mono tracking-[0.22em]"
+            style={{ border: `1px solid ${C.hair}` }}
+          >
+            TODAY
+          </div>
+          <ChromeBtn><ChevronRight size={16} strokeWidth={1.5} /></ChromeBtn>
+        </div>
+
+        {/* Column header */}
+        <div className="mt-7 grid" style={{ gridTemplateColumns: '46px repeat(4, 1fr)' }}>
           <div />
-          {[':00', ':15', ':30', ':45'].map((label) => (
-            <div key={label} className="text-[10px] font-mono tracking-widest text-stone-400 text-center uppercase">
-              {label}
+          {[':00', ':15', ':30', ':45'].map((l) => (
+            <div key={l} className="text-[10px] font-mono tracking-[0.18em] text-center pb-2" style={{ color: C.inkFaint }}>
+              {l}
             </div>
           ))}
         </div>
 
-        {/* Grid + playhead */}
+        {/* Grid */}
         <div className="relative">
           <div
             ref={gridRef}
-            className="grid relative bg-white/60 rounded-2xl p-3"
+            className="grid relative"
             style={{
-              gridTemplateColumns: '64px repeat(4, 1fr)',
-              gridAutoRows: '64px',
-              boxShadow: '0 1px 0 rgba(0,0,0,0.04), 0 20px 40px -24px rgba(60, 50, 30, 0.18)',
+              gridTemplateColumns: '46px repeat(4, 1fr)',
+              gridAutoRows: '60px',
+              borderTop: `1px solid ${C.hair}`,
             }}
           >
             {Array.from({ length: ROWS }).map((_, rowIdx) => {
               const hour = START_HOUR + rowIdx;
+              const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+              const period = hour >= 12 ? 'PM' : 'AM';
               return (
                 <RowFragment
                   key={hour}
-                  hour={hour}
-                  hourLabel={fmtHour(hour)}
+                  label={`${h12} ${period}`}
                   cells={cells}
                   rowIdx={rowIdx}
                   nowMin={nowMin}
-                  hoverIdx={hoverIdx}
-                  setHoverIdx={setHoverIdx}
                   onOpen={(id) => setEditingTask(id)}
                 />
               );
             })}
           </div>
 
-          {/* Playhead */}
-          {playheadVisible && gridH > 0 && (
-            <Playhead frac={playheadFrac} height={gridH} />
+          {visible && gridSize.h > 0 && (
+            <Playhead
+              col={nowCol}
+              frac={playFrac}
+              width={gridSize.w}
+              height={gridSize.h}
+              labelColW={46}
+            />
           )}
         </div>
 
-        {/* Footer legend */}
-        <div className="mt-6 flex items-center justify-between text-[10px] font-mono tracking-widest text-stone-400 uppercase">
-          <span>Past · filled · consumed</span>
-          <span>Now · pulsing</span>
-          <span>Future · outline</span>
+        {/* Legend + actions */}
+        <div className="mt-6 grid items-end gap-4" style={{ gridTemplateColumns: 'minmax(0,1fr) auto minmax(0,1fr)' }}>
+          <div
+            className="rounded-[12px] px-3 py-2.5 text-[10px] font-mono tracking-[0.16em] space-y-1.5"
+            style={{ border: `1px solid ${C.hair}`, color: C.inkSoft }}
+          >
+            {CATEGORIES.map(({ label, icon: Icon }) => (
+              <div key={label} className="flex items-center gap-2">
+                <Icon size={11} strokeWidth={1.5} style={{ color: C.ink, opacity: 0.7 }} />
+                <span>{label}</span>
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="h-12 w-12 rounded-[12px] flex items-center justify-center"
+            style={{ border: `1px solid ${C.hair}`, background: C.cellRaised }}
+          >
+            <Plus size={20} strokeWidth={1.5} />
+          </button>
+          <button
+            type="button"
+            className="h-12 rounded-[12px] flex items-center justify-center gap-2 text-[11px] font-mono tracking-[0.22em]"
+            style={{ border: `1px solid ${C.hair}`, background: C.cellRaised }}
+          >
+            NOW
+            <Play size={11} strokeWidth={1.5} fill="currentColor" />
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
+function ChromeBtn({ children }: { children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      className="h-9 w-9 rounded-[10px] flex items-center justify-center"
+      style={{ border: `1px solid ${C.hair}`, color: C.ink }}
+    >
+      {children}
+    </button>
+  );
+}
+
 function RowFragment({
-  hour, hourLabel, cells, rowIdx, nowMin, hoverIdx, setHoverIdx, onOpen,
+  label, cells, rowIdx, nowMin, onOpen,
 }: {
-  hour: number;
-  hourLabel: string;
+  label: string;
   cells: (CellAssignment | null)[];
   rowIdx: number;
   nowMin: number;
-  hoverIdx: number | null;
-  setHoverIdx: (i: number | null) => void;
   onOpen: (id: string) => void;
 }) {
   return (
     <>
-      <div className="flex items-center justify-end pr-4 text-[10px] font-mono tracking-widest text-stone-400 uppercase">
-        {hourLabel}
+      <div
+        className="flex items-center justify-start pl-1 text-[10px] font-mono tracking-[0.18em]"
+        style={{ color: C.inkFaint, borderBottom: `1px solid ${C.hairSoft}` }}
+      >
+        {label}
       </div>
       {Array.from({ length: COLS }).map((_, colIdx) => {
         const slotIdx = rowIdx * COLS + colIdx;
@@ -226,9 +289,6 @@ function RowFragment({
             cell={cell}
             isPast={isPast}
             isCurrent={isCurrent}
-            isHover={hoverIdx === slotIdx}
-            onHoverIn={() => setHoverIdx(slotIdx)}
-            onHoverOut={() => setHoverIdx(null)}
             onOpen={onOpen}
           />
         );
@@ -238,133 +298,101 @@ function RowFragment({
 }
 
 function Cell({
-  cell, isPast, isCurrent, isHover, onHoverIn, onHoverOut, onOpen,
+  cell, isPast, isCurrent, onOpen,
 }: {
   cell: CellAssignment | null;
   isPast: boolean;
   isCurrent: boolean;
-  isHover: boolean;
-  onHoverIn: () => void;
-  onHoverOut: () => void;
   onOpen: (id: string) => void;
 }) {
   const occupied = !!cell;
   const completed = cell?.task.completed;
-  const filled = occupied && (isPast || completed);
 
-  // Visual tone
-  let bg = 'transparent';
-  let stroke = '#d6d0c2';
-  let iconColor = '#3b3528';
+  // Reference: empty cells are flat (just a dot), filled cells are slightly raised
+  // tiles with a rounded rect and an outline icon centered.
+  let bg: string = 'transparent';
+  let border = `1px solid transparent`;
   let iconOpacity = 1;
 
   if (occupied) {
-    if (completed) { bg = '#e9e3d4'; iconOpacity = 0.35; }
-    else if (isPast) { bg = '#ece6d7'; iconOpacity = 0.55; }
-    else if (isCurrent) { bg = '#fff8e8'; }
-    else { bg = '#ffffff'; }
-  } else if (isHover) {
-    bg = '#faf6ec';
+    bg = C.cell;
+    border = `1px solid ${C.hair}`;
+    if (completed) iconOpacity = 0.45;
+    else if (isPast) iconOpacity = 0.65;
   }
 
   return (
-    <button
-      type="button"
-      onMouseEnter={onHoverIn}
-      onMouseLeave={onHoverOut}
-      onClick={() => cell && onOpen(cell.task.id)}
-      className="relative m-[3px] rounded-lg transition-all duration-200 flex items-center justify-center"
-      style={{
-        background: bg,
-        border: `1px solid ${stroke}`,
-        boxShadow: isCurrent && occupied
-          ? '0 0 0 2px rgba(180, 140, 60, 0.18), 0 4px 14px -6px rgba(180, 140, 60, 0.35)'
-          : occupied && !filled
-            ? '0 1px 0 rgba(0,0,0,0.02), inset 0 0 0 1px rgba(255,255,255,0.6)'
-            : 'none',
-        cursor: occupied ? 'pointer' : 'default',
-      }}
-    >
-      {cell && (
-        <cell.Icon
-          size={22}
-          strokeWidth={1.4}
-          color={iconColor}
-          fill={filled ? '#cfc7b3' : 'none'}
-          style={{ opacity: iconOpacity }}
-        />
-      )}
-    </button>
+    <div className="p-[3px]">
+      <button
+        type="button"
+        onClick={() => cell && onOpen(cell.task.id)}
+        className="relative w-full h-full rounded-[12px] flex items-center justify-center transition-all duration-200"
+        style={{
+          background: bg,
+          border,
+          boxShadow: isCurrent && occupied
+            ? `0 0 0 1px ${C.glow}55, 0 6px 18px -10px ${C.glow}aa`
+            : occupied
+              ? 'inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 0 rgba(0,0,0,0.03)'
+              : 'none',
+          cursor: occupied ? 'pointer' : 'default',
+        }}
+      >
+        {cell ? (
+          <cell.Icon
+            size={22}
+            strokeWidth={1.4}
+            color={C.ink}
+            style={{ opacity: iconOpacity }}
+          />
+        ) : (
+          <span
+            className="block rounded-full"
+            style={{ width: 3, height: 3, background: C.inkFaint }}
+          />
+        )}
+      </button>
+    </div>
   );
 }
 
-function Playhead({ frac, height }: { frac: number; height: number }) {
-  const top = frac * height;
+function Playhead({
+  col, frac, width, height, labelColW,
+}: { col: number; frac: number; width: number; height: number; labelColW: number }) {
+  // Center of the current 15-min column, in absolute px.
+  const colsW = width - labelColW;
+  const colW = colsW / COLS;
+  const x = labelColW + colW * (col + 0.5);
+  const y = frac * height;
   return (
-    <div
-      className="pointer-events-none absolute left-0 right-0"
-      style={{ top: 0, height }}
-    >
-      {/* Label column is 64px; the grid starts after it. Line covers cells only. */}
+    <div className="pointer-events-none absolute inset-0">
+      {/* Vertical line through current column */}
       <div
-        className="absolute"
         style={{
-          left: 64 + 12, // grid left padding (p-3 = 12px) inside container
-          right: 12,
-          top,
-          height: 1,
-          background: 'transparent',
-        }}
-      >
-        <div
-          style={{
-            position: 'absolute',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: 10,
-            height: 10,
-            borderRadius: 9999,
-            background: '#b87333',
-            boxShadow: '0 0 0 3px rgba(184, 115, 51, 0.18), 0 0 12px rgba(184, 115, 51, 0.4)',
-          }}
-        />
-      </div>
-      {/* Vertical line spanning the grid height, centered horizontally over the columns. */}
-      <div
-        className="absolute"
-        style={{
-          left: 64 + 12,
-          right: 12,
+          position: 'absolute',
+          left: x,
           top: 0,
-          bottom: 0,
+          height,
+          width: 1,
+          transform: 'translateX(-0.5px)',
+          background: `linear-gradient(to bottom, ${C.glow} 0%, ${C.glow}cc 8%, ${C.glow}55 60%, ${C.glow}22 100%)`,
         }}
-      >
-        <div
-          style={{
-            position: 'absolute',
-            left: '50%',
-            top: 0,
-            bottom: 0,
-            width: 1,
-            transform: 'translateX(-50%)',
-            background: 'linear-gradient(to bottom, rgba(184,115,51,0) 0%, rgba(184,115,51,0.35) 8%, rgba(184,115,51,0.35) 92%, rgba(184,115,51,0) 100%)',
-            transition: 'opacity 200ms',
-          }}
-        />
-        {/* Active horizontal playhead at current time */}
-        <div
-          style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            top,
-            height: 1,
-            background: 'rgba(184, 115, 51, 0.5)',
-            boxShadow: '0 0 8px rgba(184,115,51,0.4)',
-            transition: 'top 800ms cubic-bezier(0.22, 1, 0.36, 1)',
-          }}
-        />
-      </div>
+      />
+      {/* Bright dot at current time */}
+      <div
+        style={{
+          position: 'absolute',
+          left: x,
+          top: y,
+          width: 10,
+          height: 10,
+          borderRadius: 9999,
+          background: C.glow,
+          transform: 'translate(-50%, -50%)',
+          boxShadow: `0 0 0 3px ${C.glow}33, 0 0 14px ${C.glow}aa`,
+          transition: 'top 800ms cubic-bezier(0.22, 1, 0.36, 1)',
+        }}
+      />
     </div>
   );
 }
