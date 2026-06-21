@@ -1052,6 +1052,8 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
                       preview={preview}
                       dateStr={dateStr}
                       today={today}
+                      pickupSlot={pickupRing?.slotIdx ?? null}
+                      pickupProgress={pickupRing?.progress ?? 0}
                     />
                   );
                 })}
