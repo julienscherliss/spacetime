@@ -826,7 +826,14 @@ function Cell({
           opacity: hidden ? 0 : 1,
         }}
       >
-        {cell && !hidden ? (
+        {inPreview && PreviewIcon ? (
+          <PreviewIcon
+            size={22}
+            strokeWidth={1.4}
+            className="text-primary pointer-events-none"
+            style={{ opacity: previewBlocked ? 0.28 : 0.42 }}
+          />
+        ) : cell && !hidden ? (
           <cell.Icon
             size={22}
             strokeWidth={1.4}
