@@ -1101,6 +1101,41 @@ export function TimelineColumn({
     return { top, height, time: minutesToTime(snapped), duration };
   })();
 
+  // ─── Library drag preview ─────────────────────────────────
+  // When the user click-and-drags a Library item over this timeline column,
+  // render a styled task-block-shaped preview at the snapped slot so they can
+  // see exactly where the task will land before releasing.
+  const libDragActive = useLibraryDragStore((s) => s.active);
+  const libDragItem = useLibraryDragStore((s) => s.item);
+  const libDragX = useLibraryDragStore((s) => s.x);
+  const libDragY = useLibraryDragStore((s) => s.y);
+
+  const libraryDropPreview = (() => {
+    if (!libDragActive || !libDragItem || !colRef.current) return null;
+    const rect = colRef.current.getBoundingClientRect();
+    if (libDragX < rect.left || libDragX > rect.right) return null;
+    if (libDragY < rect.top || libDragY > rect.bottom) return null;
+    const y = libDragY - rect.top;
+    const mins = START_HOUR * 60 + (y / HOUR_HEIGHT) * 60;
+    const duration = Math.max(15, libDragItem.duration || 30);
+    // Center the block roughly under the pointer, then snap to 15.
+    const snapped = snapTo15(mins - duration / 2);
+    const top = ((snapped - START_HOUR * 60) / 60) * HOUR_HEIGHT;
+    const height = Math.max((duration / 60) * HOUR_HEIGHT, 22);
+    // Collision check
+    const occupied = getOccupiedSlots(useTaskStore.getState().tasks, date);
+    const { blocked } = findValidPosition(snapped, duration, occupied);
+    return {
+      top,
+      height,
+      time: minutesToTime(snapped),
+      duration,
+      title: libDragItem.title,
+      blocked,
+      Icon: getIconByName(libDragItem.icon) || null,
+    };
+  })();
+
   // Scheduled drag: handle drop when pointer is released
   const scheduledDragActive = useScheduledDragStore((s) => s.active);
   const scheduledDragTaskId = useScheduledDragStore((s) => s.taskId);
