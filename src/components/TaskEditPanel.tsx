@@ -267,6 +267,24 @@ export function TaskEditPanel() {
     }
   }, [task?.id, isMobile]);
 
+  // Auto-suggest an icon based on the task title.
+  // Only runs when the task has no persisted icon yet, and only keeps
+  // updating while taskIcon is either unset or still matches the last
+  // auto-pick (so manual user choices are respected and never overwritten).
+  useEffect(() => {
+    if (!task) return;
+    if (task.icon) return; // already has a persisted icon — don't override
+    const userHasManualPick = taskIcon !== null && taskIcon !== autoIconRef.current;
+    if (userHasManualPick) return;
+    const trimmed = title.trim();
+    if (trimmed.length < 3) return;
+    const suggestion = suggestIcons(trimmed, 1)[0];
+    if (!suggestion) return;
+    if (suggestion.name === taskIcon) return;
+    autoIconRef.current = suggestion.name;
+    setTaskIcon(suggestion.name);
+  }, [title, task?.id, task?.icon, taskIcon]);
+
   const buildRecurrence = (): RecurrencePattern | undefined => {
     const taskDay = task?.date ? new Date(task.date + 'T12:00:00').getDay() : new Date().getDay();
     switch (recurrenceType) {
