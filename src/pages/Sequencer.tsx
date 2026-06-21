@@ -149,6 +149,20 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
   const categories = useLibraryStore((s) => s.categories);
   const { minutes: nowMin, dateStr } = useCurrentTime(15000);
 
+  // Desktop (sm+) flips the grid 90°: hours become columns, 15-min quarters
+  // become rows. The slotIdx semantics stay identical; only the geometry
+  // (axis mapping in hit-testing and CSS grid placement) changes.
+  const [horizontal, setHorizontal] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(min-width: 640px)').matches : false
+  );
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(min-width: 640px)');
+    const onChange = () => setHorizontal(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
   const cells = useMemo(() => {
     const arr: (CellAssignment | null)[] = Array(SLOTS_PER_DAY).fill(null);
     const dayStartMin = START_HOUR * 60;
