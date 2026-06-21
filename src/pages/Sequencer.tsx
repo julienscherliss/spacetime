@@ -818,6 +818,7 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
               touchAction: 'pan-y',
             }}
             onPointerDown={handleGridPointerDown}
+            data-sequencer-grid
           >
             {horizontal
               ? // Row-major across the horizontal grid: 4 quarter rows × ROWS hour columns
