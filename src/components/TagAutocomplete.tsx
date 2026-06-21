@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useLibraryStore, CategoryDef } from '@/store/libraryStore';
 
 interface TagAutocompleteProps {
@@ -11,7 +11,13 @@ interface TagAutocompleteProps {
 
 export function TagAutocomplete({ inputValue, onSelectTag, onSubmitAfterSelect, inputRef }: TagAutocompleteProps) {
   const allCategories = useLibraryStore((s) => s.categories);
-  const categories = allCategories.filter(c => !c.archived);
+  // Memoize so the effect below doesn't see a new array on every render and
+  // re-trigger setState → infinite update loop (would also wipe out parent
+  // edit panels that listen for state changes).
+  const categories = useMemo(
+    () => allCategories.filter((c) => !c.archived),
+    [allCategories],
+  );
   const [suggestions, setSuggestions] = useState<CategoryDef[]>([]);
   const [selectedIdx, setSelectedIdx] = useState(0);
 
