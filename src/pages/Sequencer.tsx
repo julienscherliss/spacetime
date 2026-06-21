@@ -11,6 +11,8 @@ import {
 } from '@/utils/collisionDetection';
 import { TaskEditPanel } from '@/components/TaskEditPanel';
 import { useCarryStore, roundCarriedDuration } from '@/store/carryStore';
+import { useLibraryDragStore } from '@/store/libraryDragStore';
+import { getIconByName } from '@/lib/iconLibrary';
 import {
   Footprints, Users, Camera, Film, Dumbbell, BookOpen, PenLine,
   Home, Plane, HeartHandshake, Phone, Sparkles, Coffee, Utensils,
@@ -278,6 +280,42 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
     }
     return s;
   };
+
+  // ─── Library click-and-drag preview ─────────────────────────────────
+  // When the user drags a Library item over the sequencer grid, project the
+  // pointer position onto a snapped slot and reuse the existing `preview`
+  // cell-highlight system to render a task-block-shaped landing zone.
+  const libDragActive = useLibraryDragStore((s) => s.active);
+  const libDragItem = useLibraryDragStore((s) => s.item);
+  const libDragX = useLibraryDragStore((s) => s.x);
+  const libDragY = useLibraryDragStore((s) => s.y);
+  useEffect(() => {
+    // Only own the preview while a library drag is active. We're careful not
+    // to stomp on previews driven by the user's own grid gestures: those run
+    // when `gestureRef.current` is set, while library drag runs entirely
+    // outside the sequencer's pointer pipeline.
+    if (!libDragActive || !libDragItem) {
+      if (gestureRef.current == null) setPreview(null);
+      return;
+    }
+    const slot = hitTestSlot(libDragX, libDragY);
+    if (slot == null) {
+      setPreview(null);
+      return;
+    }
+    const duration = Math.max(SLOT_MIN, libDragItem.duration || 30);
+    const slotCount = Math.ceil(duration / SLOT_MIN);
+    const desiredStart = Math.max(0, Math.min(SLOTS_PER_DAY - slotCount, slot - Math.floor(slotCount / 2)));
+    const occupied = getOccupiedSlots(useTaskStore.getState().tasks, dateStr, undefined, routinesEnabled);
+    const { startMin, blocked } = findValidPosition(slotToMin(desiredStart), duration, occupied);
+    const startSlot = minToSlot(startMin);
+    const PreviewIcon = getIconByName(libDragItem.icon) || undefined;
+    setPreview({
+      cells: cellsForRange(startSlot, slotCount),
+      blocked,
+      PreviewIcon: PreviewIcon ?? undefined,
+    });
+  }, [libDragActive, libDragItem, libDragX, libDragY, hitTestSlot, dateStr, routinesEnabled]);
 
   // ─── Pointer lifecycle ─────────────────────────────────
   // Track every active pointer on the grid so we can detect multi-touch (pinch/zoom)

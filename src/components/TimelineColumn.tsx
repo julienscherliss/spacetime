@@ -7,6 +7,7 @@ import { useTaskStore, Task } from '@/store/taskStore';
 import { useCalendarStore, CalendarEvent, eventSpansDate } from '@/store/calendarStore';
 import { useLibraryStore } from '@/store/libraryStore';
 import { useTouchDragStore } from '@/store/touchDragStore';
+import { useLibraryDragStore } from '@/store/libraryDragStore';
 import { useTimezoneStore, getTodayInTz } from '@/store/timezoneStore';
 import { useScheduledDragStore } from '@/store/scheduledDragStore';
 import { useCarryStore, isInScrollCooldown, isInDropCooldown, roundCarriedDuration } from '@/store/carryStore';
@@ -21,6 +22,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { getOccupiedSlots, findValidPosition, clampResize, wouldOverlap, getRoutineConflicts, getCalendarConflicts } from '@/utils/collisionDetection';
 import { clusterTasks, TaskCluster, getZoomForCluster } from '@/utils/taskClustering';
 import { requestPendingMove } from '@/store/reflectionStore';
+import { getIconByName } from '@/lib/iconLibrary';
 
 export const DEFAULT_HOUR_HEIGHT = 56;
 export const HOUR_HEIGHT = DEFAULT_HOUR_HEIGHT;
@@ -1099,6 +1101,41 @@ export function TimelineColumn({
     return { top, height, time: minutesToTime(snapped), duration };
   })();
 
+  // ─── Library drag preview ─────────────────────────────────
+  // When the user click-and-drags a Library item over this timeline column,
+  // render a styled task-block-shaped preview at the snapped slot so they can
+  // see exactly where the task will land before releasing.
+  const libDragActive = useLibraryDragStore((s) => s.active);
+  const libDragItem = useLibraryDragStore((s) => s.item);
+  const libDragX = useLibraryDragStore((s) => s.x);
+  const libDragY = useLibraryDragStore((s) => s.y);
+
+  const libraryDropPreview = (() => {
+    if (!libDragActive || !libDragItem || !colRef.current) return null;
+    const rect = colRef.current.getBoundingClientRect();
+    if (libDragX < rect.left || libDragX > rect.right) return null;
+    if (libDragY < rect.top || libDragY > rect.bottom) return null;
+    const y = libDragY - rect.top;
+    const mins = START_HOUR * 60 + (y / HOUR_HEIGHT) * 60;
+    const duration = Math.max(15, libDragItem.duration || 30);
+    // Center the block roughly under the pointer, then snap to 15.
+    const snapped = snapTo15(mins - duration / 2);
+    const top = ((snapped - START_HOUR * 60) / 60) * HOUR_HEIGHT;
+    const height = Math.max((duration / 60) * HOUR_HEIGHT, 22);
+    // Collision check
+    const occupied = getOccupiedSlots(useTaskStore.getState().tasks, date);
+    const { blocked } = findValidPosition(snapped, duration, occupied);
+    return {
+      top,
+      height,
+      time: minutesToTime(snapped),
+      duration,
+      title: libDragItem.title,
+      blocked,
+      Icon: getIconByName(libDragItem.icon) || null,
+    };
+  })();
+
   // Scheduled drag: handle drop when pointer is released
   const scheduledDragActive = useScheduledDragStore((s) => s.active);
   const scheduledDragTaskId = useScheduledDragStore((s) => s.taskId);
@@ -1403,6 +1440,49 @@ export function TimelineColumn({
               <span className="text-[10px] font-mono text-primary/50">
                 {formatTime12h(touchDropPreview.time)} · {formatDuration(touchDropPreview.duration)}
               </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Library click-and-drag drop preview — styled like a real task block */}
+      {libraryDropPreview && (
+        <div
+          className="absolute right-1 z-30 pointer-events-none"
+          style={{
+            top: libraryDropPreview.top,
+            height: libraryDropPreview.height,
+            left: showTimeLabels ? '3.25rem' : '2px',
+          }}
+        >
+          <div
+            className={`h-full rounded-[3px] border-2 border-dashed flex items-center gap-1.5 px-2 py-1 backdrop-blur-sm ${
+              libraryDropPreview.blocked
+                ? 'border-destructive/60 bg-destructive/[0.08]'
+                : 'border-primary/70 bg-primary/[0.12]'
+            }`}
+          >
+            {libraryDropPreview.Icon && (
+              <libraryDropPreview.Icon
+                size={12}
+                className={libraryDropPreview.blocked ? 'text-destructive/70 shrink-0' : 'text-primary/80 shrink-0'}
+              />
+            )}
+            <div className="flex-1 min-w-0">
+              <div
+                className={`text-[11px] font-mono font-medium truncate leading-tight ${
+                  libraryDropPreview.blocked ? 'text-destructive/80' : 'text-primary'
+                }`}
+              >
+                {libraryDropPreview.title}
+              </div>
+              <div
+                className={`text-[9px] font-mono tracking-wider truncate ${
+                  libraryDropPreview.blocked ? 'text-destructive/60' : 'text-primary/60'
+                }`}
+              >
+                {formatTime12h(libraryDropPreview.time)} · {formatDuration(libraryDropPreview.duration)}
+              </div>
             </div>
           </div>
         </div>
