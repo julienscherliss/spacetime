@@ -688,30 +688,6 @@ export default function Sequencer() {
           )}
         </div>
 
-        {/* Legend + actions */}
-        <div className="mt-6 grid items-end gap-4" style={{ gridTemplateColumns: 'minmax(0,1fr) auto minmax(0,1fr)' }}>
-          <div className="rounded-md px-3 py-2.5 text-[10px] font-mono tracking-[0.16em] space-y-1.5 border border-border text-muted-foreground">
-            {CATEGORIES.map(({ label, icon: Icon }) => (
-              <div key={label} className="flex items-center gap-2">
-                <Icon size={11} strokeWidth={1.5} className="text-foreground/70" />
-                <span>{label}</span>
-              </div>
-            ))}
-          </div>
-          <button
-            type="button"
-            className="h-12 w-12 rounded-md flex items-center justify-center border border-border bg-muted"
-          >
-            <Plus size={20} strokeWidth={1.5} />
-          </button>
-          <button
-            type="button"
-            className="h-12 rounded-md flex items-center justify-center gap-2 text-[11px] font-mono tracking-[0.22em] border border-border bg-muted"
-          >
-            NOW
-            <Play size={11} strokeWidth={1.5} fill="currentColor" />
-          </button>
-        </div>
       </div>
     </div>
   );
