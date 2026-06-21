@@ -927,6 +927,9 @@ export function TimelineColumn({
           dueDate: libItem.dueDate ?? undefined,
           description: libItem.note || undefined,
           category: libItem.category || undefined,
+          icon: libItem.icon || undefined,
+          subtasks: libItem.subtasks,
+          attachments: libItem.attachments,
         } : {}),
       } as any);
       // Remove from library after placing on schedule
