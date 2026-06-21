@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLibraryStore, LibraryTask, LibrarySubtask } from '@/store/libraryStore';
-import { X, Trash2, Clock, AlertTriangle, Tag, CalendarDays, Plus, Check, Paperclip, Upload, FileText } from 'lucide-react';
+import { X, Trash2, Clock, AlertTriangle, Tag, CalendarDays, Plus, Check, Paperclip, Upload, FileText, Sparkles } from 'lucide-react';
+import { IconPicker } from '@/components/IconPicker';
+import { getIconByName } from '@/lib/iconLibrary';
+import { resolveCategoryIcon } from '@/lib/resolveTaskIcon';
 import { AttachmentThumb } from '@/components/AttachmentThumb';
 import { AttachmentLightbox } from '@/components/AttachmentLightbox';
 import { supabase } from '@/integrations/supabase/client';
@@ -84,6 +87,7 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
   const [note, setNote] = useState(item.note || '');
   const [duration, setDuration] = useState(item.defaultDuration);
   const [category, setCategory] = useState(item.category || '');
+  const [icon, setIcon] = useState<string | null>(item.icon || null);
   const [isUrgent, setIsUrgent] = useState(item.isUrgent ?? false);
   const [isImportant, setIsImportant] = useState(item.isImportant ?? false);
   const [dueDate, setDueDate] = useState(item.dueDate || '');
@@ -95,6 +99,7 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
   
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved'>('idle');
   const [showCatPicker, setShowCatPicker] = useState(false);
+  const [showIconPicker, setShowIconPicker] = useState(false);
   const [newCatInline, setNewCatInline] = useState('');
   const [showNewCatInput, setShowNewCatInput] = useState(false);
   const [showDurationPicker, setShowDurationPicker] = useState(false);
@@ -130,6 +135,7 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
       dueDate: dueDate || null,
       subtasks,
       attachments,
+      icon: icon || undefined,
     });
     setSaveStatus('saved');
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
