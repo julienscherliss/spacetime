@@ -338,6 +338,11 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
       if ('pickupTimer' in g && g.pickupTimer) clearTimeout(g.pickupTimer);
       if ('holdTimer' in g && g.holdTimer) clearTimeout(g.holdTimer);
     }
+    if (dupTimerRef.current) {
+      clearTimeout(dupTimerRef.current);
+      dupTimerRef.current = null;
+    }
+    dupModeRef.current = false;
     gestureRef.current = null;
     setPreview(null);
   }, []);
