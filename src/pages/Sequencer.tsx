@@ -555,7 +555,12 @@ export default function Sequencer() {
         if (g.isTouch) {
           try { gridRef.current?.setPointerCapture(g.pointerId); } catch {}
         }
-        activateTaskDrag(g, cx, cy);
+            const latest = hitTestSlot(cx, cy) ?? g.grabSlot;
+            activateTaskDrag(g, cx, cy);
+            const current = gestureRef.current;
+            if (current?.kind === 'task-drag') {
+              gestureRef.current = { ...current, targetStart: latest - current.grabOffsetSlots };
+            }
       }, PICKUP_MS);
       gestureRef.current = {
         kind: 'task-pending',
