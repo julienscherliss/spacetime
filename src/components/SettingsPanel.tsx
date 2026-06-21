@@ -388,7 +388,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                   <button
                     key={opt.value}
                     onClick={() => {
-                      useTaskStore.getState().setDayToggleTarget(opt.value);
+                      setDayToggleTarget(opt.value);
                       // If currently showing the other alt view, swap to the new target
                       const s = useTaskStore.getState();
                       if (s.viewMode === 'day' && s.daySubMode !== 'timeline' && s.daySubMode !== opt.value) {
