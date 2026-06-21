@@ -136,6 +136,8 @@ interface PreviewState {
   blocked: boolean;
   hideTaskId?: string;
   PreviewIcon?: LucideIcon;
+  duplicate?: boolean;
+  startSlot?: number;
 }
 
 export default function Sequencer({ embedded = false }: { embedded?: boolean } = {}) {
