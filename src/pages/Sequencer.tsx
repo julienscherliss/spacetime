@@ -213,7 +213,7 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
       }
     }
     return arr;
-  }, [tasks, dateStr, categories]);
+  }, [tasks, dateStr, categories, showCompletedTasks]);
 
   const completedOnDay = useMemo(() => {
     const day = tasks.filter((t) => t.date === dateStr && !t.archivedAt && !t.inWaitingRoom && !t.groupId && t.time);
