@@ -585,7 +585,24 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
     if (g.kind === 'task-drag') {
       if (!g.blocked) {
         const newTime = minutesToTime(slotToMin(g.targetStart));
-        updateTask(g.taskId, { time: newTime, date: dateStr });
+        if (dupModeRef.current) {
+          const orig = useTaskStore.getState().tasks.find((t) => t.id === g.taskId);
+          if (orig) {
+            addTask({
+              title: orig.title,
+              category: orig.category,
+              description: orig.description,
+              icon: orig.icon,
+              type: 'one-time',
+              priority: orig.originalPriority ?? orig.priority,
+              date: dateStr,
+              time: newTime,
+              duration: orig.duration,
+            });
+          }
+        } else {
+          updateTask(g.taskId, { time: newTime, date: dateStr });
+        }
       }
       endGesture();
       return;
