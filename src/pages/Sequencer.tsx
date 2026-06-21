@@ -970,7 +970,7 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
 
         {/* Column / row header */}
         <div
-          className="mt-7 grid"
+          className="mt-7 grid sticky top-[env(safe-area-inset-top)] sm:top-12 z-20 bg-background"
           style={{
             gridTemplateColumns: horizontal
               ? `46px repeat(${ROWS}, 1fr)`
@@ -986,7 +986,7 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
                 return (
                   <div
                     key={hour}
-                    className="text-[10px] font-mono tracking-[0.18em] text-center pb-2 text-muted-foreground/60"
+                    className="text-[9px] font-mono tracking-[0.18em] text-center pb-2 pt-2 text-muted-foreground/60"
                   >
                     {h12} {period}
                   </div>
@@ -995,7 +995,7 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
             : [':00', ':15', ':30', ':45'].map((l) => (
                 <div
                   key={l}
-                  className="text-[10px] font-mono tracking-[0.18em] text-center pb-2 text-muted-foreground/60"
+                  className="text-[9px] font-mono tracking-[0.18em] text-center pb-2 pt-2 text-muted-foreground/60"
                 >
                   {l}
                 </div>
@@ -1027,7 +1027,7 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
                   const labelEl = (
                     <div
                       key={`lbl-${qIdx}`}
-                      className="flex items-center justify-start pl-1 text-[10px] font-mono tracking-[0.18em] text-muted-foreground/60"
+                      className="flex items-center justify-start pl-1 text-[9px] font-mono tracking-[0.18em] text-muted-foreground/60"
                       style={{ borderBottom: '1px solid hsl(var(--border) / 0.25)' }}
                     >
                       {label}
