@@ -253,6 +253,12 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
   // ─── Interaction state ─────────────────────────────────
   const gestureRef = useRef<Gesture | null>(null);
   const [preview, setPreview] = useState<PreviewState | null>(null);
+  // Pickup ring: visual + progress while the user holds on a scheduled task.
+  // Rendered as an overlay centered on the press location.
+  const [pickupRing, setPickupRing] = useState<{ x: number; y: number; progress: number } | null>(null);
+  const pickupRafRef = useRef<number | null>(null);
+  const pickupStartRef = useRef<number | null>(null);
+  const pickupCommittedRef = useRef(false);
   // Duplicate-mode state: while in a task-drag, hovering on the same target
   // for 2s flips the drop action from "move" to "duplicate". Any movement
   // to a different slot reverts to "move" and re-arms the timer.
