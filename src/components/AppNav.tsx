@@ -190,7 +190,7 @@ export function AppNav() {
           <div className="flex items-center justify-between px-2 py-1.5">
             {/* Fit/scan button with long-press menu — hidden on focus, calendar, and list sub-modes */}
             {viewMode !== 'focus' && viewMode !== 'calendar'
-              && !(viewMode === 'day' && daySubMode === 'list')
+              && !(viewMode === 'day' && daySubMode !== 'timeline')
               && !(viewMode === 'week' && weekSubMode === 'list')
               ? <ScanButton /> : <div className="w-[40px]" />}
 
