@@ -147,7 +147,29 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
   const resizeTask = useTaskStore((s) => s.resizeTask);
   const routinesEnabled = useTaskStore((s) => s.routinesEnabled);
   const categories = useLibraryStore((s) => s.categories);
-  const { minutes: nowMin, dateStr } = useCurrentTime(15000);
+  const { minutes: nowMin, dateStr: today } = useCurrentTime(15000);
+  const navigateToDate = useTaskStore((s) => s.navigateToDate);
+  const setNavigateToDate = useTaskStore((s) => s.setNavigateToDate);
+  const currentDate = useTaskStore((s) => s.currentDate);
+  const setCurrentDate = useTaskStore((s) => s.setCurrentDate);
+  const [dateStr, _setDateStr] = useState<string>(navigateToDate || currentDate || today);
+  const setDateStr = useCallback((d: string) => {
+    _setDateStr(d);
+    setCurrentDate(d);
+  }, [setCurrentDate]);
+  useEffect(() => {
+    if (navigateToDate) {
+      _setDateStr(navigateToDate);
+      setCurrentDate(navigateToDate);
+      setNavigateToDate(null);
+    }
+  }, [navigateToDate, setNavigateToDate, setCurrentDate]);
+
+  const shiftDay = useCallback((delta: number) => {
+    const d = new Date(dateStr + 'T12:00:00');
+    d.setDate(d.getDate() + delta);
+    setDateStr(d.toISOString().split('T')[0]);
+  }, [dateStr, setDateStr]);
 
   // Desktop (sm+) flips the grid 90°: hours become columns, 15-min quarters
   // become rows. The slotIdx semantics stay identical; only the geometry
@@ -725,11 +747,24 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
 
         {/* Day nav */}
         <div className="mt-5 flex items-center gap-2">
-          <ChromeBtn><ChevronLeft size={16} strokeWidth={1.5} /></ChromeBtn>
-          <div className="px-5 py-2 rounded-md text-[11px] font-mono tracking-[0.22em] border border-border">
+          <ChromeBtn onClick={() => shiftDay(-1)} ariaLabel="Previous day">
+            <ChevronLeft size={16} strokeWidth={1.5} />
+          </ChromeBtn>
+          <button
+            type="button"
+            onClick={() => setDateStr(today)}
+            disabled={dateStr === today}
+            className={`px-5 py-2 rounded-md text-[11px] font-mono tracking-[0.22em] border border-border transition-colors ${
+              dateStr === today
+                ? 'opacity-50 cursor-default'
+                : 'hover:bg-muted/40'
+            }`}
+          >
             TODAY
-          </div>
-          <ChromeBtn><ChevronRight size={16} strokeWidth={1.5} /></ChromeBtn>
+          </button>
+          <ChromeBtn onClick={() => shiftDay(1)} ariaLabel="Next day">
+            <ChevronRight size={16} strokeWidth={1.5} />
+          </ChromeBtn>
         </div>
 
         {/* Column / row header */}
@@ -855,11 +890,13 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
 }
 
 
-function ChromeBtn({ children }: { children: React.ReactNode }) {
+function ChromeBtn({ children, onClick, ariaLabel }: { children: React.ReactNode; onClick?: () => void; ariaLabel?: string }) {
   return (
     <button
       type="button"
-      className="h-9 w-9 rounded-md flex items-center justify-center border border-border text-foreground"
+      onClick={onClick}
+      aria-label={ariaLabel}
+      className="h-9 w-9 rounded-md flex items-center justify-center border border-border text-foreground hover:bg-muted/40 transition-colors"
     >
       {children}
     </button>
