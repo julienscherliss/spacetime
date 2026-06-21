@@ -163,6 +163,11 @@ export default function Sequencer() {
   const gestureRef = useRef<Gesture | null>(null);
   const [preview, setPreview] = useState<PreviewState | null>(null);
 
+  // Stable refs so window listeners attach only once.
+  const handlePointerMoveRef = useRef<(e: PointerEvent) => void>(() => {});
+  const handlePointerUpRef = useRef<(e: PointerEvent) => void>(() => {});
+  const endGestureRef = useRef<() => void>(() => {});
+
   /** Convert client coordinates into a slot index, or null if outside the grid. */
   const hitTestSlot = useCallback((clientX: number, clientY: number): number | null => {
     const el = gridRef.current;
@@ -422,9 +427,9 @@ export default function Sequencer() {
 
   // Attach window listeners while a gesture is active.
   useEffect(() => {
-    const move = (e: PointerEvent) => handlePointerMove(e);
-    const up = (e: PointerEvent) => handlePointerUp(e);
-    const cancel = () => endGesture();
+    const move = (e: PointerEvent) => handlePointerMoveRef.current(e);
+    const up = (e: PointerEvent) => handlePointerUpRef.current(e);
+    const cancel = () => endGestureRef.current();
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
     window.addEventListener('pointercancel', cancel);
@@ -433,6 +438,13 @@ export default function Sequencer() {
       window.removeEventListener('pointerup', up);
       window.removeEventListener('pointercancel', cancel);
     };
+  }, []);
+
+  // Keep refs current.
+  useEffect(() => {
+    handlePointerMoveRef.current = handlePointerMove;
+    handlePointerUpRef.current = handlePointerUp;
+    endGestureRef.current = endGesture;
   }, [handlePointerMove, handlePointerUp, endGesture]);
 
   /** Grid-level pointerdown — dispatches to the right gesture based on the target. */
@@ -441,6 +453,14 @@ export default function Sequencer() {
     const target = e.target as HTMLElement;
     const slot = hitTestSlot(e.clientX, e.clientY);
     if (slot == null) return;
+
+    // Capture coords up-front — synthetic event may detach by the time setTimeout runs.
+    const cx = e.clientX;
+    const cy = e.clientY;
+    const pointerId = e.pointerId;
+
+    // Ensure all subsequent pointer events fire on the grid (esp. touch).
+    try { e.currentTarget.setPointerCapture(pointerId); } catch {}
 
     // Resize handle?
     const handle = target.closest('[data-resize-handle]') as HTMLElement | null;
@@ -453,7 +473,7 @@ export default function Sequencer() {
       const origDuration = task.duration ?? 30;
       gestureRef.current = {
         kind: 'resize',
-        pointerId: e.pointerId,
+        pointerId,
         taskId,
         edge,
         origStart,
@@ -476,26 +496,27 @@ export default function Sequencer() {
       const pickupTimer = setTimeout(() => {
         const g = gestureRef.current;
         if (!g || g.kind !== 'task-pending') return;
-        activateTaskDrag(g, e.clientX, e.clientY);
+        activateTaskDrag(g, cx, cy);
       }, PICKUP_MS);
       gestureRef.current = {
         kind: 'task-pending',
-        pointerId: e.pointerId,
+        pointerId,
         taskId: cell.task.id,
         grabSlot: slot,
-        x0: e.clientX,
-        y0: e.clientY,
+        x0: cx,
+        y0: cy,
         t0: Date.now(),
         pickupTimer,
       };
+      e.preventDefault();
     } else {
       // Press on empty cell → arm tap-to-create / drag-to-extend.
       gestureRef.current = {
         kind: 'idle-pending',
-        pointerId: e.pointerId,
+        pointerId,
         startSlot: slot,
-        x0: e.clientX,
-        y0: e.clientY,
+        x0: cx,
+        y0: cy,
         t0: Date.now(),
       };
     }
