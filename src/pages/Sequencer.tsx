@@ -827,7 +827,7 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
       // unless the user moves (→ in-place drag) or releases (→ tap-to-edit).
       pickupStartRef.current = performance.now();
       pickupCommittedRef.current = false;
-      setPickupRing({ x: cx, y: cy, progress: 0 });
+      setPickupRing({ slotIdx: slot, progress: 0 });
       const heldTaskId = cell.task.id;
       const heldDuration = cell.task.duration || 30;
       const heldDate = cell.task.date;
