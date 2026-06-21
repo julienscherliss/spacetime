@@ -1,408 +1,390 @@
-import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, Html, Line } from "@react-three/drei";
-import { useMemo, useRef, useState } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { OrbitControls, Html } from "@react-three/drei";
+import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import {
-  GRID_SIZE,
-  TILE,
-  type WorldData,
-  type WorldObject,
+  WORLD_RADIUS,
+  PEAK_HEIGHT,
+  makeTerrainCtx,
+  terrainHeight,
+  type LandscapeData,
+  type TerrainCtx,
 } from "@/utils/planetWorld3D";
 
-const INK = "#1f1f1f";
-const PAPER = "#f5f5f3";
-const ACCENT = "#dc6b3a";
-const AMBER = "#e9b949";
+const PAPER = "#f3f0ea";
+const PAPER_DARK = "#dcd6cc";
+const INK = "#1c1b18";
+const STONE = "#9a958b";
+const ACCENT = "#c4663b";
+const WATER = "#b6bcc4";
 
-// Convert grid coords → world space, centered on origin
-function gridToWorld(col: number, row: number) {
-  const half = (GRID_SIZE - 1) / 2;
-  return { x: (col - half) * TILE, z: (row - half) * TILE };
-}
+const TERRAIN_SIZE = WORLD_RADIUS * 2.2;
+const TERRAIN_SEGMENTS = 200;
 
-function TerrainTile({
-  col,
-  row,
-  height,
-}: {
-  col: number;
-  row: number;
-  height: number;
-}) {
-  const { x, z } = gridToWorld(col, row);
-  const h = Math.max(0.04, height * 1.4);
-  // grayscale → higher week = darker top, like a contour map
-  const shade = 0.95 - height * 0.4;
-  const color = new THREE.Color(shade, shade, shade);
+// ---------- Terrain mesh with vertex displacement + vertex colours ----------
+
+function Terrain({ ctx }: { ctx: TerrainCtx }) {
+  const geom = useMemo(() => {
+    const g = new THREE.PlaneGeometry(
+      TERRAIN_SIZE,
+      TERRAIN_SIZE,
+      TERRAIN_SEGMENTS,
+      TERRAIN_SEGMENTS
+    );
+    g.rotateX(-Math.PI / 2);
+    const pos = g.attributes.position as THREE.BufferAttribute;
+    const colorArr = new Float32Array(pos.count * 3);
+    const tmp = new THREE.Color();
+    const lowColor = new THREE.Color("#cfc8bb");
+    const midColor = new THREE.Color("#efe9dd");
+    const highColor = new THREE.Color("#fbf7ee");
+    const waterColor = new THREE.Color(WATER);
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const z = pos.getZ(i);
+      const h = terrainHeight(x, z, ctx);
+      pos.setY(i, h);
+      // vertex colour: contour-style gradient
+      let n = Math.min(1, h / (PEAK_HEIGHT * 0.9));
+      if (h <= 0.001) {
+        const dist = Math.sqrt(x * x + z * z) / WORLD_RADIUS;
+        // river / sea
+        if (dist < 1) tmp.copy(waterColor);
+        else tmp.copy(lowColor);
+      } else if (n < 0.5) {
+        tmp.copy(lowColor).lerp(midColor, n / 0.5);
+      } else {
+        tmp.copy(midColor).lerp(highColor, (n - 0.5) / 0.5);
+      }
+      colorArr[i * 3] = tmp.r;
+      colorArr[i * 3 + 1] = tmp.g;
+      colorArr[i * 3 + 2] = tmp.b;
+    }
+    g.setAttribute("color", new THREE.BufferAttribute(colorArr, 3));
+    g.computeVertexNormals();
+    return g;
+  }, [ctx]);
+
   return (
-    <mesh position={[x, h / 2, z]} castShadow receiveShadow>
-      <boxGeometry args={[TILE * 0.96, h, TILE * 0.96]} />
-      <meshStandardMaterial color={color} roughness={0.95} metalness={0} />
+    <mesh geometry={geom} receiveShadow castShadow>
+      <meshStandardMaterial
+        vertexColors
+        roughness={0.95}
+        metalness={0}
+        flatShading={false}
+      />
     </mesh>
   );
 }
 
-function TileEdges({ heightMap }: { heightMap: number[] }) {
-  // Single instanced wireframe overlay for subtle topo-line feel
-  const segs = useMemo(() => {
-    const lines: [THREE.Vector3, THREE.Vector3][] = [];
-    for (let r = 0; r < GRID_SIZE; r++) {
-      for (let c = 0; c < GRID_SIZE; c++) {
-        const i = r * GRID_SIZE + c;
-        const h = Math.max(0.04, heightMap[i] * 1.4);
-        const { x, z } = gridToWorld(c, r);
-        const s = TILE * 0.48;
-        const y = h + 0.001;
-        const corners = [
-          new THREE.Vector3(x - s, y, z - s),
-          new THREE.Vector3(x + s, y, z - s),
-          new THREE.Vector3(x + s, y, z + s),
-          new THREE.Vector3(x - s, y, z + s),
-        ];
-        for (let k = 0; k < 4; k++) {
-          lines.push([corners[k], corners[(k + 1) % 4]]);
+// ---------- Contour lines: thin rings at fixed elevations ----------
+
+function ContourLines({ ctx }: { ctx: TerrainCtx }) {
+  const lines = useMemo(() => {
+    const levels = [0.25, 0.6, 1.0, 1.4, 1.8].filter((l) => l < PEAK_HEIGHT);
+    const segs = 220;
+    const groups: THREE.BufferGeometry[] = [];
+    for (const level of levels) {
+      const points: number[] = [];
+      // March a grid and emit short segments where neighbours cross the level.
+      const N = 120;
+      const step = TERRAIN_SIZE / N;
+      const start = -TERRAIN_SIZE / 2;
+      for (let i = 0; i < N; i++) {
+        for (let j = 0; j < N; j++) {
+          const x = start + i * step;
+          const z = start + j * step;
+          const h00 = terrainHeight(x, z, ctx);
+          const h10 = terrainHeight(x + step, z, ctx);
+          const h01 = terrainHeight(x, z + step, ctx);
+          if ((h00 - level) * (h10 - level) < 0) {
+            const t = (level - h00) / (h10 - h00);
+            const px = x + t * step;
+            points.push(px, level + 0.005, z, px, level + 0.005, z + 0.0001);
+          }
+          if ((h00 - level) * (h01 - level) < 0) {
+            const t = (level - h00) / (h01 - h00);
+            const pz = z + t * step;
+            points.push(x, level + 0.005, pz, x + 0.0001, level + 0.005, pz);
+          }
         }
       }
+      if (points.length) {
+        const g = new THREE.BufferGeometry();
+        g.setAttribute("position", new THREE.Float32BufferAttribute(points, 3));
+        groups.push(g);
+      }
     }
-    return lines;
-  }, [heightMap]);
+    return groups;
+  }, [ctx]);
 
   return (
     <group>
-      {segs.map(([a, b], i) => (
-        <Line
-          key={i}
-          points={[a, b]}
-          color={INK}
-          opacity={0.18}
-          transparent
-          lineWidth={0.6}
-        />
+      {lines.map((g, i) => (
+        <lineSegments key={i} geometry={g}>
+          <lineBasicMaterial color={INK} transparent opacity={0.12} />
+        </lineSegments>
       ))}
     </group>
   );
 }
 
-function Tree({
-  obj,
-  groundY,
-  onHover,
-}: {
-  obj: WorldObject;
-  groundY: number;
-  onHover: (o: WorldObject | null) => void;
-}) {
-  const { x, z } = gridToWorld(obj.col, obj.row);
-  const px = x + obj.jitterX;
-  const pz = z + obj.jitterZ;
-  const h = obj.height;
+// ---------- Water plane (slightly below sea level) ----------
+
+function Water() {
   return (
-    <group
-      position={[px, groundY, pz]}
-      onPointerOver={(e) => {
-        e.stopPropagation();
-        onHover(obj);
-      }}
-      onPointerOut={() => onHover(null)}
+    <mesh position={[0, 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <circleGeometry args={[WORLD_RADIUS * 1.02, 96]} />
+      <meshStandardMaterial
+        color={WATER}
+        roughness={0.35}
+        metalness={0.1}
+        transparent
+        opacity={0.85}
+      />
+    </mesh>
+  );
+}
+
+// ---------- Instanced forests ----------
+
+function Forests({
+  points,
+  ctx,
+}: {
+  points: { x: number; z: number; scale: number; variant: number }[];
+  ctx: TerrainCtx;
+}) {
+  const ref = useRef<THREE.InstancedMesh>(null);
+  useEffect(() => {
+    if (!ref.current) return;
+    const dummy = new THREE.Object3D();
+    points.forEach((p, i) => {
+      const y = terrainHeight(p.x, p.z, ctx);
+      dummy.position.set(p.x, y, p.z);
+      const s = 0.22 + p.scale * 0.18;
+      dummy.scale.set(s, s + p.variant * 0.05, s);
+      dummy.rotation.y = (p.x + p.z) * 1.3;
+      dummy.updateMatrix();
+      ref.current!.setMatrixAt(i, dummy.matrix);
+    });
+    ref.current.instanceMatrix.needsUpdate = true;
+  }, [points, ctx]);
+
+  return (
+    <instancedMesh
+      ref={ref}
+      args={[undefined, undefined, points.length]}
+      castShadow
+      receiveShadow
     >
-      <mesh position={[0, 0.06, 0]} castShadow>
-        <cylinderGeometry args={[0.04, 0.05, 0.12, 5]} />
-        <meshStandardMaterial color={"#3a2f28"} roughness={1} />
-      </mesh>
-      <mesh position={[0, 0.12 + h / 2, 0]} castShadow>
-        <coneGeometry args={[0.18 * obj.scale, h, 6]} />
-        <meshStandardMaterial color={"#222"} roughness={1} />
-      </mesh>
+      <coneGeometry args={[0.9, 2.4, 7]} />
+      <meshStandardMaterial color="#2c2a26" roughness={1} />
+    </instancedMesh>
+  );
+}
+
+// ---------- Settlements ----------
+
+function Settlement({
+  site,
+  ctx,
+}: {
+  site: { x: number; z: number; buildings: number; hours: number };
+  ctx: TerrainCtx;
+}) {
+  const ground = terrainHeight(site.x, site.z, ctx);
+  const buildings = useMemo(() => {
+    const arr: { dx: number; dz: number; w: number; h: number; d: number; r: number }[] =
+      [];
+    const n = site.buildings;
+    const seed = Math.floor(site.x * 73856093) ^ Math.floor(site.z * 19349663);
+    let s = seed >>> 0;
+    const rng = () => {
+      s = (s * 1664525 + 1013904223) >>> 0;
+      return s / 0x100000000;
+    };
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + rng() * 0.6;
+      const r = 0.2 + rng() * 0.5;
+      arr.push({
+        dx: Math.cos(a) * r,
+        dz: Math.sin(a) * r,
+        w: 0.28 + rng() * 0.2,
+        h: 0.45 + rng() * 0.7 + Math.log(1 + site.hours / 60) * 0.15,
+        d: 0.28 + rng() * 0.2,
+        r: rng() * Math.PI,
+      });
+    }
+    return arr;
+  }, [site]);
+  return (
+    <group position={[site.x, ground, site.z]}>
+      {buildings.map((b, i) => (
+        <group key={i} position={[b.dx, 0, b.dz]} rotation={[0, b.r, 0]}>
+          <mesh position={[0, b.h / 2, 0]} castShadow receiveShadow>
+            <boxGeometry args={[b.w, b.h, b.d]} />
+            <meshStandardMaterial color="#d2cabb" roughness={0.85} />
+          </mesh>
+          {/* gable roof */}
+          <mesh position={[0, b.h + 0.08, 0]} castShadow>
+            <coneGeometry args={[b.w * 0.78, 0.22, 4]} />
+            <meshStandardMaterial color={INK} roughness={0.9} />
+          </mesh>
+        </group>
+      ))}
     </group>
   );
 }
 
-function Building({
-  obj,
-  groundY,
-  onHover,
+// ---------- Landmarks (milestones) ----------
+
+function Landmark({
+  site,
+  ctx,
 }: {
-  obj: WorldObject;
-  groundY: number;
-  onHover: (o: WorldObject | null) => void;
+  site: { x: number; z: number; threshold: number; label: string };
+  ctx: TerrainCtx;
 }) {
-  const { x, z } = gridToWorld(obj.col, obj.row);
-  const px = x + obj.jitterX;
-  const pz = z + obj.jitterZ;
-  const w = 0.32 * obj.scale;
-  const d = 0.32 * obj.scale;
-  const h = obj.height;
+  const ground = terrainHeight(site.x, site.z, ctx);
+  const h = 1.4 + Math.log10(site.threshold) * 0.7;
   return (
-    <group
-      position={[px, groundY, pz]}
-      onPointerOver={(e) => {
-        e.stopPropagation();
-        onHover(obj);
-      }}
-      onPointerOut={() => onHover(null)}
-    >
+    <group position={[site.x, ground, site.z]}>
       <mesh position={[0, h / 2, 0]} castShadow>
-        <boxGeometry args={[w, h, d]} />
-        <meshStandardMaterial color={"#c8c5c0"} roughness={0.85} />
+        <cylinderGeometry args={[0.05, 0.14, h, 4]} />
+        <meshStandardMaterial color={INK} roughness={0.5} metalness={0.2} />
       </mesh>
-      {/* roof cap, darker */}
-      <mesh position={[0, h + 0.02, 0]} castShadow>
-        <boxGeometry args={[w * 1.05, 0.04, d * 1.05]} />
-        <meshStandardMaterial color={"#2c2c2c"} roughness={1} />
+      <mesh position={[0, h + 0.12, 0]}>
+        <octahedronGeometry args={[0.12, 0]} />
+        <meshStandardMaterial color={ACCENT} roughness={0.4} />
       </mesh>
+      <Html
+        position={[0, h + 0.35, 0]}
+        center
+        distanceFactor={12}
+        style={{ pointerEvents: "none" }}
+      >
+        <div
+          style={{
+            fontFamily: "JetBrains Mono, monospace",
+            fontSize: 9,
+            letterSpacing: 1.5,
+            color: INK,
+            background: PAPER,
+            padding: "2px 5px",
+            border: `1px solid ${INK}`,
+            whiteSpace: "nowrap",
+            textTransform: "uppercase",
+          }}
+        >
+          {site.threshold}
+        </div>
+      </Html>
     </group>
   );
 }
 
-function Obelisk({
-  obj,
-  groundY,
-  onHover,
-}: {
-  obj: WorldObject;
-  groundY: number;
-  onHover: (o: WorldObject | null) => void;
-}) {
-  const { x, z } = gridToWorld(obj.col, obj.row);
-  const h = obj.height;
-  return (
-    <group
-      position={[x, groundY, z]}
-      onPointerOver={(e) => {
-        e.stopPropagation();
-        onHover(obj);
-      }}
-      onPointerOut={() => onHover(null)}
-    >
-      <mesh position={[0, h / 2, 0]} castShadow>
-        <cylinderGeometry args={[0.04, 0.1, h, 4]} />
-        <meshStandardMaterial color={INK} roughness={0.7} metalness={0.1} />
-      </mesh>
-      <mesh position={[0, h + 0.06, 0]}>
-        <octahedronGeometry args={[0.08, 0]} />
-        <meshStandardMaterial color={INK} />
-      </mesh>
-    </group>
-  );
-}
+// ---------- First-completion marker ----------
 
-function Marker({
-  obj,
-  groundY,
-  onHover,
-}: {
-  obj: WorldObject;
-  groundY: number;
-  onHover: (o: WorldObject | null) => void;
-}) {
-  const { x, z } = gridToWorld(obj.col, obj.row);
-  const px = x + obj.jitterX;
-  const pz = z + obj.jitterZ;
+function FirstMarker({ x, z, ctx }: { x: number; z: number; ctx: TerrainCtx }) {
+  const y = terrainHeight(x, z, ctx);
   return (
-    <group
-      position={[px, groundY, pz]}
-      onPointerOver={(e) => {
-        e.stopPropagation();
-        onHover(obj);
-      }}
-      onPointerOut={() => onHover(null)}
-    >
+    <group position={[x, y, z]}>
       <mesh position={[0, 0.3, 0]}>
-        <cylinderGeometry args={[0.015, 0.015, 0.6, 6]} />
+        <cylinderGeometry args={[0.012, 0.012, 0.6, 6]} />
         <meshStandardMaterial color={INK} />
       </mesh>
       <mesh position={[0.08, 0.5, 0]}>
-        <boxGeometry args={[0.18, 0.1, 0.005]} />
+        <boxGeometry args={[0.16, 0.09, 0.005]} />
         <meshStandardMaterial color={ACCENT} />
       </mesh>
     </group>
   );
 }
 
-function Beacon({
-  obj,
-  groundY,
-  onHover,
-}: {
-  obj: WorldObject;
-  groundY: number;
-  onHover: (o: WorldObject | null) => void;
-}) {
-  const { x, z } = gridToWorld(obj.col, obj.row);
-  const px = x + obj.jitterX;
-  const pz = z + obj.jitterZ;
-  const color = obj.kind === "beacon-red" ? ACCENT : AMBER;
-  const h = obj.height;
-  const lightRef = useRef<THREE.Mesh>(null);
-  useFrame((state) => {
-    if (lightRef.current) {
-      const t = state.clock.getElapsedTime();
-      const s = 0.85 + Math.sin(t * (obj.kind === "beacon-red" ? 4 : 2.6)) * 0.25;
-      lightRef.current.scale.setScalar(s);
-    }
+// ---------- Smooth camera intro ----------
+
+function CameraIntro() {
+  const { camera } = useThree();
+  const start = useRef(performance.now());
+  useFrame(() => {
+    const t = Math.min(1, (performance.now() - start.current) / 1400);
+    const e = 1 - Math.pow(1 - t, 3);
+    const radius = 30 - e * 14;
+    const y = 22 - e * 10;
+    camera.position.set(radius * 0.7, y, radius * 0.85);
+    camera.lookAt(0, 0.5, 0);
   });
-  return (
-    <group
-      position={[px, groundY, pz]}
-      onPointerOver={(e) => {
-        e.stopPropagation();
-        onHover(obj);
-      }}
-      onPointerOut={() => onHover(null)}
-    >
-      <mesh position={[0, h / 2, 0]} castShadow>
-        <cylinderGeometry args={[0.015, 0.025, h, 6]} />
-        <meshStandardMaterial color={INK} />
-      </mesh>
-      <mesh ref={lightRef} position={[0, h + 0.05, 0]}>
-        <sphereGeometry args={[0.07, 12, 12]} />
-        <meshStandardMaterial
-          color={color}
-          emissive={color}
-          emissiveIntensity={1.2}
-        />
-      </mesh>
-    </group>
-  );
+  return null;
 }
 
-function StreakPath({
-  path,
-  heightMap,
-}: {
-  path: { col: number; row: number }[];
-  heightMap: number[];
-}) {
-  if (path.length < 2) return null;
-  const points = path.map((p) => {
-    const { x, z } = gridToWorld(p.col, p.row);
-    const i = p.row * GRID_SIZE + p.col;
-    const h = Math.max(0.04, (heightMap[i] || 0) * 1.4) + 0.02;
-    return new THREE.Vector3(x, h, z);
-  });
-  return <Line points={points} color={ACCENT} lineWidth={1.4} opacity={0.85} transparent />;
-}
+// ---------- Main Scene ----------
 
-function HoverLabel({ obj }: { obj: WorldObject }) {
-  const { x, z } = gridToWorld(obj.col, obj.row);
-  let text = "";
-  if (obj.task) {
-    text = obj.task.title;
-  } else if (obj.label) {
-    text = obj.label;
-  } else {
-    text = obj.kind;
-  }
-  return (
-    <Html
-      position={[x + obj.jitterX, obj.height + 0.3, z + obj.jitterZ]}
-      center
-      style={{ pointerEvents: "none" }}
-    >
-      <div
-        style={{
-          background: PAPER,
-          color: INK,
-          border: `1px solid ${INK}`,
-          padding: "4px 8px",
-          fontFamily: "JetBrains Mono, monospace",
-          fontSize: 10,
-          letterSpacing: 1,
-          textTransform: "uppercase",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {text}
-      </div>
-    </Html>
-  );
-}
-
-function Scene({ world }: { world: WorldData }) {
-  const [hover, setHover] = useState<WorldObject | null>(null);
-
-  // Ground plane to anchor empty world
+function Scene({ land }: { land: LandscapeData }) {
+  const ctx = useMemo(() => makeTerrainCtx(land), [land]);
+  const introDone = useRef(false);
   return (
     <>
-      <ambientLight intensity={0.8} />
+      <color attach="background" args={[PAPER]} />
+      <fog attach="fog" args={[PAPER, 28, 60]} />
+
+      <ambientLight intensity={0.55} />
+      <hemisphereLight args={[PAPER, "#a89e8c", 0.5]} />
       <directionalLight
-        position={[8, 12, 5]}
-        intensity={1.1}
+        position={[10, 16, 8]}
+        intensity={1.4}
         castShadow
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
+        shadow-camera-left={-12}
+        shadow-camera-right={12}
+        shadow-camera-top={12}
+        shadow-camera-bottom={-12}
+        shadow-bias={-0.0005}
       />
-      <directionalLight position={[-6, 4, -3]} intensity={0.3} />
 
-      {/* Base plate */}
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, -0.01, 0]}
-        receiveShadow
-      >
-        <planeGeometry args={[GRID_SIZE * TILE * 1.3, GRID_SIZE * TILE * 1.3]} />
-        <meshStandardMaterial color={PAPER} />
-      </mesh>
-
-      {/* Terrain tiles */}
-      {world.cells.map((c, i) => (
-        <TerrainTile
-          key={c.index}
-          col={c.col}
-          row={c.row}
-          height={world.heightMap[i]}
-        />
+      <Water />
+      <Terrain ctx={ctx} />
+      <ContourLines ctx={ctx} />
+      <Forests points={land.forest} ctx={ctx} />
+      {land.settlements.map((s, i) => (
+        <Settlement key={i} site={s} ctx={ctx} />
       ))}
+      {land.landmarks.map((l, i) => (
+        <Landmark key={i} site={l} ctx={ctx} />
+      ))}
+      {land.firstT !== null && (
+        <FirstMarker
+          x={-WORLD_RADIUS * 0.85 + land.firstT * WORLD_RADIUS * 1.7}
+          z={0}
+          ctx={ctx}
+        />
+      )}
 
-      <TileEdges heightMap={world.heightMap} />
-
-      {/* Streak path overlay */}
-      <StreakPath path={world.streakPath} heightMap={world.heightMap} />
-
-      {/* Objects */}
-      {world.objects.map((o) => {
-        const i = o.row * GRID_SIZE + o.col;
-        const groundY = Math.max(0.04, world.heightMap[i] * 1.4);
-        switch (o.kind) {
-          case "tree":
-            return <Tree key={o.id} obj={o} groundY={groundY} onHover={setHover} />;
-          case "building":
-            return <Building key={o.id} obj={o} groundY={groundY} onHover={setHover} />;
-          case "obelisk":
-            return <Obelisk key={o.id} obj={o} groundY={groundY} onHover={setHover} />;
-          case "marker":
-            return <Marker key={o.id} obj={o} groundY={groundY} onHover={setHover} />;
-          case "beacon-red":
-          case "beacon-amber":
-            return <Beacon key={o.id} obj={o} groundY={groundY} onHover={setHover} />;
-          default:
-            return null;
-        }
-      })}
-
-      {hover && <HoverLabel obj={hover} />}
-
+      {!introDone.current && <CameraIntro />}
       <OrbitControls
         enablePan={false}
-        minDistance={8}
-        maxDistance={28}
-        maxPolarAngle={Math.PI / 2.15}
-        minPolarAngle={Math.PI / 6}
-        target={[0, 0.5, 0]}
+        minDistance={10}
+        maxDistance={32}
+        maxPolarAngle={Math.PI / 2.2}
+        minPolarAngle={Math.PI / 5}
+        target={[0, 0.4, 0]}
+        enableDamping
+        dampingFactor={0.08}
       />
     </>
   );
 }
 
-export function World3D({ world }: { world: WorldData }) {
+export function World3D({ world }: { world: LandscapeData }) {
   return (
     <Canvas
       shadows
-      camera={{ position: [12, 11, 14], fov: 35 }}
-      style={{ background: PAPER }}
+      camera={{ position: [22, 18, 24], fov: 32 }}
       dpr={[1, 2]}
+      gl={{ antialias: true }}
     >
-      <Scene world={world} />
+      <Scene land={world} />
     </Canvas>
   );
 }
