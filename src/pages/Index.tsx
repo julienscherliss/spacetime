@@ -68,17 +68,20 @@ const Index = () => {
     }
   }, []);
 
-  // On app entry: always default sub-modes to LIST (never schedule/timeline),
-  // and bounce out of the transient focus view back to the last-used main view.
-  // The main viewMode (day/week/calendar) is preserved from last session.
+  // On app entry: ensure sub-modes are valid, apply first-run defaults
+  // (week → timeline on desktop, list on mobile), then preserve the user's
+  // last choice across reloads. Also bounce out of the transient focus view.
   useEffect(() => {
     const s = useTaskStore.getState();
     const isMobileViewport = typeof window !== 'undefined' && window.innerWidth < 768;
-    // Day always defaults to schedule (timeline). Week defaults to schedule on
-    // desktop, list on mobile.
+    // Day sub-mode: keep timeline/sequencer as-is, anything else → timeline.
     if (s.daySubMode !== 'timeline' && s.daySubMode !== 'sequencer') s.setDaySubMode('timeline');
-    const desiredWeek = isMobileViewport ? 'list' : 'timeline';
-    if (s.weekSubMode !== desiredWeek) s.setWeekSubMode(desiredWeek);
+    // Week sub-mode: only set a default on the very first app entry; otherwise
+    // respect whatever the user last switched to.
+    if (!s.hasInitializedSubModes) {
+      s.setWeekSubMode(isMobileViewport ? 'list' : 'timeline');
+      s.setHasInitializedSubModes(true);
+    }
     if (s.viewMode === 'focus') s.setViewMode('day');
   }, []);
 
