@@ -992,6 +992,7 @@ function RowFragment({
 
 function Cell({
   slotIdx, cell, isPast, isCurrent, inPreview, previewBlocked, PreviewIcon, hidden,
+  horizontal = false,
 }: {
   slotIdx: number;
   cell: CellAssignment | null;
@@ -1001,6 +1002,7 @@ function Cell({
   previewBlocked: boolean;
   PreviewIcon?: LucideIcon;
   hidden: boolean;
+  horizontal?: boolean;
 }) {
   const occupied = !!cell && !hidden;
   const completed = cell?.task.completed;
@@ -1057,7 +1059,9 @@ function Cell({
           <div
             data-resize-handle="start"
             data-task-id={cell.task.id}
-            className="absolute left-0 top-0 bottom-0 w-3 cursor-ew-resize z-10"
+            className={horizontal
+              ? "absolute top-0 left-0 right-0 h-3 cursor-ns-resize z-10"
+              : "absolute left-0 top-0 bottom-0 w-3 cursor-ew-resize z-10"}
             style={{ touchAction: 'none' }}
           />
         )}
@@ -1065,7 +1069,9 @@ function Cell({
           <div
             data-resize-handle="end"
             data-task-id={cell.task.id}
-            className="absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize z-10"
+            className={horizontal
+              ? "absolute bottom-0 left-0 right-0 h-3 cursor-ns-resize z-10"
+              : "absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize z-10"}
             style={{ touchAction: 'none' }}
           />
         )}
