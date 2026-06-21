@@ -17,8 +17,10 @@ import { logAudit } from '@/utils/auditLog';
 export type Priority = 0 | 1 | 2 | 3;
 export type TaskType = 'one-time' | 'recurring' | 'group';
 export type ViewMode = 'focus' | 'day' | 'week' | 'calendar';
-export type DaySubMode = 'timeline' | 'list';
+export type DaySubMode = 'timeline' | 'list' | 'sequencer';
 export type WeekSubMode = 'timeline' | 'list';
+/** Which alternate view the DAY tab toggles to when re-tapped. */
+export type DayToggleTarget = 'list' | 'sequencer';
 
 export type CustomUnit = 'days' | 'weeks' | 'months' | 'years';
 
@@ -98,6 +100,7 @@ interface TaskState {
   viewMode: ViewMode;
   daySubMode: DaySubMode;
   weekSubMode: WeekSubMode;
+  dayToggleTarget: DayToggleTarget;
   routinesEnabled: boolean;
   focusTaskId: string | null;
   editingTaskId: string | null;
@@ -111,6 +114,7 @@ interface TaskState {
   setViewMode: (mode: ViewMode) => void;
   setDaySubMode: (mode: DaySubMode) => void;
   setWeekSubMode: (mode: WeekSubMode) => void;
+  setDayToggleTarget: (target: DayToggleTarget) => void;
   setNavigateToDate: (date: string | null) => void;
   setCurrentDate: (date: string | null) => void;
   setListReturnZoom: (zoom: ListReturnZoom | null) => void;
@@ -520,6 +524,7 @@ export const useTaskStore = create<TaskState>()(
       viewMode: 'day',
       daySubMode: 'timeline',
       weekSubMode: 'list',
+      dayToggleTarget: 'sequencer',
       routinesEnabled: true,
       focusTaskId: null,
       editingTaskId: null,
@@ -537,6 +542,7 @@ export const useTaskStore = create<TaskState>()(
       },
       setDaySubMode: (mode) => set({ daySubMode: mode }),
       setWeekSubMode: (mode) => set({ weekSubMode: mode }),
+      setDayToggleTarget: (target) => set({ dayToggleTarget: target }),
       setNavigateToDate: (date) => set({ navigateToDate: date }),
       setCurrentDate: (date) => set({ currentDate: date }),
       setListReturnZoom: (zoom) => set({ listReturnZoom: zoom }),

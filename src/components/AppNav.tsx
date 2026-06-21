@@ -22,7 +22,7 @@ const views: { mode: ViewMode; icon: typeof Focus; label: string }[] = [
 ];
 
 export function AppNav() {
-  const { viewMode, setViewMode, daySubMode, setDaySubMode, weekSubMode, setWeekSubMode, routinesEnabled, toggleRoutines, tasks } = useTaskStore();
+  const { viewMode, setViewMode, daySubMode, setDaySubMode, weekSubMode, setWeekSubMode, dayToggleTarget, routinesEnabled, toggleRoutines, tasks } = useTaskStore();
   const { panelOpen: libPanelOpen, setPanelOpen: setLibPanelOpen } = useLibraryStore();
   const showBillingPref = useTimezoneStore(s => s.showBilling);
   const billingSettings = useBillingStore(s => s.settings);
@@ -190,7 +190,7 @@ export function AppNav() {
           <div className="flex items-center justify-between px-2 py-1.5">
             {/* Fit/scan button with long-press menu — hidden on focus, calendar, and list sub-modes */}
             {viewMode !== 'focus' && viewMode !== 'calendar'
-              && !(viewMode === 'day' && daySubMode === 'list')
+              && !(viewMode === 'day' && daySubMode !== 'timeline')
               && !(viewMode === 'week' && weekSubMode === 'list')
               ? <ScanButton /> : <div className="w-[40px]" />}
 
@@ -201,7 +201,7 @@ export function AppNav() {
                   key={mode}
                   onClick={() => {
                     if (mode === 'day' && viewMode === 'day') {
-                      setDaySubMode(daySubMode === 'timeline' ? 'list' : 'timeline');
+                      setDaySubMode(daySubMode === 'timeline' ? dayToggleTarget : 'timeline');
                       return;
                     }
                     if (mode === 'week' && viewMode === 'week') {
@@ -296,7 +296,7 @@ export function AppNav() {
               key={mode}
               onClick={() => {
                 if (mode === 'day' && viewMode === 'day') {
-                  setDaySubMode(daySubMode === 'timeline' ? 'list' : 'timeline');
+                  setDaySubMode(daySubMode === 'timeline' ? dayToggleTarget : 'timeline');
                   return;
                 }
                 if (mode === 'week' && viewMode === 'week') {
