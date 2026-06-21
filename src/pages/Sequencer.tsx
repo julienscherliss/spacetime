@@ -634,13 +634,13 @@ function ChromeBtn({ children }: { children: React.ReactNode }) {
 }
 
 function RowFragment({
-  label, cells, rowIdx, nowMin, onOpen,
+  label, cells, rowIdx, nowMin, preview,
 }: {
   label: string;
   cells: (CellAssignment | null)[];
   rowIdx: number;
   nowMin: number;
-  onOpen: (id: string) => void;
+  preview: PreviewState | null;
 }) {
   return (
     <>
@@ -657,13 +657,18 @@ function RowFragment({
         const slotEndMin = slotStartMin + SLOT_MIN;
         const isPast = slotEndMin <= nowMin;
         const isCurrent = nowMin >= slotStartMin && nowMin < slotEndMin;
+        const inPreview = preview?.cells.has(slotIdx) ?? false;
+        const hidden = !!(preview?.hideTaskId && cell?.task.id === preview.hideTaskId);
         return (
           <Cell
             key={colIdx}
+            slotIdx={slotIdx}
             cell={cell}
             isPast={isPast}
             isCurrent={isCurrent}
-            onOpen={onOpen}
+            inPreview={inPreview}
+            previewBlocked={preview?.blocked ?? false}
+            hidden={hidden}
           />
         );
       })}
@@ -672,47 +677,76 @@ function RowFragment({
 }
 
 function Cell({
-  cell, isPast, isCurrent, onOpen,
+  slotIdx, cell, isPast, isCurrent, inPreview, previewBlocked, hidden,
 }: {
+  slotIdx: number;
   cell: CellAssignment | null;
   isPast: boolean;
   isCurrent: boolean;
-  onOpen: (id: string) => void;
+  inPreview: boolean;
+  previewBlocked: boolean;
+  hidden: boolean;
 }) {
-  const occupied = !!cell;
+  const occupied = !!cell && !hidden;
   const completed = cell?.task.completed;
 
+  const previewBg = inPreview
+    ? previewBlocked
+      ? 'hsl(var(--destructive) / 0.18)'
+      : 'hsl(var(--primary) / 0.18)'
+    : null;
+  const previewBorder = inPreview
+    ? previewBlocked
+      ? '1px dashed hsl(var(--destructive) / 0.7)'
+      : '1px dashed hsl(var(--primary) / 0.7)'
+    : null;
+
   return (
-    <div className="p-[3px]">
-      <button
-        type="button"
-        onClick={() => cell && onOpen(cell.task.id)}
-        className="relative w-full h-full rounded-sm flex items-center justify-center transition-all duration-200"
+    <div className="p-[3px]" data-slot-idx={slotIdx}>
+      <div
+        className="relative w-full h-full rounded-sm flex items-center justify-center transition-all duration-150"
         style={{
-          background: occupied ? 'hsl(var(--muted))' : 'transparent',
-          border: occupied ? '1px solid hsl(var(--border) / 0.5)' : '1px solid transparent',
-          boxShadow: isCurrent && occupied
+          background: previewBg ?? (occupied ? 'hsl(var(--muted))' : 'transparent'),
+          border: previewBorder ?? (occupied ? '1px solid hsl(var(--border) / 0.5)' : '1px solid transparent'),
+          boxShadow: !inPreview && isCurrent && occupied
             ? 'inset 0 0 0 1px hsl(var(--primary) / 0.45), 0 2px 8px -4px hsl(var(--primary) / 0.25)'
-            : occupied
+            : !inPreview && occupied
               ? 'inset 0 1px 0 rgba(255,255,255,0.5), 0 1px 0 rgba(0,0,0,0.03)'
               : 'none',
-          cursor: occupied ? 'pointer' : 'default',
+          cursor: occupied ? 'grab' : 'default',
+          opacity: hidden ? 0 : 1,
         }}
       >
-        {cell ? (
+        {cell && !hidden ? (
           <cell.Icon
             size={22}
             strokeWidth={1.4}
-            className="text-foreground"
+            className="text-foreground pointer-events-none"
             style={{ opacity: completed ? 0.35 : isPast ? 0.55 : 1 }}
           />
         ) : (
           <span
-            className="block rounded-full bg-foreground/[0.12]"
+            className="block rounded-full bg-foreground/[0.12] pointer-events-none"
             style={{ width: 3, height: 3 }}
           />
         )}
-      </button>
+        {cell && !hidden && cell.isStart && (
+          <div
+            data-resize-handle="start"
+            data-task-id={cell.task.id}
+            className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize"
+            style={{ touchAction: 'none' }}
+          />
+        )}
+        {cell && !hidden && cell.isEnd && (
+          <div
+            data-resize-handle="end"
+            data-task-id={cell.task.id}
+            className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize"
+            style={{ touchAction: 'none' }}
+          />
+        )}
+      </div>
     </div>
   );
 }
