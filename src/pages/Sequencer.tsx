@@ -12,6 +12,7 @@ import {
 import { TaskEditPanel } from '@/components/TaskEditPanel';
 import { useCarryStore, roundCarriedDuration } from '@/store/carryStore';
 import { useLibraryDragStore } from '@/store/libraryDragStore';
+import { useTimezoneStore } from '@/store/timezoneStore';
 import { getIconByName } from '@/lib/iconLibrary';
 import {
   Footprints, Users, Camera, Film, Dumbbell, BookOpen, PenLine,
@@ -142,6 +143,7 @@ interface PreviewState {
 
 export default function Sequencer({ embedded = false }: { embedded?: boolean } = {}) {
   const tasks = useTaskStore((s) => s.tasks);
+  const showCompletedTasks = useTimezoneStore((s) => s.showCompletedTasks);
   // Re-render when the configured day window changes.
   useTaskStore((s) => s.dayStartHour);
   useTaskStore((s) => s.dayEndHour);
@@ -194,7 +196,8 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
     const dayStartMin = START_HOUR * 60;
     for (const t of tasks) {
       if (t.date !== dateStr) continue;
-      if (t.archivedAt || t.inWaitingRoom || t.groupId) continue;
+      const isCompletedArchive = !!t.archivedAt && t.completed && t.archiveReason === 'completed';
+      if ((t.archivedAt && !(showCompletedTasks && isCompletedArchive)) || t.inWaitingRoom || t.groupId) continue;
       if (!t.time) continue;
       const start = timeToMinutes(t.time);
       const dur = t.duration ?? 30;
@@ -210,12 +213,18 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
       }
     }
     return arr;
-  }, [tasks, dateStr, categories]);
+  }, [tasks, dateStr, categories, showCompletedTasks]);
 
   const completedOnDay = useMemo(() => {
-    const day = tasks.filter((t) => t.date === dateStr && !t.archivedAt && !t.inWaitingRoom && !t.groupId && t.time);
+    const day = tasks.filter((t) => {
+      if (t.date !== dateStr) return false;
+      if (t.inWaitingRoom || t.groupId || !t.time) return false;
+      const isCompletedArchive = !!t.archivedAt && t.completed && t.archiveReason === 'completed';
+      if (t.archivedAt && !(showCompletedTasks && isCompletedArchive)) return false;
+      return true;
+    });
     return { done: day.filter((t) => t.completed).length, total: day.length };
-  }, [tasks, dateStr]);
+  }, [tasks, dateStr, showCompletedTasks]);
 
   const visible = nowMin >= START_HOUR * 60 && nowMin <= END_HOUR * 60;
   const playFrac = Math.max(0, Math.min(1, (nowMin - START_HOUR * 60) / ((END_HOUR - START_HOUR) * 60)));
