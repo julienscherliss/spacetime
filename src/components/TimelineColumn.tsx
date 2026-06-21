@@ -1445,6 +1445,49 @@ export function TimelineColumn({
         </div>
       )}
 
+      {/* Library click-and-drag drop preview — styled like a real task block */}
+      {libraryDropPreview && (
+        <div
+          className="absolute right-1 z-30 pointer-events-none"
+          style={{
+            top: libraryDropPreview.top,
+            height: libraryDropPreview.height,
+            left: showTimeLabels ? '3.25rem' : '2px',
+          }}
+        >
+          <div
+            className={`h-full rounded-[3px] border-2 border-dashed flex items-center gap-1.5 px-2 py-1 backdrop-blur-sm ${
+              libraryDropPreview.blocked
+                ? 'border-destructive/60 bg-destructive/[0.08]'
+                : 'border-primary/70 bg-primary/[0.12]'
+            }`}
+          >
+            {libraryDropPreview.Icon && (
+              <libraryDropPreview.Icon
+                size={12}
+                className={libraryDropPreview.blocked ? 'text-destructive/70 shrink-0' : 'text-primary/80 shrink-0'}
+              />
+            )}
+            <div className="flex-1 min-w-0">
+              <div
+                className={`text-[11px] font-mono font-medium truncate leading-tight ${
+                  libraryDropPreview.blocked ? 'text-destructive/80' : 'text-primary'
+                }`}
+              >
+                {libraryDropPreview.title}
+              </div>
+              <div
+                className={`text-[9px] font-mono tracking-wider truncate ${
+                  libraryDropPreview.blocked ? 'text-destructive/60' : 'text-primary/60'
+                }`}
+              >
+                {formatTime12h(libraryDropPreview.time)} · {formatDuration(libraryDropPreview.duration)}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {dragMsg && (
         <div
           className="absolute left-1/2 -translate-x-1/2 z-40 px-3 py-1.5 rounded-sm bg-card border border-destructive/20 shadow-sm flex items-center gap-2"
