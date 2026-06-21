@@ -1048,7 +1048,7 @@ function RowFragment({
 }
 
 function Cell({
-  slotIdx, cell, isPast, isCurrent, inPreview, previewBlocked, PreviewIcon, hidden,
+  slotIdx, cell, isPast, isCurrent, inPreview, previewBlocked, PreviewIcon, previewDuplicate, hidden,
   horizontal = false,
 }: {
   slotIdx: number;
@@ -1058,6 +1058,7 @@ function Cell({
   inPreview: boolean;
   previewBlocked: boolean;
   PreviewIcon?: LucideIcon;
+  previewDuplicate?: boolean;
   hidden: boolean;
   horizontal?: boolean;
 }) {
