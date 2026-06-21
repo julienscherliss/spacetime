@@ -1,9 +1,14 @@
-import { useMemo, useState, useRef, useEffect } from 'react';
+import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { AppNav } from '@/components/AppNav';
 import { useTaskStore, type Task } from '@/store/taskStore';
 import { useLibraryStore } from '@/store/libraryStore';
 import { resolveTaskIcon } from '@/lib/resolveTaskIcon';
-import { useCurrentTime, timeToMinutes } from '@/hooks/useCurrentTime';
+import { useCurrentTime, timeToMinutes, minutesToTime, snapTo15 } from '@/hooks/useCurrentTime';
+import {
+  getOccupiedSlots,
+  findValidPosition,
+  clampResize,
+} from '@/utils/collisionDetection';
 import { TaskEditPanel } from '@/components/TaskEditPanel';
 import {
   Footprints, Users, Camera, Film, Dumbbell, BookOpen, PenLine,
@@ -19,6 +24,12 @@ const ROWS = END_HOUR - START_HOUR; // 10
 const COLS = 4;
 const SLOT_MIN = 15;
 const SLOTS_PER_DAY = ROWS * COLS;
+const LABEL_COL_W = 46;
+const PICKUP_MS = 350;
+const MOVE_THRESHOLD_PX = 6;
+
+const slotToMin = (slot: number) => START_HOUR * 60 + slot * SLOT_MIN;
+const minToSlot = (min: number) => Math.floor((min - START_HOUR * 60) / SLOT_MIN);
 
 function pickIcon(task: Task): LucideIcon {
   const s = `${task.title} ${task.category ?? ''}`.toLowerCase();
