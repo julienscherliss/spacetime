@@ -259,8 +259,8 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
   const gestureRef = useRef<Gesture | null>(null);
   const [preview, setPreview] = useState<PreviewState | null>(null);
   // Pickup ring: visual + progress while the user holds on a scheduled task.
-  // Rendered as an overlay centered on the press location.
-  const [pickupRing, setPickupRing] = useState<{ x: number; y: number; progress: number } | null>(null);
+  // Rendered inside the target Cell so it is centered and covers the icon.
+  const [pickupRing, setPickupRing] = useState<{ slotIdx: number; progress: number } | null>(null);
   const pickupRafRef = useRef<number | null>(null);
   const pickupStartRef = useRef<number | null>(null);
   const pickupCommittedRef = useRef(false);
