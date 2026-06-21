@@ -141,7 +141,7 @@ function getDomain(url: string): string {
 
 export function TaskEditPanel() {
   const {
-    tasks, editingTaskId, setEditingTask, updateTask, updateFutureInstances,
+    tasks, editingTaskId, setEditingTask, updateTask, updateFutureInstances, updateLinkedSeries,
     deleteTask, deleteFutureInstances, deleteRecurrenceSeries, removeInstances,
     setFocusTask, setViewMode, generateRecurringInstances, linkSeriesFromDate,
     convertTaskToGroup,
