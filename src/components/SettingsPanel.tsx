@@ -67,6 +67,8 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const [userEmail, setUserEmail] = useState<string>('');
   const [verifySending, setVerifySending] = useState(false);
   const [notificationLoading, setNotificationLoading] = useState(false);
+  const dayToggleTarget = useTaskStore(s => s.dayToggleTarget);
+  const setDayToggleTarget = useTaskStore(s => s.setDayToggleTarget);
   const [showAdvanced, setShowAdvanced] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     return localStorage.getItem('settings.showAdvanced') === '1';
