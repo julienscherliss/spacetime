@@ -118,7 +118,7 @@ interface PreviewState {
   PreviewIcon?: LucideIcon;
 }
 
-export default function Sequencer() {
+export default function Sequencer({ embedded = false }: { embedded?: boolean } = {}) {
   const tasks = useTaskStore((s) => s.tasks);
   const setEditingTask = useTaskStore((s) => s.setEditingTask);
   const addTask = useTaskStore((s) => s.addTask);
