@@ -4,6 +4,8 @@ import { X, Plus, Trash2, Save } from 'lucide-react';
 import { useBillingStore, type Invoice, type InvoiceItem } from '@/store/billingStore';
 import { formatCurrency } from '@/lib/billingFormat';
 import { toast } from '@/hooks/use-toast';
+import { ClientPicker } from './ClientPicker';
+import { useClientStore } from '@/store/clientStore';
 
 interface Props {
   open: boolean;
@@ -17,8 +19,10 @@ interface EditableItem extends Omit<InvoiceItem, 'id' | 'invoiceId'> {
 
 export function InvoiceEditor({ open, onClose, invoice }: Props) {
   const updateInvoice = useBillingStore(s => s.updateInvoice);
+  const getClientById = useClientStore(s => s.getById);
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [clientName, setClientName] = useState('');
+  const [clientId, setClientId] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [items, setItems] = useState<EditableItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -27,6 +31,7 @@ export function InvoiceEditor({ open, onClose, invoice }: Props) {
     if (!invoice) return;
     setInvoiceNumber(invoice.invoiceNumber);
     setClientName(invoice.clientName);
+    setClientId(invoice.clientId);
     setNotes(invoice.notes);
     setItems(invoice.items.map(it => ({
       key: it.id,
@@ -70,6 +75,7 @@ export function InvoiceEditor({ open, onClose, invoice }: Props) {
     await updateInvoice(invoice.id, {
       invoiceNumber: invoiceNumber.trim() || invoice.invoiceNumber,
       clientName,
+      clientId,
       notes,
       items: items.map(it => ({
         tagValue: it.tagValue,
@@ -125,11 +131,16 @@ export function InvoiceEditor({ open, onClose, invoice }: Props) {
             </label>
             <label className="block">
               <span className="text-[9px] font-mono text-muted-foreground/50 tracking-[0.15em]">CLIENT</span>
-              <input
-                value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
-                className="w-full mt-1 px-2 py-1 text-[11px] font-mono bg-background border border-border/30 rounded"
-              />
+              <div className="mt-1 flex">
+                <ClientPicker
+                  clientId={clientId}
+                  allowEdit
+                  onChange={(c) => {
+                    setClientId(c?.id || null);
+                    setClientName(c?.name || '');
+                  }}
+                />
+              </div>
             </label>
           </div>
           <label className="block">
