@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Priority, RecurrencePattern, CustomUnit, NthWeekday, NthWeek } from '@/store/taskStore';
 import { SubtaskList, Subtask, SubtaskListHandle } from '@/components/SubtaskList';
@@ -217,11 +217,15 @@ export function TaskEditPanel() {
   // suggestion as the title changes. If the user picks a different icon
   // manually, taskIcon diverges from the ref and we stop auto-suggesting.
   const autoIconRef = useRef<string | null>(null);
+  const hydratedTaskIdRef = useRef<string | null>(null);
+  const openedAtRef = useRef(0);
 
   const isRecurring = !!(task?.recurrence || task?.isRecurrenceInstance) && recurrenceType !== 'none';
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (task) {
+      hydratedTaskIdRef.current = null;
+      openedAtRef.current = Date.now();
       setTitle(task.title);
       setDescription(task.description || '');
       setSubtasks(task.subtasks || []);
@@ -257,7 +261,10 @@ export function TaskEditPanel() {
       setIsUploading(false);
       setReminders(task.reminders || []);
       setShowReminderModal(false);
+      hydratedTaskIdRef.current = task.id;
       
+    } else {
+      hydratedTaskIdRef.current = null;
     }
   }, [task?.id]);
 
@@ -365,6 +372,7 @@ export function TaskEditPanel() {
 
   const handleSave = () => {
     if (!task) return;
+    if (hydratedTaskIdRef.current !== task.id) return;
     // Flush any text the user typed in the "add subtask" field but never pressed Enter on.
     const flushed = subtaskListRef.current?.flushPendingInput();
     const updates = getUpdates(flushed);
@@ -409,6 +417,7 @@ export function TaskEditPanel() {
   };
 
   const handleClose = () => {
+    if (Date.now() - openedAtRef.current < 350) return;
     handleSave();
     showSaveConfirmation();
     setTimeout(() => setEditingTask(null), 400);
