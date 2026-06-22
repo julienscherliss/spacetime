@@ -1,6 +1,7 @@
 import { format, parseISO } from 'date-fns';
 import { formatCurrency } from '@/lib/billingFormat';
 import { FONT_FAMILIES } from '@/store/invoiceStyleStore';
+import { useClientStore } from '@/store/clientStore';
 import type { TemplateProps } from './types';
 
 export function ClassicTemplate({ invoice, style }: TemplateProps) {
@@ -8,6 +9,7 @@ export function ClassicTemplate({ invoice, style }: TemplateProps) {
   const bodyFont = FONT_FAMILIES[style.bodyFont];
   const accent = style.accentColor;
   const issued = format(parseISO(invoice.issuedAt), 'MMMM d, yyyy');
+  const clientAddress = useClientStore(s => invoice.clientId ? s.clients.find(c => c.id === invoice.clientId)?.address || '' : '');
 
   return (
     <div className="bg-white text-neutral-900 p-12" style={{ fontFamily: bodyFont, minHeight: '100%' }}>
@@ -49,6 +51,9 @@ export function ClassicTemplate({ invoice, style }: TemplateProps) {
         <div>
           <div style={{ fontFamily: headingFont, fontWeight: 700, fontSize: 13 }} className="mb-2">Bill To:</div>
           <div className="text-[12px] text-neutral-800">{invoice.clientName || '—'}</div>
+          {clientAddress && (
+            <div className="text-[11px] text-neutral-600 whitespace-pre-line mt-1">{clientAddress}</div>
+          )}
         </div>
         {style.paymentInstructions && (
           <div className="text-right">

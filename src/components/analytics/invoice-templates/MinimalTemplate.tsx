@@ -1,6 +1,7 @@
 import { format, parseISO } from 'date-fns';
 import { formatCurrency } from '@/lib/billingFormat';
 import { FONT_FAMILIES } from '@/store/invoiceStyleStore';
+import { useClientStore } from '@/store/clientStore';
 import type { TemplateProps } from './types';
 
 export function MinimalTemplate({ invoice, style }: TemplateProps) {
@@ -8,6 +9,7 @@ export function MinimalTemplate({ invoice, style }: TemplateProps) {
   const bodyFont = FONT_FAMILIES[style.bodyFont];
   const accent = style.accentColor;
   const issued = format(parseISO(invoice.issuedAt), 'MMM d, yyyy');
+  const clientAddress = useClientStore(s => invoice.clientId ? s.clients.find(c => c.id === invoice.clientId)?.address || '' : '');
 
   return (
     <div className="bg-white text-neutral-900 px-16 py-20" style={{ fontFamily: bodyFont, minHeight: '100%' }}>
@@ -32,6 +34,9 @@ export function MinimalTemplate({ invoice, style }: TemplateProps) {
         <div>
           <div className="text-[9px] tracking-[0.25em] text-neutral-400 mb-2">TO</div>
           <div style={{ fontFamily: headingFont, fontWeight: 500 }} className="text-[14px]">{invoice.clientName || '—'}</div>
+          {clientAddress && (
+            <div className="text-neutral-600 whitespace-pre-line mt-1">{clientAddress}</div>
+          )}
         </div>
       </div>
 
