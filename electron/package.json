@@ -14,10 +14,11 @@
   "main": "build/src/index.js",
   "scripts": {
     "build": "tsc && electron-rebuild",
+    "sync:web": "cd .. && npm run build && npx cap copy electron",
     "electron:start-live": "node ./live-runner.js",
-    "electron:start": "npm run build && electron ./",
-    "electron:pack": "npm run build && electron-builder build --dir -c ./electron-builder.config.json",
-    "electron:make": "npm run build && electron-builder build -c ./electron-builder.config.json -p always"
+    "electron:start": "npm run sync:web && npm run build && electron ./",
+    "electron:pack": "npm run sync:web && npm run build && electron-builder build --dir -c ./electron-builder.config.json",
+    "electron:make": "npm run sync:web && npm run build && electron-builder build -c ./electron-builder.config.json -p always"
   },
   "dependencies": {
     "@capacitor-community/electron": "^5.0.0",
