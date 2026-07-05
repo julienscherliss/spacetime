@@ -159,7 +159,7 @@ describe('Group store actions', () => {
 
   it('archives overdue routine groups and their children instead of sending them to limbo', () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-04-03T10:00:00.000Z'));
+    vi.setSystemTime(new Date('2026-04-03T16:00:00.000Z'));
 
     const pastDate = '2026-04-02';
     const groupId = 'routine-group';

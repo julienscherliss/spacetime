@@ -37,6 +37,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNativeNotifications } from '@/hooks/useNativeNotifications';
 import { useForegroundReminders } from '@/hooks/useForegroundReminders';
+import { useLiveActivities } from '@/hooks/useLiveActivities';
 import { TutorialRoot } from '@/tutorial/TutorialRoot';
 import { useTutorialStore } from '@/tutorial/tutorialStore';
 import { FeedbackModal } from '@/components/FeedbackModal';
@@ -45,6 +46,7 @@ const Index = () => {
   const { viewMode, daySubMode, weekSubMode, routinesEnabled, moveOverdueToWaitingRoom } = useTaskStore();
   useNativeNotifications();
   useForegroundReminders();
+  useLiveActivities();
   useBillingSubtagWatcher();
   const [waitingOpen, setWaitingOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
