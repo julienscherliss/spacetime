@@ -54,7 +54,7 @@ describe('color scheme persistence conflict resolution', () => {
       })
     );
 
-    expect(normalized.activeLightSchemeId).toBe('cobalt');
-    expect(normalized.activeDarkSchemeId).toBe('dark-citrus');
+    expect(normalized.activeLightSchemeId).toBe('minimal-archive');
+    expect(normalized.activeDarkSchemeId).toBe('minimal-archive');
   });
 });

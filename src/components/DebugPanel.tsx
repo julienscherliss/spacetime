@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { X, RefreshCw, Activity, Bell, Shield, Database, User as UserIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { isNativePlatform } from '@/utils/nativePlatform';
+import { useCalendarStore } from '@/store/calendarStore';
 
 interface Props {
   open: boolean;
@@ -25,6 +26,7 @@ interface AuditRow {
  */
 export function DebugPanel({ open, onClose }: Props) {
   const [authEmail, setAuthEmail] = useState<string>('—');
+  const [authUserId, setAuthUserId] = useState<string>('—');
   const [authProvider, setAuthProvider] = useState<string>('—');
   const [lastSignIn, setLastSignIn] = useState<string>('—');
   const [notifPerm, setNotifPerm] = useState<string>('—');
@@ -34,12 +36,18 @@ export function DebugPanel({ open, onClose }: Props) {
 
   const env = (import.meta as any).env?.MODE ?? 'unknown';
   const platform = isNativePlatform() ? 'native' : 'web';
+  const calendarConnected = useCalendarStore((s) => s.connected);
+  const calendarEmail = useCalendarStore((s) => s.email);
+  const calendarCount = useCalendarStore((s) => s.calendars.length);
+  const calendarEventCount = useCalendarStore((s) => s.events.length);
+  const calendarDeviceId = useCalendarStore((s) => s.deviceId);
 
   const load = async () => {
     setLoading(true);
     try {
       const { data: u } = await supabase.auth.getUser();
       setAuthEmail(u?.user?.email ?? '—');
+      setAuthUserId(u?.user?.id ?? '—');
       setAuthProvider((u?.user?.app_metadata as any)?.provider ?? 'email');
       setLastSignIn(u?.user?.last_sign_in_at ?? '—');
 
@@ -94,8 +102,17 @@ export function DebugPanel({ open, onClose }: Props) {
       <div className="flex-1 overflow-y-auto p-4 space-y-4 max-w-2xl mx-auto w-full">
         <Section icon={<UserIcon size={11} />} title="AUTH">
           <Row label="Email" value={authEmail} />
+          <Row label="User ID" value={authUserId} />
           <Row label="Provider" value={authProvider} />
           <Row label="Last sign-in" value={lastSignIn} />
+        </Section>
+
+        <Section icon={<Activity size={11} />} title="GOOGLE CALENDAR">
+          <Row label="Connected" value={calendarConnected ? 'yes' : 'no'} tone={calendarConnected ? 'good' : undefined} />
+          <Row label="Google email" value={calendarEmail ?? '—'} />
+          <Row label="Calendars" value={String(calendarCount)} />
+          <Row label="Events cached" value={String(calendarEventCount)} />
+          <Row label="Device ID" value={calendarDeviceId} />
         </Section>
 
         <Section icon={<Database size={11} />} title="DATABASE">

@@ -112,7 +112,7 @@ async function callEdge(action: string, params: Record<string, any> = {}) {
     throw new Error('Not authenticated');
   }
   const { data, error } = await supabase.functions.invoke('google-calendar', {
-    body: { action, ...params },
+    body: { action, deviceId: getDeviceId(), ...params },
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   if (error) {
