@@ -620,6 +620,117 @@ export type Database = {
         }
         Relationships: []
       }
+      live_activity_device_plans: {
+        Row: {
+          active: boolean
+          category: string | null
+          created_at: string
+          device_id: string
+          end_at: string | null
+          id: string
+          is_free_time: boolean
+          last_dispatch_error: string | null
+          last_dispatch_event: string | null
+          last_dispatched_at: string | null
+          last_dispatched_signature: string | null
+          next_start_at: string | null
+          next_title: string | null
+          payload: Json
+          plan_signature: string
+          start_at: string | null
+          symbol_name: string | null
+          task_id: string | null
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          category?: string | null
+          created_at?: string
+          device_id: string
+          end_at?: string | null
+          id?: string
+          is_free_time?: boolean
+          last_dispatch_error?: string | null
+          last_dispatch_event?: string | null
+          last_dispatched_at?: string | null
+          last_dispatched_signature?: string | null
+          next_start_at?: string | null
+          next_title?: string | null
+          payload?: Json
+          plan_signature?: string
+          start_at?: string | null
+          symbol_name?: string | null
+          task_id?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          category?: string | null
+          created_at?: string
+          device_id?: string
+          end_at?: string | null
+          id?: string
+          is_free_time?: boolean
+          last_dispatch_error?: string | null
+          last_dispatch_event?: string | null
+          last_dispatched_at?: string | null
+          last_dispatched_signature?: string | null
+          next_start_at?: string | null
+          next_title?: string | null
+          payload?: Json
+          plan_signature?: string
+          start_at?: string | null
+          symbol_name?: string | null
+          task_id?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      live_activity_devices: {
+        Row: {
+          created_at: string
+          current_activity_task_id: string | null
+          current_activity_token: string | null
+          device_id: string
+          id: string
+          last_seen_at: string
+          platform: string
+          push_to_start_token: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_activity_task_id?: string | null
+          current_activity_token?: string | null
+          device_id: string
+          id?: string
+          last_seen_at?: string
+          platform?: string
+          push_to_start_token?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_activity_task_id?: string | null
+          current_activity_token?: string | null
+          device_id?: string
+          id?: string
+          last_seen_at?: string
+          platform?: string
+          push_to_start_token?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
