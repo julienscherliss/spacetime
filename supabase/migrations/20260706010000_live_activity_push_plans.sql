@@ -37,6 +37,12 @@ CREATE TABLE IF NOT EXISTS public.live_activity_device_plans (
   UNIQUE (user_id, device_id)
 );
 
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.live_activity_devices TO authenticated;
+GRANT ALL ON public.live_activity_devices TO service_role;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.live_activity_device_plans TO authenticated;
+GRANT ALL ON public.live_activity_device_plans TO service_role;
+
 ALTER TABLE public.live_activity_devices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.live_activity_device_plans ENABLE ROW LEVEL SECURITY;
 
