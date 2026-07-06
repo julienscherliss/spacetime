@@ -7,3 +7,5 @@ project_id = "rhguyvbysqmcwzeuqipr"
     verify_jwt = true
   [functions.apple-iap-notifications]
     verify_jwt = false
+  [functions.live-activity-dispatch]
+    verify_jwt = false

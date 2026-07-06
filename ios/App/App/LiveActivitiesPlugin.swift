@@ -8,6 +8,7 @@ public class LiveActivitiesPlugin: CAPPlugin, CAPBridgedPlugin {
     public let jsName = "LiveActivities"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "isAvailable", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getPushTokens", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "sync", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "end", returnType: CAPPluginReturnPromise),
     ]
@@ -24,6 +25,38 @@ public class LiveActivitiesPlugin: CAPPlugin, CAPBridgedPlugin {
         } else {
             call.resolve(["available": false, "reason": "disabled"])
         }
+    }
+
+    @objc func getPushTokens(_ call: CAPPluginCall) {
+        guard #available(iOS 16.2, *) else {
+            call.resolve([
+                "available": false,
+                "reason": "requires_ios_16_2",
+                "activityTokens": [],
+            ])
+            return
+        }
+
+        var activityTokens: [[String: String]] = []
+        for activity in Activity<SpacetimeLiveActivityAttributes>.activities {
+            if let token = activity.pushToken {
+                activityTokens.append([
+                    "taskId": activity.attributes.taskId,
+                    "token": token.hexString,
+                ])
+            }
+        }
+
+        var response: [String: Any] = [
+            "available": ActivityAuthorizationInfo().areActivitiesEnabled,
+            "activityTokens": activityTokens,
+        ]
+
+        if #available(iOS 17.2, *), let pushToStartToken = Activity<SpacetimeLiveActivityAttributes>.pushToStartToken {
+            response["pushToStartToken"] = pushToStartToken.hexString
+        }
+
+        call.resolve(response)
     }
 
     @objc func sync(_ call: CAPPluginCall) {
@@ -67,7 +100,13 @@ public class LiveActivitiesPlugin: CAPPlugin, CAPBridgedPlugin {
         Task {
             do {
                 try await syncActivity(taskId: taskId, state: state)
-                call.resolve(["active": true])
+                var result: [String: Any] = ["active": true]
+                if #available(iOS 16.2, *),
+                   let activity = Activity<SpacetimeLiveActivityAttributes>.activities.first,
+                   let pushToken = activity.pushToken {
+                    result["activityToken"] = pushToken.hexString
+                }
+                call.resolve(result)
             } catch {
                 call.reject(error.localizedDescription)
             }
@@ -107,7 +146,7 @@ public class LiveActivitiesPlugin: CAPPlugin, CAPBridgedPlugin {
             _ = try Activity.request(
                 attributes: attributes,
                 content: ActivityContent(state: state, staleDate: staleDate(for: state)),
-                pushType: nil
+                pushType: .token
             )
         } else {
             _ = try Activity.request(attributes: attributes, contentState: state, pushType: nil)
@@ -136,6 +175,12 @@ public class LiveActivitiesPlugin: CAPPlugin, CAPBridgedPlugin {
     @available(iOS 16.1, *)
     private func staleDate(for state: SpacetimeLiveActivityAttributes.ContentState) -> Date {
         state.endDate.addingTimeInterval(state.isFreeTime ? 5 * 60 : 4 * 60 * 60)
+    }
+}
+
+private extension Data {
+    var hexString: String {
+        map { String(format: "%02x", $0) }.joined()
     }
 }
 
