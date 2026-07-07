@@ -79,16 +79,26 @@ export async function syncLiveActivityRemoteState(params: {
       : null) ||
     null;
 
-  await (supabase.from('live_activity_devices' as any) as any).upsert({
+  const devicePatch: Record<string, unknown> = {
     user_id: params.userId,
     device_id: deviceId,
     platform: 'ios',
-    push_to_start_token: params.tokens?.pushToStartToken ?? null,
-    current_activity_token: matchingActivityToken,
     current_activity_task_id: params.payload.active ? params.payload.taskId ?? null : null,
     last_seen_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
-  }, {
+  };
+
+  if (params.tokens?.pushToStartToken) {
+    devicePatch.push_to_start_token = params.tokens.pushToStartToken;
+  }
+
+  if (matchingActivityToken) {
+    devicePatch.current_activity_token = matchingActivityToken;
+  } else if (!params.payload.active) {
+    devicePatch.current_activity_token = null;
+  }
+
+  await (supabase.from('live_activity_devices' as any) as any).upsert(devicePatch, {
     onConflict: 'user_id,device_id',
   });
 

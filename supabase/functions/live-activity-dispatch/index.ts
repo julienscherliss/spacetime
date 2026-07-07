@@ -252,16 +252,27 @@ Deno.serve(async (req) => {
       if (deviceError) throw deviceError;
 
       const liveDevice = device as LiveActivityDevice | null;
+      const hasDifferentCurrentActivity =
+        !!liveDevice?.current_activity_token &&
+        !!plan.task_id &&
+        liveDevice.current_activity_task_id !== plan.task_id;
       const shouldEndCurrentActivity =
         !!liveDevice?.current_activity_token &&
-        (!plan.active || (!!plan.task_id && liveDevice.current_activity_task_id !== plan.task_id));
+        (!plan.active || hasDifferentCurrentActivity);
       const isDueForStartOrUpdate = !!plan.start_at && plan.start_at <= windowEnd;
 
       if (plan.active && !isDueForStartOrUpdate && !shouldEndCurrentActivity) {
         continue;
       }
 
-      if (shouldEndCurrentActivity) {
+      const canRetargetCurrentActivity =
+        plan.active &&
+        isDueForStartOrUpdate &&
+        hasDifferentCurrentActivity &&
+        !!liveDevice?.current_activity_token &&
+        !liveDevice.push_to_start_token;
+
+      if (shouldEndCurrentActivity && !canRetargetCurrentActivity) {
         const sentEnd = await sendLiveActivityPush({
           token: liveDevice.current_activity_token!,
           event: "end",
@@ -329,7 +340,7 @@ Deno.serve(async (req) => {
       const canUpdateCurrentActivity =
         !!liveDevice?.current_activity_token &&
         !!plan.task_id &&
-        liveDevice.current_activity_task_id === plan.task_id;
+        (liveDevice.current_activity_task_id === plan.task_id || canRetargetCurrentActivity);
       const event: "start" | "update" = canUpdateCurrentActivity ? "update" : "start";
       const token = event === "update" ? liveDevice?.current_activity_token : liveDevice?.push_to_start_token;
 
@@ -366,6 +377,17 @@ Deno.serve(async (req) => {
           .from("live_activity_device_plans")
           .update(patch)
           .eq("id", plan.id);
+
+        if (sent.ok && event === "update" && liveDevice?.current_activity_task_id !== plan.task_id) {
+          await admin
+            .from("live_activity_devices")
+            .update({
+              current_activity_task_id: plan.task_id,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("user_id", plan.user_id)
+            .eq("device_id", plan.device_id);
+        }
       }
 
       results.push({ id: plan.id, taskId: plan.task_id, event, ...sent });
