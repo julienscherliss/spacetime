@@ -147,6 +147,11 @@ function apnsPayload(plan: LiveActivityPlan, event: "start" | "update" | "end") 
   return { aps };
 }
 
+function shouldDispatchPlan(plan: LiveActivityPlan) {
+  if (plan.last_dispatched_signature === plan.plan_signature) return false;
+  return true;
+}
+
 async function sendLiveActivityPush(params: {
   token: string;
   event: "start" | "update" | "end";
@@ -230,21 +235,13 @@ Deno.serve(async (req) => {
     const { data: plans, error: planError } = await admin
       .from("live_activity_device_plans")
       .select("*")
-      .eq("active", true)
-      .not("task_id", "is", null)
-      .not("title", "is", null)
-      .not("start_at", "is", null)
-      .not("end_at", "is", null)
-      .lte("start_at", windowEnd)
-      .order("start_at", { ascending: true })
+      .order("updated_at", { ascending: false })
       .limit(limit);
 
     if (planError) throw planError;
 
     const results: Array<Record<string, unknown>> = [];
-    for (const plan of ((plans ?? []) as LiveActivityPlan[]).filter((candidate) =>
-      candidate.last_dispatched_signature !== candidate.plan_signature
-    )) {
+    for (const plan of ((plans ?? []) as LiveActivityPlan[]).filter(shouldDispatchPlan)) {
       const { data: device, error: deviceError } = await admin
         .from("live_activity_devices")
         .select("user_id, device_id, push_to_start_token, current_activity_token, current_activity_task_id")
@@ -255,6 +252,80 @@ Deno.serve(async (req) => {
       if (deviceError) throw deviceError;
 
       const liveDevice = device as LiveActivityDevice | null;
+      const shouldEndCurrentActivity =
+        !!liveDevice?.current_activity_token &&
+        (!plan.active || (!!plan.task_id && liveDevice.current_activity_task_id !== plan.task_id));
+      const isDueForStartOrUpdate = !!plan.start_at && plan.start_at <= windowEnd;
+
+      if (plan.active && !isDueForStartOrUpdate && !shouldEndCurrentActivity) {
+        continue;
+      }
+
+      if (shouldEndCurrentActivity) {
+        const sentEnd = await sendLiveActivityPush({
+          token: liveDevice.current_activity_token!,
+          event: "end",
+          plan,
+          dryRun,
+        });
+
+        if (!dryRun && sentEnd.ok) {
+          await admin
+            .from("live_activity_devices")
+            .update({
+              current_activity_token: null,
+              current_activity_task_id: null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("user_id", plan.user_id)
+            .eq("device_id", plan.device_id);
+        }
+
+        if (!plan.active || !isDueForStartOrUpdate || !sentEnd.ok) {
+          const patch = sentEnd.ok
+            ? {
+                last_dispatched_signature: plan.active ? plan.last_dispatched_signature : plan.plan_signature,
+                last_dispatched_at: new Date().toISOString(),
+                last_dispatch_event: "end",
+                last_dispatch_error: null,
+                updated_at: new Date().toISOString(),
+              }
+            : {
+                last_dispatch_event: "end",
+                last_dispatch_error: JSON.stringify(sentEnd),
+                updated_at: new Date().toISOString(),
+              };
+
+          if (!dryRun) {
+            await admin
+              .from("live_activity_device_plans")
+              .update(patch)
+              .eq("id", plan.id);
+          }
+
+          results.push({ id: plan.id, taskId: plan.task_id, event: "end", ...sentEnd });
+          continue;
+        }
+      }
+
+      if (!plan.active) {
+        if (!dryRun) {
+          await admin
+            .from("live_activity_device_plans")
+            .update({
+              last_dispatched_signature: plan.plan_signature,
+              last_dispatched_at: new Date().toISOString(),
+              last_dispatch_event: "none",
+              last_dispatch_error: null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", plan.id);
+        }
+
+        results.push({ id: plan.id, taskId: plan.task_id, event: "none", ok: true });
+        continue;
+      }
+
       const canUpdateCurrentActivity =
         !!liveDevice?.current_activity_token &&
         !!plan.task_id &&
@@ -262,7 +333,7 @@ Deno.serve(async (req) => {
       const event: "start" | "update" = canUpdateCurrentActivity ? "update" : "start";
       const token = event === "update" ? liveDevice?.current_activity_token : liveDevice?.push_to_start_token;
 
-      if (!token) {
+      if (!token || !plan.task_id || !plan.title || !plan.start_at || !plan.end_at) {
         const message = event === "start" ? "missing_push_to_start_token" : "missing_activity_token";
         await admin
           .from("live_activity_device_plans")

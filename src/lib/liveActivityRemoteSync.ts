@@ -17,6 +17,45 @@ function isEligiblePlatform() {
   return Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'ios';
 }
 
+function planRow(userId: string, deviceId: string, payload: LiveActivityPayload, signature: string) {
+  return {
+    user_id: userId,
+    device_id: deviceId,
+    plan_signature: signature,
+    active: payload.active,
+    task_id: payload.taskId ?? null,
+    title: payload.title ?? null,
+    category: payload.category ?? null,
+    symbol_name: payload.symbolName ?? null,
+    is_free_time: payload.isFreeTime ?? false,
+    start_at: payload.startAt ?? null,
+    end_at: payload.endAt ?? null,
+    next_title: payload.nextTitle ?? null,
+    next_start_at: payload.nextStartAt ?? null,
+    payload,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+async function syncExistingDevicePlans(userId: string, payload: LiveActivityPayload, signature: string) {
+  const { data, error } = await (supabase.from('live_activity_devices' as any) as any)
+    .select('device_id')
+    .eq('user_id', userId);
+
+  if (error) {
+    console.warn('[live-activity] remote device lookup failed', error);
+    return;
+  }
+
+  const deviceIds = Array.from(new Set((data ?? []).map((row: { device_id?: string }) => row.device_id).filter(Boolean)));
+  if (deviceIds.length === 0) return;
+
+  await (supabase.from('live_activity_device_plans' as any) as any).upsert(
+    deviceIds.map((deviceId) => planRow(userId, deviceId, payload, signature)),
+    { onConflict: 'user_id,device_id' },
+  );
+}
+
 export async function syncLiveActivityRemoteState(params: {
   userId: string | null | undefined;
   payload: LiveActivityPayload;
@@ -24,7 +63,12 @@ export async function syncLiveActivityRemoteState(params: {
   tokens?: LiveActivityTokenSnapshot | null;
   activityToken?: string | null;
 }) {
-  if (!isEligiblePlatform() || !params.userId) return;
+  if (!params.userId) return;
+
+  if (!isEligiblePlatform()) {
+    await syncExistingDevicePlans(params.userId, params.payload, params.signature);
+    return;
+  }
 
   const deviceId = getDeviceId();
   const activityTokens = params.tokens?.activityTokens ?? [];
@@ -48,48 +92,28 @@ export async function syncLiveActivityRemoteState(params: {
     onConflict: 'user_id,device_id',
   });
 
-  await (supabase.from('live_activity_device_plans' as any) as any).upsert({
-    user_id: params.userId,
-    device_id: deviceId,
-    plan_signature: params.signature,
-    active: params.payload.active,
-    task_id: params.payload.taskId ?? null,
-    title: params.payload.title ?? null,
-    category: params.payload.category ?? null,
-    symbol_name: params.payload.symbolName ?? null,
-    is_free_time: params.payload.isFreeTime ?? false,
-    start_at: params.payload.startAt ?? null,
-    end_at: params.payload.endAt ?? null,
-    next_title: params.payload.nextTitle ?? null,
-    next_start_at: params.payload.nextStartAt ?? null,
-    payload: params.payload,
-    updated_at: new Date().toISOString(),
-  }, {
+  await (supabase.from('live_activity_device_plans' as any) as any).upsert(planRow(
+    params.userId,
+    deviceId,
+    params.payload,
+    params.signature,
+  ), {
     onConflict: 'user_id,device_id',
   });
 }
 
 export async function clearLiveActivityRemoteState(userId: string | null | undefined, signature: string) {
-  if (!isEligiblePlatform() || !userId) return;
+  if (!userId) return;
+
+  const payload: LiveActivityPayload = { active: false };
+
+  if (!isEligiblePlatform()) {
+    await syncExistingDevicePlans(userId, payload, signature);
+    return;
+  }
 
   const deviceId = getDeviceId();
-  await (supabase.from('live_activity_device_plans' as any) as any).upsert({
-    user_id: userId,
-    device_id: deviceId,
-    plan_signature: signature,
-    active: false,
-    task_id: null,
-    title: null,
-    category: null,
-    symbol_name: null,
-    is_free_time: false,
-    start_at: null,
-    end_at: null,
-    next_title: null,
-    next_start_at: null,
-    payload: { active: false },
-    updated_at: new Date().toISOString(),
-  }, {
+  await (supabase.from('live_activity_device_plans' as any) as any).upsert(planRow(userId, deviceId, payload, signature), {
     onConflict: 'user_id,device_id',
   });
 }
