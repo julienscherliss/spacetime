@@ -126,16 +126,19 @@ private struct LiveActivityProgressBar: View {
     let isFreeTime: Bool
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 15)) { context in
+        TimelineView(.periodic(from: startDate, by: 1)) { context in
             GeometryReader { proxy in
                 let progress = progress(at: context.date)
+                let filledWidth = proxy.size.width * progress
+                let visibleWidth = progress > 0 && progress < 1 ? max(3, filledWidth) : filledWidth
                 ZStack(alignment: .leading) {
                     let isOverdue = context.date >= endDate && !isFreeTime
                     Capsule()
                         .fill(Color.white.opacity(0.13))
                     Capsule()
                         .fill(isOverdue ? Color.orange : Color.white)
-                        .frame(width: max(5, proxy.size.width * progress))
+                        .frame(width: visibleWidth)
+                        .animation(.linear(duration: 1), value: progress)
                 }
             }
         }
