@@ -13,6 +13,18 @@ public class LiveActivitiesPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "end", returnType: CAPPluginReturnPromise),
     ]
 
+    private var cachedPushToStartToken: String?
+    private var pushToStartTokenTask: Task<Void, Never>?
+
+    public override func load() {
+        super.load()
+        startPushToStartTokenUpdates()
+    }
+
+    deinit {
+        pushToStartTokenTask?.cancel()
+    }
+
     @objc func isAvailable(_ call: CAPPluginCall) {
         guard #available(iOS 16.1, *) else {
             call.resolve(["available": false, "reason": "requires_ios_16_1"])
@@ -54,6 +66,8 @@ public class LiveActivitiesPlugin: CAPPlugin, CAPBridgedPlugin {
 
         if #available(iOS 17.2, *), let pushToStartToken = Activity<SpacetimeLiveActivityAttributes>.pushToStartToken {
             response["pushToStartToken"] = pushToStartToken.hexString
+        } else if let token = cachedPushToStartToken {
+            response["pushToStartToken"] = token
         }
 
         call.resolve(response)
@@ -108,7 +122,7 @@ public class LiveActivitiesPlugin: CAPPlugin, CAPBridgedPlugin {
                 }
                 call.resolve(result)
             } catch {
-                call.reject(error.localizedDescription)
+                call.reject("Live Activity sync failed: \(error.localizedDescription)")
             }
         }
     }
@@ -121,6 +135,21 @@ public class LiveActivitiesPlugin: CAPPlugin, CAPBridgedPlugin {
 
         endAllActivities {
             call.resolve(["active": false])
+        }
+    }
+
+    private func startPushToStartTokenUpdates() {
+        guard #available(iOS 17.2, *) else { return }
+        guard pushToStartTokenTask == nil else { return }
+
+        if let token = Activity<SpacetimeLiveActivityAttributes>.pushToStartToken {
+            cachedPushToStartToken = token.hexString
+        }
+
+        pushToStartTokenTask = Task { [weak self] in
+            for await token in Activity<SpacetimeLiveActivityAttributes>.pushToStartTokenUpdates {
+                self?.cachedPushToStartToken = token.hexString
+            }
         }
     }
 
