@@ -9,6 +9,7 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
+    "sync:main": "bash scripts/sync-main.sh",
     "test": "vitest run",
     "test:watch": "vitest"
   },
