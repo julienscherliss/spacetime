@@ -37,6 +37,8 @@ type LiveActivityDevice = {
   current_activity_task_id: string | null;
 };
 
+type SupabaseAdmin = ReturnType<typeof createClient>;
+
 function log(stage: string, info: Record<string, unknown> = {}) {
   console.log(JSON.stringify({ fn: "live-activity-dispatch", stage, ...info }));
 }
@@ -154,6 +156,75 @@ function shouldDispatchPlan(plan: LiveActivityPlan) {
   return true;
 }
 
+function clonedPlanForDevice(plan: LiveActivityPlan, device: LiveActivityDevice) {
+  return {
+    user_id: plan.user_id,
+    device_id: device.device_id,
+    plan_signature: plan.plan_signature,
+    active: plan.active,
+    task_id: plan.task_id,
+    title: plan.title,
+    category: plan.category,
+    symbol_name: plan.symbol_name,
+    is_free_time: plan.is_free_time,
+    start_at: plan.start_at,
+    end_at: plan.end_at,
+    next_title: plan.next_title,
+    next_start_at: plan.next_start_at,
+    payload: plan.payload,
+    last_dispatched_signature: null,
+    last_dispatched_at: null,
+    last_dispatch_event: null,
+    last_dispatch_error: null,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+async function ensurePlansForRegisteredDevices(admin: SupabaseAdmin, limit: number) {
+  const { data: devices, error: devicesError } = await admin
+    .from("live_activity_devices")
+    .select("user_id, device_id, apns_environment, bundle_identifier, push_to_start_token, current_activity_token, current_activity_task_id")
+    .or("push_to_start_token.not.is.null,current_activity_token.not.is.null")
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+
+  if (devicesError) throw devicesError;
+
+  let repairedCount = 0;
+  for (const device of ((devices ?? []) as LiveActivityDevice[])) {
+    const { data: latestPlan, error: latestPlanError } = await admin
+      .from("live_activity_device_plans")
+      .select("*")
+      .eq("user_id", device.user_id)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (latestPlanError) throw latestPlanError;
+    if (!latestPlan) continue;
+
+    const sourcePlan = latestPlan as LiveActivityPlan;
+    const { data: currentPlan, error: currentPlanError } = await admin
+      .from("live_activity_device_plans")
+      .select("plan_signature")
+      .eq("user_id", device.user_id)
+      .eq("device_id", device.device_id)
+      .maybeSingle();
+
+    if (currentPlanError) throw currentPlanError;
+    if (currentPlan?.plan_signature === sourcePlan.plan_signature) continue;
+
+    const { error: upsertError } = await admin
+      .from("live_activity_device_plans")
+      .upsert(clonedPlanForDevice(sourcePlan, device), { onConflict: "user_id,device_id" });
+
+    if (upsertError) throw upsertError;
+    repairedCount += 1;
+  }
+
+  return repairedCount;
+}
+
 async function sendLiveActivityPush(params: {
   token: string;
   event: "start" | "update" | "end";
@@ -221,6 +292,10 @@ function normalizeApnsEnvironment(value: string | null | undefined) {
   return normalized === "development" || normalized === "sandbox" ? "sandbox" : "production";
 }
 
+function isExpiredToken(result: { ok: boolean; status: number }) {
+  return !result.ok && result.status === 410;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
@@ -245,6 +320,8 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
       { auth: { persistSession: false } },
     );
+
+    const repairedCount = dryRun ? 0 : await ensurePlansForRegisteredDevices(admin, limit);
 
     const { data: plans, error: planError } = await admin
       .from("live_activity_device_plans")
@@ -381,6 +458,7 @@ Deno.serve(async (req) => {
         bundleId: liveDevice?.bundle_identifier,
         dryRun,
       });
+      const expiredToken = isExpiredToken(sent);
       const patch = sent.ok
         ? {
             last_dispatched_signature: plan.plan_signature,
@@ -390,6 +468,8 @@ Deno.serve(async (req) => {
             updated_at: new Date().toISOString(),
           }
         : {
+            last_dispatched_signature: expiredToken ? plan.plan_signature : plan.last_dispatched_signature,
+            last_dispatched_at: expiredToken ? new Date().toISOString() : null,
             last_dispatch_event: event,
             last_dispatch_error: JSON.stringify(sent),
             updated_at: new Date().toISOString(),
@@ -398,8 +478,21 @@ Deno.serve(async (req) => {
       if (!dryRun) {
         await admin
           .from("live_activity_device_plans")
-          .update(patch)
-          .eq("id", plan.id);
+            .update(patch)
+            .eq("id", plan.id);
+
+        if (expiredToken) {
+          await admin
+            .from("live_activity_devices")
+            .update({
+              push_to_start_token: event === "start" ? null : liveDevice?.push_to_start_token,
+              current_activity_token: event === "update" ? null : liveDevice?.current_activity_token,
+              current_activity_task_id: event === "update" ? null : liveDevice?.current_activity_task_id,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("user_id", plan.user_id)
+            .eq("device_id", plan.device_id);
+        }
 
         if (sent.ok && event === "update" && liveDevice?.current_activity_task_id !== plan.task_id) {
           await admin
@@ -416,8 +509,8 @@ Deno.serve(async (req) => {
       results.push({ id: plan.id, taskId: plan.task_id, event, ...sent });
     }
 
-    log("complete", { count: results.length, dryRun });
-    return new Response(JSON.stringify({ ok: true, count: results.length, results }), {
+    log("complete", { count: results.length, repairedCount, dryRun });
+    return new Response(JSON.stringify({ ok: true, count: results.length, repairedCount, results }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
