@@ -694,6 +694,8 @@ export type Database = {
       }
       live_activity_devices: {
         Row: {
+          apns_environment: string
+          bundle_identifier: string
           created_at: string
           current_activity_task_id: string | null
           current_activity_token: string | null
@@ -706,6 +708,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          apns_environment?: string
+          bundle_identifier?: string
           created_at?: string
           current_activity_task_id?: string | null
           current_activity_token?: string | null
@@ -718,6 +722,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          apns_environment?: string
+          bundle_identifier?: string
           created_at?: string
           current_activity_task_id?: string | null
           current_activity_token?: string | null
