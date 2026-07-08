@@ -47,7 +47,13 @@ async function syncExistingDevicePlans(userId: string, payload: LiveActivityPayl
     return;
   }
 
-  const deviceIds = Array.from(new Set((data ?? []).map((row: { device_id?: string }) => row.device_id).filter(Boolean)));
+  const deviceIds = Array.from(
+    new Set(
+      (data ?? [])
+        .map((row: { device_id?: string }) => row.device_id)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  );
   if (deviceIds.length === 0) return;
 
   await (supabase.from('live_activity_device_plans' as any) as any).upsert(
