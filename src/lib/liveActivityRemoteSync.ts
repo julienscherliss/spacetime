@@ -47,8 +47,8 @@ async function syncExistingDevicePlans(userId: string, payload: LiveActivityPayl
     return;
   }
 
-  const deviceIds = Array.from(
-    new Set(
+  const deviceIds: string[] = Array.from(
+    new Set<string>(
       (data ?? [])
         .map((row: { device_id?: string }) => row.device_id)
         .filter((id): id is string => Boolean(id)),
