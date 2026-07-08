@@ -73,7 +73,7 @@ export const useClientStore = create<State>((set, get) => ({
   },
 
   updateClient: async (id, patch) => {
-    const row: Record<string, any> = {};
+    const row: Record<string, unknown> = {};
     if (patch.name !== undefined) row.name = patch.name.trim();
     if (patch.email !== undefined) row.email = patch.email;
     if (patch.address !== undefined) row.address = patch.address;
@@ -81,7 +81,7 @@ export const useClientStore = create<State>((set, get) => ({
     if (patch.archived !== undefined) row.archived = patch.archived;
     const { data, error } = await supabase
       .from('clients')
-      .update(row)
+      .update(row as never)
       .eq('id', id)
       .select()
       .single();
