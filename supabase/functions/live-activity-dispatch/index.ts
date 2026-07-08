@@ -372,8 +372,9 @@ Deno.serve(async (req) => {
           bundleId: liveDevice.bundle_identifier,
           dryRun,
         });
+        const expiredEndToken = isExpiredToken(sentEnd);
 
-        if (!dryRun && sentEnd.ok) {
+        if (!dryRun && (sentEnd.ok || expiredEndToken)) {
           await admin
             .from("live_activity_devices")
             .update({
@@ -385,13 +386,18 @@ Deno.serve(async (req) => {
             .eq("device_id", plan.device_id);
         }
 
-        if (!plan.active || !isDueForStartOrUpdate || !sentEnd.ok) {
-          const patch = sentEnd.ok
+        if (expiredEndToken) {
+          liveDevice.current_activity_token = null;
+          liveDevice.current_activity_task_id = null;
+        }
+
+        if (!plan.active || !isDueForStartOrUpdate || (!sentEnd.ok && !expiredEndToken)) {
+          const patch = sentEnd.ok || expiredEndToken
             ? {
                 last_dispatched_signature: plan.active ? plan.last_dispatched_signature : plan.plan_signature,
                 last_dispatched_at: new Date().toISOString(),
                 last_dispatch_event: "end",
-                last_dispatch_error: null,
+                last_dispatch_error: expiredEndToken ? JSON.stringify(sentEnd) : null,
                 updated_at: new Date().toISOString(),
               }
             : {
@@ -478,8 +484,8 @@ Deno.serve(async (req) => {
       if (!dryRun) {
         await admin
           .from("live_activity_device_plans")
-            .update(patch)
-            .eq("id", plan.id);
+          .update(patch)
+          .eq("id", plan.id);
 
         if (expiredToken) {
           await admin
