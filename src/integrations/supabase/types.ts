@@ -694,42 +694,42 @@ export type Database = {
       }
       live_activity_devices: {
         Row: {
+          apns_environment: string
+          bundle_identifier: string
           created_at: string
           current_activity_task_id: string | null
           current_activity_token: string | null
           device_id: string
           id: string
           last_seen_at: string
-          apns_environment: string
-          bundle_identifier: string
           platform: string
           push_to_start_token: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          apns_environment?: string
+          bundle_identifier?: string
           created_at?: string
           current_activity_task_id?: string | null
           current_activity_token?: string | null
           device_id: string
           id?: string
           last_seen_at?: string
-          apns_environment?: string
-          bundle_identifier?: string
           platform?: string
           push_to_start_token?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          apns_environment?: string
+          bundle_identifier?: string
           created_at?: string
           current_activity_task_id?: string | null
           current_activity_token?: string | null
           device_id?: string
           id?: string
           last_seen_at?: string
-          apns_environment?: string
-          bundle_identifier?: string
           platform?: string
           push_to_start_token?: string | null
           updated_at?: string
