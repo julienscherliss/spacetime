@@ -700,6 +700,8 @@ export type Database = {
           device_id: string
           id: string
           last_seen_at: string
+          apns_environment: string
+          bundle_identifier: string
           platform: string
           push_to_start_token: string | null
           updated_at: string
@@ -712,6 +714,8 @@ export type Database = {
           device_id: string
           id?: string
           last_seen_at?: string
+          apns_environment?: string
+          bundle_identifier?: string
           platform?: string
           push_to_start_token?: string | null
           updated_at?: string
@@ -724,6 +728,8 @@ export type Database = {
           device_id?: string
           id?: string
           last_seen_at?: string
+          apns_environment?: string
+          bundle_identifier?: string
           platform?: string
           push_to_start_token?: string | null
           updated_at?: string

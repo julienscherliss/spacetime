@@ -30,6 +30,8 @@ type LiveActivityPlan = {
 type LiveActivityDevice = {
   user_id: string;
   device_id: string;
+  apns_environment: string | null;
+  bundle_identifier: string | null;
   push_to_start_token: string | null;
   current_activity_token: string | null;
   current_activity_task_id: string | null;
@@ -156,13 +158,16 @@ async function sendLiveActivityPush(params: {
   token: string;
   event: "start" | "update" | "end";
   plan: LiveActivityPlan;
+  environment?: string | null;
+  bundleId?: string | null;
   dryRun: boolean;
 }) {
-  const bundleId = Deno.env.get("APNS_BUNDLE_ID") ?? "com.spacetimelabs.spacetime";
-  const environment = Deno.env.get("APNS_ENV") ?? "production";
+  const bundleId = params.bundleId ?? Deno.env.get("APNS_BUNDLE_ID") ?? "com.spacetimelabs.spacetime";
+  const environment = normalizeApnsEnvironment(params.environment ?? Deno.env.get("APNS_ENV") ?? "production");
   const baseUrl = environment === "sandbox" ? APNS_SANDBOX_URL : APNS_PRODUCTION_URL;
   const url = `${baseUrl}/3/device/${params.token}`;
   const body = apnsPayload(params.plan, params.event);
+  const topic = `${bundleId}.push-type.liveactivity`;
 
   if (params.dryRun) {
     return {
@@ -171,6 +176,8 @@ async function sendLiveActivityPush(params: {
       apnsId: null,
       dryRun: true,
       event: params.event,
+      environment,
+      topic,
       payload: body,
     };
   }
@@ -180,7 +187,7 @@ async function sendLiveActivityPush(params: {
     method: "POST",
     headers: {
       authorization: `bearer ${jwt}`,
-      "apns-topic": `${bundleId}.push-type.liveactivity`,
+      "apns-topic": topic,
       "apns-push-type": "liveactivity",
       "apns-priority": "10",
       "content-type": "application/json",
@@ -204,7 +211,14 @@ async function sendLiveActivityPush(params: {
     apnsId: response.headers.get("apns-id"),
     body: responseBody,
     event: params.event,
+    environment,
+    topic,
   };
+}
+
+function normalizeApnsEnvironment(value: string | null | undefined) {
+  const normalized = (value ?? "").toLowerCase();
+  return normalized === "development" || normalized === "sandbox" ? "sandbox" : "production";
 }
 
 Deno.serve(async (req) => {
@@ -244,7 +258,7 @@ Deno.serve(async (req) => {
     for (const plan of ((plans ?? []) as LiveActivityPlan[]).filter(shouldDispatchPlan)) {
       const { data: device, error: deviceError } = await admin
         .from("live_activity_devices")
-        .select("user_id, device_id, push_to_start_token, current_activity_token, current_activity_task_id")
+        .select("user_id, device_id, apns_environment, bundle_identifier, push_to_start_token, current_activity_token, current_activity_task_id")
         .eq("user_id", plan.user_id)
         .eq("device_id", plan.device_id)
         .maybeSingle();
@@ -277,6 +291,8 @@ Deno.serve(async (req) => {
           token: liveDevice.current_activity_token!,
           event: "end",
           plan,
+          environment: liveDevice.apns_environment,
+          bundleId: liveDevice.bundle_identifier,
           dryRun,
         });
 
@@ -357,7 +373,14 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      const sent = await sendLiveActivityPush({ token, event, plan, dryRun });
+      const sent = await sendLiveActivityPush({
+        token,
+        event,
+        plan,
+        environment: liveDevice?.apns_environment,
+        bundleId: liveDevice?.bundle_identifier,
+        dryRun,
+      });
       const patch = sent.ok
         ? {
             last_dispatched_signature: plan.plan_signature,

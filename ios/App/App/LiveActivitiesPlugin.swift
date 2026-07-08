@@ -62,6 +62,8 @@ public class LiveActivitiesPlugin: CAPPlugin, CAPBridgedPlugin {
         var response: [String: Any] = [
             "available": ActivityAuthorizationInfo().areActivitiesEnabled,
             "activityTokens": activityTokens,
+            "apnsEnvironment": apnsEnvironment(),
+            "bundleIdentifier": Bundle.main.bundleIdentifier ?? "",
         ]
 
         if #available(iOS 17.2, *), let pushToStartToken = Activity<SpacetimeLiveActivityAttributes>.pushToStartToken {
@@ -151,6 +153,11 @@ public class LiveActivitiesPlugin: CAPPlugin, CAPBridgedPlugin {
                 self?.cachedPushToStartToken = token.hexString
             }
         }
+    }
+
+    private func apnsEnvironment() -> String {
+        let configured = Bundle.main.object(forInfoDictionaryKey: "SpacetimeAPNSEnvironment") as? String
+        return configured?.isEmpty == false ? configured! : "development"
     }
 
     @available(iOS 16.1, *)

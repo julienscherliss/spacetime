@@ -16,6 +16,8 @@ export interface LiveActivityPayload {
 export interface LiveActivityTokenSnapshot {
   available: boolean;
   reason?: string;
+  apnsEnvironment?: 'development' | 'production' | 'sandbox' | string;
+  bundleIdentifier?: string;
   pushToStartToken?: string;
   activityTokens?: Array<{
     taskId: string;

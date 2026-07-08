@@ -83,6 +83,8 @@ export async function syncLiveActivityRemoteState(params: {
     user_id: params.userId,
     device_id: deviceId,
     platform: 'ios',
+    apns_environment: params.tokens?.apnsEnvironment ?? 'development',
+    bundle_identifier: params.tokens?.bundleIdentifier ?? 'com.spacetimelabs.spacetime',
     current_activity_task_id: params.payload.active ? params.payload.taskId ?? null : null,
     last_seen_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
