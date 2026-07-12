@@ -78,6 +78,14 @@ export interface Task {
   preferredDuration?: number;
   /** Position of this task inside its parent Group (0-indexed). */
   groupOrder?: number;
+  /** For instances generated from a recurrence pattern: the date the pattern
+   *  originally scheduled this occurrence for. Preserved even if the user moves
+   *  the task to a new date, so we can mark the slot as consumed on the parent
+   *  when the occurrence is detached. */
+  originalDate?: string;
+  /** On recurring parents: dates that should NOT be regenerated because the
+   *  occurrence has been detached / unlinked. Prevents duplicate instances. */
+  recurrenceExceptions?: string[];
 }
 
 export interface DailyStats {
