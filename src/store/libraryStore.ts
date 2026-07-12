@@ -92,6 +92,7 @@ interface LibraryState {
   deleteItem: (id: string) => void;
   completeItem: (id: string) => void;
   uncompleteItem: (id: string) => void;
+  setItemCompletedAt: (id: string, iso: string) => void;
   removeItem: (id: string) => void;
   addFromSchedule: (source: LibraryScheduleSource, duration?: number) => void;
   getFilteredItems: () => LibraryTask[];
@@ -230,6 +231,17 @@ export const useLibraryStore = create<LibraryState>()(
         set((s) => ({
           items: s.items.map((i) =>
             i.id === id ? { ...i, completed: false, completedAt: null, deletedAt: null } : i
+          ),
+        })),
+
+      // Reschedule a completed library item by rewriting its completedAt.
+      // Used when the user drags a completed library-item block on the
+      // timeline to a new time — the library item is the source of truth
+      // for its display slot, so we move it directly.
+      setItemCompletedAt: (id, iso) =>
+        set((s) => ({
+          items: s.items.map((i) =>
+            i.id === id && i.completed ? { ...i, completedAt: iso } : i
           ),
         })),
 
