@@ -494,7 +494,7 @@ export function TimelineTaskBlock({
       onPointerDown={handlePointerDown}
       onTouchStart={handleTouchStartMulti}
       
-      className={`absolute right-1 group select-none transition-[opacity,box-shadow] duration-200 ${
+      className={`absolute ${laneCount > 1 ? '' : 'right-1'} group select-none transition-[opacity,box-shadow] duration-200 ${
         isLocked
           ? 'cursor-default'
           : isResizingThis
@@ -515,18 +515,32 @@ export function TimelineTaskBlock({
                     ? 'z-[11]' // LOCK sits flat at the bottom of the stack
                     : 'z-10'
       } ${(isDraggingThis || isCarried) ? 'opacity-0' : 'opacity-100'}`}
-      style={{
-        top,
-        height,
-        left: showTimeLabels ? '3.25rem' : '2px',
-        touchAction: isLocked ? 'auto' : 'none',
-        WebkitUserSelect: 'none',
-        WebkitTouchCallout: 'none',
-        userSelect: 'none',
-        transition: 'opacity 200ms, box-shadow 200ms, transform 150ms ease-out',
-        transform: dragReady && !dragActivated.current ? 'scale(1.02)' : undefined,
-        boxShadow: dragReady && !dragActivated.current ? '0 4px 12px hsl(var(--primary) / 0.12)' : undefined,
-      } as React.CSSProperties}
+      style={(() => {
+        const leftBase = showTimeLabels ? '3.25rem' : '2px';
+        const rightBase = '0.25rem'; // matches `right-1`
+        const laneGapPx = 3;
+        const baseStyle: React.CSSProperties = {
+          top,
+          height,
+          left: leftBase,
+          touchAction: isLocked ? 'auto' : 'none',
+          WebkitUserSelect: 'none',
+          WebkitTouchCallout: 'none',
+          userSelect: 'none',
+          transition: 'opacity 200ms, box-shadow 200ms, transform 150ms ease-out',
+          transform: dragReady && !dragActivated.current ? 'scale(1.02)' : undefined,
+          boxShadow: dragReady && !dragActivated.current ? '0 4px 12px hsl(var(--primary) / 0.12)' : undefined,
+        };
+        if (laneCount > 1) {
+          // Split the horizontal space between leftBase and rightBase into
+          // `laneCount` columns and place this block into `laneIndex`.
+          const laneWidthExpr = `((100% - ${leftBase} - ${rightBase}) / ${laneCount})`;
+          baseStyle.left = `calc(${leftBase} + ${laneIndex} * ${laneWidthExpr})`;
+          baseStyle.width = `calc(${laneWidthExpr} - ${laneGapPx}px)`;
+          baseStyle.right = 'auto';
+        }
+        return baseStyle;
+      })()}
     >
       <div
         className={`h-full rounded-[2px] transition-all duration-200 ${
