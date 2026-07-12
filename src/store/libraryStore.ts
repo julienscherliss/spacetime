@@ -92,6 +92,7 @@ interface LibraryState {
   deleteItem: (id: string) => void;
   completeItem: (id: string) => void;
   uncompleteItem: (id: string) => void;
+  setItemCompletedAt: (id: string, iso: string) => void;
   removeItem: (id: string) => void;
   addFromSchedule: (source: LibraryScheduleSource, duration?: number) => void;
   getFilteredItems: () => LibraryTask[];
