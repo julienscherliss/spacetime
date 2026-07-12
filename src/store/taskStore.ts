@@ -322,7 +322,18 @@ function enforceRecurringLinkInvariant(task: Task): Task {
 function normalizeAllTasks(tasks: Task[]): Task[] {
   // First pass: ensure every recurring parent/instance has a stable linkedGroupId.
   // Second pass: propagate that group id to all members of the same series.
-  const normalized = tasks.map(enforceRecurringLinkInvariant);
+  // Also enforce the invariant that any task placed on the schedule (has both a
+  // date and a time) is NOT flagged as in-waiting-room. Historically we only
+  // cleared this flag on some scheduling paths; leftover `inWaitingRoom: true`
+  // rows caused completed scheduled tasks to disappear from the day view even
+  // with "Show completed" on (waiting-room filter short-circuits visibility).
+  const normalized = tasks.map((t) => {
+    const next = enforceRecurringLinkInvariant(t);
+    if (next.inWaitingRoom && next.date && next.time) {
+      return { ...next, inWaitingRoom: false };
+    }
+    return next;
+  });
   const seriesGroupIds = new Map<string, string>();
   for (const t of normalized) {
     if (!t.recurrence || t.detachedFromSeries) continue;
