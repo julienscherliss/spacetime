@@ -191,7 +191,7 @@ export function useLiveActivities() {
       if (upcomingTask?.time) {
         localPayload = {
           active: true,
-          taskId: `free-${upcomingTask.id}`,
+          taskId: upcomingTask.id,
           title: 'Free time',
           category: null,
           symbolName: 'sparkles',

@@ -15,6 +15,8 @@ public class LiveActivitiesPlugin: CAPPlugin, CAPBridgedPlugin {
 
     private var cachedPushToStartToken: String?
     private var pushToStartTokenTask: Task<Void, Never>?
+    private var cachedActivityTokens: [String: String] = [:]
+    private var activityTokenTasks: [String: Task<Void, Never>] = [:]
 
     public override func load() {
         super.load()
@@ -23,6 +25,7 @@ public class LiveActivitiesPlugin: CAPPlugin, CAPBridgedPlugin {
 
     deinit {
         pushToStartTokenTask?.cancel()
+        activityTokenTasks.values.forEach { $0.cancel() }
     }
 
     @objc func isAvailable(_ call: CAPPluginCall) {
@@ -52,11 +55,18 @@ public class LiveActivitiesPlugin: CAPPlugin, CAPBridgedPlugin {
         var activityTokens: [[String: String]] = []
         for activity in Activity<SpacetimeLiveActivityAttributes>.activities {
             if let token = activity.pushToken {
+                cachedActivityTokens[activity.attributes.taskId] = token.hexString
                 activityTokens.append([
                     "taskId": activity.attributes.taskId,
                     "token": token.hexString,
                 ])
+            } else if let token = cachedActivityTokens[activity.attributes.taskId] {
+                activityTokens.append([
+                    "taskId": activity.attributes.taskId,
+                    "token": token,
+                ])
             }
+            observeActivityTokenUpdates(for: activity)
         }
 
         var response: [String: Any] = [
@@ -115,12 +125,13 @@ public class LiveActivitiesPlugin: CAPPlugin, CAPBridgedPlugin {
 
         Task {
             do {
-                try await syncActivity(taskId: taskId, state: state)
+                let activity = try await syncActivity(taskId: taskId, state: state)
                 var result: [String: Any] = ["active": true]
-                if #available(iOS 16.2, *),
-                   let activity = Activity<SpacetimeLiveActivityAttributes>.activities.first,
-                   let pushToken = activity.pushToken {
-                    result["activityToken"] = pushToken.hexString
+                if #available(iOS 16.2, *) {
+                    observeActivityTokenUpdates(for: activity)
+                    if let token = await activityToken(for: activity) {
+                        result["activityToken"] = token
+                    }
                 }
                 call.resolve(result)
             } catch {
@@ -161,31 +172,39 @@ public class LiveActivitiesPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @available(iOS 16.1, *)
-    private func syncActivity(taskId: String, state: SpacetimeLiveActivityAttributes.ContentState) async throws {
-        let existing = Activity<SpacetimeLiveActivityAttributes>.activities.first
+    private func syncActivity(taskId: String, state: SpacetimeLiveActivityAttributes.ContentState) async throws -> Activity<SpacetimeLiveActivityAttributes> {
+        let matching = Activity<SpacetimeLiveActivityAttributes>.activities.filter { $0.attributes.taskId == taskId }
+        let activityToKeep = matching.first
+        var keptMatchingActivity = false
 
-        if let existing, existing.attributes.taskId == taskId {
+        for activity in Activity<SpacetimeLiveActivityAttributes>.activities {
+            if activity.attributes.taskId == taskId && !keptMatchingActivity {
+                keptMatchingActivity = true
+                continue
+            }
+            await end(activity)
+        }
+
+        if let existing = activityToKeep {
             if #available(iOS 16.2, *) {
                 await existing.update(ActivityContent(state: state, staleDate: staleDate(for: state)))
             } else {
                 await existing.update(using: state)
             }
-            return
-        }
-
-        for activity in Activity<SpacetimeLiveActivityAttributes>.activities {
-            await end(activity)
+            return existing
         }
 
         let attributes = SpacetimeLiveActivityAttributes(taskId: taskId)
         if #available(iOS 16.2, *) {
-            _ = try Activity.request(
+            let activity = try Activity.request(
                 attributes: attributes,
                 content: ActivityContent(state: state, staleDate: staleDate(for: state)),
                 pushType: .token
             )
+            observeActivityTokenUpdates(for: activity)
+            return activity
         } else {
-            _ = try Activity.request(attributes: attributes, contentState: state, pushType: nil)
+            return try Activity.request(attributes: attributes, contentState: state, pushType: nil)
         }
     }
 
@@ -201,6 +220,9 @@ public class LiveActivitiesPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @available(iOS 16.1, *)
     private func end(_ activity: Activity<SpacetimeLiveActivityAttributes>) async {
+        cachedActivityTokens[activity.attributes.taskId] = nil
+        activityTokenTasks[activity.id]?.cancel()
+        activityTokenTasks[activity.id] = nil
         if #available(iOS 16.2, *) {
             await activity.end(nil, dismissalPolicy: .immediate)
         } else {
@@ -211,6 +233,46 @@ public class LiveActivitiesPlugin: CAPPlugin, CAPBridgedPlugin {
     @available(iOS 16.1, *)
     private func staleDate(for state: SpacetimeLiveActivityAttributes.ContentState) -> Date {
         state.endDate.addingTimeInterval(state.isFreeTime ? 5 * 60 : 4 * 60 * 60)
+    }
+
+    @available(iOS 16.2, *)
+    private func observeActivityTokenUpdates(for activity: Activity<SpacetimeLiveActivityAttributes>) {
+        guard activityTokenTasks[activity.id] == nil else { return }
+
+        if let token = activity.pushToken {
+            cachedActivityTokens[activity.attributes.taskId] = token.hexString
+        }
+
+        activityTokenTasks[activity.id] = Task { [weak self] in
+            for await token in activity.pushTokenUpdates {
+                self?.cachedActivityTokens[activity.attributes.taskId] = token.hexString
+            }
+        }
+    }
+
+    @available(iOS 16.2, *)
+    private func activityToken(for activity: Activity<SpacetimeLiveActivityAttributes>) async -> String? {
+        if let token = activity.pushToken?.hexString {
+            cachedActivityTokens[activity.attributes.taskId] = token
+            return token
+        }
+
+        if let token = cachedActivityTokens[activity.attributes.taskId] {
+            return token
+        }
+
+        for _ in 0..<10 {
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            if let token = activity.pushToken?.hexString {
+                cachedActivityTokens[activity.attributes.taskId] = token
+                return token
+            }
+            if let token = cachedActivityTokens[activity.attributes.taskId] {
+                return token
+            }
+        }
+
+        return nil
     }
 }
 

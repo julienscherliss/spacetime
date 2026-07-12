@@ -4,9 +4,9 @@
  * Architecture:
  *   - Only the next 3 upcoming tasks of the current day get reminders
  *   - Each eligible task gets up to 7 notifications:
- *       1. 5 minutes before start
+ *       1. 5 minutes before task end
  *       2. At task end
- *       3-7. 1–5 minutes after task end
+ *       3-7. 1–5 minutes after task end when persistent overdue reminders are enabled
  *   - Diff-based sync: only cancel/schedule what changed
  *   - Deterministic IDs based on taskId + reminder type
  *   - No global overdue heartbeat or per-task overdue queue
@@ -185,14 +185,14 @@ function getNotificationTaskId(notification: { extra?: unknown }): string | null
   return typeof extra?.taskId === 'string' ? extra.taskId : null;
 }
 
-function buildFingerprint(tasks: Task[], level: NotificationLevel): string {
+function buildFingerprint(tasks: Task[], level: NotificationLevel, persistentOverdue: boolean): string {
   if (level === 'off') return 'off';
   const today = getTodayStr();
   const parts = tasks
-    .filter((t) => shouldNotify(t, level) && t.time && !t.completed && t.date === today)
-    .map((t) => `${t.id}:${t.date}:${t.time}:${t.duration}:${t.priority}:${t.title}:${t.completed}`)
+    .filter((t) => shouldNotify(t, level) && t.time && !t.completed && !t.archivedAt && !t.inWaitingRoom && t.date === today)
+    .map((t) => `${t.id}:${t.date}:${t.time}:${t.duration}:${t.priority}:${t.title}:${t.completed}:${t.archivedAt || ''}:${t.inWaitingRoom || false}`)
     .sort();
-  return `${level}:${parts.join('|')}`;
+  return `${level}:${persistentOverdue}:${parts.join('|')}`;
 }
 
 interface DesiredNotification {
@@ -206,6 +206,7 @@ interface DesiredNotification {
 function computeDesired(
   tasks: Task[],
   level: NotificationLevel,
+  persistentOverdue: boolean,
 ): Map<number, DesiredNotification> {
   const desired = new Map<number, DesiredNotification>();
   if (level === 'off') return desired;
@@ -253,9 +254,9 @@ function computeDesired(
     const slots: { type: SlotType; fireMs: number; title: string; body: string }[] = [
       {
         type: 'startminus5',
-        fireMs: startMs - LEAD_MINUTES * 60_000,
+        fireMs: endMs - LEAD_MINUTES * 60_000,
         title: `${priorityLabel(task.priority)} — ${task.title}`,
-        body: `Starts in ${LEAD_MINUTES} min · ${task.time}`,
+        body: `${LEAD_MINUTES} minutes until task completion time`,
       },
       {
         type: 'end',
@@ -263,37 +264,42 @@ function computeDesired(
         title: `${task.title} — time's up`,
         body: 'Task time has ended',
       },
-      {
-        type: 'endplus1',
-        fireMs: endMs + 1 * 60_000,
-        title: `${task.title} — 1 min overdue`,
-        body: 'Task ended 1 minute ago',
-      },
-      {
-        type: 'endplus2',
-        fireMs: endMs + 2 * 60_000,
-        title: `${task.title} — 2 min overdue`,
-        body: 'Task ended 2 minutes ago',
-      },
-      {
-        type: 'endplus3',
-        fireMs: endMs + 3 * 60_000,
-        title: `${task.title} — 3 min overdue`,
-        body: 'Task ended 3 minutes ago',
-      },
-      {
-        type: 'endplus4',
-        fireMs: endMs + 4 * 60_000,
-        title: `${task.title} — 4 min overdue`,
-        body: 'Task ended 4 minutes ago',
-      },
-      {
-        type: 'endplus5',
-        fireMs: endMs + 5 * 60_000,
-        title: `${task.title} — 5 min overdue`,
-        body: 'Task ended 5 minutes ago',
-      },
     ];
+
+    if (persistentOverdue) {
+      slots.push(
+        {
+          type: 'endplus1',
+          fireMs: endMs + 1 * 60_000,
+          title: `${task.title} — 1 min overdue`,
+          body: 'Task ended 1 minute ago',
+        },
+        {
+          type: 'endplus2',
+          fireMs: endMs + 2 * 60_000,
+          title: `${task.title} — 2 min overdue`,
+          body: 'Task ended 2 minutes ago',
+        },
+        {
+          type: 'endplus3',
+          fireMs: endMs + 3 * 60_000,
+          title: `${task.title} — 3 min overdue`,
+          body: 'Task ended 3 minutes ago',
+        },
+        {
+          type: 'endplus4',
+          fireMs: endMs + 4 * 60_000,
+          title: `${task.title} — 4 min overdue`,
+          body: 'Task ended 4 minutes ago',
+        },
+        {
+          type: 'endplus5',
+          fireMs: endMs + 5 * 60_000,
+          title: `${task.title} — 5 min overdue`,
+          body: 'Task ended 5 minutes ago',
+        },
+      );
+    }
 
     for (const slot of slots) {
       if (slot.fireMs <= now) {
@@ -412,7 +418,7 @@ export async function syncTaskNotifications(
   tasks: Task[],
   level: NotificationLevel,
   force = false,
-  _persistentOverdue = false, // kept for API compat, no longer used
+  persistentOverdue = false,
 ): Promise<SyncResult> {
   if (!isPluginReady()) {
     return { scheduled: 0, canceled: 0, unchanged: 0, skipped: true, reason: 'plugin not ready' };
@@ -423,7 +429,7 @@ export async function syncTaskNotifications(
     return { scheduled: 0, canceled: 0, unchanged: 0, skipped: true, reason: `permission ${perm}` };
   }
 
-  const fp = buildFingerprint(tasks, level);
+  const fp = buildFingerprint(tasks, level, persistentOverdue);
 
   if (!force && fp === lastSyncFingerprint) {
     logDebug('sync skipped — fingerprint unchanged');
@@ -431,7 +437,7 @@ export async function syncTaskNotifications(
   }
 
   if (syncInFlight) {
-    queuedSyncRequest = { tasks, level, force, persistentOverdue: false };
+    queuedSyncRequest = { tasks, level, force, persistentOverdue };
     log('sync queued', { reason: 'sync already in flight' });
     return { scheduled: 0, canceled: 0, unchanged: 0, skipped: true, reason: 'queued' };
   }
@@ -461,7 +467,7 @@ export async function syncTaskNotifications(
       return { scheduled: 0, canceled: 0, unchanged: 0, skipped: true, reason: 'stale' };
     }
 
-    const desired = computeDesired(tasks, level);
+    const desired = computeDesired(tasks, level, persistentOverdue);
     const desiredIds = new Set(desired.keys());
     const currentIds = new Set(managedPending.map((n) => n.id));
 
@@ -539,7 +545,7 @@ export async function syncTaskNotifications(
       const nextRequest = queuedSyncRequest;
       queuedSyncRequest = null;
       queueMicrotask(() => {
-        void syncTaskNotifications(nextRequest.tasks, nextRequest.level, true, false);
+        void syncTaskNotifications(nextRequest.tasks, nextRequest.level, true, nextRequest.persistentOverdue);
       });
     }
   }

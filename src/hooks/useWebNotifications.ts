@@ -8,9 +8,10 @@ import type { NotificationLevel } from '@/utils/notificationService';
 
 function fingerprint(tasks: Task[], level: NotificationLevel): string {
   if (level === 'off') return 'off';
+  const today = new Date().toISOString().split('T')[0];
   const parts = tasks
-    .filter(t => t.time && !t.completed)
-    .map(t => `${t.id}:${t.date}:${t.time}:${t.duration}:${t.priority}:${t.completed}`)
+    .filter(t => t.date === today && t.time && !t.completed && !t.archivedAt && !t.inWaitingRoom)
+    .map(t => `${t.id}:${t.date}:${t.time}:${t.duration}:${t.priority}:${t.completed}:${t.archivedAt || ''}:${t.inWaitingRoom || false}`)
     .sort();
   return `${level}:${parts.join('|')}`;
 }

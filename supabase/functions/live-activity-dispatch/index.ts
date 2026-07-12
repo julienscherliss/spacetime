@@ -442,6 +442,30 @@ Deno.serve(async (req) => {
         (liveDevice.current_activity_task_id === plan.task_id || canRetargetCurrentActivity);
       const event: "start" | "update" = canUpdateCurrentActivity ? "update" : "start";
       const token = event === "update" ? liveDevice?.current_activity_token : liveDevice?.push_to_start_token;
+      const hasTokenlessKnownActivity =
+        event === "start" &&
+        !!liveDevice?.current_activity_task_id &&
+        !liveDevice.current_activity_token;
+
+      if (hasTokenlessKnownActivity) {
+        const message = "missing_activity_token_for_existing_activity";
+        await admin
+          .from("live_activity_device_plans")
+          .update({
+            last_dispatch_error: message,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", plan.id);
+        results.push({
+          id: plan.id,
+          taskId: plan.task_id,
+          ok: false,
+          event: "start",
+          error: message,
+          currentActivityTaskId: liveDevice?.current_activity_task_id,
+        });
+        continue;
+      }
 
       if (!token || !plan.task_id || !plan.title || !plan.start_at || !plan.end_at) {
         const message = event === "start" ? "missing_push_to_start_token" : "missing_activity_token";

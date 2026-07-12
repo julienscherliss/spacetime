@@ -792,6 +792,8 @@ export const useTaskStore = create<TaskState>()(
           ),
           editingTaskId: s.editingTaskId === id ? null : s.editingTaskId,
         }));
+        void cancelNotificationsForTask(id);
+        cancelWebNotificationsForTask(id);
       },
 
       restoreTask: (id) =>

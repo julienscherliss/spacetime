@@ -6,18 +6,20 @@ import { syncTaskNotifications, getCurrentSyncFingerprint } from '@/utils/notifi
 import type { Task } from '@/store/taskStore';
 import type { NotificationLevel } from '@/utils/notificationService';
 
-function notificationFingerprint(tasks: Task[], level: NotificationLevel): string {
+function notificationFingerprint(tasks: Task[], level: NotificationLevel, persistentOverdue: boolean): string {
   if (level === 'off') return 'off';
+  const today = new Date().toISOString().split('T')[0];
   const parts = tasks
-    .filter(t => t.time && !t.completed)
-    .map(t => `${t.id}:${t.date}:${t.time}:${t.duration}:${t.priority}:${t.title}:${t.completed}`)
+    .filter(t => t.date === today && t.time && !t.completed && !t.archivedAt && !t.inWaitingRoom)
+    .map(t => `${t.id}:${t.date}:${t.time}:${t.duration}:${t.priority}:${t.title}:${t.completed}:${t.archivedAt || ''}:${t.inWaitingRoom || false}`)
     .sort();
-  return `${level}:${parts.join('|')}`;
+  return `${level}:${persistentOverdue}:${parts.join('|')}`;
 }
 
 export function useNativeNotifications() {
   const tasks = useTaskStore((s) => s.tasks);
   const level = useTimezoneStore((s) => s.notificationLevel);
+  const persistentOverdue = useTimezoneStore((s) => s.persistentOverdue);
   const lastFpRef = useRef('');
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
   const mountedRef = useRef(false);
@@ -25,7 +27,7 @@ export function useNativeNotifications() {
   useEffect(() => {
     if (!isNativePlatform()) return;
 
-    const fp = notificationFingerprint(tasks, level);
+    const fp = notificationFingerprint(tasks, level, persistentOverdue);
     if (fp === lastFpRef.current) return;
 
     const serviceFp = getCurrentSyncFingerprint();
@@ -41,9 +43,9 @@ export function useNativeNotifications() {
 
     clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
-      void syncTaskNotifications(tasks, level, false);
+      void syncTaskNotifications(tasks, level, false, persistentOverdue);
     }, delay);
 
     return () => clearTimeout(timerRef.current);
-  }, [tasks, level]);
+  }, [tasks, level, persistentOverdue]);
 }
