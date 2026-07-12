@@ -1622,6 +1622,9 @@ export function TimelineColumn({
             const isLocked = false;
             const showUnlinkedOutline = false;
             const hasConflict = routineConflictIds.has(task.id) || calendarConflictIds.has(task.id);
+            const laneInfo = laneMap.get(task.id);
+            const laneIndex = laneInfo?.lane ?? 0;
+            const laneCount = laneInfo?.count ?? 1;
 
             // Groups have their own compact representation (single block, no inline expansion).
             if ((task as Task).type === 'group') {
@@ -1665,6 +1668,8 @@ export function TimelineColumn({
                 hourHeight={HOUR_HEIGHT}
                 startHour={START_HOUR}
                 hasRoutineConflict={hasConflict}
+                laneIndex={laneIndex}
+                laneCount={laneCount}
                 isCompact={cluster.titleFits === false}
                 onZoomIn={cluster.titleFits === false && onZoomToCluster ? () => {
                   const viewportH = window.innerHeight * 0.7;
