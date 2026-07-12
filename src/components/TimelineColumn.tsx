@@ -245,8 +245,8 @@ function CalendarEventBlocks({ date, hourHeight, showTimeLabels }: { date: strin
   );
 }
 
-function CompletedTaskBlock({ task, top, height, showTimeLabels }: {
-  task: Task; top: number; height: number; showTimeLabels: boolean;
+function CompletedTaskBlock({ task, top, height, showTimeLabels, laneIndex = 0, laneCount = 1 }: {
+  task: Task; top: number; height: number; showTimeLabels: boolean; laneIndex?: number; laneCount?: number;
 }) {
   const { setEditingTask, uncompleteTask } = useTaskStore();
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -273,11 +273,20 @@ function CompletedTaskBlock({ task, top, height, showTimeLabels }: {
   return (
     <div
       data-task-block
-      className="absolute right-1 z-[18] pointer-events-auto cursor-pointer"
-      style={{
-        top,
-        height,
-        left: showTimeLabels ? '3.25rem' : '2px',
+      className={`absolute ${laneCount > 1 ? '' : 'right-1'} z-[18] pointer-events-auto cursor-pointer`}
+      style={(() => {
+        const leftBase = showTimeLabels ? '3.25rem' : '2px';
+        const rightBase = '0.25rem';
+        const laneGapPx = 3;
+        const base: React.CSSProperties = { top, height, left: leftBase };
+        if (laneCount > 1) {
+          const laneWidthExpr = `((100% - ${leftBase} - ${rightBase}) / ${laneCount})`;
+          base.left = `calc(${leftBase} + ${laneIndex} * ${laneWidthExpr})`;
+          base.width = `calc(${laneWidthExpr} - ${laneGapPx}px)`;
+          base.right = 'auto';
+        }
+        return base;
+      })()}
       }}
       onClick={handleClick}
     >
