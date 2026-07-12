@@ -245,8 +245,8 @@ function CalendarEventBlocks({ date, hourHeight, showTimeLabels }: { date: strin
   );
 }
 
-function CompletedTaskBlock({ task, top, height, showTimeLabels }: {
-  task: Task; top: number; height: number; showTimeLabels: boolean;
+function CompletedTaskBlock({ task, top, height, showTimeLabels, laneIndex = 0, laneCount = 1 }: {
+  task: Task; top: number; height: number; showTimeLabels: boolean; laneIndex?: number; laneCount?: number;
 }) {
   const { setEditingTask, uncompleteTask } = useTaskStore();
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -273,12 +273,20 @@ function CompletedTaskBlock({ task, top, height, showTimeLabels }: {
   return (
     <div
       data-task-block
-      className="absolute right-1 z-[18] pointer-events-auto cursor-pointer"
-      style={{
-        top,
-        height,
-        left: showTimeLabels ? '3.25rem' : '2px',
-      }}
+      className={`absolute ${laneCount > 1 ? '' : 'right-1'} z-[18] pointer-events-auto cursor-pointer`}
+      style={(() => {
+        const leftBase = showTimeLabels ? '3.25rem' : '2px';
+        const rightBase = '0.25rem';
+        const laneGapPx = 3;
+        const base: React.CSSProperties = { top, height, left: leftBase };
+        if (laneCount > 1) {
+          const laneWidthExpr = `((100% - ${leftBase} - ${rightBase}) / ${laneCount})`;
+          base.left = `calc(${leftBase} + ${laneIndex} * ${laneWidthExpr})`;
+          base.width = `calc(${laneWidthExpr} - ${laneGapPx}px)`;
+          base.right = 'auto';
+        }
+        return base;
+      })()}
       onClick={handleClick}
     >
       <div
@@ -1588,7 +1596,16 @@ export function TimelineColumn({
         });
 
         // Lane assignment for side-by-side rendering of overlapping tasks.
-        const laneMap = computeTaskLanes(sortedTasks);
+        // Include completed tasks (rendered separately below) so a completed
+        // block overlapping an active — or another completed — block also
+        // splits into a lane instead of stacking.
+        const completedForLanes = completedTasks
+          .map((t) => {
+            const displayTime = getTaskScheduleTime(t);
+            return displayTime ? ({ ...t, time: displayTime } as Task) : null;
+          })
+          .filter((t): t is Task => !!t);
+        const laneMap = computeTaskLanes([...sortedTasks, ...completedForLanes]);
 
         return clusters.map((cluster, ci) => {
           if (cluster.type === 'condensed' && cluster.tasks.length > 1) {
@@ -1690,24 +1707,38 @@ export function TimelineColumn({
       })()}
 
       {/* Completed task blocks — ghosted with strikethrough */}
-      {completedTasks.map((task) => {
-        const displayTime = getTaskScheduleTime(task);
-        if (!displayTime) return null;
-        const taskMinutes = timeToMinutes(displayTime);
-        const top = ((taskMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT;
-        const height = Math.max(((task.duration || 30) / 60) * HOUR_HEIGHT, 18);
-        const displayTask = displayTime === task.time ? task : { ...task, time: displayTime };
-        return (
-          <CompletedTaskBlock
-            key={`completed-${task.id}`}
-            task={displayTask}
-            top={top}
-            height={height}
-            showTimeLabels={showTimeLabels}
-            
-          />
-        );
-      })}
+      {(() => {
+        // Recompute lanes across active + completed so an overlap between two
+        // completed blocks (or a completed and an active) also splits.
+        const completedForLanes = completedTasks
+          .map((t) => {
+            const displayTime = getTaskScheduleTime(t);
+            return displayTime ? ({ ...t, time: displayTime } as Task) : null;
+          })
+          .filter((t): t is Task => !!t);
+        const completedLaneMap = computeTaskLanes([...activeTasks, ...completedForLanes]);
+
+        return completedTasks.map((task) => {
+          const displayTime = getTaskScheduleTime(task);
+          if (!displayTime) return null;
+          const taskMinutes = timeToMinutes(displayTime);
+          const top = ((taskMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT;
+          const height = Math.max(((task.duration || 30) / 60) * HOUR_HEIGHT, 18);
+          const displayTask = displayTime === task.time ? task : { ...task, time: displayTime };
+          const info = completedLaneMap.get(task.id);
+          return (
+            <CompletedTaskBlock
+              key={`completed-${task.id}`}
+              task={displayTask}
+              top={top}
+              height={height}
+              showTimeLabels={showTimeLabels}
+              laneIndex={info?.lane ?? 0}
+              laneCount={info?.count ?? 1}
+            />
+          );
+        });
+      })()}
 
       {/* Waiting room note for past days */}
       {isPastDay && waitingRoomCount > 0 && (
