@@ -23,6 +23,7 @@ import { getOccupiedSlots, findValidPosition, clampResize, wouldOverlap, getRout
 import { clusterTasks, TaskCluster, getZoomForCluster } from '@/utils/taskClustering';
 import { requestPendingMove } from '@/store/reflectionStore';
 import { getIconByName } from '@/lib/iconLibrary';
+import { getTaskScheduleTime } from '@/utils/taskVisibility';
 
 export const DEFAULT_HOUR_HEIGHT = 56;
 export const HOUR_HEIGHT = DEFAULT_HOUR_HEIGHT;
@@ -352,7 +353,7 @@ export function TimelineColumn({
   const isPastDay = date < todayStr;
 
   const activeTasks = tasks.filter((t) => !t.completed && t.time);
-  const completedTasks = showCompletedTasks ? tasks.filter((t) => t.completed && t.time) : [];
+  const completedTasks = showCompletedTasks ? tasks.filter((t) => t.completed && getTaskScheduleTime(t)) : [];
   const nowTop = ((nowMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT;
 
   // Count tasks in waiting room for past days (these are filtered out of `tasks` prop)
@@ -1624,14 +1625,16 @@ export function TimelineColumn({
 
       {/* Completed task blocks — ghosted with strikethrough */}
       {completedTasks.map((task) => {
-        if (!task.time) return null;
-        const taskMinutes = timeToMinutes(task.time);
+        const displayTime = getTaskScheduleTime(task);
+        if (!displayTime) return null;
+        const taskMinutes = timeToMinutes(displayTime);
         const top = ((taskMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT;
         const height = Math.max(((task.duration || 30) / 60) * HOUR_HEIGHT, 18);
+        const displayTask = displayTime === task.time ? task : { ...task, time: displayTime };
         return (
           <CompletedTaskBlock
             key={`completed-${task.id}`}
-            task={task}
+            task={displayTask}
             top={top}
             height={height}
             showTimeLabels={showTimeLabels}

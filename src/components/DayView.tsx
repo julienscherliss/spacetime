@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useTrackpadSwipe } from '@/hooks/useTrackpadSwipe';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useTaskStore } from '@/store/taskStore';
+import { useTaskStore, Task } from '@/store/taskStore';
 import { useTimezoneStore } from '@/store/timezoneStore';
-import { shouldShowScheduledTask } from '@/utils/taskVisibility';
+import { getLocalDateKeyFromIso, getLocalTimeKeyFromIso, isTaskScheduledForDate, shouldShowScheduledTask } from '@/utils/taskVisibility';
+import { useLibraryStore } from '@/store/libraryStore';
 import { useCalendarStore } from '@/store/calendarStore';
 import { useTouchDragStore } from '@/store/touchDragStore';
 import { useScheduledDragStore } from '@/store/scheduledDragStore';
@@ -28,6 +29,7 @@ export function DayView() {
   const { tasks, routinesEnabled, generateRecurringInstances, navigateToDate, setNavigateToDate,
     currentDate, setCurrentDate,
     listReturnZoom, setListReturnZoom, showListReturn, setShowListReturn, setDaySubMode } = useTaskStore();
+  const libraryItems = useLibraryStore((s) => s.items);
   useTaskStore((s) => s.dayStartHour);
   useTaskStore((s) => s.dayEndHour);
   const isMobile = useIsMobile();
@@ -265,9 +267,38 @@ export function DayView() {
   const goToToday = () => setSelectedDate(today);
 
   const showCompletedSetting = useTimezoneStore((s) => s.showCompletedTasks);
-  const dayTasks = tasks.filter((t) => t.date === selectedDate &&
+  const completedLibraryTasks = useMemo(() => {
+    if (!showCompletedSetting) return [] as Task[];
+    return libraryItems
+      .filter((item) => item.completed && item.completedAt && getLocalDateKeyFromIso(item.completedAt) === selectedDate)
+      .map((item) => ({
+        id: `lib:${item.id}`,
+        title: item.title,
+        description: item.note || '',
+        category: item.category || '',
+        subtasks: item.subtasks as any,
+        attachments: item.attachments as any,
+        type: 'one-time' as const,
+        priority: 0 as const,
+        originalPriority: 0 as const,
+        date: getLocalDateKeyFromIso(item.completedAt!) || selectedDate,
+        time: getLocalTimeKeyFromIso(item.completedAt!),
+        duration: item.defaultDuration || 30,
+        completed: true,
+        createdAt: item.createdAt,
+        moveCount: 0,
+        archivedAt: item.completedAt!,
+        archiveReason: 'completed' as const,
+        icon: item.icon,
+      }));
+  }, [libraryItems, selectedDate, showCompletedSetting]);
+
+  const dayTasks = [
+    ...tasks.filter((t) => isTaskScheduledForDate(t, selectedDate) &&
     !t.groupId && // hide Group children — they live inside the Group block
-    shouldShowScheduledTask(t, { showCompleted: showCompletedSetting, routinesEnabled }));
+    shouldShowScheduledTask(t, { showCompleted: showCompletedSetting, routinesEnabled })),
+    ...completedLibraryTasks,
+  ];
   const completedCount = dayTasks.filter((t) => t.completed).length;
   const isToday = selectedDate === today;
 

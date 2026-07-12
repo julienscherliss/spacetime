@@ -5,7 +5,7 @@ vi.mock('@/integrations/supabase/client', () => ({
   supabase: {},
 }));
 
-import { shouldShowScheduledTask } from '@/utils/taskVisibility';
+import { getTaskScheduleDate, getTaskScheduleTime, shouldShowScheduledTask } from '@/utils/taskVisibility';
 
 describe('useDataSync regression guard', () => {
   beforeEach(() => {
@@ -256,6 +256,27 @@ describe('useDataSync regression guard', () => {
       showCompleted: true,
       routinesEnabled: true,
     })).toBe(true);
+  });
+
+  it('places completed archived tasks from their completion timestamp when schedule fields are missing', () => {
+    const completedAt = new Date(2026, 4, 6, 9, 15, 0).toISOString();
+    const task = {
+      id: crypto.randomUUID(),
+      title: 'Completed From Archive',
+      type: 'one-time' as const,
+      priority: 0 as const,
+      originalPriority: 0 as const,
+      date: '',
+      duration: 30,
+      completed: true,
+      archivedAt: completedAt,
+      archiveReason: 'completed' as const,
+      createdAt: '2026-05-06T00:00:00.000Z',
+      moveCount: 0,
+    };
+
+    expect(getTaskScheduleDate(task)).toBe('2026-05-06');
+    expect(getTaskScheduleTime(task)).toBe('09:15');
   });
 
   it('refuses to wipe tasks when local state transiently empties (sign-out / failed load race)', async () => {
