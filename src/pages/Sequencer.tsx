@@ -14,6 +14,7 @@ import { useCarryStore, roundCarriedDuration } from '@/store/carryStore';
 import { HoldToConfirmRing } from '@/components/HoldToConfirmRing';
 import { useLibraryDragStore } from '@/store/libraryDragStore';
 import { useTimezoneStore } from '@/store/timezoneStore';
+import { isCompletedArchiveTask } from '@/utils/taskVisibility';
 import { getIconByName } from '@/lib/iconLibrary';
 import {
   Footprints, Users, Camera, Film, Dumbbell, BookOpen, PenLine,
@@ -209,7 +210,7 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
       // While a task is in the inventory (carry mode), hide its scheduled
       // footprint on the grid so the slot reads as empty until it's dropped.
       if (carriedTaskId && t.id === carriedTaskId) continue;
-      const isCompletedArchive = !!t.archivedAt && t.completed && t.archiveReason === 'completed';
+      const isCompletedArchive = isCompletedArchiveTask(t);
       if ((t.archivedAt && !(showCompletedTasks && isCompletedArchive)) || t.inWaitingRoom || t.groupId) continue;
       if (!t.time) continue;
       const start = timeToMinutes(t.time);
@@ -232,7 +233,7 @@ export default function Sequencer({ embedded = false }: { embedded?: boolean } =
     const day = tasks.filter((t) => {
       if (t.date !== dateStr) return false;
       if (t.inWaitingRoom || t.groupId || !t.time) return false;
-      const isCompletedArchive = !!t.archivedAt && t.completed && t.archiveReason === 'completed';
+      const isCompletedArchive = isCompletedArchiveTask(t);
       if (t.archivedAt && !(showCompletedTasks && isCompletedArchive)) return false;
       return true;
     });

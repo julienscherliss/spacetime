@@ -238,6 +238,26 @@ describe('useDataSync regression guard', () => {
     })).toBe(true);
   });
 
+  it('keeps legacy completed archived tasks visible when archive reason is missing', () => {
+    expect(shouldShowScheduledTask({
+      id: crypto.randomUUID(),
+      title: 'Legacy Done Task',
+      type: 'one-time',
+      priority: 0,
+      originalPriority: 0,
+      date: '2026-05-06',
+      time: '09:00',
+      duration: 30,
+      completed: true,
+      archivedAt: '2026-05-06T14:31:53.634Z',
+      createdAt: '2026-05-06T00:00:00.000Z',
+      moveCount: 0,
+    }, {
+      showCompleted: true,
+      routinesEnabled: true,
+    })).toBe(true);
+  });
+
   it('refuses to wipe tasks when local state transiently empties (sign-out / failed load race)', async () => {
     const deleteIn = vi.fn().mockResolvedValue({ error: null });
     const upsertTasks = vi.fn().mockResolvedValue({ error: null });
