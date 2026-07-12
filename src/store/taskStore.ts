@@ -667,6 +667,13 @@ export const useTaskStore = create<TaskState>()(
                   merged.priority = effectiveMin;
                 }
               }
+              // A task with a date + time slot IS on the schedule. Keeping
+              // `inWaitingRoom: true` on such a row is contradictory and
+              // breaks visibility filters. Clear it unless the caller is
+              // explicitly putting the task back into the waiting room.
+              if (merged.time && merged.date && merged.inWaitingRoom && (updates as Partial<Task>).inWaitingRoom !== true) {
+                merged.inWaitingRoom = false;
+              }
               return enforceRecurringLinkInvariant(merged);
             }),
           };
