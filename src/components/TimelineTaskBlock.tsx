@@ -412,15 +412,12 @@ export function TimelineTaskBlock({
         } else {
           // Normal collision detection
           const occupiedSlots = getOccupiedSlots(allTasks, col.date, task.id, routinesOn);
-          const { startMin: rawClamped, blocked } = findValidPosition(snapped, taskDuration, occupiedSlots);
+          const { startMin: clampedMin, blocked } = findValidPosition(snapped, taskDuration, occupiedSlots);
 
           // NOTE: We intentionally no longer mark priority-constraint violations
           // as "blocked" during drag. The drop is allowed to proceed and the
           // Reflection prompt takes over. Only physical collisions stay red.
-          // Completed tasks are historical records — they can be dropped anywhere,
-          // including overlapping other blocks (lane rendering handles visuals).
-          const clampedMin = task.completed ? snapped : rawClamped;
-          const moveBlocked = task.completed ? false : blocked;
+          const moveBlocked = blocked;
 
           useScheduledDragStore.getState().updatePosition(clampedMin);
           useScheduledDragStore.getState().setTargetDate(col.date);
