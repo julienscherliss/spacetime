@@ -1642,6 +1642,11 @@ export function TimelineColumn({
             const laneInfo = laneMap.get(task.id);
             const laneIndex = laneInfo?.lane ?? 0;
             const laneCount = laneInfo?.count ?? 1;
+            // Effective lane width: when tasks split into lanes, each lane
+            // gets ~1/laneCount of the column. If that's too narrow to fit
+            // any legible text, fall back to an icon-only glyph.
+            const perLanePx = columnWidthPx ? (columnWidthPx / Math.max(1, laneCount)) : Infinity;
+            const iconOnly = perLanePx < 70;
 
             // Groups have their own compact representation (single block, no inline expansion).
             if ((task as Task).type === 'group') {
@@ -1687,6 +1692,7 @@ export function TimelineColumn({
                 hasRoutineConflict={hasConflict}
                 laneIndex={laneIndex}
                 laneCount={laneCount}
+                iconOnly={iconOnly}
                 isCompact={cluster.titleFits === false}
                 onZoomIn={cluster.titleFits === false && onZoomToCluster ? () => {
                   const viewportH = window.innerHeight * 0.7;
@@ -1726,15 +1732,36 @@ export function TimelineColumn({
           const height = Math.max(((task.duration || 30) / 60) * HOUR_HEIGHT, 18);
           const displayTask = displayTime === task.time ? task : { ...task, time: displayTime };
           const info = completedLaneMap.get(task.id);
+          const laneCount = info?.count ?? 1;
+          const laneIndex = info?.lane ?? 0;
+          const perLanePx = columnWidthPx ? (columnWidthPx / Math.max(1, laneCount)) : Infinity;
+          const iconOnly = perLanePx < 70;
           return (
-            <CompletedTaskBlock
+            <TimelineTaskBlock
               key={`completed-${task.id}`}
-              task={displayTask}
+              task={displayTask as Task}
               top={top}
               height={height}
+              isActive={false}
+              isLocked={false}
+              showUnlinkedOutline={false}
+              isResizingThis={false}
               showTimeLabels={showTimeLabels}
-              laneIndex={info?.lane ?? 0}
-              laneCount={info?.count ?? 1}
+              nowMinutes={nowMinutes}
+              resizePreview={null}
+              didDragRef={didDragRef}
+              dragOffsetRef={dragOffsetRef}
+              completeTask={completeTask}
+              handleTaskClick={handleTaskClick}
+              handleResizeStart={handleResizeStart}
+              setDragMsg={setDragMsg}
+              formatDuration={formatDuration}
+              hourHeight={HOUR_HEIGHT}
+              startHour={START_HOUR}
+              hasRoutineConflict={false}
+              laneIndex={laneIndex}
+              laneCount={laneCount}
+              iconOnly={iconOnly}
             />
           );
         });

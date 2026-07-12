@@ -12,6 +12,8 @@ import { useColorSchemeStore } from '@/store/colorSchemeStore';
 import { START_HOUR } from '@/components/TimelineColumn';
 import { getOccupiedSlots, findValidPosition } from '@/utils/collisionDetection';
 import { TASK_TEXT_FIT_PX, TASK_TEXT_FIT_PX_COMFORT } from '@/utils/taskClustering';
+import { resolveTaskIcon } from '@/lib/resolveTaskIcon';
+import { useLibraryStore } from '@/store/libraryStore';
 
 
 interface TimelineTaskBlockProps {
@@ -41,6 +43,9 @@ interface TimelineTaskBlockProps {
   laneIndex?: number;
   /** Total number of lanes in the overlap group. 1 = full width. */
   laneCount?: number;
+  /** When true, render only a small icon glyph (used when the block is too
+   *  narrow to fit any legible text). */
+  iconOnly?: boolean;
 }
 
 const DRAG_THRESHOLD = 8;
@@ -59,6 +64,40 @@ function findColumnAtPoint(x: number, y: number): { date: string; element: HTMLE
     }
   }
   return null;
+}
+
+function IconOnlyGlyph({ task }: { task: Task }) {
+  const categories = useLibraryStore((s) => s.categories);
+  const Icon = resolveTaskIcon(task, categories);
+  const isCompleted = !!task.completed;
+  if (isCompleted) {
+    return (
+      <Check
+        size={12}
+        strokeWidth={2}
+        className="text-muted-foreground/70"
+        aria-label={task.title}
+      />
+    );
+  }
+  if (Icon) {
+    return (
+      <Icon
+        size={12}
+        strokeWidth={1.75}
+        className="text-foreground/70"
+        aria-label={task.title}
+      />
+    );
+  }
+  // Fallback: priority dot.
+  return (
+    <span
+      aria-label={task.title}
+      className="rounded-full bg-foreground/50"
+      style={{ width: 6, height: 6 }}
+    />
+  );
 }
 
 export function TimelineTaskBlock({
@@ -86,6 +125,7 @@ export function TimelineTaskBlock({
   onZoomIn,
   laneIndex = 0,
   laneCount = 1,
+  iconOnly = false,
 }: TimelineTaskBlockProps) {
   const taskMinutes = task.time ? parseInt(task.time.split(':')[0], 10) * 60 + parseInt(task.time.split(':')[1], 10) : 0;
   const taskEndMinutes = taskMinutes + (task.duration || 30);
@@ -628,8 +668,10 @@ export function TimelineTaskBlock({
           </div>
         )}
 
-        <div className={`h-full overflow-hidden ${isCompact ? 'flex items-center px-1' : 'flex flex-col justify-between py-1'}`} style={{ paddingLeft: isCompact ? undefined : 'var(--ui-space-md)', paddingRight: isCompact ? undefined : 'var(--ui-space-md)' }}>
-          {isCompact ? (
+        <div className={`h-full overflow-hidden ${iconOnly || isCompact ? 'flex items-center justify-center px-1' : 'flex flex-col justify-between py-1'}`} style={{ paddingLeft: iconOnly || isCompact ? undefined : 'var(--ui-space-md)', paddingRight: iconOnly || isCompact ? undefined : 'var(--ui-space-md)' }}>
+          {iconOnly ? (
+            <IconOnlyGlyph task={task} />
+          ) : isCompact ? (
             <div className="h-[2px] w-full rounded-full bg-foreground/20" title={task.title} />
           ) : (
             <>
