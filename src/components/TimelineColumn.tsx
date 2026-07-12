@@ -1707,24 +1707,38 @@ export function TimelineColumn({
       })()}
 
       {/* Completed task blocks — ghosted with strikethrough */}
-      {completedTasks.map((task) => {
-        const displayTime = getTaskScheduleTime(task);
-        if (!displayTime) return null;
-        const taskMinutes = timeToMinutes(displayTime);
-        const top = ((taskMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT;
-        const height = Math.max(((task.duration || 30) / 60) * HOUR_HEIGHT, 18);
-        const displayTask = displayTime === task.time ? task : { ...task, time: displayTime };
-        return (
-          <CompletedTaskBlock
-            key={`completed-${task.id}`}
-            task={displayTask}
-            top={top}
-            height={height}
-            showTimeLabels={showTimeLabels}
-            
-          />
-        );
-      })}
+      {(() => {
+        // Recompute lanes across active + completed so an overlap between two
+        // completed blocks (or a completed and an active) also splits.
+        const completedForLanes = completedTasks
+          .map((t) => {
+            const displayTime = getTaskScheduleTime(t);
+            return displayTime ? ({ ...t, time: displayTime } as Task) : null;
+          })
+          .filter((t): t is Task => !!t);
+        const completedLaneMap = computeTaskLanes([...activeTasks, ...completedForLanes]);
+
+        return completedTasks.map((task) => {
+          const displayTime = getTaskScheduleTime(task);
+          if (!displayTime) return null;
+          const taskMinutes = timeToMinutes(displayTime);
+          const top = ((taskMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT;
+          const height = Math.max(((task.duration || 30) / 60) * HOUR_HEIGHT, 18);
+          const displayTask = displayTime === task.time ? task : { ...task, time: displayTime };
+          const info = completedLaneMap.get(task.id);
+          return (
+            <CompletedTaskBlock
+              key={`completed-${task.id}`}
+              task={displayTask}
+              top={top}
+              height={height}
+              showTimeLabels={showTimeLabels}
+              laneIndex={info?.lane ?? 0}
+              laneCount={info?.count ?? 1}
+            />
+          );
+        });
+      })()}
 
       {/* Waiting room note for past days */}
       {isPastDay && waitingRoomCount > 0 && (
