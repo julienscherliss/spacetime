@@ -25,6 +25,64 @@ import { requestPendingMove } from '@/store/reflectionStore';
 import { getIconByName } from '@/lib/iconLibrary';
 import { getTaskScheduleTime } from '@/utils/taskVisibility';
 
+// ---------------------------------------------------------------------------
+// Lane assignment for overlapping timed tasks.
+// When two or more tasks overlap in time, we split the column into vertical
+// lanes so they render SIDE-BY-SIDE instead of stacking on top of each other.
+// This keeps the "conflict" badge meaningful (overlap is still discouraged
+// and flagged) while making the overlap visually explicit.
+// ---------------------------------------------------------------------------
+function computeTaskLanes(tasks: Task[]): Map<string, { lane: number; count: number }> {
+  const result = new Map<string, { lane: number; count: number }>();
+  const timed = tasks
+    .filter((t) => !!t.time)
+    .map((t) => ({
+      id: t.id,
+      start: timeToMinutes(t.time!),
+      end: timeToMinutes(t.time!) + (t.duration || 30),
+    }))
+    .sort((a, b) => a.start - b.start || a.end - b.end);
+
+  let group: typeof timed = [];
+  let groupEnd = -Infinity;
+
+  const flush = () => {
+    if (group.length === 0) return;
+    if (group.length === 1) {
+      result.set(group[0].id, { lane: 0, count: 1 });
+      return;
+    }
+    const laneEnds: number[] = [];
+    const assigned: Array<{ id: string; lane: number }> = [];
+    for (const item of group) {
+      let lane = laneEnds.findIndex((end) => end <= item.start);
+      if (lane === -1) {
+        lane = laneEnds.length;
+        laneEnds.push(item.end);
+      } else {
+        laneEnds[lane] = item.end;
+      }
+      assigned.push({ id: item.id, lane });
+    }
+    const count = laneEnds.length;
+    for (const a of assigned) result.set(a.id, { lane: a.lane, count });
+  };
+
+  for (const item of timed) {
+    if (item.start < groupEnd) {
+      group.push(item);
+      groupEnd = Math.max(groupEnd, item.end);
+    } else {
+      flush();
+      group = [item];
+      groupEnd = item.end;
+    }
+  }
+  flush();
+
+  return result;
+}
+
 export const DEFAULT_HOUR_HEIGHT = 56;
 export const HOUR_HEIGHT = DEFAULT_HOUR_HEIGHT;
 // Day window is user-configurable via Settings → Advanced. These exports are
