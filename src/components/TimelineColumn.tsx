@@ -1596,7 +1596,16 @@ export function TimelineColumn({
         });
 
         // Lane assignment for side-by-side rendering of overlapping tasks.
-        const laneMap = computeTaskLanes(sortedTasks);
+        // Include completed tasks (rendered separately below) so a completed
+        // block overlapping an active — or another completed — block also
+        // splits into a lane instead of stacking.
+        const completedForLanes = completedTasks
+          .map((t) => {
+            const displayTime = getTaskScheduleTime(t);
+            return displayTime ? ({ ...t, time: displayTime } as Task) : null;
+          })
+          .filter((t): t is Task => !!t);
+        const laneMap = computeTaskLanes([...sortedTasks, ...completedForLanes]);
 
         return clusters.map((cluster, ci) => {
           if (cluster.type === 'condensed' && cluster.tasks.length > 1) {
