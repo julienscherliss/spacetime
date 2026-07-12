@@ -1587,6 +1587,9 @@ export function TimelineColumn({
           columnWidthPx,
         });
 
+        // Lane assignment for side-by-side rendering of overlapping tasks.
+        const laneMap = computeTaskLanes(sortedTasks);
+
         return clusters.map((cluster, ci) => {
           if (cluster.type === 'condensed' && cluster.tasks.length > 1) {
             return (
