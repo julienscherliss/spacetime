@@ -12,6 +12,8 @@ import { useColorSchemeStore } from '@/store/colorSchemeStore';
 import { START_HOUR } from '@/components/TimelineColumn';
 import { getOccupiedSlots, findValidPosition } from '@/utils/collisionDetection';
 import { TASK_TEXT_FIT_PX, TASK_TEXT_FIT_PX_COMFORT } from '@/utils/taskClustering';
+import { resolveTaskIcon } from '@/lib/resolveTaskIcon';
+import { useLibraryStore } from '@/store/libraryStore';
 
 
 interface TimelineTaskBlockProps {
@@ -41,6 +43,9 @@ interface TimelineTaskBlockProps {
   laneIndex?: number;
   /** Total number of lanes in the overlap group. 1 = full width. */
   laneCount?: number;
+  /** When true, render only a small icon glyph (used when the block is too
+   *  narrow to fit any legible text). */
+  iconOnly?: boolean;
 }
 
 const DRAG_THRESHOLD = 8;
@@ -86,6 +91,7 @@ export function TimelineTaskBlock({
   onZoomIn,
   laneIndex = 0,
   laneCount = 1,
+  iconOnly = false,
 }: TimelineTaskBlockProps) {
   const taskMinutes = task.time ? parseInt(task.time.split(':')[0], 10) * 60 + parseInt(task.time.split(':')[1], 10) : 0;
   const taskEndMinutes = taskMinutes + (task.duration || 30);
