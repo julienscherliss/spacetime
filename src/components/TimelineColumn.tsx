@@ -1642,6 +1642,11 @@ export function TimelineColumn({
             const laneInfo = laneMap.get(task.id);
             const laneIndex = laneInfo?.lane ?? 0;
             const laneCount = laneInfo?.count ?? 1;
+            // Effective lane width: when tasks split into lanes, each lane
+            // gets ~1/laneCount of the column. If that's too narrow to fit
+            // any legible text, fall back to an icon-only glyph.
+            const perLanePx = columnWidthPx ? (columnWidthPx / Math.max(1, laneCount)) : Infinity;
+            const iconOnly = perLanePx < 70;
 
             // Groups have their own compact representation (single block, no inline expansion).
             if ((task as Task).type === 'group') {
@@ -1687,6 +1692,7 @@ export function TimelineColumn({
                 hasRoutineConflict={hasConflict}
                 laneIndex={laneIndex}
                 laneCount={laneCount}
+                iconOnly={iconOnly}
                 isCompact={cluster.titleFits === false}
                 onZoomIn={cluster.titleFits === false && onZoomToCluster ? () => {
                   const viewportH = window.innerHeight * 0.7;
