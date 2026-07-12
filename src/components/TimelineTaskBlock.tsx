@@ -37,6 +37,10 @@ interface TimelineTaskBlockProps {
   hasRoutineConflict?: boolean;
   isCompact?: boolean;
   onZoomIn?: () => void;
+  /** Lane index (0-based) when this task shares its time slot with others. */
+  laneIndex?: number;
+  /** Total number of lanes in the overlap group. 1 = full width. */
+  laneCount?: number;
 }
 
 const DRAG_THRESHOLD = 8;
