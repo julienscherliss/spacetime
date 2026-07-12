@@ -1213,6 +1213,7 @@ export const useTaskStore = create<TaskState>()(
 
             for (const occurrenceDate of occurrences) {
               if (existingDates.has(occurrenceDate)) continue;
+              if (parent.recurrenceExceptions?.includes(occurrenceDate)) continue;
 
               const linkState = resolveGeneratedLinkState(
                 nextTasks.filter((task) => isTaskInSameSeries(task, seriesId)),
@@ -1225,6 +1226,7 @@ export const useTaskStore = create<TaskState>()(
                 ...parent,
                 id: newGroupOrTaskId,
                 date: occurrenceDate,
+                originalDate: occurrenceDate,
                 completed: false,
                 createdAt: new Date().toISOString(),
                 archivedAt: undefined,
