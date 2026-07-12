@@ -634,8 +634,10 @@ export function TimelineTaskBlock({
           </div>
         )}
 
-        <div className={`h-full overflow-hidden ${isCompact ? 'flex items-center px-1' : 'flex flex-col justify-between py-1'}`} style={{ paddingLeft: isCompact ? undefined : 'var(--ui-space-md)', paddingRight: isCompact ? undefined : 'var(--ui-space-md)' }}>
-          {isCompact ? (
+        <div className={`h-full overflow-hidden ${iconOnly || isCompact ? 'flex items-center justify-center px-1' : 'flex flex-col justify-between py-1'}`} style={{ paddingLeft: iconOnly || isCompact ? undefined : 'var(--ui-space-md)', paddingRight: iconOnly || isCompact ? undefined : 'var(--ui-space-md)' }}>
+          {iconOnly ? (
+            <IconOnlyGlyph task={task} />
+          ) : isCompact ? (
             <div className="h-[2px] w-full rounded-full bg-foreground/20" title={task.title} />
           ) : (
             <>
