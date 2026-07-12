@@ -66,6 +66,40 @@ function findColumnAtPoint(x: number, y: number): { date: string; element: HTMLE
   return null;
 }
 
+function IconOnlyGlyph({ task }: { task: Task }) {
+  const categories = useLibraryStore((s) => s.categories);
+  const Icon = resolveTaskIcon(task, categories);
+  const isCompleted = !!task.completed;
+  if (isCompleted) {
+    return (
+      <Check
+        size={12}
+        strokeWidth={2}
+        className="text-muted-foreground/70"
+        aria-label={task.title}
+      />
+    );
+  }
+  if (Icon) {
+    return (
+      <Icon
+        size={12}
+        strokeWidth={1.75}
+        className="text-foreground/70"
+        aria-label={task.title}
+      />
+    );
+  }
+  // Fallback: priority dot.
+  return (
+    <span
+      aria-label={task.title}
+      className="rounded-full bg-foreground/50"
+      style={{ width: 6, height: 6 }}
+    />
+  );
+}
+
 export function TimelineTaskBlock({
   task,
   top,
