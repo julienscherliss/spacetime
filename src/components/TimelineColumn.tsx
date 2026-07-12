@@ -1266,6 +1266,25 @@ export function TimelineColumn({
       // Only the column that matches targetDate should process the drop
       if (state.targetDate !== date) return;
 
+      // ── Completed library-item block (id prefix `lib:`) ─────────────────
+      // These are synthesized in DayView from library items completed as
+      // one-off events. They don't live in the task store, so `reorderTask`
+      // can't move them — rewrite the library item's `completedAt` directly.
+      if (state.taskId.startsWith('lib:')) {
+        if (state.currentMinutes === null) {
+          useScheduledDragStore.getState().cancel();
+          return;
+        }
+        const libId = state.taskId.slice(4);
+        const newTime = minutesToTime(state.currentMinutes);
+        const [h, m] = newTime.split(':').map(Number);
+        const [y, mo, d] = (state.targetDate || date).split('-').map(Number);
+        const iso = new Date(y, (mo || 1) - 1, d || 1, h || 0, m || 0, 0, 0).toISOString();
+        useLibraryStore.getState().setItemCompletedAt(libId, iso);
+        useScheduledDragStore.getState().endDrag();
+        return;
+      }
+
       // Block drop if collision detected
       if (state.blocked) {
         // Distinguish constraint violation (priority) from physical collision.
