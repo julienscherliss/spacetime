@@ -234,6 +234,17 @@ export const useLibraryStore = create<LibraryState>()(
           ),
         })),
 
+      // Reschedule a completed library item by rewriting its completedAt.
+      // Used when the user drags a completed library-item block on the
+      // timeline to a new time — the library item is the source of truth
+      // for its display slot, so we move it directly.
+      setItemCompletedAt: (id, iso) =>
+        set((s) => ({
+          items: s.items.map((i) =>
+            i.id === id && i.completed ? { ...i, completedAt: iso } : i
+          ),
+        })),
+
       // SAFETY: never hard-removes the row — soft-deletes via `deletedAt`
       // so the server row is preserved (and the DB trigger blocks hard
       // deletes anyway). `getFilteredItems` already hides items with
