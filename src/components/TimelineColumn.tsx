@@ -287,7 +287,6 @@ function CompletedTaskBlock({ task, top, height, showTimeLabels, laneIndex = 0, 
         }
         return base;
       })()}
-      }}
       onClick={handleClick}
     >
       <div
