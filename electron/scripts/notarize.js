@@ -5,6 +5,15 @@ exports.default = async function notarizing(context) {
   const { electronPlatformName, appOutDir } = context;
 
   if (electronPlatformName !== 'darwin') return;
+  if (process.env.SKIP_NOTARIZE === 'true') {
+    console.log('Skipping notarization because SKIP_NOTARIZE=true');
+    return;
+  }
+
+  if (!process.env.APPLE_ID || !process.env.APPLE_APP_PASSWORD) {
+    console.log('Skipping notarization because APPLE_ID or APPLE_APP_PASSWORD is missing');
+    return;
+  }
 
   const appName = context.packager.appInfo.productFilename;
   const appPath = path.join(appOutDir, `${appName}.app`);
