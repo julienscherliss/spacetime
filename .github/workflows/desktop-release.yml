@@ -33,10 +33,24 @@ jobs:
         working-directory: electron
         run: npm ci
 
+      - name: Validate macOS signing secrets
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          test -n "$CSC_LINK" || (echo "Missing CSC_LINK secret" && exit 1)
+          test -n "$CSC_KEY_PASSWORD" || (echo "Missing CSC_KEY_PASSWORD secret" && exit 1)
+          test -n "$APPLE_ID" || (echo "Missing APPLE_ID secret" && exit 1)
+          test -n "$APPLE_APP_PASSWORD" || (echo "Missing APPLE_APP_PASSWORD secret" && exit 1)
+
       - name: Build and publish desktop release
         working-directory: electron
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CSC_IDENTITY_AUTO_DISCOVERY: "false"
-          SKIP_NOTARIZE: "true"
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
         run: npm run electron:make
