@@ -81,6 +81,12 @@ interface LibraryState {
   // Legacy compat
   filterCategory: FilterCategory;
 
+  /** Id of a library item currently open in the edit modal (used when the
+   *  modal is triggered from outside the LibraryPanel, e.g. clicking a
+   *  completed library-item block on the timeline). */
+  editingItemId: string | null;
+  setEditingItemId: (id: string | null) => void;
+
   setPanelOpen: (open: boolean) => void;
   setSidebarMode: (mode: boolean) => void;
   setReopenAfterCarryDrop: (v: boolean) => void;
@@ -165,6 +171,8 @@ export const useLibraryStore = create<LibraryState>()(
       setSidebarMode: (mode) => set({ sidebarMode: mode }),
       setReopenAfterCarryDrop: (v) => set({ reopenAfterCarryDrop: v }),
       setSortMode: (mode) => set({ sortMode: mode }),
+      editingItemId: null,
+      setEditingItemId: (id) => set({ editingItemId: id }),
       setFilterCategory: (cat) => set((s) => ({
         filterCategory: cat,
         filters: { ...s.filters, category: cat },

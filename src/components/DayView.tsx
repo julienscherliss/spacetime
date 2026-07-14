@@ -18,6 +18,7 @@ import { FitViewButton } from '@/components/FitViewButton';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AllDayEventStrip } from '@/components/AllDayEventStrip';
 import { TaskCluster } from '@/utils/taskClustering';
+import { LibraryEditModal } from '@/components/LibraryEditModal';
 
 function addDaysToDate(dateStr: string, days: number): string {
   const d = new Date(dateStr + 'T12:00:00');
@@ -451,6 +452,17 @@ export function DayView() {
       </AnimatePresence>
 
       <BlockedModal taskId="" open={false} onClose={() => {}} />
+      <TimelineLibraryEditPortal />
     </div>
   );
+}
+
+function TimelineLibraryEditPortal() {
+  const editingItemId = useLibraryStore((s) => s.editingItemId);
+  const setEditingItemId = useLibraryStore((s) => s.setEditingItemId);
+  const item = useLibraryStore((s) =>
+    editingItemId ? s.items.find((i) => i.id === editingItemId) ?? null : null
+  );
+  if (!item) return null;
+  return <LibraryEditModal item={item} onClose={() => setEditingItemId(null)} />;
 }
