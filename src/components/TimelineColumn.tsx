@@ -1334,7 +1334,25 @@ export function TimelineColumn({
 
       // If unlink mode is active, detach this single occurrence before moving
       if (state.unlinkMode) {
-        const { updateTask } = useTaskStore.getState();
+        const { updateTask, tasks: allTasks } = useTaskStore.getState();
+        // Record the vacated slot on the parent's recurrence exceptions so the
+        // pattern doesn't regenerate a duplicate at the original date/time.
+        const src = allTasks.find((t) => t.id === state.taskId);
+        if (src) {
+          const parentId = src.recurrenceParentId;
+          const seriesId = src.seriesId;
+          const vacatedDate = src.originalDate || src.date;
+          const parent = allTasks.find((t) =>
+            !!t.recurrence &&
+            !t.isRecurrenceInstance &&
+            (t.id === parentId || (seriesId && (t.seriesId === seriesId || t.id === seriesId)))
+          );
+          if (parent && vacatedDate) {
+            const prev = new Set(parent.recurrenceExceptions || []);
+            prev.add(vacatedDate);
+            updateTask(parent.id, { recurrenceExceptions: Array.from(prev).sort() });
+          }
+        }
         updateTask(state.taskId, {
           linked: false,
           linkedGroupId: undefined,
@@ -1345,6 +1363,7 @@ export function TimelineColumn({
           recurrenceParentId: undefined,
           seriesId: undefined,
           isRoutine: false,
+          originalDate: undefined,
         });
       }
 
