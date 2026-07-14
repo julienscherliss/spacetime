@@ -943,6 +943,12 @@ export function TimelineColumn({
     if (didDragRef.current) return;
     // Don't open edit panel if in carry mode
     if (useCarryStore.getState().carried) return;
+    // Completed library-item blocks aren't in the task store — open the
+    // library edit modal instead.
+    if (taskId.startsWith('lib:')) {
+      useLibraryStore.getState().setEditingItemId(taskId.slice(4));
+      return;
+    }
     setEditingTask(taskId);
   }, [setEditingTask]);
 
