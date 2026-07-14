@@ -513,6 +513,23 @@ export function TimelineTaskBlock({
   const [completionFlash, setCompletionFlash] = useState(false);
 
   const handleDoubleComplete = useCallback(() => {
+    // Completed library-item blocks (id prefix `lib:`) are synthesized and
+    // don't live in the task store — route to libraryStore.
+    if (task.id.startsWith('lib:')) {
+      const libId = task.id.slice(4);
+      if (task.completed) {
+        useLibraryStore.getState().uncompleteItem(libId);
+        if (navigator.vibrate) navigator.vibrate(20);
+      } else {
+        setCompletionFlash(true);
+        if (navigator.vibrate) navigator.vibrate(20);
+        setTimeout(() => {
+          useLibraryStore.getState().completeItem(libId);
+          setCompletionFlash(false);
+        }, 400);
+      }
+      return;
+    }
     if (task.completed) {
       // Uncomplete
       useTaskStore.getState().uncompleteTask(task.id);
