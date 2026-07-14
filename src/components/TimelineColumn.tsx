@@ -253,19 +253,31 @@ function CompletedTaskBlock({ task, top, height, showTimeLabels, laneIndex = 0, 
   const [flash, setFlash] = useState(false);
 
   const handleClick = useCallback(() => {
+    // Completed library-item blocks are synthesized (id prefix `lib:`) and
+    // don't exist in the task store — route their actions to libraryStore.
+    const isLibBlock = task.id.startsWith('lib:');
+    const libId = isLibBlock ? task.id.slice(4) : '';
     if (clickTimerRef.current) {
       clearTimeout(clickTimerRef.current);
       clickTimerRef.current = null;
       setFlash(true);
       if (navigator.vibrate) navigator.vibrate(20);
       setTimeout(() => {
-        uncompleteTask(task.id);
+        if (isLibBlock) {
+          useLibraryStore.getState().uncompleteItem(libId);
+        } else {
+          uncompleteTask(task.id);
+        }
         setFlash(false);
       }, 400);
     } else {
       clickTimerRef.current = setTimeout(() => {
         clickTimerRef.current = null;
-        setEditingTask(task.id);
+        if (isLibBlock) {
+          useLibraryStore.getState().setEditingItemId(libId);
+        } else {
+          setEditingTask(task.id);
+        }
       }, 250);
     }
   }, [task.id, setEditingTask, uncompleteTask]);
