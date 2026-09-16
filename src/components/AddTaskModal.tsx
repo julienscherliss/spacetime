@@ -13,6 +13,7 @@ import { IconPicker } from '@/components/IconPicker';
 import { getIconByName } from '@/lib/iconLibrary';
 import { resolveCategoryIcon } from '@/lib/resolveTaskIcon';
 import { Sparkles } from 'lucide-react';
+import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 
 const PRIORITY_LABELS = ['Flex', 'Semi', 'Fixed', 'Lock'] as const;
 const PRIORITY_COLORS = [
@@ -40,7 +41,30 @@ export function AddTaskModal() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showNewCatInput, setShowNewCatInput] = useState(false);
   const [newCatInline, setNewCatInline] = useState('');
+  const [confirmClose, setConfirmClose] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
+
+  const hasUnsavedChanges = () =>
+    title.trim().length > 0 || category !== '' || icon !== null || priority !== 0;
+
+  const resetAndClose = () => {
+    setTitle('');
+    setDate(new Date().toISOString().split('T')[0]);
+    setTime('09:00');
+    setPriority(0);
+    setCategory('');
+    setIcon(null);
+    setConfirmClose(false);
+    setOpen(false);
+  };
+
+  const requestClose = () => {
+    if (hasUnsavedChanges()) {
+      setConfirmClose(true);
+      return;
+    }
+    resetAndClose();
+  };
 
   const handleSubmit = () => {
     const cleanTitle = title.replace(/#\S*$/, '').replace(/@\S*$/, '').replace(/\/\/\S*$/, '').trim();
@@ -105,7 +129,7 @@ export function AddTaskModal() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-background/60 backdrop-blur-[2px] p-0 sm:p-4"
-            onClick={() => setOpen(false)}
+            onClick={requestClose}
           >
             <motion.div
               initial={{ opacity: 0, y: 40 }}
@@ -303,6 +327,14 @@ export function AddTaskModal() {
                 </button>
               </div>
             </motion.div>
+
+            <UnsavedChangesDialog
+              open={confirmClose}
+              message="This task hasn't been created yet. Save it before closing?"
+              onSave={() => { setConfirmClose(false); handleSubmit(); }}
+              onDiscard={resetAndClose}
+              onCancel={() => setConfirmClose(false)}
+            />
           </motion.div>
         )}
       </AnimatePresence>
