@@ -13,6 +13,7 @@ import { IconPicker } from '@/components/IconPicker';
 import { getIconByName } from '@/lib/iconLibrary';
 import { resolveCategoryIcon } from '@/lib/resolveTaskIcon';
 import { Sparkles } from 'lucide-react';
+import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog';
 
 const PRIORITY_LABELS = ['Flex', 'Semi', 'Fixed', 'Lock'] as const;
 const PRIORITY_COLORS = [
