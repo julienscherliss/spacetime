@@ -40,7 +40,30 @@ export function AddTaskModal() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showNewCatInput, setShowNewCatInput] = useState(false);
   const [newCatInline, setNewCatInline] = useState('');
+  const [confirmClose, setConfirmClose] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
+
+  const hasUnsavedChanges = () =>
+    title.trim().length > 0 || category !== '' || icon !== null || priority !== 0;
+
+  const resetAndClose = () => {
+    setTitle('');
+    setDate(new Date().toISOString().split('T')[0]);
+    setTime('09:00');
+    setPriority(0);
+    setCategory('');
+    setIcon(null);
+    setConfirmClose(false);
+    setOpen(false);
+  };
+
+  const requestClose = () => {
+    if (hasUnsavedChanges()) {
+      setConfirmClose(true);
+      return;
+    }
+    resetAndClose();
+  };
 
   const handleSubmit = () => {
     const cleanTitle = title.replace(/#\S*$/, '').replace(/@\S*$/, '').replace(/\/\/\S*$/, '').trim();
