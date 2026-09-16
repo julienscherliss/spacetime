@@ -1197,6 +1197,7 @@ export type Database = {
         }
         Returns: number
       }
+      purge_internal_logs: { Args: never; Returns: undefined }
       purge_old_recovery_records: { Args: never; Returns: number }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
