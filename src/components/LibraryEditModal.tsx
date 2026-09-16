@@ -125,6 +125,17 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
   useEffect(() => () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); }, []);
 
   const handleSave = () => {
+    // Flush any subtask text typed but never committed with Enter.
+    const pending = parseSubtaskText(newSubtaskText).map((t) => ({
+      id: crypto.randomUUID(),
+      title: t,
+      completed: false,
+    }));
+    const finalSubtasks = pending.length > 0 ? [...subtasks, ...pending] : subtasks;
+    if (pending.length > 0) {
+      setSubtasks(finalSubtasks);
+      setNewSubtaskText('');
+    }
     updateItem(item.id, {
       title: title.trim() || item.title,
       note,
@@ -133,7 +144,7 @@ export function LibraryEditModal({ item, onClose }: LibraryEditModalProps) {
       isUrgent,
       isImportant,
       dueDate: dueDate || null,
-      subtasks,
+      subtasks: finalSubtasks,
       attachments,
       icon: icon || undefined,
     });
