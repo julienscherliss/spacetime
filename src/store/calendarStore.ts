@@ -1,8 +1,12 @@
 import { create } from 'zustand';
+import { toast } from 'sonner';
+
 import { persist } from 'zustand/middleware';
 import { supabase } from '@/integrations/supabase/client';
 import { useTimezoneStore } from '@/store/timezoneStore';
 import { isNativePlatform, isElectron } from '@/utils/nativePlatform';
+
+let connectionRevision = 0;
 
 // ---------------------------------------------------------------------------
 // Platform-tagged logger. NEVER logs token values — only metadata about flow.
@@ -117,7 +121,14 @@ async function callEdge(action: string, params: Record<string, any> = {}) {
   });
   if (error) {
     calLog('callEdge.error', { action, message: error.message });
-    throw new Error(error.message);
+    let message = error.message;
+    if (error.context instanceof Response) {
+      try {
+        const detail = await error.context.clone().json();
+        if (typeof detail.error === 'string') message = detail.error;
+      } catch { /* Keep the original error when the response is not JSON. */ }
+    }
+    throw new Error(message);
   }
   return data;
 }
@@ -179,6 +190,8 @@ export const useCalendarStore = create<CalendarState>()(
       setPanelOpen: (open) => set({ panelOpen: open }),
 
       checkStatus: async () => {
+        const revision = connectionRevision;
+        if (get().loading) return;
         const userId = await getAuthedUserId();
         if (!userId) {
           calLog('checkStatus.skipped_no_session');
@@ -189,6 +202,7 @@ export const useCalendarStore = create<CalendarState>()(
         try {
           calLog('checkStatus.start', { userId });
           const result = await callEdge('status');
+          if (revision !== connectionRevision) return;
           calLog('checkStatus.result', { connected: !!result?.connected });
           set({ connected: !!result?.connected, email: result?.email || null });
           if (result?.connected) {
@@ -197,6 +211,7 @@ export const useCalendarStore = create<CalendarState>()(
             set({ calendars: [], eventsById: {}, events: [] });
           }
         } catch (e) {
+          if (revision !== connectionRevision) return;
           calLog('checkStatus.failed', { message: (e as Error)?.message });
           set({ connected: false, email: null });
         }
@@ -213,15 +228,21 @@ export const useCalendarStore = create<CalendarState>()(
       },
 
       handleAuthCallback: async (code) => {
+        connectionRevision += 1;
         set({ loading: true });
         try {
           const redirectUri = window.location.origin;
           await callEdge('exchange_code', { code, redirectUri });
           set({ connected: true, loading: false });
           await get().fetchCalendars();
+          toast.success('Google Calendar connected');
         } catch (e) {
           console.error('Auth callback error:', e);
           set({ loading: false });
+          toast.error('Google Calendar could not connect', {
+            description: e instanceof Error ? e.message : 'Please try connecting again.',
+            duration: 12000,
+          });
         }
       },
 

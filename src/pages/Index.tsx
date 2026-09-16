@@ -66,7 +66,9 @@ const Index = () => {
     const code = params.get('code');
     if (code) {
       window.history.replaceState({}, '', window.location.pathname);
-      useCalendarStore.getState().handleAuthCallback(code);
+      void useCalendarStore.getState().handleAuthCallback(code);
+    } else {
+      void useCalendarStore.getState().checkStatus();
     }
   }, []);
 
@@ -85,11 +87,6 @@ const Index = () => {
       s.setHasInitializedSubModes(true);
     }
     if (s.viewMode === 'focus') s.setViewMode('day');
-  }, []);
-
-  // Check calendar connection status on mount
-  useEffect(() => {
-    useCalendarStore.getState().checkStatus();
   }, []);
 
   // Switch to focus view when a notification is tapped
