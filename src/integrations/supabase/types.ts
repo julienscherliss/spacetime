@@ -1031,10 +1031,12 @@ export type Database = {
           linked: boolean | null
           linked_group_id: string | null
           move_count: number
+          original_date: string | null
           original_priority: number
           preferred_duration: number | null
           priority: number
           recurrence: Json | null
+          recurrence_exceptions: string[]
           recurrence_parent_id: string | null
           series_id: string | null
           subtasks: Json | null
@@ -1067,10 +1069,12 @@ export type Database = {
           linked?: boolean | null
           linked_group_id?: string | null
           move_count?: number
+          original_date?: string | null
           original_priority?: number
           preferred_duration?: number | null
           priority?: number
           recurrence?: Json | null
+          recurrence_exceptions?: string[]
           recurrence_parent_id?: string | null
           series_id?: string | null
           subtasks?: Json | null
@@ -1103,10 +1107,12 @@ export type Database = {
           linked?: boolean | null
           linked_group_id?: string | null
           move_count?: number
+          original_date?: string | null
           original_priority?: number
           preferred_duration?: number | null
           priority?: number
           recurrence?: Json | null
+          recurrence_exceptions?: string[]
           recurrence_parent_id?: string | null
           series_id?: string | null
           subtasks?: Json | null
