@@ -128,7 +128,7 @@ export function AddTaskModal() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-background/60 backdrop-blur-[2px] p-0 sm:p-4"
-            onClick={() => setOpen(false)}
+            onClick={requestClose}
           >
             <motion.div
               initial={{ opacity: 0, y: 40 }}
