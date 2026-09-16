@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.purge_internal_logs() FROM PUBLIC, anon, authenticated;
