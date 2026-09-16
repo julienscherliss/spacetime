@@ -150,3 +150,38 @@ describe('linked recurrence schedule propagation', () => {
     expect(updated.detachedFromSeries).toBe(true);
   });
 });
+
+describe('moved recurrence occurrence identity', () => {
+  it.each([true, false])('does not recreate the vacated day (routine=%s)', (isRoutine) => {
+    const parent = makeTask({ id: 'parent', date: '2026-04-01', isRoutine });
+    resetStore([parent]);
+    useTaskStore.getState().generateRecurringInstances('2026-04-01', '2026-04-04');
+    const occurrence = useTaskStore.getState().tasks.find(t => t.date === '2026-04-02')!;
+    useTaskStore.getState().updateTask(occurrence.id, { date: '2026-04-04', time: '16:00' });
+    useTaskStore.getState().generateRecurringInstances('2026-04-01', '2026-04-04');
+    expect(useTaskStore.getState().tasks.filter(t => t.date === '2026-04-02')).toHaveLength(0);
+    expect(useTaskStore.getState().tasks).toHaveLength(4);
+  });
+
+  it('keeps a moved parent anchored to the original recurrence schedule', () => {
+    resetStore([makeTask({ id: 'parent', date: '2026-04-01' })]);
+    useTaskStore.getState().updateTask('parent', { date: '2026-04-04' });
+    useTaskStore.getState().generateRecurringInstances('2026-04-01', '2026-04-04');
+    expect(useTaskStore.getState().tasks.map(t => t.originalDate || t.date).sort())
+      .toEqual(['2026-04-01', '2026-04-02', '2026-04-03', '2026-04-04']);
+  });
+});
+
+it.each(['moveTask', 'forceMoveTask'] as const)('preserves legacy occurrence identity through %s and repeated moves', (action) => {
+  resetStore([
+    makeTask({ id: 'parent' }),
+    makeTask({ id: 'instance', date: '2026-04-02', recurrenceParentId: 'parent', isRecurrenceInstance: true }),
+  ]);
+  // Move earlier so priority escalation cannot block the regression scenario.
+  expect(useTaskStore.getState()[action]('instance', '2026-03-31', '16:00').blocked).toBe(false);
+  expect(useTaskStore.getState()[action]('instance', '2026-03-30', '16:00').blocked).toBe(false);
+  useTaskStore.getState().generateRecurringInstances('2026-04-01', '2026-04-03');
+  expect(useTaskStore.getState().tasks.find(t => t.id === 'instance')?.originalDate).toBe('2026-04-02');
+  expect(useTaskStore.getState().tasks.filter(t => t.date === '2026-04-02')).toHaveLength(0);
+  expect(useTaskStore.getState().tasks).toHaveLength(3);
+});

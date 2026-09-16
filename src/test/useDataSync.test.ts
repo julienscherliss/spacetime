@@ -1064,3 +1064,20 @@ describe('useDataSync regression guard', () => {
     });
   });
 });
+
+it('preserves original recurrence slots and exceptions through a server round trip', async () => {
+  const { taskToRow, rowToTask } = await import('@/hooks/useDataSync');
+  const task = {
+    id: 'moved-occurrence', title: 'Routine', type: 'recurring' as const,
+    priority: 0 as const, originalPriority: 0 as const,
+    date: '2026-09-18', originalDate: '2026-09-16',
+    recurrenceExceptions: ['2026-09-17'],
+    completed: false, createdAt: '2026-09-16T00:00:00Z', moveCount: 1,
+  };
+  const row = taskToRow(task, 'user');
+  expect(row.original_date).toBe('2026-09-16');
+  expect(row.recurrence_exceptions).toEqual(['2026-09-17']);
+  const restored = rowToTask(row);
+  expect(restored.originalDate).toBe(task.originalDate);
+  expect(restored.recurrenceExceptions).toEqual(task.recurrenceExceptions);
+});

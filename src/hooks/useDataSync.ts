@@ -26,7 +26,7 @@ function currentPlatform() {
 
 // ─── Converters ────────────────────────────────────────
 
-function rowToTask(row: any): Task {
+export function rowToTask(row: any): Task {
   return {
     id: row.id,
     title: row.title,
@@ -42,6 +42,8 @@ function rowToTask(row: any): Task {
     completed: row.completed ?? false,
     createdAt: row.created_at,
     moveCount: row.move_count ?? 0,
+    originalDate: row.original_date ?? undefined,
+    recurrenceExceptions: row.recurrence_exceptions ?? [],
     recurrence: row.recurrence ?? undefined,
     recurrenceParentId: row.recurrence_parent_id ?? undefined,
     isRecurrenceInstance: row.is_recurrence_instance ?? false,
@@ -83,6 +85,8 @@ export function taskToRow(task: Task, userId: string) {
     duration: task.duration ?? null,
     completed: task.completed,
     move_count: task.moveCount,
+    original_date: task.originalDate ?? null,
+    recurrence_exceptions: task.recurrenceExceptions ?? [],
     recurrence: task.recurrence ?? null,
     recurrence_parent_id: task.recurrenceParentId ?? null,
     is_recurrence_instance: task.isRecurrenceInstance ?? false,
@@ -225,6 +229,8 @@ export function taskSnapshotFields(t: Task) {
     duration: t.duration ?? null,
     completed: t.completed,
     moveCount: t.moveCount,
+    originalDate: t.originalDate ?? null,
+    recurrenceExceptions: t.recurrenceExceptions ?? [],
     recurrence: t.recurrence ?? null,
     recurrenceParentId: t.recurrenceParentId ?? null,
     isRecurrenceInstance: t.isRecurrenceInstance ?? false,
@@ -307,6 +313,8 @@ export const TASK_KEY_TO_COLUMN: Record<string, string> = {
   duration: 'duration',
   completed: 'completed',
   moveCount: 'move_count',
+  originalDate: 'original_date',
+  recurrenceExceptions: 'recurrence_exceptions',
   recurrence: 'recurrence',
   recurrenceParentId: 'recurrence_parent_id',
   isRecurrenceInstance: 'is_recurrence_instance',

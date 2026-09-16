@@ -665,6 +665,10 @@ export const useTaskStore = create<TaskState>()(
               if (t.id !== id) return t;
               const mobilityMode = useTimezoneStore.getState().mobilityMode;
               let merged = { ...t, ...updates };
+              if ('date' in updates && updates.date !== t.date &&
+                  (t.recurrence || t.isRecurrenceInstance) && !t.detachedFromSeries) {
+                merged.originalDate = t.originalDate || t.date;
+              }
               if ('recurrence' in updates) {
                 merged.type = t.type === 'group' ? 'group' : deriveType(merged.recurrence);
               }
@@ -928,6 +932,8 @@ export const useTaskStore = create<TaskState>()(
             if (t.id === id) {
               return enforceRecurringLinkInvariant({
                 ...t,
+                originalDate: (t.recurrence || t.isRecurrenceInstance) && !t.detachedFromSeries
+                  ? t.originalDate || t.date : t.originalDate,
                 date: newDate,
                 time: finalTime ?? t.time,
                 priority: newPriority,
@@ -979,6 +985,8 @@ export const useTaskStore = create<TaskState>()(
             if (t.id === id) {
               return enforceRecurringLinkInvariant({
                 ...t,
+                originalDate: (t.recurrence || t.isRecurrenceInstance) && !t.detachedFromSeries
+                  ? t.originalDate || t.date : t.originalDate,
                 date: newDate,
                 time: finalTime ?? t.time,
                 priority: newPriority,
@@ -1204,8 +1212,10 @@ export const useTaskStore = create<TaskState>()(
           for (const parent of recurringParents) {
             const seriesId = getTaskSeriesId(parent);
             const existingSeriesTasks = nextTasks.filter((task) => isTaskInSameSeries(task, seriesId));
-            const existingDates = new Set(existingSeriesTasks.map((task) => task.date));
-            const occurrences = getAllOccurrences(parent.recurrence!, parent.date, startDate, endDate);
+            // An occurrence consumes its original slot even after it is moved.
+            // Destination dates do not consume a different day's occurrence.
+            const existingDates = new Set(existingSeriesTasks.map((task) => task.originalDate || task.date));
+            const occurrences = getAllOccurrences(parent.recurrence!, parent.originalDate || parent.date, startDate, endDate);
 
             // For Group parents, snapshot the current child template once.
             const isGroupParent = parent.type === 'group';
