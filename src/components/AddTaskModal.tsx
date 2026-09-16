@@ -326,6 +326,14 @@ export function AddTaskModal() {
                 </button>
               </div>
             </motion.div>
+
+            <UnsavedChangesDialog
+              open={confirmClose}
+              message="This task hasn't been created yet. Save it before closing?"
+              onSave={() => { setConfirmClose(false); handleSubmit(); }}
+              onDiscard={resetAndClose}
+              onCancel={() => setConfirmClose(false)}
+            />
           </motion.div>
         )}
       </AnimatePresence>
