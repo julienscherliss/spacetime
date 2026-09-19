@@ -1256,10 +1256,29 @@ export const useTaskStore = create<TaskState>()(
               // Clone children for the new Group occurrence (live template).
               if (isGroupParent && childTemplate.length > 0) {
                 for (const child of childTemplate) {
+                  // Idempotency: if this child template already materialized an
+                  // instance on this date (e.g. the parent occurrence row was
+                  // removed but its children survived), adopt the orphan instead
+                  // of cloning a duplicate.
+                  const existingChildIndex = nextTasks.findIndex((t) =>
+                    t.recurrenceParentId === child.id &&
+                    t.isRecurrenceInstance === true &&
+                    (t.originalDate || t.date) === occurrenceDate &&
+                    t.archiveReason !== 'deleted',
+                  );
+                  if (existingChildIndex !== -1) {
+                    nextTasks[existingChildIndex] = {
+                      ...nextTasks[existingChildIndex],
+                      groupId: newGroupOrTaskId,
+                    };
+                    continue;
+                  }
+
                   nextTasks.push({
                     ...child,
                     id: generateId(),
                     date: occurrenceDate,
+                    originalDate: occurrenceDate,
                     completed: false,
                     createdAt: new Date().toISOString(),
                     archivedAt: undefined,
