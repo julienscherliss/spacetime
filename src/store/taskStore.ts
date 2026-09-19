@@ -1260,14 +1260,17 @@ export const useTaskStore = create<TaskState>()(
                   // instance on this date (e.g. the parent occurrence row was
                   // removed but its children survived), adopt the orphan instead
                   // of cloning a duplicate.
-                  const existingChild = nextTasks.find((t) =>
+                  const existingChildIndex = nextTasks.findIndex((t) =>
                     t.recurrenceParentId === child.id &&
                     t.isRecurrenceInstance === true &&
                     (t.originalDate || t.date) === occurrenceDate &&
                     t.archiveReason !== 'deleted',
                   );
-                  if (existingChild) {
-                    existingChild.groupId = newGroupOrTaskId;
+                  if (existingChildIndex !== -1) {
+                    nextTasks[existingChildIndex] = {
+                      ...nextTasks[existingChildIndex],
+                      groupId: newGroupOrTaskId,
+                    };
                     continue;
                   }
 
