@@ -1,7 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
 import { App as CapApp } from '@capacitor/app';
-import { supabase } from '@/integrations/supabase/client'; // used in setupDeepLinkListener
+import { supabase, usesOwnedAuth } from '@/integrations/supabase/client';
 
 /** Custom URL scheme registered in iOS Info.plist */
 const NATIVE_SCHEME = 'com.spacetimelabs.spacetime';
@@ -24,6 +24,16 @@ export function isNativePlatform(): boolean {
  * which handles the full OAuth flow and redirects back to our HTTPS callback.
  */
 export async function nativeGoogleSignIn(): Promise<void> {
+  if (usesOwnedAuth) {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: NATIVE_CALLBACK, skipBrowserRedirect: true },
+    });
+    if (error) throw error;
+    if (!data.url) throw new Error('Google sign-in did not return a login URL');
+    await Browser.open({ url: data.url, windowName: '_self' });
+    return;
+  }
   console.debug('[nativeAuth] starting Google sign-in via Lovable proxy');
 
   // Build the OAuth initiate URL through the Lovable proxy
@@ -44,7 +54,7 @@ export function setupDeepLinkListener(): () => void {
   console.debug('[nativeAuth] registering deep-link listener');
 
   const handle = CapApp.addListener('appUrlOpen', async ({ url }) => {
-    console.debug('[nativeAuth] appUrlOpen fired:', url);
+    console.debug('[nativeAuth] appUrlOpen fired');
 
     if (!url.startsWith(`${NATIVE_SCHEME}://auth/callback`)) {
       console.debug('[nativeAuth] ignoring non-auth deep link');

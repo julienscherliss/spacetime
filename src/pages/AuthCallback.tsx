@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, usesOwnedAuth } from '@/integrations/supabase/client';
 
 const NATIVE_SCHEME_CALLBACK = 'com.spacetimelabs.spacetime://auth/callback';
 
@@ -42,8 +42,15 @@ export default function AuthCallback() {
       }
 
       setStatus('completing');
-      supabase.auth.exchangeCodeForSession(code)
-        .then(({ error }) => {
+      // The owned browser client detects the callback and exchanges PKCE once
+      // during initialization. getSession waits for that initialization.
+      (usesOwnedAuth ? supabase.auth.getSession() : supabase.auth.exchangeCodeForSession(code))
+        .then(({ data, error }) => {
+          if (usesOwnedAuth && !error && !data.session) {
+            setStatus('error');
+            setErrorMessage('Sign-in could not be completed. Please try again.');
+            return;
+          }
           if (error) {
             console.error('[AuthCallback] exchangeCodeForSession error:', error.message);
             setStatus('error');

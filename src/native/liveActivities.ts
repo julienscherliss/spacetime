@@ -19,6 +19,19 @@ export interface LiveActivityTokenSnapshot {
   apnsEnvironment?: 'development' | 'production' | 'sandbox' | string;
   bundleIdentifier?: string;
   pushToStartToken?: string;
+  activityTaskIds?: string[];
+  supportsPushToStart?: boolean;
+  diagnostics?: {
+    iosVersion: string;
+    activitiesEnabled: boolean;
+    observerRunning: boolean;
+    observerPhase?: string;
+    observerGeneration?: number;
+    observerAgeSeconds: number;
+    startUpdateCount: number;
+    cachedStartTokenPresent: boolean;
+    activeActivityCount: number;
+  };
   activityTokens?: Array<{
     taskId: string;
     token: string;

@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
 import { useTaskStore, type Task } from '@/store/taskStore';
 import { useCurrentTime, timeToMinutes } from '@/hooks/useCurrentTime';
 import { getLiveActivityPushTokens, syncLiveActivity, type LiveActivityPayload } from '@/native/liveActivities';
 import { useLibraryStore } from '@/store/libraryStore';
 import { resolveLiveActivitySymbolName } from '@/lib/liveActivitySymbols';
 import { supabase } from '@/integrations/supabase/client';
-import { clearLiveActivityRemoteState, syncLiveActivityRemoteState } from '@/lib/liveActivityRemoteSync';
+import { syncLiveActivityRemoteState } from '@/lib/liveActivityRemoteSync';
 
 function isoForDateTime(date: string, time: string) {
   return new Date(`${date}T${time}:00`).toISOString();
@@ -127,21 +129,56 @@ export function useLiveActivities() {
   const tasks = useTaskStore((state) => state.tasks);
   const routinesEnabled = useTaskStore((state) => state.routinesEnabled);
   const categories = useLibraryStore((state) => state.categories);
-  const { minutes: nowMinutes, dateStr: today } = useCurrentTime(15000);
+  const { now, minutes: nowMinutes, dateStr: today } = useCurrentTime(15000);
   const [userId, setUserId] = useState<string | null>(null);
   const lastSignature = useRef<string>('');
   const lastRemoteSignature = useRef<string>('');
+  const syncInFlight = useRef(false);
+  const lastTokenSignature = useRef('');
+  const authOwner = useRef({ userId: null as string | null, generation: 0, mounted: true });
+  const pendingRefresh = useRef(false);
+  const [completionVersion, setCompletionVersion] = useState(0);
+  const [foregroundVersion, setForegroundVersion] = useState(0);
 
   useEffect(() => {
-    let cancelled = false;
-    supabase.auth.getUser().then(({ data }) => {
-      if (!cancelled) setUserId(data.user?.id ?? null);
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUserId(session?.user.id ?? null);
+    if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== 'ios') return;
+    let disposed = false;
+    const listener = App.addListener('appStateChange', ({ isActive }) => {
+      if (!isActive || disposed) return;
+      lastSignature.current = '';
+      lastRemoteSignature.current = '';
+      setForegroundVersion((value) => value + 1);
     });
     return () => {
-      cancelled = true;
+      disposed = true;
+      void listener.then((handle) => handle.remove());
+    };
+  }, []);
+
+  useEffect(() => {
+    authOwner.current.mounted = true;
+    let authEventReceived = false;
+    let disposed = false;
+    const updateOwner = (id: string | null) => {
+      if (disposed || !authOwner.current.mounted) return;
+      if (authOwner.current.userId !== id) {
+        authOwner.current = { userId: id, generation: authOwner.current.generation + 1, mounted: true };
+        lastSignature.current = '';
+        lastRemoteSignature.current = '';
+        lastTokenSignature.current = '';
+      }
+      setUserId(id);
+    };
+    supabase.auth.getUser().then(({ data }) => {
+      if (!authEventReceived) updateOwner(data.user?.id ?? null);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      authEventReceived = true;
+      updateOwner(session?.user.id ?? null);
+    });
+    return () => {
+      disposed = true;
+      authOwner.current = { userId: null, generation: authOwner.current.generation + 1, mounted: false };
       subscription.unsubscribe();
     };
   }, []);
@@ -212,35 +249,71 @@ export function useLiveActivities() {
     }
 
     const shouldSyncNative = localSignature !== lastSignature.current;
-    const shouldSyncRemote = !!userId && remoteSignature !== lastRemoteSignature.current;
+    const remoteKey = `${userId ?? ''}:${remoteSignature}`;
+    const shouldSyncRemote = !!userId && remoteKey !== lastRemoteSignature.current;
 
-    if (!shouldSyncNative && !shouldSyncRemote) return;
-
-    if (shouldSyncNative) lastSignature.current = localSignature;
-    if (shouldSyncRemote) lastRemoteSignature.current = remoteSignature;
+    const nativeIos = Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'ios';
+    // Read a bounded snapshot on each 15-second tick, independent of task edits.
+    // Unchanged credentials do not cause a backend write after registration.
+    if (!shouldSyncNative && !shouldSyncRemote && !(nativeIos && userId)) return;
+    if (syncInFlight.current) {
+      pendingRefresh.current = true;
+      return;
+    }
+    const ownerGeneration = authOwner.current.generation;
+    const isCurrent = () => authOwner.current.mounted &&
+      authOwner.current.generation === ownerGeneration && authOwner.current.userId === userId;
+    syncInFlight.current = true;
 
     void (async () => {
-      let activityToken: string | null = null;
-      if (shouldSyncNative) {
-        const result = await syncLiveActivity(localPayload);
-        activityToken = result?.activityToken ?? null;
+      try {
+        let activityToken: string | null = null;
+        if (shouldSyncNative) {
+          const result = await syncLiveActivity(localPayload);
+          if (!isCurrent()) return;
+          activityToken = result?.activityToken ?? null;
+          if (!nativeIos || (result?.active === localPayload.active && (!localPayload.active || activityToken))) {
+            lastSignature.current = localSignature;
+          }
+        }
+
+        if (!userId || !isCurrent()) return;
+        const tokens = await getLiveActivityPushTokens();
+        if (!isCurrent() || (nativeIos && !tokens)) return;
+        const tokenSignature = JSON.stringify([
+          tokens?.pushToStartToken ?? null, tokens?.apnsEnvironment ?? null,
+          tokens?.bundleIdentifier ?? null, tokens?.available ?? null,
+          tokens?.activityTaskIds ?? [], tokens?.activityTokens ?? [],
+        ]);
+        const registrationPending = nativeIos && (!tokens ||
+          (tokens.supportsPushToStart && !tokens.pushToStartToken));
+        if (!shouldSyncRemote && !shouldSyncNative && !registrationPending &&
+            tokenSignature === lastTokenSignature.current) return;
+        const localActivityTaskId = tokens?.activityTaskIds
+          ? tokens.activityTaskIds.find((id) => id === localPayload.taskId) ?? tokens.activityTaskIds[0] ?? null
+          : undefined;
+        await syncLiveActivityRemoteState({
+          userId,
+          payload: remotePayload,
+          signature: remoteSignature,
+          tokens,
+          activityToken,
+          localActivityTaskId,
+          isCurrent,
+        });
+        if (isCurrent() && !registrationPending) {
+          lastRemoteSignature.current = remoteKey;
+          lastTokenSignature.current = tokenSignature;
+        }
+      } catch (error) {
+        console.warn('[live-activity] remote sync failed', error);
+      } finally {
+        syncInFlight.current = false;
+        if (pendingRefresh.current && authOwner.current.mounted) {
+          pendingRefresh.current = false;
+          setCompletionVersion((value) => value + 1);
+        }
       }
-
-      if (!shouldSyncRemote) return;
-
-      if (!remotePayload.active) {
-        await clearLiveActivityRemoteState(userId, remoteSignature);
-        return;
-      }
-
-      const tokens = await getLiveActivityPushTokens();
-      await syncLiveActivityRemoteState({
-        userId,
-        payload: remotePayload,
-        signature: remoteSignature,
-        tokens,
-        activityToken,
-      });
     })();
-  }, [tasks, categories, today, nowMinutes, routinesEnabled, userId]);
+  }, [tasks, categories, today, nowMinutes, now, routinesEnabled, userId, foregroundVersion, completionVersion]);
 }

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { accountCacheStorage } from '@/lib/ownedDeviceCache';
 import { getWeekBounds } from '@/hooks/useCurrentTime';
 import type { Subtask } from '@/components/SubtaskList';
 import { useTimezoneStore } from '@/store/timezoneStore';
@@ -1701,7 +1702,7 @@ export const useTaskStore = create<TaskState>()(
       },
     }),
     {
-      name: 'task-storage',
+      name: 'task-storage', storage: createJSONStorage(() => accountCacheStorage),
       onRehydrateStorage: () => (state) => {
         if (!state) return;
         // Backfill: any recurring task left "unlinked" by legacy code paths

@@ -74,6 +74,8 @@ struct SpacetimeLiveActivityAttributes: ActivityAttributes {
             from container: KeyedDecodingContainer<CodingKeys>,
             forKey key: CodingKeys
         ) throws -> Date? {
+            // encodeIfPresent omits absent dates; both omission and JSON null are valid.
+            guard container.contains(key) else { return nil }
             if try container.decodeNil(forKey: key) { return nil }
             return try decodeDate(from: container, forKey: key)
         }

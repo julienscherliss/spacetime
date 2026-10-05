@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { accountCacheStorage } from '@/lib/ownedDeviceCache';
 import { useTimezoneStore, getTodayInTz } from '@/store/timezoneStore';
 import { pickTip, type ReflectionReason } from '@/utils/reflectionTips';
 
@@ -170,7 +171,7 @@ export const useReflectionStore = create<ReflectionState>()(
       },
     }),
     {
-      name: 'spacetime-reflection',
+      name: 'spacetime-reflection', storage: createJSONStorage(() => accountCacheStorage),
       partialize: (s) => ({
         daily: s.daily,
         reasonFreq: s.reasonFreq,

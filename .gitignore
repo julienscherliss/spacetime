@@ -11,6 +11,14 @@ node_modules
 dist
 dist-ssr
 *.local
+__pycache__/
+*.py[cod]
+
+# Private backend migration exports
+spacetime-backend-export.zip
+spacetime-backend-export/
+.migration-private/
+supabase/.temp/
 
 # Editor directories and files
 .vscode/*

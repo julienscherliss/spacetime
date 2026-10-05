@@ -1,13 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase } from '@/integrations/supabase/client';
-import { lovable } from '@/integrations/lovable/index';
-import { isNativePlatform } from '@/utils/nativeAuth';
+import { supabase, usesOwnedAuth } from '@/integrations/supabase/client';
+import { isNativePlatform, nativeGoogleSignIn } from '@/utils/nativeAuth';
 import { sendEmailOtp, verifyEmailOtp } from '@/utils/emailOtp';
 import { Mail, Lock, User, ArrowRight, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
-import { getAuthRedirectOrigin, debugLogAuthEnv } from '@/utils/authEnvironment';
+import { getAuthRedirectOrigin, getAuthCallbackUrl, debugLogAuthEnv } from '@/utils/authEnvironment';
 
 type Step = 'entry' | 'otp' | 'password-login';
 
@@ -186,12 +185,26 @@ export default function Auth() {
     setLoading(true);
     debugLogAuthEnv('googleSignIn');
     try {
+      if (usesOwnedAuth) {
+        if (native) {
+          await nativeGoogleSignIn();
+        } else {
+          const { error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: { redirectTo: getAuthCallbackUrl() },
+          });
+          if (error) throw error;
+        }
+        setLoading(false);
+        return;
+      }
       if (native) {
         toast.error('Google sign-in is not yet available on mobile. Please use email/password or sign in on the web app.');
         setLoading(false);
         return;
       }
       const redirectOrigin = getAuthRedirectOrigin();
+      const { lovable } = await import('@/integrations/lovable/index');
       const result = await lovable.auth.signInWithOAuth('google', { redirect_uri: redirectOrigin });
       if (result.error) {
         toast.error(result.error.message || 'Google sign-in failed');

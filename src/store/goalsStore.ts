@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { accountCacheStorage } from '@/lib/ownedDeviceCache';
 
 export type GoalMetric = 'completed-tasks' | 'scheduled-minutes' | 'completed-minutes';
 export type GoalPeriod = 'daily' | 'weekly' | 'monthly';
@@ -45,6 +46,6 @@ export const useGoalsStore = create<GoalsState>()(
       markCelebrated: (id, periodKey) =>
         set((s) => ({ lastCelebrated: { ...s.lastCelebrated, [id]: periodKey } })),
     }),
-    { name: 'spaacetime.goals.v1' }
+    { name: 'spaacetime.goals.v1', storage: createJSONStorage(() => accountCacheStorage) }
   )
 );
