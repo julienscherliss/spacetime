@@ -1,4 +1,4 @@
-project_id = "rhguyvbysqmcwzeuqipr"
+project_id = "zzoeywmurqiqticikyaf"
 
 [functions]
   [functions.auth-email-hook]
@@ -8,4 +8,6 @@ project_id = "rhguyvbysqmcwzeuqipr"
   [functions.apple-iap-notifications]
     verify_jwt = false
   [functions.live-activity-dispatch]
+    verify_jwt = false
+  [functions.stripe-webhook]
     verify_jwt = false

@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+.migration-recovery-download { position: fixed; bottom: max(8px, env(safe-area-inset-bottom)); right: 8px; z-index: 100; padding: 6px 10px; border: 1px solid currentColor; border-radius: 6px; background: hsl(var(--background)); color: hsl(var(--foreground)); font-size: 12px; min-height: 44px; }
+.migration-recovery-blocked { max-width: 36rem; margin: 10vh auto; padding: 24px; }
+.migration-recovery-blocked h1 { font-size: 24px; margin-bottom: 16px; }
+.migration-recovery-blocked p { margin-bottom: 16px; }
+.migration-recovery-blocked button { border: 1px solid currentColor; padding: 10px; margin: 0 10px 10px 0; min-height: 44px; border-radius: 6px; }
+.migration-recovery-notice { position: fixed; bottom: 64px; right: 8px; z-index: 100; max-width: min(32rem, calc(100vw - 16px)); padding: 10px; border: 1px solid currentColor; border-radius: 6px; background: hsl(var(--background)); color: hsl(var(--foreground)); font-size: 12px; }
+.migration-recovery-notice button { display: block; min-height: 44px; text-decoration: underline; }
+
 /* ── UI Scale Token System ── */
 :root {
   /* Typography tokens */

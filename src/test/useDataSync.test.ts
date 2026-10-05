@@ -10,6 +10,7 @@ import { getTaskScheduleDate, getTaskScheduleTime, shouldShowScheduledTask } fro
 describe('useDataSync regression guard', () => {
   beforeEach(() => {
     vi.resetModules();
+    localStorage.clear();
   });
 
   afterEach(() => {
@@ -907,6 +908,7 @@ describe('useDataSync regression guard', () => {
     }));
     vi.doMock('@/utils/nativePlatform', () => ({
       isNativePlatform: vi.fn(() => true),
+      isElectron: vi.fn(() => false),
     }));
     vi.doMock('@capacitor/app', () => ({
       App: {

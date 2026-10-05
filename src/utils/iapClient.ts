@@ -83,12 +83,15 @@ export async function purchasePlan(plan: IapPlan) {
     console.warn('[IAP] getProducts probe failed (non-fatal):', probeErr);
   }
 
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) throw new Error('Not signed in');
   let tx: any;
   try {
     tx = await NativePurchases.purchaseProduct({
       productIdentifier,
       productType: PURCHASE_TYPE.SUBS,
       quantity: 1,
+      appAccountToken: user.id,
     });
   } catch (err: any) {
     const raw = err?.message || err?.errorMessage || String(err);
@@ -108,26 +111,38 @@ export async function purchasePlan(plan: IapPlan) {
   return verifyAppleTransaction(signed);
 }
 
-/** Restore: replay historical transactions and send each to verifier. */
+/** Restore only current Apple entitlements, verified again by our backend. */
 export async function restorePurchases() {
   ensureAvailable();
-  await NativePurchases.restorePurchases();
-  const result: any = await NativePurchases.getPurchases();
-  const purchases: any[] = result?.purchases ?? result?.transactions ?? [];
+  let syncError: unknown;
+  try {
+    await NativePurchases.restorePurchases();
+  } catch (error) {
+    // Respect cancellation; other sync failures may still leave verified local entitlements.
+    if (/cancel/i.test(error instanceof Error ? error.message : String((error as { message?: string })?.message ?? error))) throw error;
+    syncError = error;
+  }
+  const result = await NativePurchases.getPurchases({ onlyCurrentEntitlements: true });
+  const purchases = result?.purchases ?? [];
   if (!Array.isArray(purchases) || purchases.length === 0) {
+    if (syncError) throw syncError;
     return { restored: 0 as const };
   }
   let restored = 0;
+  let verificationError: unknown;
   for (const p of purchases) {
-    const signed = extractSignedPayload(p);
+    // Restore requires a StoreKit 2 signature, never a legacy receipt.
+    const signed = p?.jwsRepresentation;
     if (!signed) continue;
     try {
-      await verifyAppleTransaction(signed);
-      restored++;
+      const verified = await verifyAppleTransaction(signed);
+      if (['active', 'cancelling'].includes(verified.status)) restored++;
     } catch (err) {
-      console.error('[IAP restore] verify failed', err);
+      verificationError = err;
     }
   }
+  if (!restored && verificationError) throw verificationError;
+  if (!restored && syncError) throw syncError;
   return { restored };
 }
 

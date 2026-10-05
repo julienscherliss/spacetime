@@ -1,6 +1,7 @@
 import ActivityKit
 import Capacitor
 import Foundation
+import os
 
 @objc(LiveActivitiesPlugin)
 public class LiveActivitiesPlugin: CAPPlugin, CAPBridgedPlugin {
@@ -13,22 +14,38 @@ public class LiveActivitiesPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "end", returnType: CAPPluginReturnPromise),
     ]
 
-    private var cachedPushToStartToken: String?
-    private var pushToStartTokenTask: Task<Void, Never>?
-    private var cachedActivityTokens: [String: String] = [:]
-    private var activityTokenTasks: [String: Task<Void, Never>] = [:]
+    // Capacitor invokes methods on its bridge queue. Every mutable state access
+    // explicitly hops to the same main-actor owner, including load/refresh/end.
+    @MainActor private lazy var state = LiveActivityState()
 
     public override func load() {
         super.load()
-        startPushToStartTokenUpdates()
-    }
-
-    deinit {
-        pushToStartTokenTask?.cancel()
-        activityTokenTasks.values.forEach { $0.cancel() }
+        Task { @MainActor [weak self] in self?.state.refreshStartObserver() }
     }
 
     @objc func isAvailable(_ call: CAPPluginCall) {
+        Task { @MainActor [weak self] in self?.state.isAvailable(call) }
+    }
+    @objc func getPushTokens(_ call: CAPPluginCall) {
+        Task { @MainActor [weak self] in self?.state.getPushTokens(call) }
+    }
+    @objc func sync(_ call: CAPPluginCall) {
+        Task { @MainActor [weak self] in self?.state.sync(call) }
+    }
+    @objc func end(_ call: CAPPluginCall) {
+        Task { @MainActor [weak self] in self?.state.end(call) }
+    }
+}
+
+@MainActor
+private final class LiveActivityState {
+    private var cachedPushToStartToken: String?
+    private let startObserver = LiveActivityTokenObserver()
+    private var cachedActivityTokens = LiveActivityTokenCache()
+    private var activityObservers: [String: LiveActivityTokenObserver] = [:]
+    private let logger = Logger(subsystem: "com.spacetimelabs.spacetime", category: "LiveActivities")
+
+    func isAvailable(_ call: CAPPluginCall) {
         guard #available(iOS 16.1, *) else {
             call.resolve(["available": false, "reason": "requires_ios_16_1"])
             return
@@ -42,7 +59,7 @@ public class LiveActivitiesPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func getPushTokens(_ call: CAPPluginCall) {
+    func getPushTokens(_ call: CAPPluginCall) {
         guard #available(iOS 16.2, *) else {
             call.resolve([
                 "available": false,
@@ -52,15 +69,24 @@ public class LiveActivitiesPlugin: CAPPlugin, CAPBridgedPlugin {
             return
         }
 
+        refreshStartObserver()
         var activityTokens: [[String: String]] = []
-        for activity in Activity<SpacetimeLiveActivityAttributes>.activities {
+        let currentActivities = Activity<SpacetimeLiveActivityAttributes>.activities.filter {
+            $0.activityState != .ended && $0.activityState != .dismissed
+        }
+        let currentIds = Set(currentActivities.map { $0.id })
+        for id in Array(activityObservers.keys) where !currentIds.contains(id) {
+            activityObservers.removeValue(forKey: id)?.cancel()
+        }
+        cachedActivityTokens.retain(activityIds: currentIds)
+        for activity in currentActivities {
             if let token = activity.pushToken {
-                cachedActivityTokens[activity.attributes.taskId] = token.hexString
+                cachedActivityTokens[activity.id] = token.hexString
                 activityTokens.append([
                     "taskId": activity.attributes.taskId,
                     "token": token.hexString,
                 ])
-            } else if let token = cachedActivityTokens[activity.attributes.taskId] {
+            } else if let token = cachedActivityTokens[activity.id] {
                 activityTokens.append([
                     "taskId": activity.attributes.taskId,
                     "token": token,
@@ -72,20 +98,37 @@ public class LiveActivitiesPlugin: CAPPlugin, CAPBridgedPlugin {
         var response: [String: Any] = [
             "available": ActivityAuthorizationInfo().areActivitiesEnabled,
             "activityTokens": activityTokens,
+            "activityTaskIds": currentActivities.map { $0.attributes.taskId },
             "apnsEnvironment": apnsEnvironment(),
             "bundleIdentifier": Bundle.main.bundleIdentifier ?? "",
+            "supportsPushToStart": false,
         ]
 
-        if #available(iOS 17.2, *), let pushToStartToken = Activity<SpacetimeLiveActivityAttributes>.pushToStartToken {
-            response["pushToStartToken"] = pushToStartToken.hexString
-        } else if let token = cachedPushToStartToken {
-            response["pushToStartToken"] = token
+        if #available(iOS 17.2, *) {
+            response["supportsPushToStart"] = true
+            if let pushToStartToken = Activity<SpacetimeLiveActivityAttributes>.pushToStartToken {
+                response["pushToStartToken"] = pushToStartToken.hexString
+            } else if let token = cachedPushToStartToken {
+                response["pushToStartToken"] = token
+            }
         }
 
+        // Report observer state without exposing token values.
+        response["diagnostics"] = [
+            "iosVersion": UIDevice.current.systemVersion,
+            "activitiesEnabled": ActivityAuthorizationInfo().areActivitiesEnabled,
+            "observerRunning": startObserver.running,
+            "observerPhase": startObserver.phase,
+            "observerGeneration": startObserver.generation,
+            "observerAgeSeconds": Int(startObserver.startedAt.map { Date().timeIntervalSince($0) } ?? 0),
+            "startUpdateCount": startObserver.updateCount,
+            "cachedStartTokenPresent": cachedPushToStartToken != nil,
+            "activeActivityCount": currentActivities.count,
+        ]
         call.resolve(response)
     }
 
-    @objc func sync(_ call: CAPPluginCall) {
+    func sync(_ call: CAPPluginCall) {
         guard #available(iOS 16.1, *) else {
             call.resolve(["active": false])
             return
@@ -108,6 +151,7 @@ public class LiveActivitiesPlugin: CAPPlugin, CAPBridgedPlugin {
             let startDate = ISO8601DateFormatter.spacetime.date(from: startAt),
             let endDate = ISO8601DateFormatter.spacetime.date(from: endAt)
         else {
+            logger.error("Live Activity sync rejected: disabled authorization or invalid payload")
             call.reject("Live Activity payload is invalid or unavailable")
             return
         }
@@ -135,12 +179,13 @@ public class LiveActivitiesPlugin: CAPPlugin, CAPBridgedPlugin {
                 }
                 call.resolve(result)
             } catch {
+                logger.error("Live Activity request failed: \(error.localizedDescription, privacy: .public)")
                 call.reject("Live Activity sync failed: \(error.localizedDescription)")
             }
         }
     }
 
-    @objc func end(_ call: CAPPluginCall) {
+    func end(_ call: CAPPluginCall) {
         guard #available(iOS 16.1, *) else {
             call.resolve(["active": false])
             return
@@ -151,18 +196,13 @@ public class LiveActivitiesPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    private func startPushToStartTokenUpdates() {
+    func refreshStartObserver() {
         guard #available(iOS 17.2, *) else { return }
-        guard pushToStartTokenTask == nil else { return }
-
         if let token = Activity<SpacetimeLiveActivityAttributes>.pushToStartToken {
             cachedPushToStartToken = token.hexString
         }
-
-        pushToStartTokenTask = Task { [weak self] in
-            for await token in Activity<SpacetimeLiveActivityAttributes>.pushToStartTokenUpdates {
-                self?.cachedPushToStartToken = token.hexString
-            }
+        startObserver.start(sequence: { Activity<SpacetimeLiveActivityAttributes>.pushToStartTokenUpdates }) { [weak self] token in
+            self?.cachedPushToStartToken = token.hexString
         }
     }
 
@@ -220,9 +260,8 @@ public class LiveActivitiesPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @available(iOS 16.1, *)
     private func end(_ activity: Activity<SpacetimeLiveActivityAttributes>) async {
-        cachedActivityTokens[activity.attributes.taskId] = nil
-        activityTokenTasks[activity.id]?.cancel()
-        activityTokenTasks[activity.id] = nil
+        cachedActivityTokens[activity.id] = nil
+        activityObservers.removeValue(forKey: activity.id)?.cancel()
         if #available(iOS 16.2, *) {
             await activity.end(nil, dismissalPolicy: .immediate)
         } else {
@@ -237,37 +276,34 @@ public class LiveActivitiesPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @available(iOS 16.2, *)
     private func observeActivityTokenUpdates(for activity: Activity<SpacetimeLiveActivityAttributes>) {
-        guard activityTokenTasks[activity.id] == nil else { return }
-
+        let observer = activityObservers[activity.id] ?? LiveActivityTokenObserver()
+        activityObservers[activity.id] = observer
         if let token = activity.pushToken {
-            cachedActivityTokens[activity.attributes.taskId] = token.hexString
+            cachedActivityTokens[activity.id] = token.hexString
         }
-
-        activityTokenTasks[activity.id] = Task { [weak self] in
-            for await token in activity.pushTokenUpdates {
-                self?.cachedActivityTokens[activity.attributes.taskId] = token.hexString
-            }
+        observer.start(sequence: { activity.pushTokenUpdates }) { [weak self] token in
+            self?.cachedActivityTokens[activity.id] = token.hexString
         }
     }
 
     @available(iOS 16.2, *)
     private func activityToken(for activity: Activity<SpacetimeLiveActivityAttributes>) async -> String? {
         if let token = activity.pushToken?.hexString {
-            cachedActivityTokens[activity.attributes.taskId] = token
+            cachedActivityTokens[activity.id] = token
             return token
         }
 
-        if let token = cachedActivityTokens[activity.attributes.taskId] {
+        if let token = cachedActivityTokens[activity.id] {
             return token
         }
 
         for _ in 0..<10 {
             try? await Task.sleep(nanoseconds: 200_000_000)
             if let token = activity.pushToken?.hexString {
-                cachedActivityTokens[activity.attributes.taskId] = token
+                cachedActivityTokens[activity.id] = token
                 return token
             }
-            if let token = cachedActivityTokens[activity.attributes.taskId] {
+            if let token = cachedActivityTokens[activity.id] {
                 return token
             }
         }

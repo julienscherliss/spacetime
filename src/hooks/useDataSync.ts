@@ -1,10 +1,16 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTaskStore, Task, Priority, TaskType } from '@/store/taskStore';
 import { useLibraryStore, LibraryTask, CategoryDef } from '@/store/libraryStore';
+import { useGoalsStore } from '@/store/goalsStore';
+import { useReflectionStore } from '@/store/reflectionStore';
+import { useCalendarStore } from '@/store/calendarStore';
 import { isNativePlatform } from '@/utils/nativePlatform';
 import { toast } from 'sonner';
 import type { User } from '@supabase/supabase-js';
+import { preserveDeviceCache, blockRecovery } from '@/lib/migrationRecovery';
+import { ownedCacheEnabled, closeOwnedCache, openVerifiedOwnedCache, currentOwnedCacheOwner,
+  rememberOwnedBaseline, retainOwnedReviewCopy, type RestartCopy } from '@/lib/ownedDeviceCache';
 
 type SyncTable = 'tasks' | 'library_items' | 'library_categories';
 
@@ -189,8 +195,11 @@ let lastSyncedCatSnapshot: string = '';
 
 type SyncStatus = 'idle' | 'loaded' | 'signing_out';
 let syncStatus: SyncStatus = 'idle';
+let syncEpoch = 0;
+function sessionIsSigningOut() { return syncStatus === 'signing_out'; }
 
 export function markSigningOut() {
+  syncEpoch += 1;
   syncStatus = 'signing_out';
   // Drop any queued debounced saves so the empty-state caused by sign-out
   // cleanup cannot reach the database.
@@ -425,9 +434,20 @@ async function fetchAllRows(table: 'tasks' | 'library_items' | 'library_categori
 
 // ─── Clear all user-scoped state ───────────────────────
 
-function clearAllUserState() {
+function clearAllUserState(): boolean {
+  syncStatus = 'idle';
+  syncEpoch += 1;
+  if (taskSaveTimeout) { clearTimeout(taskSaveTimeout); taskSaveTimeout = null; }
+  if (libSaveTimeout) { clearTimeout(libSaveTimeout); libSaveTimeout = null; }
+  if (catSaveTimeout) { clearTimeout(catSaveTimeout); catSaveTimeout = null; }
+  try { preserveDeviceCache(localStorage, 'session-change'); }
+  catch { blockRecovery(); return false; }
+  if (ownedCacheEnabled) closeOwnedCache();
   useTaskStore.setState({ tasks: [], editingTaskId: null, focusTaskId: null });
   useLibraryStore.setState({ items: [], categories: [] });
+  useGoalsStore.setState({ goals: [], lastCelebrated: {} });
+  useReflectionStore.setState({ daily: {}, reasonFreq: {}, customReasons: [], recentTips: [], activePrompt: null });
+  useCalendarStore.setState({ completedEventIds: [], deletedEventIds: [], eventCategories: {}, editingEventId: null });
   try {
     localStorage.removeItem('do-task-store');
     localStorage.removeItem('task-storage');
@@ -441,11 +461,22 @@ function clearAllUserState() {
   lastSyncedCatSnapshot = '';
   pendingTaskSelfEchoIds.clear();
   syncStatus = 'idle';
+  return true;
 }
+
+function rememberSyncBaseline() {
+  if (lastSyncedTaskSnapshot && lastSyncedLibSnapshot && lastSyncedCatSnapshot) {
+    rememberOwnedBaseline({ tasks: lastSyncedTaskSnapshot, library: lastSyncedLibSnapshot, categories: lastSyncedCatSnapshot });
+  }
+}
+
+function ownsActiveCache(userId: string) { return !ownedCacheEnabled || currentOwnedCacheOwner() === userId; }
 
 // ─── Write-through save functions ──────────────────────
 
 export async function saveTasksNow(userId: string): Promise<boolean> {
+  const epoch = syncEpoch;
+  if (!ownsActiveCache(userId)) return false;
   if (taskSaveInFlight) return taskSaveInFlight;
   if (syncStatus === 'signing_out') {
     console.warn('[Sync] Skipping task save — session is signing out.');
@@ -552,6 +583,7 @@ export async function saveTasksNow(userId: string): Promise<boolean> {
       // Existing tasks: partial UPDATE (never upsert) so omitting NOT NULL
       // columns is safe and unrelated/protective fields keep their server value.
       for (const { id, patch } of updates) {
+        if (epoch !== syncEpoch || sessionIsSigningOut() || !ownsActiveCache(userId)) return false;
         syncLog('saveTasksNow writing task patch', {
           platform: currentPlatform(),
           method: 'update',
@@ -578,7 +610,9 @@ export async function saveTasksNow(userId: string): Promise<boolean> {
       }
     }
 
+    if (epoch !== syncEpoch || syncStatus === 'signing_out' || !ownsActiveCache(userId)) return false;
     lastSyncedTaskSnapshot = snap;
+    rememberSyncBaseline();
     syncLog('lastSyncedTaskSnapshot reset after save', {
       platform: currentPlatform(),
       taskCount: validTasks.length,
@@ -602,6 +636,8 @@ export async function saveTasksNow(userId: string): Promise<boolean> {
 }
 
 async function saveLibraryNow(userId: string): Promise<boolean> {
+  const epoch = syncEpoch;
+  if (!ownsActiveCache(userId)) return false;
   if (libSaveInFlight) return libSaveInFlight;
   if (syncStatus === 'signing_out') {
     console.warn('[Sync] Skipping library save — session is signing out.');
@@ -668,7 +704,9 @@ async function saveLibraryNow(userId: string): Promise<boolean> {
       }
     }
 
+    if (epoch !== syncEpoch || syncStatus === 'signing_out' || !ownsActiveCache(userId)) return false;
     lastSyncedLibSnapshot = snap;
+    rememberSyncBaseline();
     ignoreLibraryReloadUntil = Date.now() + 5000;
     return true;
   } catch (err) {
@@ -685,6 +723,8 @@ async function saveLibraryNow(userId: string): Promise<boolean> {
 }
 
 async function saveCategoriesNow(userId: string): Promise<boolean> {
+  const epoch = syncEpoch;
+  if (!ownsActiveCache(userId)) return false;
   if (catSaveInFlight) return catSaveInFlight;
   if (syncStatus === 'signing_out') {
     console.warn('[Sync] Skipping category save — session is signing out.');
@@ -735,11 +775,14 @@ async function saveCategoriesNow(userId: string): Promise<boolean> {
       );
       if (changed.length > 0) {
         const rows = changed.map((c) => categoryToRow(c, userId));
-        await supabase.from('library_categories').upsert(rows as any, { onConflict: 'user_id,value' });
+        const { error } = await supabase.from('library_categories').upsert(rows as any, { onConflict: 'user_id,value' });
+        if (error) return false;
       }
     }
 
+    if (epoch !== syncEpoch || syncStatus === 'signing_out' || !ownsActiveCache(userId)) return false;
     lastSyncedCatSnapshot = snap;
+    rememberSyncBaseline();
     ignoreCategoryReloadUntil = Date.now() + 5000;
     return true;
   } catch (_) {
@@ -754,17 +797,28 @@ async function saveCategoriesNow(userId: string): Promise<boolean> {
   return catSaveInFlight;
 }
 
+function hasUnsavedChanges(): boolean {
+  return syncStatus === 'loaded' && (
+    snapshotTasks(useTaskStore.getState().tasks) !== lastSyncedTaskSnapshot ||
+    snapshotLib(useLibraryStore.getState().items) !== lastSyncedLibSnapshot ||
+    snapshotCats(useLibraryStore.getState().categories) !== lastSyncedCatSnapshot
+  );
+}
+
 // ─── Load from DB (source of truth) ───────────────────
 
 export async function loadFromDB(
   userId: string,
-  options: { skipTasks?: boolean; skipLibrary?: boolean; skipCategories?: boolean } = {}
+  options: { skipTasks?: boolean; skipLibrary?: boolean; skipCategories?: boolean; restart?: RestartCopy } = {}
 ): Promise<boolean> {
+  const epoch = syncEpoch;
+  if (hasUnsavedChanges() || syncStatus === 'signing_out') return false;
   try {
     syncLog('loadFromDB started', {
       platform: currentPlatform(),
       userId,
-      options,
+      options: { skipTasks: options.skipTasks, skipLibrary: options.skipLibrary,
+        skipCategories: options.skipCategories, restarting: Boolean(options.restart) },
     });
     const [taskRes, libRes, catRes] = await Promise.all([
       options.skipTasks ? Promise.resolve({ data: null, error: null } as any) : fetchAllRows('tasks', userId),
@@ -772,16 +826,37 @@ export async function loadFromDB(
       options.skipCategories ? Promise.resolve({ data: null, error: null } as any) : fetchAllRows('library_categories', userId),
     ]);
 
+    if (epoch !== syncEpoch || hasUnsavedChanges() || sessionIsSigningOut() || !ownsActiveCache(userId)) return false;
+    if ((!options.skipLibrary && libRes.error) || (!options.skipCategories && catRes.error)) return false;
+
     if (!options.skipTasks && taskRes.error) {
       console.error('[Sync] Failed to load tasks:', taskRes.error);
       toast.error('Failed to load tasks. Please refresh.');
       return false;
     }
 
+    const remoteTasks = (taskRes.data || []).map(rowToTask);
+    const remoteItems = (libRes.data || []).map(rowToLibraryItem);
+    const remoteCategories = (catRes.data || []).map(rowToCategory);
+    const cachedTasks = options.restart?.entries['task-storage'] ? JSON.parse(options.restart.entries['task-storage']).state.tasks : null;
+    const cachedLibrary = options.restart?.entries['do-library-store'] ? JSON.parse(options.restart.entries['do-library-store']).state : null;
+    const base = options.restart?.baseline;
+    const dirtyTasks = cachedTasks && (!base || snapshotTasks(cachedTasks) !== base.tasks);
+    const dirtyLibrary = cachedLibrary && (!base || snapshotLib(cachedLibrary.items || []) !== base.library);
+    const dirtyCategories = cachedLibrary && (!base || snapshotCats(cachedLibrary.categories || []) !== base.categories);
+    const canRestore = Boolean(base && (!dirtyTasks || snapshotTasks(remoteTasks) === base.tasks)
+      && (!dirtyLibrary || snapshotLib(remoteItems) === base.library)
+      && (!dirtyCategories || snapshotCats(remoteCategories) === base.categories));
+    if ((dirtyTasks || dirtyLibrary || dirtyCategories) && !canRestore) {
+      // Keep exact pending bytes before fresh server state overwrites this cache.
+      retainOwnedReviewCopy(options.restart!);
+      toast.info('Saved device changes need review. Download your private copy before making those changes again.');
+    }
+
     if (!options.skipTasks) {
-      const tasks = (taskRes.data || []).map(rowToTask);
+      const tasks = canRestore && dirtyTasks ? cachedTasks : remoteTasks;
       useTaskStore.setState({ tasks });
-      lastSyncedTaskSnapshot = snapshotTasks(tasks);
+      lastSyncedTaskSnapshot = snapshotTasks(remoteTasks);
       pendingTaskSelfEchoIds.clear();
       syncLog('lastSyncedTaskSnapshot reset after load', {
         platform: currentPlatform(),
@@ -789,70 +864,17 @@ export async function loadFromDB(
       });
     }
 
-    if (!options.skipLibrary && !libRes.error) {
-      const items = (libRes.data || []).map(rowToLibraryItem);
-      // RECOVERY: if the DB has zero library items but the localStorage cache
-      // for this device still holds some, restore them rather than treating
-      // the empty DB as authoritative. This protects against the historical
-      // "wipe on sign-out" bug — any device that still has the cache will
-      // push the library back up on next login.
-      let restored = false;
-      if (items.length === 0) {
-        try {
-          const cached = localStorage.getItem('do-library-store');
-          if (cached) {
-            const parsed = JSON.parse(cached);
-            const cachedItems: any[] = parsed?.state?.items || [];
-            const validCached = cachedItems.filter((i) => i && isValidUUID(i.id));
-            if (validCached.length > 0) {
-              console.warn('[Sync] DB library was empty but localStorage cache has', validCached.length, 'items — restoring from cache.');
-              const restoredItems = validCached.map((i: any) => ({
-                id: i.id,
-                title: i.title || 'Untitled',
-                note: i.note ?? '',
-                category: i.category ?? '',
-                defaultDuration: i.defaultDuration ?? 30,
-                createdAt: i.createdAt || new Date().toISOString(),
-                isUrgent: i.isUrgent ?? false,
-                isImportant: i.isImportant ?? false,
-                dueDate: i.dueDate ?? null,
-                subtasks: i.subtasks ?? [],
-                attachments: i.attachments ?? [],
-                completed: i.completed ?? false,
-                completedAt: i.completedAt ?? null,
-                deletedAt: i.deletedAt ?? null,
-              }));
-              useLibraryStore.setState({ items: restoredItems });
-              // Seed snapshot as if DB already had these so saveLibraryNow
-              // treats the upsert as a pure insert, not a delete-diff.
-              lastSyncedLibSnapshot = snapshotLib([]);
-              // Push to DB immediately.
-              const rows = restoredItems.map((i) => libraryItemToRow(i, userId));
-              const { error: upErr } = await supabase.from('library_items').upsert(rows as any);
-              if (!upErr) {
-                lastSyncedLibSnapshot = snapshotLib(restoredItems);
-                try { toast.success(`Restored ${restoredItems.length} library item${restoredItems.length === 1 ? '' : 's'} from this device's cache.`); } catch {}
-                restored = true;
-              } else {
-                console.error('[Sync] Failed to restore library from cache:', upErr);
-              }
-            }
-          }
-        } catch (err) {
-          console.error('[Sync] Library restore-from-cache failed:', err);
-        }
-      }
-      if (!restored) {
-        useLibraryStore.setState({ items });
-        lastSyncedLibSnapshot = snapshotLib(items);
-      }
+    if (!options.skipLibrary || !options.skipCategories) {
+      // The store persists items and categories together. Restore both in one
+      // write so an interruption cannot persist items with cleared categories.
+      useLibraryStore.setState({
+        ...(!options.skipLibrary ? { items: canRestore && dirtyLibrary ? cachedLibrary.items : remoteItems } : {}),
+        ...(!options.skipCategories ? { categories: canRestore && dirtyCategories ? cachedLibrary.categories : remoteCategories } : {}),
+      });
+      if (!options.skipLibrary) lastSyncedLibSnapshot = snapshotLib(remoteItems);
+      if (!options.skipCategories) lastSyncedCatSnapshot = snapshotCats(remoteCategories);
     }
-
-    if (!options.skipCategories && !catRes.error) {
-      const categories = (catRes.data || []).map(rowToCategory);
-      useLibraryStore.setState({ categories });
-      lastSyncedCatSnapshot = snapshotCats(categories);
-    }
+    rememberSyncBaseline();
 
     syncLog('loadFromDB completed', {
       platform: currentPlatform(),
@@ -878,42 +900,20 @@ export function isInitialSyncComplete() {
 }
 
 export function useDataSync(user: User | null) {
+  const [readyUserId, setReadyUserId] = useState<string | null>(null);
+  const [connectionError, setConnectionError] = useState(false);
   const initialLoadDone = useRef(false);
   const userIdRef = useRef<string | null>(null);
-  const prevUserIdRef = useRef<string | null>(null);
   const accessTokenRef = useRef<string | null>(null);
-  const flushPendingWrites = useCallback(async (activeUserId: string) => {
+  const flushPendingWrites = useCallback(async (activeUserId: string): Promise<boolean> => {
+    if (!initialLoadDone.current || userIdRef.current !== activeUserId || syncStatus !== 'loaded') return false;
+    if (taskSaveTimeout) { clearTimeout(taskSaveTimeout); taskSaveTimeout = null; }
+    if (libSaveTimeout) { clearTimeout(libSaveTimeout); libSaveTimeout = null; }
+    if (catSaveTimeout) { clearTimeout(catSaveTimeout); catSaveTimeout = null; }
     try {
-      if (taskSaveTimeout) {
-        clearTimeout(taskSaveTimeout);
-        taskSaveTimeout = null;
-        await saveTasksNow(activeUserId);
-      }
-      if (libSaveTimeout) {
-        clearTimeout(libSaveTimeout);
-        libSaveTimeout = null;
-        await saveLibraryNow(activeUserId);
-      }
-      if (catSaveTimeout) {
-        clearTimeout(catSaveTimeout);
-        catSaveTimeout = null;
-        await saveCategoriesNow(activeUserId);
-      }
-
-      const taskState = useTaskStore.getState();
-      if (snapshotTasks(taskState.tasks) !== lastSyncedTaskSnapshot) {
-        await saveTasksNow(activeUserId);
-      }
-      const libState = useLibraryStore.getState();
-      if (snapshotLib(libState.items) !== lastSyncedLibSnapshot) {
-        await saveLibraryNow(activeUserId);
-      }
-      if (snapshotCats(libState.categories) !== lastSyncedCatSnapshot) {
-        await saveCategoriesNow(activeUserId);
-      }
-    } catch (err) {
-      console.error('[Sync] Error flushing pending writes:', err);
-    }
+      const results = await Promise.all([saveTasksNow(activeUserId), saveLibraryNow(activeUserId), saveCategoriesNow(activeUserId)]);
+      return results.every(Boolean) && userIdRef.current === activeUserId && !hasUnsavedChanges();
+    } catch { return false; }
   }, []);
 
   // Keep access token up to date for beforeunload
@@ -929,31 +929,31 @@ export function useDataSync(user: User | null) {
 
   // ─── Initial load & user change ──────────────────────
   useEffect(() => {
+    let cancelled = false;
+    setReadyUserId(null);
+    setConnectionError(false);
+    initialLoadDone.current = false;
+    initialSyncComplete = false;
+    userIdRef.current = null;
+    if (!clearAllUserState()) return;
     if (!user) {
-      clearAllUserState();
-      initialLoadDone.current = false;
-      initialSyncComplete = false;
-      userIdRef.current = null;
-      prevUserIdRef.current = null;
       return;
     }
 
-    if (prevUserIdRef.current && prevUserIdRef.current !== user.id) {
-      clearAllUserState();
-      initialLoadDone.current = false;
-      initialSyncComplete = false;
-    }
-
-    userIdRef.current = user.id;
-    prevUserIdRef.current = user.id;
-    initialSyncComplete = false;
-
-    // Clear localStorage-cached data BEFORE loading from DB
-    // This prevents stale local data from flashing or being pushed back
-    useTaskStore.setState({ tasks: [] });
-    useLibraryStore.setState({ items: [] });
-
-    loadFromDB(user.id).then((ok) => {
+    const initialize = async () => {
+      let restart: RestartCopy | undefined;
+      if (ownedCacheEnabled) {
+        // A local owner label/cached session never authorizes restoration.
+        const { data, error } = await supabase.auth.getUser();
+        if (cancelled) return;
+        if (error || data.user?.id !== user.id) { setConnectionError(true); return; }
+        restart = openVerifiedOwnedCache(user.id);
+        await Promise.all([useGoalsStore.persist.rehydrate(), useReflectionStore.persist.rehydrate(), useCalendarStore.persist.rehydrate()]);
+        if (cancelled) return;
+      }
+      userIdRef.current = user.id;
+      const ok = await loadFromDB(user.id, { restart });
+      if (cancelled) return;
       if (ok && userIdRef.current === user.id) {
         initialLoadDone.current = true;
         initialSyncComplete = true;
@@ -961,30 +961,12 @@ export function useDataSync(user: User | null) {
         // A failed load leaves status at 'idle' so a debounced save cannot
         // push a half-empty store back at the database.
         if (syncStatus !== 'signing_out') syncStatus = 'loaded';
+        setReadyUserId(user.id);
         try { window.dispatchEvent(new CustomEvent('data-sync:initial-loaded')); } catch {}
-
-        // If DB had zero tasks but localStorage had some (first-time migration),
-        // push them up. This only matters on the very first login.
-        const currentTasks = useTaskStore.getState().tasks;
-        if (currentTasks.length === 0) {
-          // Check if localStorage had tasks before we cleared
-          try {
-            const cached = localStorage.getItem('do-task-store');
-            if (cached) {
-              const parsed = JSON.parse(cached);
-              if (parsed?.state?.tasks?.length > 0) {
-                const fixedTasks = parsed.state.tasks.map((t: any) => ({
-                  ...t,
-                  id: isValidUUID(t.id) ? t.id : crypto.randomUUID(),
-                }));
-                useTaskStore.setState({ tasks: fixedTasks });
-                saveTasksNow(user.id);
-              }
-            }
-          } catch (_) {}
-        }
-      }
-    });
+      } else { setConnectionError(true); }
+    };
+    void initialize().catch(() => { if (!cancelled) setConnectionError(true); });
+    return () => { cancelled = true; };
   }, [user?.id]);
 
   // ─── Subscribe to task store → write-through save ────
@@ -1105,6 +1087,7 @@ export function useDataSync(user: User | null) {
         reloadTimeout = setTimeout(() => scheduleReload(source), RELOAD_RETRY_MS);
         return;
       }
+      if (hasUnsavedChanges()) return;
       if (reloadTimeout) clearTimeout(reloadTimeout);
       reloadTimeout = setTimeout(() => {
         if (userIdRef.current === user.id) {
@@ -1173,19 +1156,19 @@ export function useDataSync(user: User | null) {
       // CRITICAL: Flush any pending local writes BEFORE refetching from DB.
       // On mobile, the app may have been backgrounded mid-debounce — if we
       // refetch first, we'd overwrite unsaved local tasks with stale DB rows.
-      await flushPendingWrites(user.id);
+      const flushed = await flushPendingWrites(user.id);
+      if (!flushed) return;
 
       if (userIdRef.current !== user.id) return;
       console.log('[Sync] App became visible — refetching from DB');
-      await loadFromDB(user.id);
-      initialLoadDone.current = true;
+      if (await loadFromDB(user.id)) initialLoadDone.current = true;
     };
 
     document.addEventListener('visibilitychange', handleVisibility);
 
     // Also flush on beforeunload
     const handleBeforeUnload = () => {
-      if (userIdRef.current) {
+      if (userIdRef.current && initialLoadDone.current && syncStatus === 'loaded') {
         // Cancel debounce and save synchronously via sendBeacon as best-effort
         if (taskSaveTimeout) { clearTimeout(taskSaveTimeout); taskSaveTimeout = null; }
         if (libSaveTimeout) { clearTimeout(libSaveTimeout); libSaveTimeout = null; }
@@ -1243,7 +1226,7 @@ export function useDataSync(user: User | null) {
           return;
         }
 
-        await flushPendingWrites(user.id);
+        if (!await flushPendingWrites(user.id)) return;
         if (userIdRef.current !== user.id) return;
         await loadFromDB(user.id);
       });
@@ -1257,4 +1240,5 @@ export function useDataSync(user: User | null) {
       removeListener?.();
     };
   }, [flushPendingWrites, user?.id]);
+  return { ready: !ownedCacheEnabled || readyUserId === user?.id, connectionError };
 }

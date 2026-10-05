@@ -1,95 +1,49 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.101.1";
-import Stripe from "https://esm.sh/stripe@18.5.0";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
-
-const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, { apiVersion: "2025-08-27.basil" });
-
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
-
+import { billingAdmin } from "../_shared/billing.ts";
+import { stripeClient, stripeMode, stripePriceId, validateStripePrice, billingOrigin } from "../_shared/stripeBilling.ts";
+import { prepareStripeCheckout, CheckoutConflict } from "../_shared/stripeCheckout.ts";
+const headers = {"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization,x-client-info,apikey,content-type,x-supabase-client-platform,x-supabase-client-platform-version,x-supabase-client-runtime,x-supabase-client-runtime-version"};
+const reply = (body:unknown,status=200) => Response.json(body,{status,headers});
+Deno.serve(async req => {
+  if(req.method === "OPTIONS") return new Response("ok",{headers});
+  if(req.method !== "POST") return reply({error:"Method not allowed"},405);
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing auth" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const token=req.headers.get("Authorization")?.match(/^Bearer (.+)$/)?.[1];
+    if(!token) return reply({error:"Unauthorized"},401);
+    const admin=billingAdmin();
+    const {data:{user},error:authError}=await admin.auth.getUser(token);
+    if(authError || !user) return reply({error:"Unauthorized"},401);
+    const {plan}=await req.json();
+    if(!["monthly","yearly"].includes(plan)) return reply({error:"Invalid plan"},400);
+    const origin=billingOrigin(req),stripe=stripeClient();
+    const price=await stripe.prices.retrieve(stripePriceId(plan));
+    validateStripePrice(price,plan,true);
+    const {data:sub,error}=await admin.from("subscriptions").select("*").eq("user_id",user.id).single();
+    if(error) throw error;
+    let customerId=sub.stripe_customer_id;
+    if(!customerId) {
+      const customer=await stripe.customers.create({email:user.email,metadata:{user_id:user.id}},
+        {idempotencyKey:`spacetime-customer-${user.id}`});
+      // Compare-and-set avoids replacing an account's already-bound customer.
+      const {data:bound,error:writeError}=await admin.from("subscriptions")
+        .update({stripe_customer_id:customer.id}).eq("user_id",user.id).is("stripe_customer_id",null)
+        .select("stripe_customer_id").maybeSingle();
+      if(writeError) throw writeError;
+      if(bound) customerId=bound.stripe_customer_id;
+      else {
+        const {data:existing,error:readError}=await admin.from("subscriptions")
+          .select("stripe_customer_id").eq("user_id",user.id).single();
+        if(readError || !existing?.stripe_customer_id) throw new Error("Customer binding failed");
+        customerId=existing.stripe_customer_id;
+      }
     }
-
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const { plan } = await req.json();
-    if (!["monthly", "yearly"].includes(plan)) {
-      return new Response(JSON.stringify({ error: "Invalid plan" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const adminSupabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
-
-    const { data: sub } = await adminSupabase
-      .from("subscriptions")
-      .select("stripe_customer_id")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    let customerId = sub?.stripe_customer_id;
-    if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: user.email,
-        metadata: { user_id: user.id },
-      });
-      customerId = customer.id;
-      // Upsert subscription with stripe_customer_id
-      await adminSupabase
-        .from("subscriptions")
-        .upsert(
-          { user_id: user.id, stripe_customer_id: customerId },
-          { onConflict: "user_id" }
-        );
-    }
-
-    const origin = req.headers.get("origin") || "https://spaacetime.lovable.app";
-
-    const priceId = plan === "monthly"
-      ? "price_1TLVMV4DAf6jX51sIWtfWsc8"
-      : "price_1TLVNk4DAf6jX51sORd1VJsE";
-
-    const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      mode: "subscription",
-      line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${origin}/app?checkout=success`,
-      cancel_url: `${origin}/app?checkout=cancelled`,
-      metadata: { user_id: user.id, plan },
-    });
-
-    return new Response(JSON.stringify({ url: session.url }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (err) {
-    console.error("Checkout error:", err);
-    return new Response(JSON.stringify({ error: "Internal error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    const customer=await stripe.customers.retrieve(customerId);
+    if(customer.deleted || customer.livemode !== (stripeMode()==="live")
+      || (customer.metadata.user_id && customer.metadata.user_id !== user.id)) throw new Error("Customer identity mismatch");
+    const url=await prepareStripeCheckout(stripe,user.id,customerId,plan,price.id,origin);
+    return reply({url});
+  } catch (error) {
+    if(error instanceof CheckoutConflict) return reply({error:error.message},409);
+    console.error("Checkout configuration or provider request failed");
+    return reply({error:"Unable to start checkout. Please try again."},500);
   }
 });

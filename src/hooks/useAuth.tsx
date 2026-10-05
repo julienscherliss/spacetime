@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
 import { logAudit } from '@/utils/auditLog';
+import { preserveDeviceCache, blockRecovery } from '@/lib/migrationRecovery';
+import { ownedCacheEnabled, closeOwnedCache } from '@/lib/ownedDeviceCache';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -26,7 +28,8 @@ export function useAuth() {
       // store so the new user does not inherit the previous user's
       // calendars/events. Connection itself is server-side & user-scoped.
       const nextUserId = session?.user?.id ?? null;
-      if (lastUserId && nextUserId && lastUserId !== nextUserId) {
+      if (ownedCacheEnabled && lastUserId && lastUserId !== nextUserId) closeOwnedCache();
+      if (!ownedCacheEnabled && lastUserId && nextUserId && lastUserId !== nextUserId) {
         import('@/store/calendarStore').then(({ useCalendarStore }) => {
           useCalendarStore.setState({
             connected: false,
@@ -87,6 +90,9 @@ export function useAuth() {
   }, []);
 
   const signOut = async () => {
+    try { preserveDeviceCache(localStorage, 'sign-out'); }
+    catch { blockRecovery(); return; }
+    if (ownedCacheEnabled) closeOwnedCache();
     logAudit({ action: 'auth.signed_out' });
     // CRITICAL: tell the sync layer we are tearing down BEFORE we mutate any
     // user-scoped store. This drops queued debounced saves and short-circuits

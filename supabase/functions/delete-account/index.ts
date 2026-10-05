@@ -11,24 +11,60 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-// Tables that store user-owned rows keyed by `user_id`.
-// Order does not matter (no FKs between them), but we delete children-ish
-// tables first for clarity.
+// Delete children before parents. Keep recovery last so hard-delete capture
+// triggers cannot leave copies of a removed account's task/library data.
 const USER_OWNED_TABLES = [
   "invoice_items",
   "invoices",
+  "invoice_style_settings",
   "tag_billing_settings",
   "tag_notes",
   "clients",
   "library_items",
   "library_categories",
   "tasks",
+  "feedback",
+  "google_connections", // cascades to google_calendars
+  "live_activity_device_plans",
+  "live_activity_devices",
   "user_color_schemes",
   "promo_redemptions",
   "user_roles",
   "subscriptions",
   "profiles", // profiles.id == auth user id
+  "audit_log",
+  "deleted_records_recovery",
 ];
+
+async function listUserObjects(admin: ReturnType<typeof createClient>, bucket: string, prefix: string): Promise<string[]> {
+  const paths: string[] = [];
+  const limit = 100;
+  for (let offset = 0; ; offset += limit) {
+    const { data, error } = await admin.storage.from(bucket).list(prefix, { limit, offset });
+    if (error) throw new Error(`${bucket} list failed: ${error.message}`);
+    const batch = data ?? [];
+    for (const item of batch) {
+      const path = `${prefix}/${item.name}`;
+      if (item.id) paths.push(path);
+      else paths.push(...await listUserObjects(admin, bucket, path));
+    }
+    if (batch.length < limit) break;
+  }
+  return paths;
+}
+
+async function removeUserObjects(admin: ReturnType<typeof createClient>, userId: string): Promise<void> {
+  for (const bucket of ["task-attachments", "feedback-screenshots"]) {
+    const paths = await listUserObjects(admin, bucket, userId);
+    for (let index = 0; index < paths.length; index += 100) {
+      const { error } = await admin.storage.from(bucket).remove(paths.slice(index, index + 100));
+      if (error) throw new Error(`${bucket} removal failed: ${error.message}`);
+    }
+    if ((await listUserObjects(admin, bucket, userId)).length > 0) {
+      throw new Error(`${bucket} still contains user objects after removal`);
+    }
+  }
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -89,11 +125,19 @@ Deno.serve(async (req) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
+  try {
+    await removeUserObjects(admin, userId);
+  } catch (error) {
+    console.error("Account storage removal failed", error);
+    return new Response(JSON.stringify({ error: "storage_delete_failed" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   const errors: Record<string, string> = {};
 
-  // Best-effort delete from each owner table. We don't abort on a single
-  // failure — the caller is removed from auth at the end either way, and
-  // RLS makes orphaned rows inaccessible.
+  // Preserve the Auth identity on partial failure so the owner can retry.
   for (const table of USER_OWNED_TABLES) {
     try {
       const column = table === "profiles" ? "id" : "user_id";
@@ -104,7 +148,14 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Finally remove the auth user. This invalidates all sessions.
+  if (Object.keys(errors).length > 0) {
+    return new Response(JSON.stringify({ error: "data_delete_failed", tables: Object.keys(errors) }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // Finally remove the Auth user. Existing JWTs may remain valid until expiry.
   const { error: delAuthErr } = await admin.auth.admin.deleteUser(userId);
   if (delAuthErr) {
     return new Response(

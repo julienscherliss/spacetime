@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { accountCacheStorage } from '@/lib/ownedDeviceCache';
 
 export type LibraryCategory = string;
 
@@ -634,7 +635,7 @@ export const useLibraryStore = create<LibraryState>()(
       },
     }),
     {
-      name: 'do-library-store',
+      name: 'do-library-store', storage: createJSONStorage(() => accountCacheStorage),
       merge: (persisted: any, current: any) => {
         const merged = { ...current, ...persisted };
         // Ensure new fields exist on old items

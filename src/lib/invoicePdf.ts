@@ -10,7 +10,7 @@ import type { Invoice } from '@/store/billingStore';
  * "words with no spaces" desktop bug. Explicitly awaiting each face fixes it.
  */
 async function preloadInvoiceFonts() {
-  const fonts = (document as any).fonts;
+  const fonts = document.fonts;
   if (!fonts?.load) return;
   const faces = [
     '400 12px "Space Grotesk"',
@@ -40,34 +40,18 @@ async function preloadInvoiceFonts() {
 export async function downloadInvoicePdfFromNode(node: HTMLElement, invoice: Invoice, filename?: string) {
   await preloadInvoiceFonts();
 
-  // Try SVG foreignObject rendering first — it delegates layout & font
-  // rasterization to Chromium, which matches what the user sees in the
-  // preview and avoids html2canvas's own text-measurement path (the source
-  // of the desktop "no spaces between words" bug when fonts arrive late).
-  // Fall back to the classic renderer if the browser refuses (e.g. tainted
-  // canvas from a cross-origin resource).
-  let canvas: HTMLCanvasElement;
-  try {
-    canvas = await html2canvas(node, {
-      scale: 3,
-      backgroundColor: '#ffffff',
-      useCORS: true,
-      allowTaint: false,
-      logging: false,
-      foreignObjectRendering: true,
-      windowWidth: node.offsetWidth,
-      windowHeight: node.offsetHeight,
-    });
-  } catch {
-    canvas = await html2canvas(node, {
-      scale: 3,
-      backgroundColor: '#ffffff',
-      useCORS: true,
-      logging: false,
-      windowWidth: node.offsetWidth,
-      windowHeight: node.offsetHeight,
-    });
-  }
+  // The offscreen invoice host can produce a black image with SVG
+  // foreignObject rendering without throwing. Use the DOM renderer after
+  // fonts have loaded so a successful download contains the actual invoice.
+  const canvas = await html2canvas(node, {
+    scale: 3,
+    backgroundColor: '#ffffff',
+    useCORS: true,
+    allowTaint: false,
+    logging: false,
+    windowWidth: node.offsetWidth,
+    windowHeight: node.offsetHeight,
+  });
 
   // JPEG at 0.95 quality — visually lossless for line art / text, ~10x smaller than PNG
   const imgData = canvas.toDataURL('image/jpeg', 0.95);

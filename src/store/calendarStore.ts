@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { toast } from 'sonner';
 
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { accountCacheStorage } from '@/lib/ownedDeviceCache';
 import { supabase } from '@/integrations/supabase/client';
 import { useTimezoneStore } from '@/store/timezoneStore';
 import { isNativePlatform, isElectron } from '@/utils/nativePlatform';
@@ -423,7 +424,7 @@ export const useCalendarStore = create<CalendarState>()(
 
     }),
     {
-      name: 'do-calendar-store',
+      name: 'do-calendar-store', storage: createJSONStorage(() => accountCacheStorage),
       // Persist only per-user UX mutations. Connection state, calendar list,
       // and fetched events are intentionally NOT persisted so the next session
       // (or a different user / platform / install) always rehydrates from the

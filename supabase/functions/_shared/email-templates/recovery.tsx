@@ -10,6 +10,7 @@ import {
   Html,
   Preview,
   Section,
+  Link,
   Text,
 } from 'npm:@react-email/components@0.0.22'
 
@@ -22,6 +23,7 @@ interface RecoveryEmailProps {
 export const RecoveryEmail = ({
   siteName,
   token,
+  confirmationUrl,
 }: RecoveryEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
@@ -36,6 +38,7 @@ export const RecoveryEmail = ({
         <Section style={codeBox}>
           <Text style={codeStyle}>{token}</Text>
         </Section>
+        {confirmationUrl && <Text style={text}><Link href={confirmationUrl}>Reset your password</Link></Text>}
         <Text style={meta}>This code expires in 10 minutes.</Text>
         <Text style={footer}>
           If you didn't request this code, you can safely ignore this email — no one will be signed in.

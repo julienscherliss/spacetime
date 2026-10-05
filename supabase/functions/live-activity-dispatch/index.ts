@@ -38,6 +38,7 @@ type LiveActivityDevice = {
 };
 
 type SupabaseAdmin = ReturnType<typeof createClient>;
+type DispatchTarget = { userId: string; deviceId: string };
 
 function log(stage: string, info: Record<string, unknown> = {}) {
   console.log(JSON.stringify({ fn: "live-activity-dispatch", stage, ...info }));
@@ -180,13 +181,15 @@ function clonedPlanForDevice(plan: LiveActivityPlan, device: LiveActivityDevice)
   };
 }
 
-async function ensurePlansForRegisteredDevices(admin: SupabaseAdmin, limit: number) {
-  const { data: devices, error: devicesError } = await admin
+async function ensurePlansForRegisteredDevices(admin: SupabaseAdmin, limit: number, target?: DispatchTarget) {
+  let deviceQuery = admin
     .from("live_activity_devices")
     .select("user_id, device_id, apns_environment, bundle_identifier, push_to_start_token, current_activity_token, current_activity_task_id")
     .or("push_to_start_token.not.is.null,current_activity_token.not.is.null")
     .order("updated_at", { ascending: false })
     .limit(limit);
+  if (target) deviceQuery = deviceQuery.eq("user_id", target.userId).eq("device_id", target.deviceId);
+  const { data: devices, error: devicesError } = await deviceQuery;
 
   if (devicesError) throw devicesError;
 
@@ -292,8 +295,10 @@ function normalizeApnsEnvironment(value: string | null | undefined) {
   return normalized === "development" || normalized === "sandbox" ? "sandbox" : "production";
 }
 
-function isExpiredToken(result: { ok: boolean; status: number }) {
-  return !result.ok && result.status === 410;
+function isInvalidActivityToken(result: { ok: boolean; status: number; body?: unknown }) {
+  const invalidDeviceToken = result.status === 400 && result.body !== null &&
+    typeof result.body === "object" && "reason" in result.body && result.body.reason === "BadDeviceToken";
+  return !result.ok && (result.status === 410 || invalidDeviceToken);
 }
 
 Deno.serve(async (req) => {
@@ -310,6 +315,16 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
+    // A partial or invalid target must never fall back to broadcasting.
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    let target: DispatchTarget | undefined;
+    if (body?.userId !== undefined || body?.deviceId !== undefined) {
+      if (typeof body.userId !== "string" || typeof body.deviceId !== "string" ||
+          !uuid.test(body.userId) || !uuid.test(body.deviceId)) {
+        return Response.json({ error: "Both userId and deviceId must be valid UUIDs" }, { status: 400, headers: corsHeaders });
+      }
+      target = { userId: body.userId, deviceId: body.deviceId };
+    }
     const dryRun = body?.dryRun === true;
     const limit = Math.min(Math.max(Number(body?.limit ?? 50), 1), 100);
     const now = new Date();
@@ -321,13 +336,15 @@ Deno.serve(async (req) => {
       { auth: { persistSession: false } },
     );
 
-    const repairedCount = dryRun ? 0 : await ensurePlansForRegisteredDevices(admin, limit);
+    const repairedCount = dryRun ? 0 : await ensurePlansForRegisteredDevices(admin, limit, target);
 
-    const { data: plans, error: planError } = await admin
+    let planQuery = admin
       .from("live_activity_device_plans")
       .select("*")
       .order("updated_at", { ascending: false })
       .limit(limit);
+    if (target) planQuery = planQuery.eq("user_id", target.userId).eq("device_id", target.deviceId);
+    const { data: plans, error: planError } = await planQuery;
 
     if (planError) throw planError;
 
@@ -372,7 +389,7 @@ Deno.serve(async (req) => {
           bundleId: liveDevice.bundle_identifier,
           dryRun,
         });
-        const expiredEndToken = isExpiredToken(sentEnd);
+        const expiredEndToken = isInvalidActivityToken(sentEnd);
 
         if (!dryRun && (sentEnd.ok || expiredEndToken)) {
           await admin
@@ -449,7 +466,7 @@ Deno.serve(async (req) => {
 
       if (hasTokenlessKnownActivity) {
         const message = "missing_activity_token_for_existing_activity";
-        await admin
+        if (!dryRun) await admin
           .from("live_activity_device_plans")
           .update({
             last_dispatch_error: message,
@@ -469,7 +486,7 @@ Deno.serve(async (req) => {
 
       if (!token || !plan.task_id || !plan.title || !plan.start_at || !plan.end_at) {
         const message = event === "start" ? "missing_push_to_start_token" : "missing_activity_token";
-        await admin
+        if (!dryRun) await admin
           .from("live_activity_device_plans")
           .update({
             last_dispatch_error: message,
@@ -488,7 +505,7 @@ Deno.serve(async (req) => {
         bundleId: liveDevice?.bundle_identifier,
         dryRun,
       });
-      const expiredToken = isExpiredToken(sent);
+      const expiredToken = isInvalidActivityToken(sent);
       const patch = sent.ok
         ? {
             last_dispatched_signature: plan.plan_signature,
@@ -498,7 +515,9 @@ Deno.serve(async (req) => {
             updated_at: new Date().toISOString(),
           }
         : {
-            last_dispatched_signature: expiredToken ? plan.plan_signature : plan.last_dispatched_signature,
+            // Retiring a bad token is not delivery. A fresh token must be able
+            // to send this same plan after the phone registers again.
+            last_dispatched_signature: plan.last_dispatched_signature,
             last_dispatched_at: expiredToken ? new Date().toISOString() : null,
             last_dispatch_event: event,
             last_dispatch_error: JSON.stringify(sent),

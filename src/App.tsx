@@ -38,7 +38,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [checkoutPolling, setCheckoutPolling] = useState(false);
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
-  useDataSync(user);
+  const dataSync = useDataSync(user);
 
   // Sync color schemes across devices/tabs
   useEffect(() => {
@@ -136,7 +136,12 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     }
   }, [hasAccess, checkoutPolling]);
 
-  if (authLoading || subLoading || checkoutPolling) {
+  if (user && dataSync.connectionError) {
+    return <div className="migration-recovery-blocked"><h1>Reconnect to Spacetime</h1>
+      <p>Your saved device data is kept intact. Connect to the internet and retry.</p>
+      <button onClick={() => location.reload()}>Retry</button></div>;
+  }
+  if (authLoading || subLoading || checkoutPolling || (user && !dataSync.ready)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-[11px] font-mono text-muted-foreground/40 tracking-widest">
