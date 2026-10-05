@@ -38,7 +38,7 @@ if (electronIsDev) {
 }
 
 // Run Application
-(async () => {
+const startup = (async () => {
   // Wait for electron app to be ready.
   await app.whenReady();
   // Security - Set Content-Security-Policy based on whether or not we are in dev mode.
@@ -60,10 +60,16 @@ app.on('window-all-closed', function () {
 
 // When the dock icon is clicked.
 app.on('activate', async function () {
+  // macOS can activate the app before startup has created its first window.
+  await startup;
   // On OS X it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
-  if (myCapacitorApp.getMainWindow().isDestroyed()) {
+  const mainWindow = myCapacitorApp.getMainWindow();
+  if (!mainWindow || mainWindow.isDestroyed()) {
     await myCapacitorApp.init();
+  } else {
+    mainWindow.show();
+    mainWindow.focus();
   }
 });
 
