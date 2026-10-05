@@ -56,4 +56,40 @@ describe('owned cache persistence and evidence boundaries', () => {
     expect(() => c.accountCacheStorage.setItem('spaacetime.goals.v1', JSON.stringify({ state: { goals: [] } }))).toThrow();
     expect(localStorage.getItem(c.OWNED_CACHE_PREFIX + A)).toBe(before);
   });
+
+  it('keeps large account data, baselines and conflict copies below quota without losing exact bytes', async () => {
+    const c = await import('@/lib/ownedDeviceCache');
+    const tasks = Array.from({ length: 1581 }, (_, index) => ({ id: `task-${index}`,
+      title: `Task ${index} 🌎`, description: 'Realistic task text and recurring schedule details. '.repeat(20) }));
+    const taskRaw = JSON.stringify({ state: { tasks }, version: 0 });
+    const baseline = { tasks: JSON.stringify(tasks), library: '[]', categories: '[]' };
+    const store = Storage.prototype.setItem;
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function(key, value) {
+      if (value.length > 2_500_000) throw new DOMException('full', 'QuotaExceededError');
+      return store.call(this, key, value);
+    });
+    c.openVerifiedOwnedCache(A);
+    c.accountCacheStorage.setItem('task-storage', taskRaw);
+    c.rememberOwnedBaseline(baseline);
+    const workspace = c.privateOwnedCopy()!;
+    c.retainOwnedReviewCopy({ entries: workspace.entries, baseline: workspace.baseline });
+    expect(localStorage.getItem(c.OWNED_CACHE_PREFIX + A)!.length).toBeLessThan(500_000);
+    c.closeOwnedCache();
+    const reopened = c.openVerifiedOwnedCache(A);
+    expect(reopened.entries['task-storage']).toBe(taskRaw);
+    expect(reopened.baseline).toEqual(baseline);
+    expect(c.privateOwnedCopy()!.review[0].entries['task-storage']).toBe(taskRaw);
+    expect(c.privateOwnedCopy()!.review[0].baseline).toEqual(baseline);
+    c.closeOwnedCache(); c.openVerifiedOwnedCache(B);
+    expect(c.accountCacheStorage.getItem('task-storage')).toBeNull();
+  });
+
+  it('refuses damaged compressed evidence before opening or overwriting it', async () => {
+    const c = await import('@/lib/ownedDeviceCache');
+    const bad = 'spacetime-lz-utf16:v1:200000:broken';
+    localStorage.setItem(c.OWNED_CACHE_PREFIX + A, bad);
+    expect(() => c.openVerifiedOwnedCache(A)).toThrow();
+    expect(c.currentOwnedCacheOwner()).toBeNull();
+    expect(localStorage.getItem(c.OWNED_CACHE_PREFIX + A)).toBe(bad);
+  });
 });

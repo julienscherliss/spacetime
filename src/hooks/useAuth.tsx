@@ -90,7 +90,7 @@ export function useAuth() {
   }, []);
 
   const signOut = async () => {
-    try { preserveDeviceCache(localStorage, 'sign-out'); }
+    try { if (!ownedCacheEnabled) preserveDeviceCache(localStorage, 'sign-out'); }
     catch { blockRecovery(); return; }
     if (ownedCacheEnabled) closeOwnedCache();
     logAudit({ action: 'auth.signed_out' });

@@ -1,9 +1,11 @@
 // No stores, Auth client or session keys may be imported/read here.
 import { CACHE_FIELDS, contentOf, RecoveryError, blockRecovery } from './migrationRecovery';
+import { CURRENT_OWNED_CACHE_PREFIX } from './authoritativeBootstrap';
+import { decodeDeviceStorage, encodeDeviceStorage } from './deviceStorageEncoding';
 
 export const ownedCacheEnabled = import.meta.env.VITE_AUTH_BACKEND === 'owned';
 const PROJECT = 'zzoeywmurqiqticikyaf';
-export const OWNED_CACHE_PREFIX = `spacetime-owned-device:v1:${PROJECT}:`;
+export const OWNED_CACHE_PREFIX = CURRENT_OWNED_CACHE_PREFIX;
 type Entries = Partial<Record<keyof typeof CACHE_FIELDS, string>>;
 export type SyncBaseline = { tasks: string; library: string; categories: string };
 export type RestartCopy = { entries: Entries; baseline: SyncBaseline | null };
@@ -34,7 +36,7 @@ function validateCopy(copy: RestartCopy) {
 function readWorkspace(id: string): Workspace {
   const raw = localStorage.getItem(OWNED_CACHE_PREFIX + id);
   if (raw === null) return { format: 1, owner: id, project: PROJECT, entries: {}, baseline: null, review: [] };
-  const value = JSON.parse(raw) as Workspace;
+  const value = JSON.parse(decodeDeviceStorage(raw)) as Workspace;
   if (value.format !== 1 || value.owner !== id || value.project !== PROJECT || !Array.isArray(value.review)
     || value.review.length > 16 || Object.keys(value).some(key => !['format','owner','project','entries','baseline','review'].includes(key))) throw new RecoveryError();
   validateCopy(value);
@@ -53,8 +55,10 @@ function changeWorkspace(change: (workspace: Workspace) => void) {
     change(workspace);
     validateCopy(workspace);
     const raw = JSON.stringify(workspace);
-    localStorage.setItem(key, raw);
-    if (localStorage.getItem(key) !== raw) throw new RecoveryError();
+    const encoded = encodeDeviceStorage(raw);
+    localStorage.setItem(key, encoded);
+    const saved = localStorage.getItem(key);
+    if (saved !== encoded || decodeDeviceStorage(saved) !== raw) throw new RecoveryError();
     emit();
   } catch { blockRecovery(); throw new RecoveryError(); }
 }

@@ -440,7 +440,7 @@ function clearAllUserState(): boolean {
   if (taskSaveTimeout) { clearTimeout(taskSaveTimeout); taskSaveTimeout = null; }
   if (libSaveTimeout) { clearTimeout(libSaveTimeout); libSaveTimeout = null; }
   if (catSaveTimeout) { clearTimeout(catSaveTimeout); catSaveTimeout = null; }
-  try { preserveDeviceCache(localStorage, 'session-change'); }
+  try { if (!ownedCacheEnabled) preserveDeviceCache(localStorage, 'session-change'); }
   catch { blockRecovery(); return false; }
   if (ownedCacheEnabled) closeOwnedCache();
   useTaskStore.setState({ tasks: [], editingTaskId: null, focusTaskId: null });

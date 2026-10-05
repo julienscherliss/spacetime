@@ -7,6 +7,7 @@ describe('failed-save and account recovery guards', () => {
 
   async function harness(native = false, owned = false) {
     if (owned) { vi.stubEnv('VITE_AUTH_BACKEND', 'owned'); vi.stubEnv('VITE_SUPABASE_URL', 'https://zzoeywmurqiqticikyaf.supabase.co'); }
+    else { vi.stubEnv('VITE_AUTH_BACKEND', 'lovable'); }
     const userA = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
     const userB = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
     let authId = userA;
