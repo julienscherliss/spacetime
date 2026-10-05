@@ -404,7 +404,7 @@ export function setupContentSecurityPolicy(customScheme: string): void {
       `style-src 'self' 'unsafe-inline'`,
       `img-src 'self' data: https:`,
       `font-src 'self' data: https:`,
-      `connect-src 'self' https://rhguyvbysqmcwzeuqipr.supabase.co wss://rhguyvbysqmcwzeuqipr.supabase.co https: wss:`,
+      `connect-src 'self' https: wss:`,
     ].join('; ');
 
     console.log('[CSP] applying to:', details.url);
