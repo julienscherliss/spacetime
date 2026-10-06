@@ -58,11 +58,9 @@ export function rowToTask(row: any): Task {
     seriesId: row.series_id ?? undefined,
     linkedGroupId: row.linked_group_id ?? undefined,
     detachedFromSeries: row.detached_from_series ?? false,
-    // Invariant: a task with both a date and a time is on the schedule and
-    // therefore not in the waiting room. Historical rows can have stale
-    // `in_waiting_room = true` from earlier scheduling paths that didn't
-    // clear the flag; normalize on read so visibility filters behave.
-    inWaitingRoom: (row.in_waiting_room ?? false) && !(row.date && row.time),
+    // Overdue Limbo tasks retain their former schedule. Preserve their explicit
+    // status; only completed scheduled tasks have a stale waiting-room flag.
+    inWaitingRoom: (row.in_waiting_room ?? false) && !(row.completed && row.date && row.time),
     waitingRoomCount: row.waiting_room_count ?? 0,
     dueDate: row.due_date ?? undefined,
     archivedAt: row.archived_at ?? undefined,

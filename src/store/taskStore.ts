@@ -331,14 +331,12 @@ function enforceRecurringLinkInvariant(task: Task): Task {
 function normalizeAllTasks(tasks: Task[]): Task[] {
   // First pass: ensure every recurring parent/instance has a stable linkedGroupId.
   // Second pass: propagate that group id to all members of the same series.
-  // Also enforce the invariant that any task placed on the schedule (has both a
-  // date and a time) is NOT flagged as in-waiting-room. Historically we only
-  // cleared this flag on some scheduling paths; leftover `inWaitingRoom: true`
-  // rows caused completed scheduled tasks to disappear from the day view even
-  // with "Show completed" on (waiting-room filter short-circuits visibility).
+  // Completed scheduled tasks must remain visible with "Show completed".
+  // Active overdue tasks legitimately retain their old date/time in Limbo;
+  // hydration must not silently place them back on the schedule.
   const normalized = tasks.map((t) => {
     const next = enforceRecurringLinkInvariant(t);
-    if (next.inWaitingRoom && next.date && next.time) {
+    if (next.inWaitingRoom && next.completed && next.date && next.time) {
       return { ...next, inWaitingRoom: false };
     }
     return next;
@@ -680,11 +678,11 @@ export const useTaskStore = create<TaskState>()(
                   merged.priority = effectiveMin;
                 }
               }
-              // A task with a date + time slot IS on the schedule. Keeping
-              // `inWaitingRoom: true` on such a row is contradictory and
-              // breaks visibility filters. Clear it unless the caller is
-              // explicitly putting the task back into the waiting room.
-              if (merged.time && merged.date && merged.inWaitingRoom && (updates as Partial<Task>).inWaitingRoom !== true) {
+              // Only rescheduling/completing removes a task from Limbo. Editing
+              // its title, notes or priority must preserve its existing status.
+              const rescheduling = 'date' in updates || 'time' in updates;
+              if (merged.time && merged.date && merged.inWaitingRoom && (rescheduling || merged.completed)
+                && updates.inWaitingRoom !== true) {
                 merged.inWaitingRoom = false;
               }
               return enforceRecurringLinkInvariant(merged);
