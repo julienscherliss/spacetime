@@ -1,3 +1,4 @@
+import { installAppActivity } from './appActivity';
 import type { CapacitorElectronConfig } from '@capacitor-community/electron';
 import {
   CapElectronEventEmitter,
@@ -177,6 +178,8 @@ export class ElectronCapacitorApp {
         preload: preloadPath,
       },
     });
+
+    installAppActivity(this.MainWindow);
 
     // Traffic lights hover reveal
     if (process.platform === "darwin" && this.MainWindow) {

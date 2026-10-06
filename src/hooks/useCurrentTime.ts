@@ -1,27 +1,19 @@
 import { useState, useEffect } from 'react';
-import { useTimezoneStore, getTodayInTz } from '@/store/timezoneStore';
+import { useTimezoneStore } from '@/store/timezoneStore';
+import { getAppClock } from '@/lib/appEntryDestination';
 
 export function useCurrentTime(intervalMs = 30000) {
   const [now, setNow] = useState(new Date());
   const timezone = useTimezoneStore((s) => s.timezone);
 
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), intervalMs);
-    return () => clearInterval(id);
+    const refresh = () => setNow(new Date());
+    const id = setInterval(refresh, intervalMs);
+    window.addEventListener('app-entry:applied', refresh);
+    return () => { clearInterval(id); window.removeEventListener('app-entry:applied', refresh); };
   }, [intervalMs]);
 
-  // Get current time in the user's timezone
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone,
-    hour: 'numeric',
-    minute: 'numeric',
-    hour12: false,
-  });
-  const parts = formatter.formatToParts(now);
-  const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0');
-  const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0');
-  const minutes = hour * 60 + minute;
-  const dateStr = getTodayInTz(timezone);
+  const { minutes, date: dateStr } = getAppClock(now, timezone);
 
   return { now, minutes, dateStr };
 }

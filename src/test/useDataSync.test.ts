@@ -10,11 +10,16 @@ import { getTaskScheduleDate, getTaskScheduleTime, shouldShowScheduledTask } fro
 describe('useDataSync regression guard', () => {
   beforeEach(() => {
     vi.resetModules();
+    vi.doUnmock('@/utils/nativePlatform');
+    // These original sync fixtures model legacy storage; owned-cache/auth
+    // recovery is covered by syncRecovery with explicit current-account checks.
+    vi.stubEnv('VITE_AUTH_BACKEND', 'lovable');
     localStorage.clear();
   });
 
   afterEach(() => {
     cleanup();
+    vi.unstubAllEnvs();
     vi.useRealTimers();
   });
 
@@ -1040,11 +1045,9 @@ describe('useDataSync regression guard', () => {
     });
 
     serverRows[0] = { ...serverRows[0], title: 'Browser renamed me', archived_at: '2026-05-06T12:00:00.000Z', archive_reason: 'completed', completed: true };
-    Object.defineProperty(document, 'visibilityState', {
-      configurable: true,
-      get: () => 'visible',
-    });
-
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+    fireEvent(document, new Event('visibilitychange'));
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
     fireEvent(document, new Event('visibilitychange'));
 
     await waitFor(() => {

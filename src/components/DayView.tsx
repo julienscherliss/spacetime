@@ -45,12 +45,14 @@ export function DayView() {
     return () => clearTimeout(t);
   }, []);
 
+  const selectedDateRef = useRef(selectedDate);
   const setSelectedDate = useCallback((dateOrFn: string | ((prev: string) => string)) => {
-    _setSelectedDate(prev => {
-      const next = typeof dateOrFn === 'function' ? dateOrFn(prev) : dateOrFn;
-      setCurrentDate(next);
-      return next;
-    });
+    const next = typeof dateOrFn === 'function' ? dateOrFn(selectedDateRef.current) : dateOrFn;
+    selectedDateRef.current = next;
+    _setSelectedDate(next);
+    // Store updates must happen in the event/effect, not a React state updater
+    // which React can execute while rendering another subscribed component.
+    setCurrentDate(next);
   }, [setCurrentDate]);
 
   useEffect(() => {

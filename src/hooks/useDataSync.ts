@@ -7,6 +7,8 @@ import { useReflectionStore } from '@/store/reflectionStore';
 import { useCalendarStore } from '@/store/calendarStore';
 import { isNativePlatform } from '@/utils/nativePlatform';
 import { toast } from 'sonner';
+import { subscribeAppActivity, emitEntryRefresh } from '@/lib/appActivity';
+import { createForegroundRefresh } from '@/lib/foregroundRefresh';
 import type { User } from '@supabase/supabase-js';
 import { preserveDeviceCache, blockRecovery } from '@/lib/migrationRecovery';
 import { ownedCacheEnabled, closeOwnedCache, openVerifiedOwnedCache, currentOwnedCacheOwner,
@@ -441,7 +443,7 @@ function clearAllUserState(): boolean {
   try { if (!ownedCacheEnabled) preserveDeviceCache(localStorage, 'session-change'); }
   catch { blockRecovery(); return false; }
   if (ownedCacheEnabled) closeOwnedCache();
-  useTaskStore.setState({ tasks: [], editingTaskId: null, focusTaskId: null });
+  useTaskStore.setState({ tasks: [], editingTaskId: null, focusTaskId: null, focusEntryPanel: null });
   useLibraryStore.setState({ items: [], categories: [] });
   useGoalsStore.setState({ goals: [], lastCelebrated: {} });
   useReflectionStore.setState({ daily: {}, reasonFreq: {}, customReasons: [], recentTips: [], activePrompt: null });
@@ -1142,29 +1144,20 @@ export function useDataSync(user: User | null) {
     };
   }, [user?.id]);
 
-  // ─── Refetch on visibility change (tab/app foreground) ─
+  // One activity source per platform, one flush/read per foreground edge.
   useEffect(() => {
     if (!user) return;
-
-    const handleVisibility = async () => {
-      if (document.visibilityState !== 'visible' || userIdRef.current !== user.id) return;
-      syncLog('visibilitychange received', {
-        platform: currentPlatform(),
-        visibilityState: document.visibilityState,
-      });
-
-      // CRITICAL: Flush any pending local writes BEFORE refetching from DB.
-      // On mobile, the app may have been backgrounded mid-debounce — if we
-      // refetch first, we'd overwrite unsaved local tasks with stale DB rows.
-      const flushed = await flushPendingWrites(user.id);
-      if (!flushed) return;
-
-      if (userIdRef.current !== user.id) return;
-      console.log('[Sync] App became visible — refetching from DB');
-      if (await loadFromDB(user.id)) initialLoadDone.current = true;
-    };
-
-    document.addEventListener('visibilitychange', handleVisibility);
+    const refresh = createForegroundRefresh({
+      isCurrent: () => userIdRef.current === user.id && initialLoadDone.current,
+      flush: () => flushPendingWrites(user.id),
+      load: async () => {
+        const ok = await loadFromDB(user.id);
+        if (ok && userIdRef.current === user.id) initialLoadDone.current = true;
+        return ok;
+      },
+      entry: (generation, phase) => emitEntryRefresh({ userId: user.id, generation, phase }),
+    });
+    const removeActivity = subscribeAppActivity(active => { void refresh.activity(active); });
 
     // Also flush on beforeunload
     const handleBeforeUnload = () => {
@@ -1203,42 +1196,11 @@ export function useDataSync(user: User | null) {
     window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibility);
+      refresh.dispose();
+      removeActivity();
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [flushPendingWrites, user?.id]);
 
-  useEffect(() => {
-    if (!user || !isNativePlatform()) return;
-
-    let removeListener: (() => void) | undefined;
-
-    (async () => {
-      const { App } = await import('@capacitor/app');
-      const listener = await App.addListener('appStateChange', async ({ isActive }) => {
-        if (!userIdRef.current || userIdRef.current !== user.id) return;
-        syncLog('appStateChange received', {
-          platform: currentPlatform(),
-          isActive,
-        });
-        if (!isActive) {
-          await flushPendingWrites(user.id);
-          return;
-        }
-
-        if (!await flushPendingWrites(user.id)) return;
-        if (userIdRef.current !== user.id) return;
-        await loadFromDB(user.id);
-      });
-
-      removeListener = () => {
-        listener.remove();
-      };
-    })();
-
-    return () => {
-      removeListener?.();
-    };
-  }, [flushPendingWrites, user?.id]);
-  return { ready: !ownedCacheEnabled || readyUserId === user?.id, connectionError };
+  return { ready: readyUserId === user?.id, connectionError };
 }
