@@ -16,6 +16,12 @@ const command = process.argv[2] ?? 'status';
 const env = { ...process.env };
 delete env.GH_TOKEN; delete env.GITHUB_TOKEN;
 delete env.SPACETIME_MIGRATION_TEST; delete env.SKIP_NOTARIZE;
+const privateSettings = fs.existsSync('.env.local') ? fs.readFileSync('.env.local', 'utf8').split(/\r?\n/).flatMap(line => {
+  const match = /^([A-Z_]+)=(.*)$/.exec(line);
+  return match && /SECRET|PRIVATE_KEY|SERVICE_ROLE|PASSWORD|RESEND_API_KEY/.test(match[1])
+    ? [match[2].replace(/^("|')(.*)\1$/, '$2')] : [];
+}) : [];
+privateSettings.push(env.APPLE_APP_PASSWORD ?? '');
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 function run(tool, args, label, cwd = root, extra = {}) {
   const result = spawnSync(tool, args, { cwd, env: { ...env, ...extra }, encoding: 'utf8', maxBuffer: 100 * 1024 * 1024 });
@@ -25,7 +31,12 @@ function run(tool, args, label, cwd = root, extra = {}) {
 }
 const git = (...args) => run('git', args);
 const head = git('rev-parse', 'HEAD');
-function save() { fs.writeFileSync(receiptPath, JSON.stringify(receipt, null, 2) + '\n', { mode: 0o600 }); }
+function save() {
+  const current = fs.existsSync(receiptPath) ? JSON.parse(fs.readFileSync(receiptPath, 'utf8')) : {};
+  // Stages run sequentially; receipts also retain fields recorded by dashboard checks.
+  Object.assign(receipt, { ...current, ...receipt });
+  fs.writeFileSync(receiptPath, JSON.stringify(receipt, null, 2) + '\n', { mode: 0o600 });
+}
 function pin() {
   assert.equal(git('status', '--porcelain'), '', 'Commit source changes before preparing a release.');
   if (receipt.source) assert.equal(receipt.source, head, 'A release receipt belongs to another commit; bump release versions.');
@@ -39,6 +50,7 @@ function files(directory) {
 function inspectWeb(directory) {
   const list = files(directory).filter(file => !file.endsWith('/.DS_Store')).map(file => {
     const bytes = fs.readFileSync(file); const text = bytes.toString();
+    for (const secret of privateSettings.filter(value => value.length > 10)) assert(!text.includes(secret), 'Private credential in web assets.');
     assert(!text.includes('rhguyvbysqmcwzeuqipr'), 'Old project in web assets.');
     assert(!/\b(?:sk|rk)_(?:live|test)_[A-Za-z0-9]+|sb_secret_|-----BEGIN (?:EC |RSA )?PRIVATE KEY-----/.test(text), 'Secret-like bytes in web assets.');
     for (const token of text.match(/[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]+/g) ?? []) {
