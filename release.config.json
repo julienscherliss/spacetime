@@ -1,7 +1,8 @@
 {
-  "mac": "1.0.24",
-  "ios": 24,
-  "webBaseSource": "63a5f0614cf6ff5afa16840b76edfea4494f68c4",
+  "mac": "1.0.25",
+  "ios": 25,
+  "webBaseSource": "54e80b4af3b481d81da79c47369baefd4d4bb6ca",
   "repo": "julienscherliss/spacetime",
-  "website": "https://launchspacetime.com"
+  "website": "https://launchspacetime.com",
+  "notes": "Open the appropriate schedule or Focus panel on launch and return. Preserve invoice layout and fonts when exporting PDFs. Existing account data is retained."
 }

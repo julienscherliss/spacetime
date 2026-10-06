@@ -138,7 +138,7 @@ if (command === 'prepare') {
     assert(changed.every(file => paths.some(allowed => file === allowed || file.startsWith(allowed + '/'))));
     const tree = run('git', ['write-tree'], null, root, { GIT_INDEX_FILE: index });
     assert.equal(git('rev-parse', `${tree}:supabase`), git('rev-parse', `${base}:supabase`), 'Backend tree must remain unchanged.');
-    const message = path.join(dir, 'web-message.txt'); fs.writeFileSync(message, 'Restore responsive task saves and preserve Limbo across clients\n');
+    const message = path.join(dir, 'web-message.txt'); fs.writeFileSync(message, `Release Spacetime ${config.mac}\n`);
     const commit = run('git', ['commit-tree', tree, '-p', base, '-F', message]);
     const candidate = path.join(dir, 'website'); fs.mkdirSync(candidate, { recursive: true });
     run('git', ['checkout-index', '-a', '--prefix', candidate + '/'], 'web-checkout', root, { GIT_INDEX_FILE: index });
@@ -158,7 +158,7 @@ if (command === 'prepare') {
   for (const file of receipt.macAssets) assert.equal(hash(fs.readFileSync(path.join(dir, 'mac', file.name))), file.sha256);
   const query = spawnSync('gh', ['release', 'view', tag, '--repo', config.repo, '--json', 'isDraft'], { env, encoding: 'utf8' });
   if (query.status !== 0) {
-    const notes = path.join(dir, 'release-notes.md'); fs.writeFileSync(notes, 'Faster task saves, drops and editor opening. Limbo tasks remain visible after syncing and reopening. Existing account data is retained.\n');
+    const notes = path.join(dir, 'release-notes.md'); fs.writeFileSync(notes, (config.notes ?? `Spacetime ${config.mac} update. Existing account data is retained.`) + '\n');
     run('gh', ['release', 'create', tag, '--repo', config.repo, '--target', head, '--draft', '--title', `Spacetime ${config.mac}`, '--notes-file', notes], 'mac-release-draft');
   } else assert(JSON.parse(query.stdout).isDraft || receipt.macPublished, 'Existing public release requires explicit reconciliation.');
   if (!receipt.macPublished) {
