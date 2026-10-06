@@ -23,6 +23,7 @@ export interface PendingMove {
   taskId: string;
   newDate: string;
   newTime?: string;
+  newDuration?: number;
   /** Human-readable constraint message. Drives subtitle copy. */
   violation: string;
   openedAt: number;
@@ -52,6 +53,7 @@ interface ReflectionState {
     taskId: string;
     newDate: string;
     newTime?: string;
+    newDuration?: number;
     violation: string;
   }) => boolean;
 
@@ -83,7 +85,7 @@ export const useReflectionStore = create<ReflectionState>()(
       recentTips: [],
       activePrompt: null,
 
-      requestPendingMove: ({ taskId, newDate, newTime, violation }) => {
+      requestPendingMove: ({ taskId, newDate, newTime, newDuration, violation }) => {
         // Don't stack prompts.
         if (get().activePrompt) return false;
 
@@ -116,6 +118,7 @@ export const useReflectionStore = create<ReflectionState>()(
             taskId,
             newDate,
             newTime,
+            newDuration,
             violation,
             openedAt: now,
             count: nextCount,
@@ -191,6 +194,7 @@ export function requestPendingMove(args: {
   taskId: string;
   newDate: string;
   newTime?: string;
+  newDuration?: number;
   violation: string;
 }): boolean {
   return useReflectionStore.getState().requestPendingMove(args);

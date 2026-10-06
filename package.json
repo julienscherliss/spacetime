@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "sync:main": "bash scripts/sync-main.sh",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "release": "node scripts/release.mjs"
   },
   "dependencies": {
     "@capacitor-community/electron": "^5.0.1",
@@ -63,6 +64,7 @@
     "date-fns": "^3.6.0",
     "embla-carousel-autoplay": "^8.6.0",
     "embla-carousel-react": "^8.6.0",
+    "fflate": "0.8.2",
     "framer-motion": "^12.38.0",
     "html2canvas-pro": "^2.0.2",
     "input-otp": "^1.4.2",

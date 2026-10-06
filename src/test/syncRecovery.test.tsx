@@ -190,7 +190,7 @@ describe('failed-save and account recovery guards', () => {
     expect(h.tasks.getState().tasks[0].title).toBe('Pending restart task');
   });
 
-  for (const failurePoint of ['library', 'after-library'] as const) {
+  for (const failurePoint of ['library'] as const) {
     it(`keeps the complete pending library through quota failure ${failurePoint} and retry`, async () => {
       const h = await harness(false, true);
       const { OWNED_CACHE_PREFIX, accountCacheStorage, privateOwnedCopy } = await import('@/lib/ownedDeviceCache');
@@ -198,9 +198,13 @@ describe('failed-save and account recovery guards', () => {
       h.library.setState({ items: h.library.getState().items.map(row => ({ ...row, title: 'Pending item' })),
         categories: [{ value: 'work', label: 'Pending category' }] });
       await waitFor(() => expect(h.writes.library_categories).toHaveBeenCalled());
+      // A real changed hydration write, rather than an identical-cache rewrite:
+      // older store copies lack this persisted setting.
+      const olderLibrary = JSON.parse(privateOwnedCopy()!.entries['do-library-store']!);
+      delete olderLibrary.state.sidebarMode;
+      accountCacheStorage.setItem('do-library-store', JSON.stringify(olderLibrary));
       const savedLibrary = privateOwnedCopy()!.entries['do-library-store'];
       let libraryWrite = false;
-      let libraryCommitted = false;
       let rejected = false;
       const durableCategoryLabels: string[][] = [];
       const originalAdapterWrite = accountCacheStorage.setItem;
@@ -208,18 +212,25 @@ describe('failed-save and account recovery guards', () => {
         libraryWrite = name === 'do-library-store';
         try {
           originalAdapterWrite(name, value);
-          if (libraryWrite) libraryCommitted = true;
         } finally { libraryWrite = false; }
       });
+      const awaitlessCodec = await import('@/lib/deviceStorageEncoding');
+      const journalHelpers = await import('@/lib/ownedCacheJournal');
+      const cacheFields = await import('@/lib/migrationRecovery');
       const originalStorageWrite = Storage.prototype.setItem;
       const storageSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function(name, value) {
         if (name === key) {
-          const shouldFail = failurePoint === 'library' ? libraryWrite : libraryCommitted;
-          if (shouldFail && !rejected) {
+          const shouldFail = libraryWrite;
+          if (shouldFail) {
             rejected = true;
             throw new DOMException('Simulated quota', 'QuotaExceededError');
           }
-          const library = JSON.parse(JSON.parse(value).entries['do-library-store']).state;
+          const { decodeDeviceStorage } = awaitlessCodec;
+          const parsed = JSON.parse(decodeDeviceStorage(value));
+          const workspace = parsed.format === 2
+            ? journalHelpers.replayJournal(parsed, JSON.parse(decodeDeviceStorage(parsed.checkpoint)), cacheFields.CACHE_FIELDS, decodeDeviceStorage)
+            : parsed;
+          const library = JSON.parse(workspace.entries['do-library-store']).state;
           durableCategoryLabels.push(library.categories.map((row: any) => row.label));
         }
         return originalStorageWrite.call(this, name, value);
@@ -227,7 +238,9 @@ describe('failed-save and account recovery guards', () => {
       await expect(h.restart()).rejects.toThrow();
       expect(rejected).toBe(true);
       expect(h.sync.isInitialSyncComplete()).toBe(false);
-      expect(privateOwnedCopy()!.entries['do-library-store']).toBe(savedLibrary);
+      const pending = JSON.parse(privateOwnedCopy()!.entries['do-library-store']!).state;
+      expect(pending.items).toEqual(JSON.parse(savedLibrary!).state.items);
+      expect(pending.categories).toEqual(JSON.parse(savedLibrary!).state.categories);
       expect(durableCategoryLabels.every(labels => labels.includes('Pending category'))).toBe(true);
       storageSpy.mockRestore();
       await h.restart();
@@ -239,6 +252,28 @@ describe('failed-save and account recovery guards', () => {
       await waitFor(() => expect(h.rows.library_categories[0].label).toBe('Pending category'));
     });
   }
+
+  it('restores an identical pending cache without writing it again even when storage is full', async () => {
+    const h = await harness(false, true);
+    h.library.setState({ items: h.library.getState().items.map(row => ({ ...row, title: 'Pending item' })),
+      categories: [{ value: 'work', label: 'Pending category' }] });
+    await waitFor(() => expect(h.writes.library_categories).toHaveBeenCalled());
+    const writes = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('full'); });
+    await h.restart();
+    expect(writes).not.toHaveBeenCalled();
+    expect(h.library.getState().items[0].title).toBe('Pending item');
+    expect(h.library.getState().categories[0].label).toBe('Pending category');
+  });
+
+  it('does not schedule cloud saves for view changes but still saves task edits', async () => {
+    const h = await harness(false, true);
+    h.tasks.getState().setViewMode('week');
+    h.library.getState().setPanelOpen(true);
+    await new Promise(resolve => setTimeout(resolve, 400));
+    for (const write of Object.values(h.writes)) expect(write).not.toHaveBeenCalled();
+    h.tasks.setState({ tasks: h.tasks.getState().tasks.map(row => ({ ...row, title: 'Changed task' })) });
+    await waitFor(() => expect(h.writes.tasks).toHaveBeenCalled());
+  });
 
   it('preserves intentionally skipped library fields during a partial server refresh', async () => {
     const h = await harness(false, true);

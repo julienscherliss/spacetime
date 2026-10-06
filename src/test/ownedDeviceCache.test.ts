@@ -92,4 +92,37 @@ describe('owned cache persistence and evidence boundaries', () => {
     expect(c.currentOwnedCacheOwner()).toBeNull();
     expect(localStorage.getItem(c.OWNED_CACHE_PREFIX + A)).toBe(bad);
   });
+
+  it('skips unchanged saves and baseline notifications but detects externally changed bytes', async () => {
+    const c = await import('@/lib/ownedDeviceCache'); c.openVerifiedOwnedCache(A);
+    c.accountCacheStorage.setItem('spaacetime.goals.v1', raw);
+    const baseline = { tasks: '[]', library: '[]', categories: '[]' };
+    c.rememberOwnedBaseline(baseline);
+    const saved = c.privateOwnedCopy()!;
+    c.retainOwnedReviewCopy(saved);
+    const write = vi.spyOn(Storage.prototype, 'setItem');
+    const notify = vi.fn(); c.subscribeOwnedCache(notify);
+    c.accountCacheStorage.setItem('spaacetime.goals.v1', raw);
+    c.rememberOwnedBaseline({ ...baseline });
+    c.retainOwnedReviewCopy(saved);
+    c.accountCacheStorage.removeItem('task-storage');
+    expect(write).not.toHaveBeenCalled(); expect(notify).not.toHaveBeenCalled();
+    localStorage.setItem(c.OWNED_CACHE_PREFIX + A, '{broken');
+    expect(() => c.accountCacheStorage.setItem('spaacetime.goals.v1', raw)).toThrow();
+    expect(localStorage.getItem(c.OWNED_CACHE_PREFIX + A)).toBe('{broken');
+  });
+
+  it('cannot mutate verified cached data through exports or failed writes', async () => {
+    const c = await import('@/lib/ownedDeviceCache'); c.openVerifiedOwnedCache(A);
+    c.accountCacheStorage.setItem('spaacetime.goals.v1', raw);
+    const copy = c.privateOwnedCopy()!;
+    c.retainOwnedReviewCopy(copy);
+    copy.entries['spaacetime.goals.v1'] = 'tampered';
+    c.privateOwnedCopy()!.review[0].entries['spaacetime.goals.v1'] = 'tampered';
+    expect(c.accountCacheStorage.getItem('spaacetime.goals.v1')).toBe(raw);
+    expect(c.privateOwnedCopy()!.review[0].entries['spaacetime.goals.v1']).toBe(raw);
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('full'); });
+    expect(() => c.accountCacheStorage.setItem('spaacetime.goals.v1', JSON.stringify({ state: { goals: [] } }))).toThrow();
+    expect(c.accountCacheStorage.getItem('spaacetime.goals.v1')).toBe(raw);
+  });
 });

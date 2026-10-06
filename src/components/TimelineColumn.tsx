@@ -375,6 +375,7 @@ export function TimelineColumn({
     time: string;
     duration: number;
   } | null>(null);
+  const resizeCommitRef = useRef<{ time: string; duration: number } | null>(null);
 
   const [creating, setCreating] = useState<{
     startMin: number;
@@ -616,6 +617,7 @@ export function TimelineColumn({
     e.stopPropagation();
     didDragRef.current = true;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    resizeCommitRef.current = null;
     setResizing({
       id: task.id,
       edge,
@@ -651,8 +653,8 @@ export function TimelineColumn({
         const newEnd = origStartMin + clamped;
         const clampedEnd = Math.min(newEnd, bounds.maxEnd);
         const finalDuration = Math.max(15, clampedEnd - origStartMin);
-        resizeTask(resizing.id, resizing.origTime, finalDuration);
-        setResizePreview({ time: resizing.origTime, duration: finalDuration });
+        resizeCommitRef.current = { time: resizing.origTime, duration: finalDuration };
+        setResizePreview(resizeCommitRef.current);
       } else {
         const origStart = timeToMinutes(resizing.origTime);
         const newStart = snapTo15(origStart + deltaMinutes);
@@ -660,14 +662,17 @@ export function TimelineColumn({
         const clampedStart = Math.max(newStart, bounds.minStart);
         const newDuration = resizing.origDuration + (origStart - clampedStart);
         if (newDuration >= 15) {
-          resizeTask(resizing.id, minutesToTime(clampedStart), newDuration);
-          setResizePreview({ time: minutesToTime(clampedStart), duration: newDuration });
+          resizeCommitRef.current = { time: minutesToTime(clampedStart), duration: newDuration };
+          setResizePreview(resizeCommitRef.current);
         }
       }
     };
     const handleMouseMove = (e: MouseEvent) => handleMove(e.clientY);
     const handleTouchMove = (e: TouchEvent) => { e.preventDefault(); handleMove(e.touches[0].clientY); };
     const handleUp = () => {
+      const commit = resizeCommitRef.current;
+      resizeCommitRef.current = null;
+      if (commit) resizeTask(resizing.id, commit.time, commit.duration);
       setResizing(null);
       setResizePreview(null);
       setTimeout(() => { didDragRef.current = false; }, 50);
@@ -1036,16 +1041,12 @@ export function TimelineColumn({
         const validation = canMoveTask(dropped.taskId, date, newTime);
         if (!validation.allowed) {
           const violation = 'reason' in validation ? validation.reason : 'Cannot move';
-          requestPendingMove({ taskId: dropped.taskId, newDate: date, newTime, violation });
-          // Apply duration immediately so the deferred move uses it.
-          useTaskStore.getState().updateTask(dropped.taskId, { duration: dropDuration } as any);
+          requestPendingMove({ taskId: dropped.taskId, newDate: date, newTime, newDuration: dropDuration, violation });
           return;
         }
-        moveTask(dropped.taskId, date, newTime);
-        useTaskStore.getState().updateTask(dropped.taskId, { duration: dropDuration } as any);
+        moveTask(dropped.taskId, date, newTime, dropDuration);
       } else {
-        reorderTask(dropped.taskId, newTime);
-        useTaskStore.getState().updateTask(dropped.taskId, { duration: dropDuration, time: newTime } as any);
+        reorderTask(dropped.taskId, newTime, dropDuration);
       }
     }
   }, [date, getMinutesFromY, addTask, canMoveTask, moveTask, reorderTask]);
@@ -1684,11 +1685,14 @@ export function TimelineColumn({
           }
 
           // Single tasks — render normally
-          return cluster.tasks.map((task) => {
+          return cluster.tasks.map((savedTask) => {
+            const task = resizing?.id === savedTask.id && resizePreview ? { ...savedTask, ...resizePreview } : savedTask;
             if (!task.time) return null;
             const taskMinutes = timeToMinutes(task.time);
             const top = ((taskMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT;
-            const height = cluster.displayHeightPx ?? ((task.duration || 30) / 60) * HOUR_HEIGHT;
+            const height = resizing?.id === task.id && resizePreview
+              ? (resizePreview.duration / 60) * HOUR_HEIGHT
+              : cluster.displayHeightPx ?? ((task.duration || 30) / 60) * HOUR_HEIGHT;
             const isActive = task.id === activeTaskId;
             const isResizingThis = resizing?.id === task.id;
             // LOCK no longer prevents drag — drop triggers Reflection prompt instead.
