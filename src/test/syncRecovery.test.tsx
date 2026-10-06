@@ -199,9 +199,9 @@ describe('failed-save and account recovery guards', () => {
         categories: [{ value: 'work', label: 'Pending category' }] });
       await waitFor(() => expect(h.writes.library_categories).toHaveBeenCalled());
       // A real changed hydration write, rather than an identical-cache rewrite:
-      // older store copies lack this UI default.
+      // older store copies lack this persisted setting.
       const olderLibrary = JSON.parse(privateOwnedCopy()!.entries['do-library-store']!);
-      delete olderLibrary.state.panelOpen;
+      delete olderLibrary.state.sidebarMode;
       accountCacheStorage.setItem('do-library-store', JSON.stringify(olderLibrary));
       const savedLibrary = privateOwnedCopy()!.entries['do-library-store'];
       let libraryWrite = false;
@@ -214,15 +214,23 @@ describe('failed-save and account recovery guards', () => {
           originalAdapterWrite(name, value);
         } finally { libraryWrite = false; }
       });
+      const awaitlessCodec = await import('@/lib/deviceStorageEncoding');
+      const journalHelpers = await import('@/lib/ownedCacheJournal');
+      const cacheFields = await import('@/lib/migrationRecovery');
       const originalStorageWrite = Storage.prototype.setItem;
       const storageSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function(name, value) {
         if (name === key) {
           const shouldFail = libraryWrite;
-          if (shouldFail && !rejected) {
+          if (shouldFail) {
             rejected = true;
             throw new DOMException('Simulated quota', 'QuotaExceededError');
           }
-          const library = JSON.parse(JSON.parse(value).entries['do-library-store']).state;
+          const { decodeDeviceStorage } = awaitlessCodec;
+          const parsed = JSON.parse(decodeDeviceStorage(value));
+          const workspace = parsed.format === 2
+            ? journalHelpers.replayJournal(parsed, JSON.parse(decodeDeviceStorage(parsed.checkpoint)), cacheFields.CACHE_FIELDS, decodeDeviceStorage)
+            : parsed;
+          const library = JSON.parse(workspace.entries['do-library-store']).state;
           durableCategoryLabels.push(library.categories.map((row: any) => row.label));
         }
         return originalStorageWrite.call(this, name, value);

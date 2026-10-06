@@ -40,7 +40,7 @@ export function ReflectionSheet() {
 
   const handlePick = (reasonKey: ReflectionReason, customText?: string) => {
     const tip = selectReason(reasonKey, customText, (move) => {
-      useTaskStore.getState().forceMoveTask(move.taskId, move.newDate, move.newTime);
+      useTaskStore.getState().forceMoveTask(move.taskId, move.newDate, move.newTime, move.newDuration);
     });
     if (tip) {
       // Persistent until dismissed — user closes via the toast's X.

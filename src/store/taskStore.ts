@@ -151,12 +151,12 @@ interface TaskState {
   removeInstances: (parentId: string) => void;
   deleteRecurrenceSeries: (parentId: string) => void;
   canMoveTask: (id: string, newDate: string, newTime?: string) => MoveValidation;
-  moveTask: (id: string, newDate: string, newTime?: string) => { blocked: boolean };
+  moveTask: (id: string, newDate: string, newTime?: string, duration?: number) => { blocked: boolean };
   /** Bypasses canMoveTask checks. Used by Reflection flow after the user
    *  acknowledges a constraint violation. Still resolves collisions. */
-  forceMoveTask: (id: string, newDate: string, newTime?: string) => { blocked: boolean };
+  forceMoveTask: (id: string, newDate: string, newTime?: string, duration?: number) => { blocked: boolean };
   resizeTask: (id: string, newTime: string, newDuration: number) => void;
-  reorderTask: (id: string, newTime: string) => void;
+  reorderTask: (id: string, newTime: string, duration?: number) => void;
   skipFocusTask: () => void;
   setFocusTask: (id: string | null) => void;
   setEditingTask: (id: string | null) => void;
@@ -901,7 +901,7 @@ export const useTaskStore = create<TaskState>()(
         return { allowed: true };
       },
 
-      moveTask: (id, newDate, newTime) => {
+      moveTask: (id, newDate, newTime, duration) => {
         const task = get().tasks.find((t) => t.id === id);
         if (!task) return { blocked: false };
 
@@ -914,7 +914,7 @@ export const useTaskStore = create<TaskState>()(
         let finalTime = newTime ?? task.time;
         if (finalTime) {
           const slots = getOccupiedSlots(get().tasks, newDate, id, get().routinesEnabled);
-          const { startMin: resolved, blocked } = findValidPosition(timeToMinutes(finalTime), task.duration || 30, slots);
+          const { startMin: resolved, blocked } = findValidPosition(timeToMinutes(finalTime), duration ?? task.duration ?? 30, slots);
           if (blocked) return { blocked: true };
           finalTime = minutesToTime(resolved);
         }
@@ -935,6 +935,7 @@ export const useTaskStore = create<TaskState>()(
                   ? t.originalDate || t.date : t.originalDate,
                 date: newDate,
                 time: finalTime ?? t.time,
+                ...(duration !== undefined ? { duration } : {}),
                 priority: newPriority,
                 moveCount: crossDay ? t.moveCount + 1 : t.moveCount,
                 inWaitingRoom: false,
@@ -958,7 +959,7 @@ export const useTaskStore = create<TaskState>()(
         return { blocked: false };
       },
 
-      forceMoveTask: (id, newDate, newTime) => {
+      forceMoveTask: (id, newDate, newTime, duration) => {
         const task = get().tasks.find((t) => t.id === id);
         if (!task) return { blocked: false };
 
@@ -966,7 +967,7 @@ export const useTaskStore = create<TaskState>()(
         let finalTime = newTime ?? task.time;
         if (finalTime) {
           const slots = getOccupiedSlots(get().tasks, newDate, id, get().routinesEnabled);
-          const { startMin: resolved, blocked } = findValidPosition(timeToMinutes(finalTime), task.duration || 30, slots);
+          const { startMin: resolved, blocked } = findValidPosition(timeToMinutes(finalTime), duration ?? task.duration ?? 30, slots);
           if (blocked) return { blocked: true };
           finalTime = minutesToTime(resolved);
         }
@@ -988,6 +989,7 @@ export const useTaskStore = create<TaskState>()(
                   ? t.originalDate || t.date : t.originalDate,
                 date: newDate,
                 time: finalTime ?? t.time,
+                ...(duration !== undefined ? { duration } : {}),
                 priority: newPriority,
                 moveCount: crossDay ? t.moveCount + 1 : t.moveCount,
                 inWaitingRoom: false,
@@ -1034,7 +1036,7 @@ export const useTaskStore = create<TaskState>()(
         }
       },
 
-      reorderTask: (id, newTime) => {
+      reorderTask: (id, newTime, duration) => {
         const task = get().tasks.find((t) => t.id === id);
         if (!task) return;
         const mobilityMode = useTimezoneStore.getState().mobilityMode;
@@ -1049,6 +1051,7 @@ export const useTaskStore = create<TaskState>()(
               taskId: id,
               newDate: task.date,
               newTime,
+              newDuration: duration,
               violation: 'Task is marked as “Locked” — why would you like to move it?',
             });
           });
@@ -1056,13 +1059,13 @@ export const useTaskStore = create<TaskState>()(
         }
         // Resolve overlap
         const slots = getOccupiedSlots(get().tasks, task.date, id, get().routinesEnabled);
-        const resolvedMin = findValidPosition(timeToMinutes(newTime), task.duration || 30, slots).startMin;
+        const resolvedMin = findValidPosition(timeToMinutes(newTime), duration ?? task.duration ?? 30, slots).startMin;
         newTime = minutesToTime(resolvedMin);
         const targetIds = getLinkedScheduleTargetIds(get().tasks, task);
 
         set((s) => ({
           tasks: s.tasks.map((t) =>
-            targetIds.has(t.id) ? enforceRecurringLinkInvariant({ ...t, time: newTime }) : t
+            targetIds.has(t.id) ? enforceRecurringLinkInvariant({ ...t, time: newTime, ...(t.id === id && duration !== undefined ? { duration } : {}) }) : t
           ),
         }));
 
@@ -1701,11 +1704,20 @@ export const useTaskStore = create<TaskState>()(
     }),
     {
       name: 'task-storage', storage: createJSONStorage(() => accountCacheStorage),
+      // Editor/navigation state is transient; changing it must not save all tasks.
+      partialize: (state) => ({ tasks: state.tasks, viewMode: state.viewMode,
+        daySubMode: state.daySubMode, weekSubMode: state.weekSubMode,
+        dayToggleTarget: state.dayToggleTarget, hasInitializedSubModes: state.hasInitializedSubModes,
+        dayStartHour: state.dayStartHour, dayEndHour: state.dayEndHour, routinesEnabled: state.routinesEnabled }),
       onRehydrateStorage: () => (state) => {
         if (!state) return;
         // Backfill: any recurring task left "unlinked" by legacy code paths
         // is normalized to be linked (recurring => linked is now an invariant).
         state.tasks = normalizeAllTasks(state.tasks);
+        state.editingTaskId = null; state.focusTaskId = null;
+        state.navigateToDate = null; state.currentDate = null;
+        state.listReturnZoom = null; state.showListReturn = false;
+        state.showCompletionStats = false; state.dailyStats = null;
       },
     }
   )

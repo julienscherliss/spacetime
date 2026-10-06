@@ -636,8 +636,11 @@ export const useLibraryStore = create<LibraryState>()(
     }),
     {
       name: 'do-library-store', storage: createJSONStorage(() => accountCacheStorage),
+      partialize: (state) => ({ items: state.items, categories: state.categories,
+        sidebarMode: state.sidebarMode, sortMode: state.sortMode, filters: state.filters,
+        filterCategory: state.filterCategory }),
       merge: (persisted: any, current: any) => {
-        const merged = { ...current, ...persisted };
+        const merged = { ...current, ...persisted, panelOpen: false, editingItemId: null, reopenAfterCarryDrop: false };
         // Ensure new fields exist on old items
         if (merged.items) {
           merged.items = merged.items.map((i: any) => ({
