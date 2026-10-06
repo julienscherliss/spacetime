@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas-pro';
 import type { Invoice } from '@/store/billingStore';
+import { snapshotInvoiceStylesheets } from './invoiceSnapshotStyles';
 
 /**
  * Ensure the fonts we style the invoice with are actually loaded before we
@@ -9,8 +10,8 @@ import type { Invoice } from '@/store/billingStore';
  * the browser paints with the real font once it arrives — producing the
  * "words with no spaces" desktop bug. Explicitly awaiting each face fixes it.
  */
-async function preloadInvoiceFonts() {
-  const fonts = document.fonts;
+async function preloadInvoiceFonts(doc: Document) {
+  const fonts = doc.fonts;
   if (!fonts?.load) return;
   const faces = [
     '400 12px "Space Grotesk"',
@@ -38,7 +39,9 @@ async function preloadInvoiceFonts() {
  * - Map canvas pixels 1:1 to US-Letter points so nothing is upscaled
  */
 export async function downloadInvoicePdfFromNode(node: HTMLElement, invoice: Invoice, filename?: string) {
-  await preloadInvoiceFonts();
+  const source = node.ownerDocument;
+  await preloadInvoiceFonts(source);
+  const installStyles = snapshotInvoiceStylesheets(source);
 
   // The offscreen invoice host can produce a black image with SVG
   // foreignObject rendering without throwing. Use the DOM renderer after
@@ -51,6 +54,11 @@ export async function downloadInvoicePdfFromNode(node: HTMLElement, invoice: Inv
     logging: false,
     windowWidth: node.offsetWidth,
     windowHeight: node.offsetHeight,
+    onclone: async clone => {
+      installStyles(clone);
+      // Font readiness in the app does not imply readiness in the PDF frame.
+      await preloadInvoiceFonts(clone);
+    },
   });
 
   // JPEG at 0.95 quality — visually lossless for line art / text, ~10x smaller than PNG
