@@ -14,6 +14,7 @@ interface Workspace extends RestartCopy {
   review: Array<RestartCopy & { capturedAt: string }>;
 }
 let owner: string | null = null;
+let verifiedWorkspace: { id: string; stored: string | null; value: Workspace } | null = null;
 const listeners = new Set<() => void>();
 export const subscribeOwnedCache = (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; };
 export const currentOwnedCacheOwner = () => owner;
@@ -35,7 +36,14 @@ function validateCopy(copy: RestartCopy) {
 
 function readWorkspace(id: string): Workspace {
   const raw = localStorage.getItem(OWNED_CACHE_PREFIX + id);
-  if (raw === null) return { format: 1, owner: id, project: PROJECT, entries: {}, baseline: null, review: [] };
+  // Still inspect persisted bytes on every read: another window or failed write
+  // must never be hidden by the memory cache.
+  if (verifiedWorkspace?.id === id && verifiedWorkspace.stored === raw) return verifiedWorkspace.value;
+  if (raw === null) {
+    const value: Workspace = { format: 1, owner: id, project: PROJECT, entries: {}, baseline: null, review: [] };
+    verifiedWorkspace = { id, stored: raw, value };
+    return value;
+  }
   const value = JSON.parse(decodeDeviceStorage(raw)) as Workspace;
   if (value.format !== 1 || value.owner !== id || value.project !== PROJECT || !Array.isArray(value.review)
     || value.review.length > 16 || Object.keys(value).some(key => !['format','owner','project','entries','baseline','review'].includes(key))) throw new RecoveryError();
@@ -44,21 +52,31 @@ function readWorkspace(id: string): Workspace {
     if (typeof copy.capturedAt !== 'string' || Object.keys(copy).some(key => !['entries','baseline','capturedAt'].includes(key))) throw new RecoveryError();
     validateCopy(copy);
   }
+  verifiedWorkspace = { id, stored: raw, value };
   return value;
 }
 
-function changeWorkspace(change: (workspace: Workspace) => void) {
+function cloneCopy(copy: RestartCopy): RestartCopy {
+  return { entries: { ...copy.entries }, baseline: copy.baseline && { ...copy.baseline } };
+}
+
+function changeWorkspace(change: (workspace: Workspace) => boolean) {
   if (!owner) return;
   try {
     const key = OWNED_CACHE_PREFIX + owner;
-    const workspace = readWorkspace(owner);
-    change(workspace);
+    const previous = readWorkspace(owner);
+    // Commit memory only AFTER durable write/readback succeeds.
+    const workspace = { ...previous, ...cloneCopy(previous), review: [...previous.review] };
+    if (!change(workspace)) return;
     validateCopy(workspace);
     const raw = JSON.stringify(workspace);
     const encoded = encodeDeviceStorage(raw);
     localStorage.setItem(key, encoded);
     const saved = localStorage.getItem(key);
-    if (saved !== encoded || decodeDeviceStorage(saved) !== raw) throw new RecoveryError();
+    // Encoding already checked the exact decoded bytes. An identical readback
+    // proves the same result without inflating the whole workspace again.
+    if (saved !== encoded) throw new RecoveryError();
+    verifiedWorkspace = { id: owner, stored: encoded, value: workspace };
     emit();
   } catch { blockRecovery(); throw new RecoveryError(); }
 }
@@ -76,7 +94,7 @@ export function openVerifiedOwnedCache(id: string): RestartCopy {
 }
 
 /** Suspend persistence BEFORE clearing any runtime store on account changes. */
-export function closeOwnedCache() { owner = null; emit(); }
+export function closeOwnedCache() { owner = null; verifiedWorkspace = null; emit(); }
 
 export const accountCacheStorage = {
   getItem(name: string): string | null {
@@ -88,25 +106,40 @@ export const accountCacheStorage = {
   setItem(name: string, raw: string) {
     if (!ownedCacheEnabled) { localStorage.setItem(name, raw); return; }
     if (!Object.prototype.hasOwnProperty.call(CACHE_FIELDS, name)) throw new RecoveryError();
-    changeWorkspace(workspace => { workspace.entries[name as keyof Entries] = raw; });
+    changeWorkspace(workspace => {
+      if (workspace.entries[name as keyof Entries] === raw) return false;
+      workspace.entries[name as keyof Entries] = raw;
+      return true;
+    });
   },
   removeItem(name: string) {
     if (!ownedCacheEnabled) { localStorage.removeItem(name); return; }
-    changeWorkspace(workspace => { delete workspace.entries[name as keyof Entries]; });
+    changeWorkspace(workspace => {
+      if (!(name in workspace.entries)) return false;
+      delete workspace.entries[name as keyof Entries];
+      return true;
+    });
   },
 };
 
 export function rememberOwnedBaseline(baseline: SyncBaseline) {
-  if (ownedCacheEnabled) changeWorkspace(workspace => { workspace.baseline = { ...baseline }; });
+  if (ownedCacheEnabled) changeWorkspace(workspace => {
+    if (workspace.baseline?.tasks === baseline.tasks && workspace.baseline.library === baseline.library
+      && workspace.baseline.categories === baseline.categories) return false;
+    workspace.baseline = { ...baseline };
+    return true;
+  });
 }
 
 /** Archive conflicts before replacing caches with fresh server data. No uploads. */
 export function retainOwnedReviewCopy(copy: RestartCopy) {
   changeWorkspace(workspace => {
-    const signature = JSON.stringify(copy);
-    if (workspace.review.some(item => JSON.stringify({ entries: item.entries, baseline: item.baseline }) === signature)) return;
+    validateCopy(copy);
+    const signature = JSON.stringify(cloneCopy(copy));
+    if (workspace.review.some(item => JSON.stringify({ entries: item.entries, baseline: item.baseline }) === signature)) return false;
     if (workspace.review.length >= 16) throw new RecoveryError();
-    workspace.review.push({ ...copy, capturedAt: new Date().toISOString() });
+    workspace.review.push({ ...cloneCopy(copy), capturedAt: new Date().toISOString() });
+    return true;
   });
 }
 
@@ -114,4 +147,8 @@ export function ownedReviewCount() {
   try { return owner ? readWorkspace(owner).review.length : 0; }
   catch { return 0; } // Actual cache reads/writes fail closed; a render snapshot cannot recursively emit.
 }
-export function privateOwnedCopy() { return owner ? readWorkspace(owner) : null; }
+export function privateOwnedCopy() {
+  if (!owner) return null;
+  const workspace = readWorkspace(owner);
+  return { ...workspace, ...cloneCopy(workspace), review: workspace.review.map(copy => ({ ...cloneCopy(copy), capturedAt: copy.capturedAt })) };
+}

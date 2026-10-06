@@ -973,7 +973,8 @@ export function useDataSync(user: User | null) {
   useEffect(() => {
     if (!user) return;
 
-    const unsub = useTaskStore.subscribe(() => {
+    const unsub = useTaskStore.subscribe((state, previous) => {
+      if (state.tasks === previous.tasks) return;
       if (!initialLoadDone.current || !userIdRef.current) return;
       if (userIdRef.current !== user.id) return;
       const userId = userIdRef.current;
@@ -1001,7 +1002,8 @@ export function useDataSync(user: User | null) {
   useEffect(() => {
     if (!user) return;
 
-    const unsub = useLibraryStore.subscribe(() => {
+    const unsub = useLibraryStore.subscribe((state, previous) => {
+      if (state.items === previous.items && state.categories === previous.categories) return;
       if (!initialLoadDone.current || !userIdRef.current) return;
       if (userIdRef.current !== user.id) return;
       const userId = userIdRef.current;
