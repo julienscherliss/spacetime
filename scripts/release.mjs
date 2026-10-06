@@ -129,7 +129,7 @@ if (command === 'prepare') {
   pin(); git('fetch', 'origin', 'main');
   if (!receipt.webCommit) {
     const base = git('rev-parse', 'origin/main'); const index = path.join(dir, 'web.index');
-    const paths = ['src', 'public', 'index.html', 'package.json', 'package-lock.json', 'vite.config.ts', 'scripts/release.mjs', 'release.config.json', 'docs/RELEASING.md'];
+    const paths = ['src', 'public', 'index.html', 'package.json', 'package-lock.json', 'vite.config.ts', 'scripts/release.mjs', 'scripts/verify-release-web.mjs', 'release.config.json', 'docs/RELEASING.md'];
     const patch = run('git', ['diff', '--binary', config.webBaseSource, head, '--', ...paths]);
     const patchFile = path.join(dir, 'web.patch'); fs.writeFileSync(patchFile, patch + '\n');
     run('git', ['read-tree', base], 'web-read-tree', root, { GIT_INDEX_FILE: index });
@@ -169,12 +169,9 @@ if (command === 'prepare') {
     receipt.macPublished = true; save();
   }
 } else if (command === 'verify-web') {
-  assert(receipt.websiteFiles); const base = config.website;
-  for (const file of receipt.websiteFiles.filter(file => /^(?:index\.html|assets\/.*\.(?:js|css))$/.test(file.path))) {
-    const response = await fetch(`${base}/${file.path}`, { cache: 'no-store', signal: AbortSignal.timeout(20000) });
-    assert.equal(response.status, 200, `Missing live asset: ${file.path}`);
-    assert.equal(hash(Buffer.from(await response.arrayBuffer())), file.sha256, `Live asset differs: ${file.path}`);
-  }
+  const { verifyReleaseWeb } = await import('./verify-release-web.mjs');
+  const proof = await verifyReleaseWeb({ receipt, dir, website: config.website, privateSettings });
+  receipt.websiteProof = { appAssets: proof.appAssets, checkedAt: proof.at, cacheModuleMatched: true, workerMatched: true, repairInvariants: true };
   receipt.websitePublished = true; save();
 } else if (command !== 'status') throw new Error('Use prepare, mac, ios, upload-ios, web, push-web, publish-mac, verify-web or status.');
 console.log(JSON.stringify({ source: receipt.source, mac: config.mac, ios: config.ios, prepared: Boolean(receipt.nativeCopiesVerified), macVerified: receipt.macVerified ?? false, macPublished: receipt.macPublished ?? false, iosArchiveVerified: receipt.iosArchiveVerified ?? false, iosUploaded: receipt.iosUploaded ?? false, iosAvailability: receipt.iosAvailability ?? 'Not uploaded', webCommit: receipt.webCommit, websitePublished: receipt.websitePublished ?? false, receipt: receiptPath }, null, 2));

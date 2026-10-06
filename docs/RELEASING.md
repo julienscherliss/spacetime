@@ -38,7 +38,7 @@ In Lovable's existing Spacetime project, click **Publish → Publish changes** a
 npm run release -- verify-web
 ```
 
-This compares live page/JS/CSS/worker bytes with the prepared website build. Lovable may append its own HTML script; if HTML alone differs, inspect the hosting addition and compare the app entry/asset graph before recording success. Never bypass a JavaScript mismatch. `publish-mac` uploads all five updater/download assets to a draft, verifies their GitHub hashes, then publishes a coherent latest release. The website uses GitHub's latest Mac download; confirm its actual link once after publication.
+This follows the actual live app asset graph, verifies the cache module and worker against the prepared code while ignoring generated chunk names, checks the interaction/Limbo repair invariants and backend/credential boundaries, and saves actual published asset hashes. Lovable rebuilds/minifies chunks differently; whole-bundle byte identity is not claimed. A cache/worker or invariant mismatch stops verification. Finish with one bounded rendered startup/navigation/reopen check; expand testing only for changed behavior or a concrete failure. `publish-mac` uploads all five updater/download assets to a draft, verifies their GitHub hashes, then publishes a coherent latest release. The website uses GitHub's latest Mac download; confirm its actual link once after publication.
 
 In App Store Connect, wait for the uploaded build to process and appear as **Internal / Testing / Mission Control**. Record that status in the private receipt; an upload alone is not availability. Update through TestFlight on the phone. Public App Store release remains a separate, deferred decision.
 
