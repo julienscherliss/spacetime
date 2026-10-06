@@ -30,6 +30,8 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { isElectron } from "@/utils/nativePlatform";
 import { ElectronDragRegion } from "@/components/ElectronDragRegion";
 
+import { AppEntryAccountContext } from '@/hooks/useAppEntryNavigation';
+
 const queryClient = new QueryClient();
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -158,7 +160,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      {children}
+      <AppEntryAccountContext.Provider value={user.id}>{children}</AppEntryAccountContext.Provider>
       <SetPasswordPrompt open={showPasswordPrompt} onClose={handleDismissPasswordPrompt} />
     </>
   );

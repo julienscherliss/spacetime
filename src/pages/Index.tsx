@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAppEntryNavigation } from '@/hooks/useAppEntryNavigation';
 import { useTaskStore } from '@/store/taskStore';
 import { useCalendarStore } from '@/store/calendarStore';
 import { useLibraryStore } from '@/store/libraryStore';
@@ -72,32 +73,27 @@ const Index = () => {
     }
   }, []);
 
-  // On app entry: ensure sub-modes are valid, apply first-run defaults
-  // (week → timeline on desktop, list on mobile), then preserve the user's
-  // last choice across reloads. Also bounce out of the transient focus view.
+  // Preserve the unrelated first-run week defaults.
   useEffect(() => {
     const s = useTaskStore.getState();
     const isMobileViewport = typeof window !== 'undefined' && window.innerWidth < 768;
-    // Day sub-mode: keep timeline/sequencer as-is, anything else → timeline.
-    if (s.daySubMode !== 'timeline' && s.daySubMode !== 'sequencer') s.setDaySubMode('timeline');
     // Week sub-mode: only set a default on the very first app entry; otherwise
     // respect whatever the user last switched to.
     if (!s.hasInitializedSubModes) {
       s.setWeekSubMode(isMobileViewport ? 'list' : 'timeline');
       s.setHasInitializedSubModes(true);
     }
-    if (s.viewMode === 'focus') s.setViewMode('day');
   }, []);
 
-  // Switch to focus view when a notification is tapped
+  const anyOverlayOpen =
+    waitingOpen || settingsOpen || archiveOpen || analyticsOpen ||
+    billingOpen || helpOpen || subscribeOpen || feedbackOpen;
+  const openForCurrentTasks = useAppEntryNavigation(anyOverlayOpen);
+
   useEffect(() => {
     if (!isNativePlatform()) return;
-    const cleanup = setupNotificationTapListener((taskId) => {
-      console.log('[Index] notification tap → switching to focus view, taskId:', taskId);
-      useTaskStore.getState().setViewMode('focus');
-    });
-    return cleanup;
-  }, []);
+    return setupNotificationTapListener(openForCurrentTasks);
+  }, [openForCurrentTasks]);
 
   // Move overdue tasks to waiting room periodically
   useEffect(() => {
@@ -174,9 +170,6 @@ const Index = () => {
   // Global quick-add: typing a printable character while on a main view (and
   // not focused in an input or with another overlay open) opens the quick-add
   // bar pre-filled with that character.
-  const anyOverlayOpen =
-    waitingOpen || settingsOpen || archiveOpen || analyticsOpen ||
-    billingOpen || helpOpen || subscribeOpen || feedbackOpen;
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;

@@ -45,22 +45,8 @@ export function useAuth() {
         });
       }
       lastUserId = nextUserId;
-      // On a fresh sign-in, always land on Day view at "today".
+      // Entry navigation is selected once after current-account sync is ready.
       if (event === 'SIGNED_IN') {
-        import('@/store/taskStore').then(({ useTaskStore }) => {
-          // Preserve the user's last daySubMode (timeline vs sequencer) across
-          // app relaunches — iOS fires SIGNED_IN on session restore, so we
-          // must not clobber it here.
-          const prev = useTaskStore.getState().daySubMode;
-          useTaskStore.setState({
-            viewMode: 'day',
-            daySubMode: prev === 'sequencer' ? 'sequencer' : 'timeline',
-            navigateToDate: null,
-            currentDate: null,
-            focusTaskId: null,
-            editingTaskId: null,
-          });
-        });
         logAudit({ action: 'auth.signed_in', metadata: { provider: session?.user?.app_metadata?.provider ?? 'email' } });
       }
       if (event === 'TOKEN_REFRESHED' && !session) {
@@ -107,7 +93,7 @@ export function useAuth() {
     const { useLibraryStore } = await import('@/store/libraryStore');
     const { useCarryStore } = await import('@/store/carryStore');
     const { useCalendarStore } = await import('@/store/calendarStore');
-    useTaskStore.setState({ tasks: [], editingTaskId: null, focusTaskId: null });
+    useTaskStore.setState({ tasks: [], editingTaskId: null, focusTaskId: null, focusEntryPanel: null });
     useLibraryStore.setState({ items: [] });
     useCarryStore.setState({ carried: null });
     // Wipe Google Calendar UI state so the next signed-in user does not see

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { FocusEntryPanel } from '@/lib/appEntryDestination';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { accountCacheStorage } from '@/lib/ownedDeviceCache';
 import { getWeekBounds } from '@/hooks/useCurrentTime';
@@ -116,6 +117,7 @@ interface TaskState {
   dayEndHour: number;
   routinesEnabled: boolean;
   focusTaskId: string | null;
+  focusEntryPanel: FocusEntryPanel | null;
   editingTaskId: string | null;
   showCompletionStats: boolean;
   dailyStats: DailyStats | null;
@@ -557,6 +559,7 @@ export const useTaskStore = create<TaskState>()(
       dayEndHour: 21,
       routinesEnabled: true,
       focusTaskId: null,
+      focusEntryPanel: null,
       editingTaskId: null,
       showCompletionStats: false,
       dailyStats: null,
@@ -568,7 +571,7 @@ export const useTaskStore = create<TaskState>()(
       setViewMode: (mode) => {
         const prev = get().viewMode;
         if (mode === 'focus' && prev !== 'focus') playUISound('swell');
-        set({ viewMode: mode });
+        set({ viewMode: mode, focusEntryPanel: null });
       },
       setDaySubMode: (mode) => set({ daySubMode: mode }),
       setWeekSubMode: (mode) => set({ weekSubMode: mode }),
@@ -1206,8 +1209,8 @@ export const useTaskStore = create<TaskState>()(
         });
       },
 
-      generateRecurringInstances: (startDate, endDate) =>
-        set((s) => {
+      generateRecurringInstances: (startDate, endDate) => {
+          const s = get();
           const nextTasks = [...s.tasks];
           const recurringParents = nextTasks.filter((task) => !!task.recurrence && !task.isRecurrenceInstance);
 
@@ -1299,8 +1302,10 @@ export const useTaskStore = create<TaskState>()(
             }
           }
 
-          return { tasks: nextTasks };
-        }),
+          if (nextTasks.length !== s.tasks.length || nextTasks.some((task, i) => task !== s.tasks[i])) {
+            set({ tasks: nextTasks });
+          }
+        },
 
       linkSeriesFromDate: (taskId, fromDate, linked) =>
         set((s) => {
@@ -1715,6 +1720,7 @@ export const useTaskStore = create<TaskState>()(
         // is normalized to be linked (recurring => linked is now an invariant).
         state.tasks = normalizeAllTasks(state.tasks);
         state.editingTaskId = null; state.focusTaskId = null;
+        state.focusEntryPanel = null;
         state.navigateToDate = null; state.currentDate = null;
         state.listReturnZoom = null; state.showListReturn = false;
         state.showCompletionStats = false; state.dailyStats = null;

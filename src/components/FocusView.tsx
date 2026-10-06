@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useLayoutEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
 import { useCurrentTime, timeToMinutes, formatTime12h } from '@/hooks/useCurrentTime';
@@ -14,6 +14,8 @@ import { autosizeTextarea } from '@/lib/autosizeTextarea';
 import { useTrackpadSwipe } from '@/hooks/useTrackpadSwipe';
 import { GroupListRow } from '@/components/GroupListRow';
 import { parseSubtaskText } from '@/lib/parseSubtaskText';
+
+import { getFocusSchedule, resolveFocusTask } from '@/lib/appEntryDestination';
 
 type FocusPanel = 'completed' | 'main' | 'detail';
 
@@ -45,9 +47,15 @@ function linkify(text: string) {
 const PRIORITY_LABELS = ['FLEX', 'SEMI', 'FIXED', 'LOCK'] as const;
 
 export function FocusView() {
-  const { tasks, routinesEnabled, getNextTask, updateTask, completeTask, completeChild, getActiveChildInGroup, setEditingTask, setViewMode, setDaySubMode, setListReturnZoom, setShowListReturn } = useTaskStore();
+  const { tasks, routinesEnabled, getNextTask, updateTask, completeTask, completeChild, setEditingTask, setViewMode, setDaySubMode, setListReturnZoom, setShowListReturn } = useTaskStore();
   const { minutes: nowMinutes, dateStr: today } = useCurrentTime(1000);
-  const [activePanel, setActivePanel] = useState<FocusPanel>('main');
+  const entryPanel = useTaskStore(s => s.focusEntryPanel);
+  const [activePanel, setActivePanel] = useState<FocusPanel>(() => useTaskStore.getState().focusEntryPanel || 'main');
+  useLayoutEffect(() => {
+    if (!entryPanel) return;
+    setActivePanel(entryPanel);
+    useTaskStore.setState({ focusEntryPanel: null });
+  }, [entryPanel]);
   const [completedExpanded, setCompletedExpanded] = useState(false);
 
   // Hold-to-complete state
@@ -71,7 +79,8 @@ export function FocusView() {
       return a.time.localeCompare(b.time);
     });
 
-  const todayTasks = allTodayTasks.filter(t => !t.completed && t.time);
+  const schedule = getFocusSchedule(tasks, today, nowMinutes, routinesEnabled);
+  const todayTasks = schedule.roots;
 
   const upcomingTasks = todayTasks.filter((t) => {
     if (!t.time) return false;
@@ -87,12 +96,7 @@ export function FocusView() {
   const [hasExpiredOverdue, setHasExpiredOverdue] = useState(false);
 
   // Find naturally active task (within its scheduled window)
-  const naturalActiveTask = todayTasks.find((t) => {
-    if (!t.time) return false;
-    const start = timeToMinutes(t.time);
-    const end = start + (t.duration || 30);
-    return nowMinutes >= start && nowMinutes < end;
-  });
+  const naturalActiveTask = schedule.activeRoot;
 
   // Find grace-period task: an overdue task whose window ended within the last 5 minutes.
   // This takes PRIORITY over the natural active task for 5 minutes, so the user
@@ -135,22 +139,7 @@ export function FocusView() {
   const rawActiveTask = graceTask || naturalActiveTask;
   const isGracePeriod = !!graceTask;
 
-  // ── Group resolution ──
-  // If the naturally-active task is a Group container, descend into the active
-  // child (the one whose time window covers "now"). Falls back to the first
-  // incomplete child if "now" doesn't land inside any child window — this can
-  // happen briefly between micro-blocks while the group is still in its overall
-  // span. Group children carry their own time/duration so the rest of the focus
-  // UI (countdown, ring, next task) keeps working unchanged.
-  const parentGroup = rawActiveTask?.type === 'group' ? rawActiveTask : undefined;
-  let activeTask = rawActiveTask;
-  if (parentGroup) {
-    const liveChild = getActiveChildInGroup(parentGroup.id);
-    const fallbackChild = tasks
-      .filter((t) => t.groupId === parentGroup.id && !t.completed && !t.archivedAt)
-      .sort((a, b) => (a.groupOrder ?? 0) - (b.groupOrder ?? 0))[0];
-    activeTask = liveChild || fallbackChild || rawActiveTask;
-  }
+  const { activeTask, parentGroup } = resolveFocusTask(rawActiveTask, schedule.eligible, nowMinutes);
 
   const elapsed = activeTask?.time ? nowMinutes - timeToMinutes(activeTask.time) : 0;
   const remaining = activeTask ? (activeTask.duration || 30) - elapsed : 0;

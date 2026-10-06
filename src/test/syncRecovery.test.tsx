@@ -60,8 +60,10 @@ describe('failed-save and account recovery guards', () => {
       unmount: () => view.unmount(),
       denyAuth: () => { authFailure = true; },
       resume: async () => {
-        if (native) { await waitFor(() => expect(appState).toBeDefined()); await appState!({ isActive: true }); }
+        if (native) { await waitFor(() => expect(appState).toBeDefined()); await appState!({ isActive: false }); await appState!({ isActive: true }); }
         else {
+          Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+          fireEvent(document, new Event('visibilitychange'));
           Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
           fireEvent(document, new Event('visibilitychange'));
         }
