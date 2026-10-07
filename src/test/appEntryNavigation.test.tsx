@@ -177,4 +177,24 @@ describe('entry navigation integration', () => {
     await waitFor(() => expect(view.getByText('Entry test subtask')).toBeVisible());
     expect(useTaskStore.getState().focusEntryPanel).toBeNull();
   });
+  it('renders subtask links in Focus without nesting links inside edit buttons', async () => {
+    vi.useRealTimers(); vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-06T17:15:00Z'));
+    const url = 'https://outlook.cloud.microsoft/mail/inbox/id/SAMPLE%2BMessage%3D';
+    act(() => useTaskStore.setState({ tasks: [{ ...active,
+      subtasks: [{ ...checkbox, title: `Review email: ${url}` }] }] }));
+    const view = render(<Harness showFocus/>);
+    const link = await waitFor(() => view.getByRole('link', { name: /outlook.cloud.microsoft/ }));
+    expect(link).toHaveAttribute('href', url);
+    expect(link.closest('button')).toBeNull();
+    link.addEventListener('click', event => event.preventDefault());
+    fireEvent.click(link);
+    expect(view.queryByRole('textbox')).toBeNull();
+    expect(useTaskStore.getState().tasks[0].subtasks![0].completed).toBe(false);
+    fireEvent.click(view.getByRole('button', { name: 'Edit subtask' }));
+    expect(view.getByRole('textbox')).toHaveValue(`Review email: ${url}`);
+    fireEvent.change(view.getByRole('textbox'), { target: { value: 'Updated https://example.com/message' } });
+    fireEvent.blur(view.getByRole('textbox'));
+    await waitFor(() => expect(view.getByRole('link', { name: /example.com/ })).toHaveAttribute('href', 'https://example.com/message'));
+  });
 });

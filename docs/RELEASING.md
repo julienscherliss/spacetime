@@ -2,6 +2,33 @@
 
 Keep GPT-6 Sol / Medium for routine releases. Use High only for a failed check or a new data/auth/billing change. Read `outputs/MIGRATION_HANDOFF.md` in the coordinator workspace for the current checkpoint. No new agents, repeated migration audit or public App Store submission.
 
+## Review first, package second, publish last
+
+For a proposed change, start a local preview with `npm run review` and open
+`http://127.0.0.1:5174/`. Edits update the preview immediately. This does not build,
+sign, notarize, upload, install, or publish a release, and does not change release
+versions or overwrite packaged assets. The regular app preview uses the configured
+backend: signing into your account and editing tasks still syncs real account data.
+For testing destructive or unusual cases, provide a separate sample-data preview
+without mounting Auth/data-sync rather than modifying the owner's schedule.
+
+Use three explicit checkpoints:
+
+1. **Review:** implement locally, run focused checks for the changed behavior, and
+   show the preview. Stop here for owner feedback. Save the change, evidence,
+   preview URL/server state, and next action in the coordinator handoff.
+2. **Package:** after owner approval, prepare the single shared build and Mac/iOS
+   packages below. Use an unsigned development Mac app or iOS Simulator only when
+   the change needs native-device behavior; ordinary UI/store changes start with
+   the browser preview.
+3. **Distribute:** after an explicit instruction to distribute, publish the website,
+   Mac download and internal TestFlight build. Keep public App Store release
+   separate. Do not infer distribution approval from a request to implement or
+   preview a new feature. Batch approved fixes into one release when practical.
+
+Keep GPT-6 Sol / Medium for routine review/release work and carry the same handoff
+through all three checkpoints; no separate chats or general migration retests.
+
 ## One source, one shared build
 
 Update `release.config.json` with the next Mac version, unused internal iOS build number, and the **previous successfully published shared source commit** as `webBaseSource`. Bump `electron/package.json` and both root version fields in its lockfile to that Mac version. Commit and push the shared source branch. Confirm the iOS number in App Store Connect. Run focused tests for changed behavior once before packaging; do not rerun the full migration smoke suite for an ordinary frontend patch.

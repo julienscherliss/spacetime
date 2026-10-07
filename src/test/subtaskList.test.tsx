@@ -119,3 +119,49 @@ describe('SubtaskList multiline entry', () => {
     expectTitles(['one', 'two']);
   });
 });
+
+describe('SubtaskList links', () => {
+  const url = 'https://outlook.cloud.microsoft/mail/inbox/id/SAMPLE%2BMessage%3D';
+  const title = `Review Western Email: ${url}`;
+  const subtasks = [{ id: 'email', title, completed: false }];
+
+  it('shows a clickable read-mode link with the complete URL and switches to raw text editing', () => {
+    render(<SubtaskList subtasks={subtasks} onChange={vi.fn()} />);
+    const link = screen.getByRole('link');
+    expect(link).toHaveAttribute('href', url);
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(link).toHaveTextContent('outlook.cloud.microsoft');
+    fireEvent.click(screen.getByText('Review Western Email:'));
+    const editor = screen.getByRole('textbox', { name: 'Edit subtask' });
+    expect(editor).toHaveFocus();
+    expect(editor).toHaveValue(title);
+    expect(screen.queryByRole('link')).toBeNull();
+    fireEvent.blur(editor);
+    expect(screen.getByRole('link')).toHaveAttribute('href', url);
+  });
+
+  it.each([false, true])('link clicks do not edit or check a subtask (compact=%s)', compact => {
+    const onChange = vi.fn();
+    render(<SubtaskList subtasks={subtasks} onChange={onChange} compact={compact} />);
+    const link = screen.getByRole('link');
+    link.addEventListener('click', event => event.preventDefault());
+    fireEvent.click(link);
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByRole('checkbox')).toHaveAttribute('data-state', 'unchecked');
+    expect(screen.getByRole('link')).toHaveAttribute('href', url);
+  });
+
+  it('keeps link detection current while editing a URL', () => {
+    function LinkHarness() {
+      const [items, setItems] = useState(subtasks);
+      return <SubtaskList subtasks={items} onChange={setItems} />;
+    }
+    render(<LinkHarness />);
+    fireEvent.focus(screen.getByRole('textbox', { name: 'Edit subtask' }));
+    const editor = screen.getByRole('textbox', { name: 'Edit subtask' });
+    fireEvent.change(editor, { target: { value: 'New https://example.com/other?x=1&y=2' } });
+    fireEvent.blur(editor);
+    expect(screen.getByRole('link')).toHaveAttribute('href', 'https://example.com/other?x=1&y=2');
+  });
+});

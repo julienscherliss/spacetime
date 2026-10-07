@@ -307,6 +307,13 @@ function resolveGeneratedLinkState(seriesTasks: Task[], occurrenceDate: string):
   };
 }
 
+// Checklist structure is shared, but checked items belong to one occurrence.
+// Without an existing target (a new repeat), every item starts unchecked.
+function copyOccurrenceSubtasks(template: Subtask[], existing?: Subtask[]): Subtask[] {
+  const progress = new Map(existing?.map(st => [st.id, st.completed]));
+  return template.map(st => ({ ...st, completed: progress.get(st.id) ?? false }));
+}
+
 /**
  * INVARIANT: a task with `recurrence` set must always be `linked: true`.
  * The only way for a recurring task to become "unlinked" is to stop repeating
@@ -653,14 +660,8 @@ export const useTaskStore = create<TaskState>()(
               if (hasLinkedUpdates && t.id !== id && t.linked && t.linkedGroupId === sourceTask!.linkedGroupId && !t.completed) {
                 const merged: Partial<Task> = { ...linkedFields };
                 // Preserve the target task's own subtask completion states
-                if (merged.subtasks && t.subtasks) {
-                  const existingCompletionMap = new Map(
-                    (t.subtasks as Subtask[]).map((st) => [st.id, st.completed])
-                  );
-                  merged.subtasks = (merged.subtasks as Subtask[]).map((st) => ({
-                    ...st,
-                    completed: existingCompletionMap.get(st.id) ?? st.completed,
-                  }));
+                if (merged.subtasks) {
+                  merged.subtasks = copyOccurrenceSubtasks(merged.subtasks, t.subtasks);
                 }
                 return { ...t, ...merged };
               }
@@ -709,7 +710,10 @@ export const useTaskStore = create<TaskState>()(
             if (t.date < fromDate && t.id !== taskId) return t;
 
             if (t.id === taskId || t.date >= fromDate) {
-              return enforceRecurringLinkInvariant({ ...t, ...resolvedUpdates });
+              const instanceUpdates = t.id !== taskId && resolvedUpdates.subtasks
+                ? { ...resolvedUpdates, subtasks: copyOccurrenceSubtasks(resolvedUpdates.subtasks, t.subtasks) }
+                : resolvedUpdates;
+              return enforceRecurringLinkInvariant({ ...t, ...instanceUpdates });
             }
 
             return t;
@@ -729,7 +733,10 @@ export const useTaskStore = create<TaskState>()(
             if (!isTaskInSameSeries(t, seriesId)) return t;
             // Respect detached/unlinked instances — never overwrite their fields.
             if (t.id !== taskId && t.detachedFromSeries) return t;
-            return enforceRecurringLinkInvariant({ ...t, ...updates });
+            const instanceUpdates = t.id !== taskId && updates.subtasks
+              ? { ...updates, subtasks: copyOccurrenceSubtasks(updates.subtasks, t.subtasks) }
+              : updates;
+            return enforceRecurringLinkInvariant({ ...t, ...instanceUpdates });
           }),
         }));
       },
@@ -1245,6 +1252,7 @@ export const useTaskStore = create<TaskState>()(
                 date: occurrenceDate,
                 originalDate: occurrenceDate,
                 completed: false,
+                subtasks: parent.subtasks && copyOccurrenceSubtasks(parent.subtasks),
                 createdAt: new Date().toISOString(),
                 archivedAt: undefined,
                 archiveReason: undefined,
@@ -1285,6 +1293,7 @@ export const useTaskStore = create<TaskState>()(
                     date: occurrenceDate,
                     originalDate: occurrenceDate,
                     completed: false,
+                    subtasks: child.subtasks && copyOccurrenceSubtasks(child.subtasks),
                     createdAt: new Date().toISOString(),
                     archivedAt: undefined,
                     archiveReason: undefined,
