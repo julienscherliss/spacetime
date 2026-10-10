@@ -836,6 +836,9 @@ export async function loadFromDB(
       // The store persists items and categories together. Restore both in one
       // write so an interruption cannot persist items with cleared categories.
       useLibraryStore.setState({
+        // Restore only this view preference from the verified owner's cache;
+        // never rehydrate stale library content over the freshly loaded rows.
+        ...(options.restart && !options.skipLibrary ? { showDetails: cachedLibrary?.showDetails === true } : {}),
         ...(!options.skipLibrary ? { items: canRestore && dirtyLibrary ? cachedLibrary.items : remoteItems } : {}),
         ...(!options.skipCategories ? { categories: canRestore && dirtyCategories ? cachedLibrary.categories : remoteCategories } : {}),
       });
