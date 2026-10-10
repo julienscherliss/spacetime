@@ -38,6 +38,71 @@ function resetStore(tasks: Task[]) {
   });
 }
 
+describe('recurring subtask progress', () => {
+  beforeEach(() => { localStorage.clear(); resetStore([]); });
+
+  it.each([false, true])('starts each new occurrence unchecked (routine=%s)', (isRoutine) => {
+    const parent = makeTask({ id: 'parent', isRoutine, completed: true,
+      subtasks: [{ id: 'a', title: 'First', completed: true }, { id: 'b', title: 'Second', completed: false }] });
+    resetStore([parent]);
+    useTaskStore.getState().generateRecurringInstances('2026-04-02', '2026-04-03');
+    const generated = useTaskStore.getState().tasks.filter(t => t.id !== parent.id);
+    expect(generated).toHaveLength(2);
+    for (const task of generated) {
+      expect(task.subtasks).toEqual(parent.subtasks!.map(st => ({ ...st, completed: false })));
+      expect(task.subtasks).not.toBe(parent.subtasks);
+      expect(task.subtasks![0]).not.toBe(parent.subtasks![0]);
+    }
+    useTaskStore.getState().updateTask(generated[0].id, {
+      subtasks: generated[0].subtasks!.map(st => ({ ...st, completed: true })),
+    });
+    expect(useTaskStore.getState().tasks.find(t => t.id === generated[1].id)?.subtasks?.every(st => !st.completed)).toBe(true);
+    expect(useTaskStore.getState().tasks.find(t => t.id === parent.id)?.subtasks).toEqual(parent.subtasks);
+    const before = useTaskStore.getState().tasks;
+    useTaskStore.getState().generateRecurringInstances('2026-04-02', '2026-04-03');
+    expect(useTaskStore.getState().tasks).toBe(before);
+  });
+
+  it('resets subtasks on both a recurring group and its cloned children', () => {
+    const subtasks = [{ id: 'a', title: 'First', completed: true }];
+    resetStore([
+      makeTask({ id: 'parent', type: 'group', subtasks }),
+      makeTask({ id: 'child', type: 'one-time', recurrence: undefined,
+        seriesId: undefined, linkedGroupId: undefined, linked: false, groupId: 'parent', subtasks }),
+    ]);
+    useTaskStore.getState().generateRecurringInstances('2026-04-02', '2026-04-02');
+    const generated = useTaskStore.getState().tasks.filter(t => t.isRecurrenceInstance);
+    expect(generated).toHaveLength(2);
+    expect(generated.every(t => t.subtasks?.[0].completed === false)).toBe(true);
+    expect(useTaskStore.getState().tasks.find(t => t.id === 'child')?.subtasks).toEqual(subtasks);
+  });
+
+  it.each(['updateTask', 'updateFutureInstances', 'updateLinkedSeries'] as const)(
+    'keeps progress independent when checklist edits use %s', (action) => {
+      const parent = makeTask({ id: 'parent', subtasks: [
+        { id: 'a', title: 'First', completed: true }, { id: 'b', title: 'Second', completed: false },
+      ] });
+      const future = makeTask({ id: 'future', date: '2026-04-02', isRecurrenceInstance: true,
+        recurrenceParentId: 'parent', subtasks: [
+          { id: 'a', title: 'First', completed: false }, { id: 'b', title: 'Second', completed: true },
+        ] });
+      const empty = makeTask({ id: 'empty', date: '2026-04-03', isRecurrenceInstance: true,
+        recurrenceParentId: 'parent', subtasks: undefined });
+      resetStore([parent, future, empty]);
+      const updates = { subtasks: [
+        { id: 'b', title: 'Renamed', completed: false },
+        { id: 'new', title: 'New item', completed: true },
+      ] };
+      if (action === 'updateFutureInstances') useTaskStore.getState()[action]('parent', parent.date, updates);
+      else useTaskStore.getState()[action]('parent', updates);
+      expect(useTaskStore.getState().tasks.find(t => t.id === 'parent')?.subtasks).toEqual(updates.subtasks);
+      expect(useTaskStore.getState().tasks.find(t => t.id === 'future')?.subtasks).toEqual([
+        { id: 'b', title: 'Renamed', completed: true }, { id: 'new', title: 'New item', completed: false },
+      ]);
+      expect(useTaskStore.getState().tasks.find(t => t.id === 'empty')?.subtasks?.every(st => !st.completed)).toBe(true);
+    });
+});
+
 describe('linked recurrence schedule propagation', () => {
   beforeEach(() => {
     localStorage.clear();

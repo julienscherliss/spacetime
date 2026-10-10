@@ -3,6 +3,8 @@ import { Plus, GripVertical, X } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { autosizeTextarea } from '@/lib/autosizeTextarea';
 import { parseSubtaskText } from '@/lib/parseSubtaskText';
+import { splitInlineLinks } from '@/lib/inlineLinks';
+import { TextWithLinks } from '@/components/TextWithLinks';
 
 export interface Subtask {
   id: string;
@@ -27,6 +29,7 @@ const generateId = () => Math.random().toString(36).substring(2, 8);
 export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
   ({ subtasks, onChange, compact = false }, ref) => {
     const [input, setInput] = useState('');
+    const [editingId, setEditingId] = useState<string | null>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const subtaskRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
     const latestInputRef = useRef('');
@@ -39,7 +42,7 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
     useEffect(() => {
       Object.values(subtaskRefs.current).forEach(autosizeTextarea);
       autosizeTextarea(inputRef.current);
-    }, [subtasks, input]);
+    }, [subtasks, input, editingId]);
 
     useEffect(() => {
       latestInputRef.current = input;
@@ -105,7 +108,15 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
       onChange(subtasks.map((s) => (s.id === id ? { ...s, title } : s)));
     };
 
+    const focusSubtaskEnd = (id: string) => {
+      const editor = subtaskRefs.current[id];
+      if (!editor) return;
+      editor.focus();
+      editor.setSelectionRange(editor.value.length, editor.value.length);
+    };
+
     const handleSubtaskKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>, index: number) => {
+      if (e.nativeEvent.isComposing) return;
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         const current = subtasks[index];
@@ -127,15 +138,12 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
       } else if (e.key === 'Backspace' && subtasks[index].title === '') {
         e.preventDefault();
         onChange(subtasks.filter((_, i) => i !== index));
-        // Focus previous subtask or input
-        setTimeout(() => {
-          if (index > 0) {
-            const prevId = subtasks[index - 1].id;
-            subtaskRefs.current[prevId]?.focus();
-          } else {
-            inputRef.current?.focus();
-          }
-        }, 0);
+        // Keep backward deletion flowing from the end of the previous row.
+        if (index > 0) {
+          focusSubtaskEnd(subtasks[index - 1].id);
+        } else {
+          inputRef.current?.focus();
+        }
       }
     };
 
@@ -230,7 +238,7 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
                   s.completed ? 'line-through text-muted-foreground/40' : 'text-foreground/70'
                 }`}
               >
-                {s.title}
+                <TextWithLinks text={s.title} />
               </span>
             </label>
           ))}
@@ -260,6 +268,15 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
               onCheckedChange={() => handleToggle(s.id)}
               className="h-4 w-4 mt-2 shrink-0"
             />
+            <div className="relative flex-1 min-w-0 w-full">
+            {editingId !== s.id && splitInlineLinks(s.title).some(part => part.href) && (
+              <div onClick={() => subtaskRefs.current[s.id]?.focus()}
+                className={`min-h-[36px] py-2 text-[12px] font-mono leading-[1.4] whitespace-pre-wrap [overflow-wrap:anywhere] cursor-text ${
+                  s.completed ? 'line-through text-muted-foreground/30' : 'text-foreground/70'
+                }`}>
+                <TextWithLinks text={s.title} />
+              </div>
+            )}
             <textarea
               ref={(el) => {
                 subtaskRefs.current[s.id] = el;
@@ -268,6 +285,9 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
               value={s.title}
               wrap="soft"
               rows={1}
+              aria-label="Edit subtask"
+              onFocus={() => setEditingId(s.id)}
+              onBlur={() => setEditingId(current => current === s.id ? null : current)}
               onChange={(e) => {
                 handleTitleChange(s.id, e.target.value);
                 autosizeTextarea(e.currentTarget);
@@ -275,10 +295,13 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
               onInput={(e) => autosizeTextarea(e.currentTarget)}
               onKeyDown={(e) => handleSubtaskKeyDown(e, i)}
               onPaste={(e) => handleSubtaskPaste(e, i)}
-              className={`block flex-1 min-w-0 w-full bg-transparent text-[12px] font-mono leading-[1.4] whitespace-pre-wrap [overflow-wrap:anywhere] focus:outline-none resize-none overflow-hidden py-2 ${
+              className={`block min-w-0 w-full bg-transparent text-[12px] font-mono leading-[1.4] whitespace-pre-wrap [overflow-wrap:anywhere] focus:outline-none resize-none overflow-hidden py-2 ${
+                editingId !== s.id && splitInlineLinks(s.title).some(part => part.href) ? 'absolute inset-0 opacity-0 pointer-events-none' : ''
+              } ${
                 s.completed ? 'line-through text-muted-foreground/30' : 'text-foreground/70'
               }`}
             />
+            </div>
             <button
               onClick={() => handleDelete(s.id)}
               className="p-1 mt-1.5 text-muted-foreground/20 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
@@ -300,7 +323,11 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
             }}
             onInput={(e) => autosizeTextarea(e.currentTarget)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
+              if (e.nativeEvent.isComposing) return;
+              if (e.key === 'Backspace' && e.currentTarget.value === '' && subtasks.length > 0) {
+                e.preventDefault();
+                focusSubtaskEnd(subtasks[subtasks.length - 1].id);
+              } else if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 handleAdd();
               }

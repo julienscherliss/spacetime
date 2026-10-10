@@ -57,7 +57,7 @@ describe('desktop app activity bridge', () => {
     let api!: { subscribe: (callback: (active: boolean) => void) => () => void };
     evaluateNative('preload.ts', { ipcRenderer: ipc, contextBridge: {
       exposeInMainWorld: (name: string, value: typeof api) => {
-        expect(name).toBe('spacetimeActivity'); api = value;
+        if (name === 'spacetimeActivity') api = value;
       },
     } });
     const callback = vi.fn();

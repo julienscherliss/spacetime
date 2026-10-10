@@ -6,7 +6,8 @@ import { useDragHandoffStore } from '@/store/dragHandoffStore';
 
 import { PriorityBadge } from '@/components/PriorityBadge';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { formatTime12h } from '@/hooks/useCurrentTime';
+import { getLocalDateKeyFromIso } from '@/utils/taskVisibility';
+import { useCurrentTime, formatTime12h } from '@/hooks/useCurrentTime';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 /** Bracketed duration suffix shown next to task titles.
@@ -25,8 +26,9 @@ export function CalendarView() {
     setListReturnZoom, setShowListReturn, completeTask, uncompleteTask,
   } = useTaskStore();
   const isMobile = useIsMobile();
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const { dateStr: today } = useCurrentTime();
+  const [currentMonth, setCurrentMonth] = useState(() => new Date(today + 'T12:00:00'));
+  const [selectedDate, setSelectedDate] = useState<string | null>(() => today);
 
   // Swipe state
   const containerRef = useRef<HTMLDivElement>(null);
@@ -121,18 +123,18 @@ export function CalendarView() {
 
     for (let i = startOffset - 1; i >= 0; i--) {
       const d = new Date(year, month, -i);
-      days.push({ date: d.toISOString().split('T')[0], day: d.getDate(), inMonth: false });
+      days.push({ date: getLocalDateKeyFromIso(d.toISOString())!, day: d.getDate(), inMonth: false });
     }
 
     for (let i = 1; i <= lastDay.getDate(); i++) {
       const d = new Date(year, month, i);
-      days.push({ date: d.toISOString().split('T')[0], day: i, inMonth: true });
+      days.push({ date: getLocalDateKeyFromIso(d.toISOString())!, day: i, inMonth: true });
     }
 
     const remaining = 42 - days.length;
     for (let i = 1; i <= remaining; i++) {
       const d = new Date(year, month + 1, i);
-      days.push({ date: d.toISOString().split('T')[0], day: i, inMonth: false });
+      days.push({ date: getLocalDateKeyFromIso(d.toISOString())!, day: i, inMonth: false });
     }
 
     return days;
@@ -158,7 +160,6 @@ export function CalendarView() {
   }, [filteredTasks]);
 
   const maxTasks = Math.max(1, ...Object.values(taskCountByDate));
-  const today = new Date().toISOString().split('T')[0];
 
   const selectedTasks = selectedDate
     ? filteredTasks.filter((t) => t.date === selectedDate).sort((a, b) => (a.time || '').localeCompare(b.time || ''))

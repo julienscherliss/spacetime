@@ -9,6 +9,7 @@ import { isNativePlatform } from '@/utils/nativePlatform';
 import { toast } from 'sonner';
 import { subscribeAppActivity, emitEntryRefresh } from '@/lib/appActivity';
 import { createForegroundRefresh } from '@/lib/foregroundRefresh';
+import { registerDesktopRestartPreparation } from '@/lib/desktopUpdates';
 import type { User } from '@supabase/supabase-js';
 import { preserveDeviceCache, blockRecovery } from '@/lib/migrationRecovery';
 import { ownedCacheEnabled, closeOwnedCache, openVerifiedOwnedCache, currentOwnedCacheOwner,
@@ -850,7 +851,6 @@ export async function loadFromDB(
     if ((dirtyTasks || dirtyLibrary || dirtyCategories) && !canRestore) {
       // Keep exact pending bytes before fresh server state overwrites this cache.
       retainOwnedReviewCopy(options.restart!);
-      toast.info('Saved device changes need review. Download your private copy before making those changes again.');
     }
 
     if (!options.skipTasks) {
@@ -907,14 +907,20 @@ export function useDataSync(user: User | null) {
   const accessTokenRef = useRef<string | null>(null);
   const flushPendingWrites = useCallback(async (activeUserId: string): Promise<boolean> => {
     if (!initialLoadDone.current || userIdRef.current !== activeUserId || syncStatus !== 'loaded') return false;
+    const epoch = syncEpoch;
     if (taskSaveTimeout) { clearTimeout(taskSaveTimeout); taskSaveTimeout = null; }
     if (libSaveTimeout) { clearTimeout(libSaveTimeout); libSaveTimeout = null; }
     if (catSaveTimeout) { clearTimeout(catSaveTimeout); catSaveTimeout = null; }
     try {
       const results = await Promise.all([saveTasksNow(activeUserId), saveLibraryNow(activeUserId), saveCategoriesNow(activeUserId)]);
-      return results.every(Boolean) && userIdRef.current === activeUserId && !hasUnsavedChanges();
+      return results.every(Boolean) && epoch === syncEpoch && syncStatus === 'loaded' && userIdRef.current === activeUserId && !hasUnsavedChanges();
     } catch { return false; }
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    return registerDesktopRestartPreparation(() => flushPendingWrites(user.id));
+  }, [flushPendingWrites, user?.id]);
 
   // Keep access token up to date for beforeunload
   useEffect(() => {

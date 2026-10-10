@@ -1,3 +1,4 @@
+import { getScheduleTopOffset, getScheduleViewportHeight } from '@/lib/scheduleViewport';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTrackpadSwipe } from '@/hooks/useTrackpadSwipe';
 import { useTouchDragStore } from '@/store/touchDragStore';
@@ -64,8 +65,8 @@ export function WeekView() {
     preClusterScaleRef.current = hourHeight;
     preClusterScrollRef.current = window.scrollY;
 
-    const stickyOffset = window.innerWidth < 640 ? 36 : 84;
-    const viewportH = window.innerHeight - stickyOffset;
+    const stickyOffset = getScheduleTopOffset();
+    const viewportH = getScheduleViewportHeight(stickyOffset);
 
     setClusterZoomed(true);
 
@@ -91,8 +92,8 @@ export function WeekView() {
     const restoreScale = preClusterScaleRef.current;
     const restoreScroll = preClusterScrollRef.current ?? 0;
 
-    const stickyOffset = window.innerWidth < 640 ? 36 : 84;
-    const viewportH = window.innerHeight - stickyOffset;
+    const stickyOffset = getScheduleTopOffset();
+    const viewportH = getScheduleViewportHeight(stickyOffset);
     const timelineDocTop = getTimelineDocTop();
     const centerDocY = restoreScroll + stickyOffset + viewportH / 2;
     const centerMin = START_HOUR * 60 + ((centerDocY - timelineDocTop) / restoreScale) * 60;
@@ -240,7 +241,7 @@ export function WeekView() {
       onTouchEnd={handleTouchEnd}
     >
       {/* Sticky header: title row + weekday headers pinned together */}
-      <div className="sticky top-[env(safe-area-inset-top)] sm:top-12 z-30 bg-background border-b border-border/30">
+      <div data-schedule-header className="sticky top-[env(safe-area-inset-top)] sm:top-12 z-30 bg-background border-b border-border/30">
         <div className="py-3 flex items-center justify-between gap-2">
           <h2 className="text-base sm:text-lg font-display font-bold text-foreground tracking-tight truncate">
             {weekRangeLabel}
@@ -312,11 +313,14 @@ export function WeekView() {
             />
           </div>
         </div>
+        {isMobile && <div className="pl-6 max-h-[28dvh] overflow-y-auto overscroll-contain">
+          <AllDayEventStrip dates={week.map((day) => day.date)} compact />
+        </div>}
       </div>
 
-      <div className={`${isMobile ? 'pl-6' : 'pl-[3.25rem]'}`}>
-        <AllDayEventStrip dates={week.map((day) => day.date)} compact={isMobile} />
-      </div>
+      {!isMobile && <div className="pl-[3.25rem]">
+        <AllDayEventStrip dates={week.map((day) => day.date)} />
+      </div>}
 
       {/* Calendar grid — flows naturally, no inner scroll */}
       <div
@@ -324,6 +328,7 @@ export function WeekView() {
         style={{
           transform: swiping ? `translateX(${swipeOffset * 0.2}px)` : 'none',
           overflow: 'hidden',
+          isolation: 'isolate',
         }}
       >
         <WeekGrid

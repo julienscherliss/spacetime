@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect, useLayoutEffect } from 'react
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore } from '@/store/taskStore';
 import { useCurrentTime, timeToMinutes, formatTime12h } from '@/hooks/useCurrentTime';
-import { ChevronUp, ChevronDown, ChevronRight, Paperclip, ExternalLink, Check, Calendar as CalendarIcon, Tag } from 'lucide-react';
+import { ChevronUp, ChevronDown, ChevronRight, Paperclip, ExternalLink, Check, Calendar as CalendarIcon, Tag, Pencil } from 'lucide-react';
 import { AttachmentLightbox } from '@/components/AttachmentLightbox';
 import { TagAutocomplete } from '@/components/TagAutocomplete';
 import { TagPickerMenu } from '@/components/TagPickerMenu';
@@ -14,6 +14,8 @@ import { autosizeTextarea } from '@/lib/autosizeTextarea';
 import { useTrackpadSwipe } from '@/hooks/useTrackpadSwipe';
 import { GroupListRow } from '@/components/GroupListRow';
 import { parseSubtaskText } from '@/lib/parseSubtaskText';
+import { splitInlineLinks } from '@/lib/inlineLinks';
+import { TextWithLinks } from '@/components/TextWithLinks';
 
 import { getFocusSchedule, resolveFocusTask } from '@/lib/appEntryDestination';
 
@@ -792,6 +794,18 @@ function TaskDetailPanel({ task, onUpdateTask, onCompleteTask }: TaskDetailPanel
                   }}
                   className="block flex-1 min-w-0 w-full text-[13px] font-mono leading-snug whitespace-pre-wrap [overflow-wrap:anywhere] text-foreground/85 bg-transparent outline-none caret-foreground/50 resize-none overflow-hidden"
                 />
+              ) : splitInlineLinks(s.title).some(part => part.href) ? (
+                <div className={`flex-1 min-w-0 flex items-start gap-2 text-[13px] font-mono leading-snug whitespace-pre-wrap [overflow-wrap:anywhere] ${
+                  s.completed ? 'line-through text-muted-foreground/35' : 'text-foreground/85'
+                }`}>
+                  <span className="flex-1 min-w-0"><TextWithLinks text={s.title} /></span>
+                  <button aria-label="Edit subtask" onClick={() => {
+                    setEditingSubtaskId(s.id);
+                    setSubtaskDraft(s.title);
+                  }} className="shrink-0 p-1 text-muted-foreground/40 hover:text-foreground">
+                    <Pencil size={12} />
+                  </button>
+                </div>
               ) : (
                 <button
                   onClick={() => {
