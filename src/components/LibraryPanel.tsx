@@ -778,7 +778,7 @@ export function LibraryPanel() {
             data-library-panel
             className={
               isDesktop && sidebarMode
-                ? 'fixed top-0 left-0 bottom-0 z-50 bg-background flex flex-col border-r border-border/50 shadow-xl w-[455px] max-w-[90vw]'
+                ? 'fixed top-0 left-0 bottom-0 z-50 bg-background flex flex-col border-r border-border/50 shadow-xl w-[var(--library-sidebar-width)] max-w-[90vw]'
                 : 'fixed inset-0 z-50 bg-background flex flex-col'
             }
           >

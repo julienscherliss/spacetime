@@ -42,6 +42,7 @@
   --ui-icon-xl: 18px;
   --ui-tap-min: 44px;
   --ui-nav-h: 48px;
+  --library-sidebar-width: 455px;
   --ui-task-title: 12px;
   --ui-task-meta: 10px;
   --ui-task-badge: 8px;
@@ -50,6 +51,15 @@
   --ui-input-h: 44px;
   --ui-resize-handle: 16px;
   --ui-resize-w: 28px;
+}
+
+/* Leave enough room for the desktop schedule; smaller windows keep the overlay.
+   Padding reflows navigation and content without moving fixed editors or drag ghosts.
+   No width animation: timeline measurements stay stable during drag interactions. */
+@media (min-width: 1280px) {
+  .app-workspace[data-library-sidebar-open="true"] {
+    padding-left: var(--library-sidebar-width);
+  }
 }
 
 /* ── Comfort Mode: intentionally scaled tokens ── */

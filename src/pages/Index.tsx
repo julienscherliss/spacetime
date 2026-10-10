@@ -45,6 +45,7 @@ import { FeedbackModal } from '@/components/FeedbackModal';
 
 const Index = () => {
   const { viewMode, daySubMode, weekSubMode, routinesEnabled, moveOverdueToWaitingRoom } = useTaskStore();
+  const librarySidebarOpen = useLibraryStore((s) => s.panelOpen && s.sidebarMode);
   useNativeNotifications();
   useForegroundReminders();
   useLiveActivities();
@@ -209,7 +210,7 @@ const Index = () => {
   }, [anyOverlayOpen]);
 
   return (
-    <div className={`min-h-screen bg-background pb-16 sm:pb-0`}>
+    <div className="app-workspace min-h-screen bg-background pb-16 sm:pb-0" data-library-sidebar-open={librarySidebarOpen}>
       <AppNav />
       <TutorialRoot />
 
