@@ -75,6 +75,7 @@ interface LibraryState {
   categories: CategoryDef[];
   panelOpen: boolean;
   sidebarMode: boolean;
+  showDetails: boolean;
   reopenAfterCarryDrop: boolean;
   sortMode: SortMode;
   filters: FilterState;
@@ -90,6 +91,7 @@ interface LibraryState {
 
   setPanelOpen: (open: boolean) => void;
   setSidebarMode: (mode: boolean) => void;
+  setShowDetails: (show: boolean) => void;
   setReopenAfterCarryDrop: (v: boolean) => void;
   setSortMode: (mode: SortMode) => void;
   setFilterCategory: (cat: FilterCategory) => void;
@@ -159,6 +161,7 @@ export const useLibraryStore = create<LibraryState>()(
       categories: [],
       panelOpen: false,
       sidebarMode: false,
+      showDetails: false,
       reopenAfterCarryDrop: false,
       sortMode: 'due',
       filterCategory: 'all',
@@ -170,6 +173,7 @@ export const useLibraryStore = create<LibraryState>()(
 
       setPanelOpen: (open) => set({ panelOpen: open }),
       setSidebarMode: (mode) => set({ sidebarMode: mode }),
+      setShowDetails: (show) => set({ showDetails: show }),
       setReopenAfterCarryDrop: (v) => set({ reopenAfterCarryDrop: v }),
       setSortMode: (mode) => set({ sortMode: mode }),
       editingItemId: null,
@@ -637,7 +641,7 @@ export const useLibraryStore = create<LibraryState>()(
     {
       name: 'do-library-store', storage: createJSONStorage(() => accountCacheStorage),
       partialize: (state) => ({ items: state.items, categories: state.categories,
-        sidebarMode: state.sidebarMode, sortMode: state.sortMode, filters: state.filters,
+        sidebarMode: state.sidebarMode, showDetails: state.showDetails, sortMode: state.sortMode, filters: state.filters,
         filterCategory: state.filterCategory }),
       merge: (persisted: any, current: any) => {
         const merged = { ...current, ...persisted, panelOpen: false, editingItemId: null, reopenAfterCarryDrop: false };
