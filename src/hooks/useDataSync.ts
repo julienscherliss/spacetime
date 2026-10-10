@@ -1,6 +1,7 @@
+import { rowToTask } from '@/lib/taskRow';
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useTaskStore, Task, Priority, TaskType } from '@/store/taskStore';
+import { useTaskStore, Task } from '@/store/taskStore';
 import { useLibraryStore, LibraryTask, CategoryDef } from '@/store/libraryStore';
 import { useGoalsStore } from '@/store/goalsStore';
 import { useReflectionStore } from '@/store/reflectionStore';
@@ -35,46 +36,7 @@ function currentPlatform() {
 
 // ─── Converters ────────────────────────────────────────
 
-export function rowToTask(row: any): Task {
-  return {
-    id: row.id,
-    title: row.title,
-    category: row.category ?? undefined,
-    description: row.description ?? undefined,
-    subtasks: row.subtasks ?? undefined,
-    type: (row.type || 'one-time') as TaskType,
-    priority: (row.priority ?? 0) as Priority,
-    originalPriority: (row.original_priority ?? 0) as Priority,
-    date: row.date,
-    time: row.time ?? undefined,
-    duration: row.duration ?? undefined,
-    completed: row.completed ?? false,
-    createdAt: row.created_at,
-    moveCount: row.move_count ?? 0,
-    originalDate: row.original_date ?? undefined,
-    recurrenceExceptions: row.recurrence_exceptions ?? [],
-    recurrence: row.recurrence ?? undefined,
-    recurrenceParentId: row.recurrence_parent_id ?? undefined,
-    isRecurrenceInstance: row.is_recurrence_instance ?? false,
-    isRoutine: row.is_routine ?? undefined,
-    linked: row.linked ?? false,
-    seriesId: row.series_id ?? undefined,
-    linkedGroupId: row.linked_group_id ?? undefined,
-    detachedFromSeries: row.detached_from_series ?? false,
-    // Overdue Limbo tasks retain their former schedule. Preserve their explicit
-    // status; only completed scheduled tasks have a stale waiting-room flag.
-    inWaitingRoom: (row.in_waiting_room ?? false) && !(row.completed && row.date && row.time),
-    waitingRoomCount: row.waiting_room_count ?? 0,
-    dueDate: row.due_date ?? undefined,
-    archivedAt: row.archived_at ?? undefined,
-    archiveReason: row.archive_reason ?? undefined,
-    attachments: row.attachments ?? [],
-    groupId: row.group_id ?? undefined,
-    preferredDuration: row.preferred_duration ?? undefined,
-    groupOrder: row.group_order ?? undefined,
-    icon: row.icon ?? undefined,
-  };
-}
+export { rowToTask } from '@/lib/taskRow';
 
 export function taskToRow(task: Task, userId: string) {
   return {
@@ -112,6 +74,8 @@ export function taskToRow(task: Task, userId: string) {
     preferred_duration: task.preferredDuration ?? null,
     group_order: task.groupOrder ?? null,
     icon: task.icon ?? null,
+    source_calendar_id: task.sourceCalendarId ?? null,
+    source_calendar_event_id: task.sourceCalendarEventId ?? null,
   } as any; // group_* columns exist in DB but the auto-generated types haven't regenerated yet
 }
 
@@ -259,6 +223,8 @@ export function taskSnapshotFields(t: Task) {
     preferredDuration: t.preferredDuration ?? null,
     groupOrder: t.groupOrder ?? null,
     icon: t.icon ?? null,
+    sourceCalendarId: t.sourceCalendarId ?? null,
+    sourceCalendarEventId: t.sourceCalendarEventId ?? null,
   };
 }
 
@@ -343,6 +309,8 @@ export const TASK_KEY_TO_COLUMN: Record<string, string> = {
   preferredDuration: 'preferred_duration',
   groupOrder: 'group_order',
   icon: 'icon',
+  sourceCalendarId: 'source_calendar_id',
+  sourceCalendarEventId: 'source_calendar_event_id',
 };
 
 // Build a partial DB row containing only the columns whose projected values

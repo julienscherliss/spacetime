@@ -9,6 +9,7 @@ import { useLibraryStore } from '@/store/libraryStore';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { TagPickerMenu } from '@/components/TagPickerMenu';
 import { toast } from 'sonner';
+import { calendarEventKey, convertedCalendarEventKeys, convertCalendarEventToTask } from '@/lib/calendarConversion';
 
 function formatDuration(mins: number): string {
   if (mins < 60) return `${mins}m`;
@@ -29,6 +30,7 @@ export function CalendarEventEditPanel() {
   const setEditingEvent = useCalendarStore((s) => s.setEditingEvent);
   const toggleCalendar = useCalendarStore((s) => s.toggleCalendar);
   const isMobile = useIsMobile();
+  const tasks = useTaskStore((s) => s.tasks);
 
   const event = events.find((e) => e.id === editingEventId);
   const isDeleted = editingEventId ? deletedEventIds.includes(editingEventId) : false;
@@ -38,6 +40,7 @@ export function CalendarEventEditPanel() {
 
   const [localCategory, setLocalCategory] = useState(category);
   const [showCatPicker, setShowCatPicker] = useState(false);
+  const [converting, setConverting] = useState(false);
 
   useEffect(() => {
     setLocalCategory(category);
@@ -69,25 +72,19 @@ export function CalendarEventEditPanel() {
     setEditingEvent(null);
   };
 
-  const canConvertToTask = !!event.time && !event.isAllDay;
+  const canConvertToTask = !!event.time && !event.isAllDay && !convertedCalendarEventKeys(tasks).has(calendarEventKey(event));
 
-  const handleConvertToTask = () => {
+  const handleConvertToTask = async () => {
     if (!event || !canConvertToTask) return;
-    const addTask = useTaskStore.getState().addTask;
-    addTask({
-      title: event.title,
-      category: localCategory || undefined,
-      date: event.date,
-      time: event.time!,
-      duration: event.duration || 30,
-      type: 'one-time',
-      priority: 0,
-      description: event.description || undefined,
-    });
-    // Delete the calendar event
-    if (editingEventId) deleteEvent(editingEventId);
-    setEditingEvent(null);
-    toast.success('Converted to task');
+    if (converting) return;
+    setConverting(true);
+    try {
+      await convertCalendarEventToTask(event, localCategory);
+      if (useCalendarStore.getState().editingEventId === event.id) setEditingEvent(null);
+      toast.success('Converted to task');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not convert this event.');
+    } finally { setConverting(false); }
   };
 
   const categoryLabel = localCategory
@@ -222,10 +219,12 @@ export function CalendarEventEditPanel() {
                 {canConvertToTask && !isDeleted && (
                   <button
                     onClick={handleConvertToTask}
+                    disabled={converting}
+                    aria-busy={converting}
                     className="w-full flex items-center justify-center gap-2 py-2 rounded-sm border border-primary/20 text-[10px] font-mono tracking-wider text-primary/70 hover:bg-primary/5 transition-colors"
                   >
                     <ArrowRightLeft size={11} />
-                    CONVERT TO TASK
+                    {converting ? 'CONVERTING…' : 'CONVERT TO TASK'}
                   </button>
                 )}
 

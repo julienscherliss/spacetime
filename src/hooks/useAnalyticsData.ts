@@ -1,3 +1,4 @@
+import { calendarEventKey, convertedCalendarEventKeys } from '@/lib/calendarConversion';
 import { useMemo } from 'react';
 import { useTaskStore, Task } from '@/store/taskStore';
 import { useLibraryStore } from '@/store/libraryStore';
@@ -161,8 +162,9 @@ export function useAnalyticsData(filters: AnalyticsFilters): AnalyticsData {
 
   return useMemo(() => {
     // Convert completed+tagged calendar events into synthetic task entries
+    const converted = convertedCalendarEventKeys(allTasks);
     const calendarAsTasks: Task[] = calendarEvents
-      .filter(e => completedEventIds.includes(e.id) && eventCategories[e.id])
+      .filter(e => !converted.has(calendarEventKey(e)) && completedEventIds.includes(e.id) && eventCategories[e.id])
       .map(e => ({
         id: `cal-${e.id}`,
         title: e.title,
