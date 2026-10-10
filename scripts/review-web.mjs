@@ -7,6 +7,15 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
+export async function verifyAsset(url, expectedHash, fetchAsset = fetch, pause = ms => new Promise(resolve => setTimeout(resolve, ms))) {
+  // An alias can reach a previous deployment briefly while the new files propagate.
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const response = await fetchAsset(url, { cache: 'no-store', signal: AbortSignal.timeout(20000) });
+    if (response.status === 200 && sha(Buffer.from(await response.arrayBuffer())) === expectedHash) return;
+    if (attempt < 7) await pause(2000);
+  }
+  throw Error('Review asset did not reach the prepared version: ' + new URL(url).pathname);
+}
 export function collectAssets(directory, privateValues = []) {
   const visit = folder => fs.readdirSync(folder, { withFileTypes: true }).flatMap(entry => {
     assert(!entry.isSymbolicLink(), 'Review assets cannot include symbolic links.');
@@ -104,9 +113,7 @@ async function main() {
   }
   assert(receipt.deployment && receipt.files?.length, 'Publish the prepared review first.');
   for (const file of receipt.files) {
-    const response = await fetch(new URL(file.path, config.url + '/'), { cache: 'no-store', signal: AbortSignal.timeout(20000) });
-    assert.equal(response.status, 200, 'Review asset unavailable: ' + file.path);
-    assert.equal(sha(Buffer.from(await response.arrayBuffer())), file.sha256, 'Review asset mismatch: ' + file.path);
+    await verifyAsset(new URL(file.path, config.url + '/'), file.sha256);
   }
   const response = await fetch(config.url + '/app', { signal: AbortSignal.timeout(20000) });
   assert.equal(response.status, 200, 'App route unavailable.');

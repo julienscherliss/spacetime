@@ -3,7 +3,24 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { collectAssets, outputConfig } from './review-web.mjs';
+import { createHash } from 'node:crypto';
+import { collectAssets, outputConfig, verifyAsset } from './review-web.mjs';
+
+test('hosting propagation waits for the exact candidate rather than accepting old assets', async () => {
+  const expected = createHash('sha256').update('new').digest('hex');
+  const responses = [new Response('', { status: 404 }), new Response('old'), new Response('new')];
+  let calls = 0;
+  await verifyAsset('https://review.vercel.app/app.js', expected, async () => responses[calls++], async () => {});
+  assert.equal(calls, 3);
+});
+
+test('a permanently missing review asset stops verification after bounded attempts', async () => {
+  let calls = 0;
+  await assert.rejects(verifyAsset('https://review.vercel.app/app.js', 'missing', async () => {
+    calls++; return new Response('', { status: 404 });
+  }, async () => {}), /did not reach the prepared version/);
+  assert.equal(calls, 8);
+});
 
 function fixture(files, verify) {
   const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'spacetime-review-'));
