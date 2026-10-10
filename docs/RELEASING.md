@@ -4,18 +4,40 @@ Keep GPT-6 Sol / Medium for routine releases. Use High only for a failed check o
 
 ## Review first, package second, publish last
 
-For a proposed change, start a local preview with `npm run review` and open
-`http://127.0.0.1:5174/`. Edits update the preview immediately. This does not build,
-sign, notarize, upload, install, or publish a release, and does not change release
-versions or overwrite packaged assets. The regular app preview uses the configured
-backend: signing into your account and editing tasks still syncs real account data.
-For testing destructive or unusual cases, provide a separate sample-data preview
-without mounting Auth/data-sync rather than modifying the owner's schedule.
+The owner's primary review surface is the **full app** at
+https://spacetime-review.vercel.app/app. It uses the owned backend: sign in normally;
+editing tasks syncs real account data across devices. Treat it as another app client.
+The preview is excluded from search indexing. The live website remains at
+https://launchspacetime.com and changes only through the approved release workflow.
+
+After implementing and running focused checks, commit the candidate on the shared
+source branch, then run:
+
+```sh
+npm run review:web
+```
+
+This builds only the web app, scans the assets for private credentials/exports,
+uploads those built assets to the dedicated Vercel project, and verifies every
+published asset against its saved digest. It reuses a completed build/deployment
+for the same commit. It does not bump release versions or build/copy/sign/archive
+Mac or iOS assets. Private receipts/logs live in `.migration-private/web-review/`.
+`npm run review:web -- status` reports the last review; `-- verify` checks it again.
+`-- prepare` builds locally without uploading. The first setup links only
+`.migration-private/web-review/deployment/` to Vercel's `spacetime-review` project in
+scope `imprint8`; keep that link private and never link the app root to production.
+Vercel's `--prod` flag here updates the stable **review-project** URL only.
+
+For quick local development, `npm run review` serves http://127.0.0.1:5174/ with
+immediate updates. Use isolated sample-data fixtures for destructive/edge-case
+checks, and show the full hosted app for owner review. Physical iPhone keyboard,
+Live Activities, IAP and native-specific behavior still need their targeted device
+check after an approved TestFlight build.
 
 Use three explicit checkpoints:
 
 1. **Review:** implement locally, run focused checks for the changed behavior, and
-   show the preview. Stop here for owner feedback. Save the change, evidence,
+   update the hosted full-app review and send its link. Stop here for owner feedback. Save the change, evidence,
    preview URL/server state, and next action in the coordinator handoff.
 2. **Package:** after owner approval, prepare the single shared build and Mac/iOS
    packages below. Use an unsigned development Mac app or iOS Simulator only when

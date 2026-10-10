@@ -126,26 +126,30 @@ export function TagPickerMenu({ value, onChange, onClose, showNewOption = true }
         const TagIcon = getIconByName(cat.icon);
 
         return (
-          <button
-            key={cat.value}
-            onClick={() => { onChange(cat.value); onClose(); }}
-            className={`w-full text-left px-3 py-2 ${currentParent ? 'pl-5' : ''} text-[11px] font-mono rounded-sm flex items-center justify-between ${
-              value === cat.value ? 'text-foreground bg-muted/50' : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30'
-            }`}
-          >
-            <span className="flex items-center gap-2 min-w-0">
-              {TagIcon && <TagIcon size={11} strokeWidth={1.5} className="text-foreground/60 shrink-0" />}
-              <span className="truncate">{label}</span>
-            </span>
+          <div key={cat.value} className="flex items-center">
+            <button
+              type="button"
+              onClick={() => { onChange(cat.value); onClose(); }}
+              className={`flex-1 min-w-0 text-left px-3 py-2 ${currentParent ? 'pl-5' : ''} text-[11px] font-mono rounded-sm flex items-center justify-between ${
+                value === cat.value ? 'text-foreground bg-muted/50' : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/30'
+              }`}
+            >
+              <span className="flex items-center gap-2 min-w-0">
+                {TagIcon && <TagIcon size={11} strokeWidth={1.5} className="text-foreground/60 shrink-0" />}
+                <span className="truncate">{label}</span>
+              </span>
+            </button>
             {canShowChevron && (
               <button
+                type="button"
+                aria-label={`Open subtags for ${label}`}
                 onClick={(e) => { e.stopPropagation(); drillInto(cat.value); }}
-                className="p-0.5 text-muted-foreground/30 hover:text-foreground"
+                className="self-stretch px-2 text-muted-foreground/30 hover:text-foreground"
               >
                 <ChevronRight size={12} />
               </button>
             )}
-          </button>
+          </div>
         );
       })}
 

@@ -128,3 +128,47 @@ it('saves the draft on Escape and restores page scrolling', () => {
   expect(useTaskStore.getState().editingTaskId).toBeNull();
   expect(document.body.style.overflow).toBe(overflow);
 });
+
+it('dismisses title suggestions with Escape without saving or closing the editor', () => {
+  render(<TaskEditPanel />);
+  const title = screen.getByLabelText('Task name');
+  fireEvent.change(title, { target: { value: 'Draft #' } });
+  expect(screen.getByRole('button', { name: '#Work' })).toBeVisible();
+  fireEvent.keyDown(title, { key: 'Escape' });
+  act(() => vi.advanceTimersByTime(500));
+  expect(screen.queryByRole('button', { name: '#Work' })).not.toBeInTheDocument();
+  expect(screen.getByRole('dialog', { name: 'Edit task' })).toBeVisible();
+  expect(current().title).toBe(sample.title);
+});
+
+it('allows a suggestion list touch to scroll before selecting a tag on click', () => {
+  render(<TaskEditPanel />);
+  fireEvent.change(screen.getByLabelText('Task name'), { target: { value: 'Draft #' } });
+  const suggestion = screen.getByRole('button', { name: '#Work' });
+  fireEvent.pointerDown(suggestion, { pointerType: 'touch' });
+  expect(screen.getByLabelText('Edit tag')).toHaveTextContent('no tag');
+  fireEvent.click(suggestion);
+  expect(screen.getByLabelText('Task name')).toHaveValue('Draft');
+  expect(screen.getByLabelText('Edit tag')).toHaveTextContent('Work');
+  expect(screen.getByRole('dialog', { name: 'Edit task' })).toBeVisible();
+});
+
+
+it('uses the available phone height when the keyboard also resizes the layout viewport', () => {
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  const oldViewport = window.visualViewport;
+  const vv = new EventTarget();
+  Object.assign(vv, { height: 460, offsetTop: 0 });
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+  Object.defineProperty(window, 'innerHeight', { configurable: true, value: 460 });
+  Object.defineProperty(window, 'visualViewport', { configurable: true, value: vv });
+  try {
+    render(<TaskEditPanel />);
+    expect(screen.getByRole('dialog')).toHaveStyle({ maxHeight: '436px' });
+  } finally {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: height });
+    Object.defineProperty(window, 'visualViewport', { configurable: true, value: oldViewport });
+  }
+});

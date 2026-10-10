@@ -13,7 +13,8 @@
     "sync:main": "bash scripts/sync-main.sh",
     "test": "vitest run",
     "test:watch": "vitest",
-    "release": "node scripts/release.mjs"
+    "release": "node scripts/release.mjs",
+    "review:web": "node scripts/review-web.mjs"
   },
   "dependencies": {
     "@capacitor-community/electron": "^5.0.1",
