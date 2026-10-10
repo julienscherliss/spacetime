@@ -54,7 +54,7 @@ export function AllDayEventStrip({ dates, compact = false }: AllDayEventStripPro
           : 'rounded-sm'
         }`}
         style={{
-          opacity: 0.25,
+          opacity: 0.75,
           borderWidth: '1.5px',
           borderColor: color,
           borderStyle: 'solid',

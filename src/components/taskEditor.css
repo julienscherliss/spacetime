@@ -11,6 +11,8 @@
   --editor-padding: 24px;
 }
 .task-editor-card [hidden] { display: none !important; }
+/* The card receives initial focus without opening the mobile keyboard. */
+.task-editor-card:focus { outline: none; }
 .task-editor-header {
   display: flex;
   align-items: center;
