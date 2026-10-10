@@ -16,7 +16,7 @@ import { resolveCategoryIcon } from '@/lib/resolveTaskIcon';
 import { TagAutocomplete } from '@/components/TagAutocomplete';
 import { TagPickerMenu } from '@/components/TagPickerMenu';
 import { formatTime12h } from '@/hooks/useCurrentTime';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import { DurationPicker } from '@/components/ScrollWheelPicker';
 import { format, differenceInCalendarDays } from 'date-fns';
@@ -153,6 +153,7 @@ export function TaskEditPanel() {
   const [showSettings, setShowSettings] = useState(false);
   const [editingDetails, setEditingDetails] = useState(false);
   const [showPriorityPicker, setShowPriorityPicker] = useState(false);
+  const [settingAnchor, setSettingAnchor] = useState<HTMLElement | null>(null);
   const detailsRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState<{height:number;top:number}|null>(null);
@@ -541,21 +542,26 @@ export function TaskEditPanel() {
   const today = getAppClock(new Date(), useTimezoneStore.getState().timezone).date;
   const dueDays = dueDate ? differenceInCalendarDays(new Date(dueDate+'T12:00:00'),new Date(today+'T12:00:00')) : null;
   const dueLabel = dueDays === null ? '' : dueDays < 0 ? `${Math.abs(dueDays)}d overdue` : dueDays === 0 ? 'Due today' : `${dueDays}d left`;
-  const openSetting = (open:()=>void) => {setEditingDetails(true);open();};
+  const openSetting = (open:()=>void, anchor?: HTMLElement) => {
+    if (anchor) setSettingAnchor(anchor);
+    setEditingDetails(true);
+    open();
+  };
   const attributes = [
-    ...(dueDate ? [<button key="due" aria-label="Edit due date" title={dueDate} onClick={()=>openSetting(()=>setShowDuePicker(true))}>{dueLabel}</button>] : []),
-    <button key="tag" aria-label="Edit tag" className={!taskCategory?'missing-tag':''} onClick={()=>openSetting(()=>setShowCatPicker(true))}>{tagLabel || 'no tag'}</button>,
+    ...(dueDate ? [<button key="due" aria-label="Edit due date" title={dueDate} onClick={(event)=>openSetting(()=>setShowDuePicker(true), event.currentTarget)}>{dueLabel}</button>] : []),
+    <button key="tag" aria-label="Edit tag" className={!taskCategory?'missing-tag':''} onClick={(event)=>openSetting(()=>setShowCatPicker(true), event.currentTarget)}>{tagLabel || 'no tag'}</button>,
     ...(reminders.length ? [<button key="reminders" aria-label="Edit reminders" title="Reminders" onClick={()=>setShowReminderModal(true)}><Bell/></button>] : []),
-    ...(taskIcon ? [<button key="icon" aria-label="Edit task icon" onClick={()=>openSetting(()=>setShowIconPicker(true))}>{(() => {const Icon=getIconByName(taskIcon)||Sparkles;return <Icon/>;})()}</button>] : []),
-    ...(priority ? [<button key="priority" aria-label="Edit priority" onClick={()=>openSetting(()=>setShowPriorityPicker(true))}>{PRIORITY_LABELS[priority]}</button>] : []),
+    ...(taskIcon ? [<button key="icon" aria-label="Edit task icon" onClick={(event)=>openSetting(()=>setShowIconPicker(true), event.currentTarget)}>{(() => {const Icon=getIconByName(taskIcon)||Sparkles;return <Icon/>;})()}</button>] : []),
+    ...(priority ? [<button key="priority" aria-label="Edit priority" onClick={(event)=>openSetting(()=>setShowPriorityPicker(true), event.currentTarget)}>{PRIORITY_LABELS[priority]}</button>] : []),
     ...(recurrenceType !== 'none' ? [<button key="repeat" aria-label="Edit repeat" onClick={()=>openSetting(()=>setShowRecurrence(true))}>{recurrenceLabel(buildRecurrence())}</button>] : []),
     ...(isRoutine && recurrenceType !== 'none' ? [<button key="routine" aria-label="Turn off routine" onClick={()=>setIsRoutine(false)}>Routine</button>] : []),
   ];
   const settingControls = (<div className={`task-editor-controls ${showSettings?'settings-controls':'quick-controls'}`} hidden={!showSettings && !editingDetails && !showDuePicker && !showCatPicker && !showIconPicker && !showPriorityPicker && !showRecurrence}>
               {/* Due date */}
               <Popover open={showDuePicker} onOpenChange={setShowDuePicker}>
+                {settingAnchor && <PopoverAnchor virtualRef={{ current: settingAnchor }} />}
                 <PopoverTrigger asChild>
-                  <button data-setting="due" aria-label="Due date" title="Due date" className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
+                  <button onClick={event => setSettingAnchor(event.currentTarget)} data-setting="due" aria-label="Due date" title="Due date" className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
                     dueInfo?.isOverdue
                       ? 'text-destructive/80 bg-destructive/10'
                       : dueDate
@@ -566,7 +572,8 @@ export function TaskEditPanel() {
                     <span>{dueInfo ? dueInfo.relative : 'Due'}</span>
                   </button>
                 </PopoverTrigger>
-                <PopoverContent data-date-autocomplete className="w-auto p-0 z-[9999]" align="start" onClick={(e) => e.stopPropagation()}>
+                <PopoverContent data-date-autocomplete className="task-editor-popover w-auto p-0 z-[10000]" side="bottom" collisionPadding={16} align="start"
+                  onCloseAutoFocus={event => {event.preventDefault();settingAnchor?.focus({preventScroll:true});}} onClick={(e) => e.stopPropagation()}>
                   <CalendarPicker
                     mode="single"
                     selected={dueDate ? new Date(dueDate + 'T12:00:00') : undefined}
@@ -609,8 +616,9 @@ export function TaskEditPanel() {
 
               {/* Category / Tag */}
               <Popover open={showCatPicker} onOpenChange={setShowCatPicker}>
+                {settingAnchor && <PopoverAnchor virtualRef={{ current: settingAnchor }} />}
                 <PopoverTrigger asChild>
-                  <button data-setting="tag" aria-label="Tag" title="Tag" className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
+                  <button onClick={event => setSettingAnchor(event.currentTarget)} data-setting="tag" aria-label="Tag" title="Tag" className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
                     taskCategory
                       ? 'text-foreground/70 bg-muted/40 hover:bg-muted/60'
                       : 'text-muted-foreground/40 bg-muted/30 hover:bg-muted/50'
@@ -623,7 +631,8 @@ export function TaskEditPanel() {
                     <span>{taskCategory ? (useLibraryStore.getState().categories.find(c => c.value === taskCategory)?.label || taskCategory) : 'Tag'}</span>
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-44 p-1 z-[10000]" align="start" onClick={(e) => e.stopPropagation()}>
+                <PopoverContent className="task-editor-popover w-44 p-1 z-[10000]" side="bottom" collisionPadding={16} align="start"
+                  onCloseAutoFocus={event => {event.preventDefault();settingAnchor?.focus({preventScroll:true});}} onClick={(e) => e.stopPropagation()}>
                   <TagPickerMenu
                     value={taskCategory}
                     onChange={(v) => setTaskCategory(v)}
@@ -634,8 +643,9 @@ export function TaskEditPanel() {
 
               {/* Icon */}
               <Popover open={showIconPicker} onOpenChange={setShowIconPicker}>
+                {settingAnchor && <PopoverAnchor virtualRef={{ current: settingAnchor }} />}
                 <PopoverTrigger asChild>
-                  <button data-setting="icon" aria-label="Task icon" title="Task icon" className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
+                  <button onClick={event => setSettingAnchor(event.currentTarget)} data-setting="icon" aria-label="Task icon" title="Task icon" className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
                     taskIcon
                       ? 'text-foreground/80 bg-muted/40 hover:bg-muted/60'
                       : 'text-muted-foreground/40 bg-muted/30 hover:bg-muted/50'
@@ -651,7 +661,8 @@ export function TaskEditPanel() {
                     <span>{taskIcon ? 'Icon' : (resolveCategoryIcon(taskCategory, useLibraryStore.getState().categories) ? 'Inherit' : 'Icon')}</span>
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="p-0 z-[10000]" align="start" onClick={(e) => e.stopPropagation()}>
+                <PopoverContent className="task-editor-popover p-0 z-[10000]" side="bottom" collisionPadding={16} align="start"
+                  onCloseAutoFocus={event => {event.preventDefault();settingAnchor?.focus({preventScroll:true});}} onClick={(e) => e.stopPropagation()}>
                   <IconPicker
                     value={taskIcon}
                     suggestFor={`${title} ${taskCategory}`}
@@ -664,15 +675,17 @@ export function TaskEditPanel() {
 
               {/* Priority dropdown chip */}
               <Popover open={showPriorityPicker} onOpenChange={setShowPriorityPicker}>
+                {settingAnchor && <PopoverAnchor virtualRef={{ current: settingAnchor }} />}
                 <PopoverTrigger asChild>
-                  <button data-setting="priority" aria-label="Priority" title="Priority"
+                  <button onClick={event => setSettingAnchor(event.currentTarget)} data-setting="priority" aria-label="Priority" title="Priority"
                     className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors border bg-muted/40 hover:bg-muted/60"
                   >
                     <Flag size={15}/><span>{PRIORITY_LABELS[priority]}</span>
                     <ChevronDown size={10} strokeWidth={1.5} />
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-32 p-1 z-[10000]" align="start" onClick={(e) => e.stopPropagation()}>
+                <PopoverContent className="task-editor-popover w-32 p-1 z-[10000]" side="bottom" collisionPadding={16} align="start"
+                  onCloseAutoFocus={event => {event.preventDefault();settingAnchor?.focus({preventScroll:true});}} onClick={(e) => e.stopPropagation()}>
                   {([0, 1, 2, 3] as Priority[]).map((p) => {
                     const mobilityMode = useTimezoneStore.getState().mobilityMode;
                     const isElite = mobilityMode === 'elite';
@@ -811,7 +824,7 @@ export function TaskEditPanel() {
             className="task-editor-card bg-card border border-border/50 rounded-lg shadow-lg"
             ref={dialogRef} tabIndex={-1}
             role="dialog" aria-modal="true" aria-label={showSettings?'Task settings':'Edit task'} data-settings={showSettings}
-            style={{maxHeight:viewport?Math.max(0,Math.min(viewport.height-24,isMobile?window.innerHeight*.68:window.innerHeight*.84)):undefined}}
+            style={{maxHeight:viewport?Math.max(0,Math.min(viewport.height-24,isMobile?(window.innerHeight>600?window.innerHeight*.68:viewport.height-24):window.innerHeight*.84)):undefined}}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="task-editor-header">
@@ -917,6 +930,7 @@ export function TaskEditPanel() {
                   className="w-full bg-transparent font-display font-bold text-foreground text-lg leading-tight focus:outline-none placeholder:text-muted-foreground/20 mb-1"
                 />
                 <TagAutocomplete
+                  placement="inline"
                   inputValue={title}
                   inputRef={titleInputRef as React.RefObject<HTMLInputElement>}
                   onSelectTag={(cat, cleaned) => {

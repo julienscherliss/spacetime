@@ -5,6 +5,7 @@ import { CategoryDef } from '@/store/libraryStore';
 import { useEntryHint, incrementEntryCount } from '@/hooks/useEntryHint';
 import { useTaskStore, Task } from '@/store/taskStore';
 import { useCalendarStore, CalendarEvent, eventSpansDate } from '@/store/calendarStore';
+import { calendarEventKey, convertedCalendarEventKeys } from '@/lib/calendarConversion';
 import { useLibraryStore } from '@/store/libraryStore';
 import { useTouchDragStore } from '@/store/touchDragStore';
 import { useLibraryDragStore } from '@/store/libraryDragStore';
@@ -121,8 +122,10 @@ function formatDuration(mins: number): string {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
-function CalendarEventBlocks({ date, hourHeight, showTimeLabels }: { date: string; hourHeight: number; showTimeLabels: boolean }) {
+export function CalendarEventBlocks({ date, hourHeight, showTimeLabels }: { date: string; hourHeight: number; showTimeLabels: boolean }) {
   const allEvents = useCalendarStore((s) => s.events);
+  const tasks = useTaskStore((s) => s.tasks);
+  const converted = useMemo(() => convertedCalendarEventKeys(tasks), [tasks]);
   const calendars = useCalendarStore((s) => s.calendars);
   const completedEventIds = useCalendarStore((s) => s.completedEventIds);
   const deletedEventIds = useCalendarStore((s) => s.deletedEventIds);
@@ -130,7 +133,7 @@ function CalendarEventBlocks({ date, hourHeight, showTimeLabels }: { date: strin
   const completeEvent = useCalendarStore((s) => s.completeEvent);
   const setEditingEvent = useCalendarStore((s) => s.setEditingEvent);
   const visibleCalIds = new Set(calendars.filter(c => c.visible).map(c => c.google_calendar_id));
-  const events = allEvents.filter(e => !deletedEventIds.includes(e.id) && visibleCalIds.has(e.calendarId) && eventSpansDate(e, date));
+  const events = allEvents.filter(e => !deletedEventIds.includes(e.id) && !converted.has(calendarEventKey(e)) && visibleCalIds.has(e.calendarId) && eventSpansDate(e, date));
   const timeLabelsLeft = showTimeLabels ? '3.25rem' : '2px';
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [flashId, setFlashId] = useState<string | null>(null);
@@ -169,14 +172,13 @@ function CalendarEventBlocks({ date, hourHeight, showTimeLabels }: { date: strin
           <div
             key={`gcal-${event.id}-${date}`}
             data-task-block
+            data-calendar-event
             className="absolute right-1 z-[5] cursor-default group select-none"
-            style={{ top, height, left: timeLabelsLeft }}
+            style={{ top, height, left: timeLabelsLeft, opacity: 0.25 }}
             onClick={() => handleClick(event.id)}
           >
             <div
-              className={`h-full rounded-[2px] overflow-hidden transition-colors shadow-sm ${
-                isCompleted ? 'opacity-50' : ''
-              }`}
+              className="h-full rounded-[2px] overflow-hidden transition-colors shadow-sm"
               style={{
                 backgroundColor: isCompleted ? undefined : 'hsl(var(--locked-fill))',
                 border: '1.5px solid hsl(var(--locked-fill))',
@@ -452,8 +454,9 @@ export function TimelineColumn({
   const deletedCalendarEventIds = useCalendarStore((s) => s.deletedEventIds);
   const calendarConflictIds = useMemo(() => {
     const visibleIds = new Set(visibleCalendars.filter(c => c.visible).map(c => c.google_calendar_id));
+    const converted = convertedCalendarEventKeys(allStoreTasks);
     const visibleEvents = allCalendarEvents.filter(e =>
-      visibleIds.has(e.calendarId) && !deletedCalendarEventIds.includes(e.id)
+      visibleIds.has(e.calendarId) && !deletedCalendarEventIds.includes(e.id) && !converted.has(calendarEventKey(e))
     );
     return getCalendarConflicts(allStoreTasks, visibleEvents, date);
   }, [allStoreTasks, allCalendarEvents, visibleCalendars, deletedCalendarEventIds, date]);

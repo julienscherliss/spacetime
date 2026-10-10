@@ -88,6 +88,24 @@ describe('failed-save and account recovery guards', () => {
     });
   }
 
+  it('restores the Library details preference on real owned startup without restoring stale items or leaking the preference across accounts', async () => {
+    const h = await harness(false, true);
+    act(() => h.library.getState().setShowDetails(true));
+    h.rows.library_items[0].title = 'Fresh server library';
+    h.unmount();
+    const cache = await import('@/lib/ownedDeviceCache'); cache.closeOwnedCache();
+    h.library.setState({ showDetails: false, items: [] });
+    await h.restart();
+    expect(h.library.getState().showDetails).toBe(true);
+    expect(h.library.getState().items[0].title).toBe('Fresh server library');
+    expect(h.writes.library_items).not.toHaveBeenCalled();
+    h.rows.tasks = []; h.rows.library_items = []; h.rows.library_categories = [];
+    act(() => h.switchUser());
+    await waitFor(() => expect(h.ranges.library_items).toHaveBeenCalledTimes(3));
+    await waitFor(() => expect(h.library.getState().showDetails).toBe(false));
+    expect(h.library.getState().items).toEqual([]);
+  });
+
   it('desktop restart awaits acknowledged task/library/category saves and blocks a failed save', async () => {
     const h = await harness();
     const { prepareDesktopRestart } = await import('@/lib/desktopUpdates');

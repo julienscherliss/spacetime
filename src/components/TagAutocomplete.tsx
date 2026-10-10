@@ -1,15 +1,16 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLibraryStore, CategoryDef } from '@/store/libraryStore';
 
 interface TagAutocompleteProps {
   inputValue: string;
+  placement?: 'overlay' | 'inline';
   onSelectTag: (category: CategoryDef, cleanedValue: string) => void;
   onSubmitAfterSelect?: () => void;
   inputRef?: React.RefObject<HTMLInputElement>;
   anchorRef?: React.RefObject<HTMLElement>;
 }
 
-export function TagAutocomplete({ inputValue, onSelectTag, onSubmitAfterSelect, inputRef }: TagAutocompleteProps) {
+export function TagAutocomplete({ inputValue, onSelectTag, onSubmitAfterSelect, inputRef, placement = 'overlay' }: TagAutocompleteProps) {
   const allCategories = useLibraryStore((s) => s.categories);
   // Memoize so the effect below doesn't see a new array on every render and
   // re-trigger setState → infinite update loop (would also wipe out parent
@@ -168,6 +169,8 @@ export function TagAutocomplete({ inputValue, onSelectTag, onSubmitAfterSelect, 
           }
         }
       } else if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
         setSuggestions([]);
       }
     };
@@ -178,12 +181,13 @@ export function TagAutocomplete({ inputValue, onSelectTag, onSubmitAfterSelect, 
   if (suggestions.length === 0) return null;
 
   return (
-    <div data-tag-autocomplete className="absolute left-0 right-0 top-full mt-1 z-[60] bg-card border border-border rounded-md shadow-lg py-1 max-h-48 overflow-y-auto">
+    <div data-tag-autocomplete className={`${placement === 'inline' ? 'relative mb-3' : 'absolute left-0 right-0 top-full'} mt-1 z-[60] bg-card border border-border rounded-md shadow-lg py-1 max-h-48 overflow-y-auto overscroll-contain`}>
       {suggestions.map((cat, i) => (
         <button
           key={cat.value}
-          onPointerDown={(e) => {
-            e.preventDefault(); // prevent blur
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => {
             const cleaned = inputValue.replace(/#\S*$/, '').replace(/\/\/\S*$/, '').trim();
             onSelectTag(cat, cleaned);
           }}

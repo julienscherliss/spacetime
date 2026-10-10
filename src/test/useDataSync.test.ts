@@ -760,6 +760,20 @@ describe('useDataSync regression guard', () => {
     expect(updatePatches[0].completed).toBe(true);
   });
 
+  it('a stale client edit cannot clear a source link saved on the server', async () => {
+    const { updatePatches, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
+    const stale = baseTask({ title: 'Converted before source link was loaded' });
+    useTaskStore.setState({ tasks: [stale] });
+    await (syncModule as any).saveTasksNow('user-1');
+    updatePatches.length = 0;
+    // Another client has linked the calendar source since this baseline.
+    useTaskStore.setState({ tasks: [{ ...stale, title: 'Edited on stale client' }] });
+    await (syncModule as any).saveTasksNow('user-1');
+    expect(updatePatches).toEqual([{ title: 'Edited on stale client' }]);
+    expect(updatePatches[0]).not.toHaveProperty('source_calendar_id');
+    expect(updatePatches[0]).not.toHaveProperty('source_calendar_event_id');
+  });
+
   it('partial-patch: protective fields are never included unless actually changed', async () => {
     const { updatePatches, useTaskStore, syncModule } = await mountSyncWithUpsertSpy();
     const t = baseTask({ title: 'P' });

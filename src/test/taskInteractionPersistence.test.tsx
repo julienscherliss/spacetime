@@ -43,6 +43,21 @@ describe('task interactions save once and retain their semantics', () => {
     expect(write).toHaveBeenCalledTimes(1);
     expect(store.getState().tasks[0]).toMatchObject({ date: '2026-10-06', time: '10:00', duration: 60, moveCount: 1, priority: 1 });
   });
+  it('retains the calendar source link through an edit, delete and app cache rehydration', async () => {
+    const { store, cache } = await fixture();
+    const { convertedCalendarEventKeys, calendarEventKey } = await import('@/lib/calendarConversion');
+    store.setState({ tasks: [{ ...task, sourceCalendarId: 'calendar', sourceCalendarEventId: 'event' }] });
+    store.getState().moveTask(task.id, '2026-10-06', '10:00', 60);
+    store.getState().deleteTask(task.id);
+    cache.closeOwnedCache();
+    // Closed cache cannot overwrite the saved workspace while memory is reset.
+    store.setState({ tasks: [] });
+    cache.openVerifiedOwnedCache(A);
+    await store.persist.rehydrate();
+    expect(store.getState().tasks[0]).toMatchObject({ date: '2026-10-06', archiveReason: 'deleted',
+      sourceCalendarId: 'calendar', sourceCalendarEventId: 'event' });
+    expect(convertedCalendarEventKeys(store.getState().tasks).has(calendarEventKey({ calendarId: 'calendar', id: 'event' }))).toBe(true);
+  });
   it('keeps locked moves pending until reflection confirms the time and duration together', async () => {
     const { store, cache } = await fixture();
     store.setState({ tasks: [{ ...task, priority: 3 }] });

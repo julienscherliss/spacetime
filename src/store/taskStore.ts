@@ -84,6 +84,8 @@ export interface Task {
    *  originally scheduled this occurrence for. Preserved even if the user moves
    *  the task to a new date, so we can mark the slot as consumed on the parent
    *  when the occurrence is detached. */
+  sourceCalendarId?: string;
+  sourceCalendarEventId?: string;
   originalDate?: string;
   /** On recurring parents: dates that should NOT be regenerated because the
    *  occurrence has been detached / unlinked. Prevents duplicate instances. */
@@ -1248,6 +1250,8 @@ export const useTaskStore = create<TaskState>()(
 
               nextTasks.push(enforceRecurringLinkInvariant({
                 ...parent,
+                sourceCalendarId: undefined,
+                sourceCalendarEventId: undefined,
                 id: newGroupOrTaskId,
                 date: occurrenceDate,
                 originalDate: occurrenceDate,
@@ -1289,6 +1293,8 @@ export const useTaskStore = create<TaskState>()(
 
                   nextTasks.push({
                     ...child,
+                    sourceCalendarId: undefined,
+                    sourceCalendarEventId: undefined,
                     id: generateId(),
                     date: occurrenceDate,
                     originalDate: occurrenceDate,

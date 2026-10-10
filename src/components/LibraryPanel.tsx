@@ -9,7 +9,7 @@ import {
 import {
   X, Plus, Check, Clock, AlertTriangle, Trash2,
   ArrowDownAZ, CalendarClock, Tag, ChevronDown, ChevronRight, GripVertical, CalendarDays,
-  PanelLeftClose, PanelLeftOpen, Pencil,
+  PanelLeftClose, PanelLeftOpen, Pencil, AlignLeft,
 } from 'lucide-react';
 import { TagAutocomplete, isSubtagOf, hasSubtags, getParentValue } from '@/components/TagAutocomplete';
 import { DateAutocomplete } from '@/components/DateAutocomplete';
@@ -72,7 +72,7 @@ export function incrementPlaceCount() {
   localStorage.setItem('spacetime-place-count', String(count));
 }
 
-function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: boolean; onEdit: () => void }) {
+function LibraryItem({ item, isMobile, showDetails, onEdit }: { item: LibraryTask; isMobile: boolean; showDetails: boolean; onEdit: () => void }) {
   const { completeItem } = useLibraryStore();
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFired = useRef(false);
@@ -278,8 +278,8 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
       <GripVertical size={14} className="text-muted-foreground/30 shrink-0" />
 
       <div className="flex-1 min-w-0">
-        <div className={`font-mono text-foreground font-medium truncate leading-tight flex items-center gap-2 ${isMobile ? 'text-[15px]' : 'text-[13px]'}`}>
-          <span className="truncate">{item.title}</span>
+        <div className={`font-mono text-foreground font-medium leading-tight flex items-center gap-2 ${isMobile ? 'text-[15px]' : 'text-[13px]'}`}>
+          <span className={showDetails ? 'break-words min-w-0' : 'truncate'}>{item.title}</span>
           <AnimatePresence>
             {showHoldHint && (
               <motion.span
@@ -308,6 +308,11 @@ function LibraryItem({ item, isMobile, onEdit }: { item: LibraryTask; isMobile: 
             </span>
           )}
         </div>
+        {showDetails && item.note?.trim() && (
+          <p data-library-description className={`mt-2 font-mono text-muted-foreground leading-relaxed whitespace-pre-wrap break-words ${isMobile ? 'text-[14px]' : 'text-[12px]'}`}>
+            {item.note}
+          </p>
+        )}
       </div>
 
       {item.defaultDuration > 0 && (
@@ -583,6 +588,19 @@ export function LibraryPanel() {
   const viewMode = useTaskStore((s) => s.viewMode);
   const sidebarMode = useLibraryStore((s) => s.sidebarMode);
   const setSidebarMode = useLibraryStore((s) => s.setSidebarMode);
+  const showDetails = useLibraryStore((s) => s.showDetails);
+  const setShowDetails = useLibraryStore((s) => s.setShowDetails);
+  const detailsToggle = (
+    <button
+      aria-label={showDetails ? 'Hide library details' : 'Show library details'}
+      aria-pressed={showDetails}
+      onClick={() => setShowDetails(!showDetails)}
+      className={`flex items-center gap-1.5 min-h-11 px-2 rounded-md font-mono text-[11px] transition-colors ${showDetails ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+    >
+      <AlignLeft size={16} strokeWidth={1.5} />
+      Details
+    </button>
+  );
 
   // When panel opens, default to sidebar mode in day/week views, full-screen in focus/calendar.
   const prevPanelOpen = useRef(false);
@@ -778,7 +796,7 @@ export function LibraryPanel() {
             data-library-panel
             className={
               isDesktop && sidebarMode
-                ? 'fixed top-0 left-0 bottom-0 z-50 bg-background flex flex-col border-r border-border/50 shadow-xl w-[350px] max-w-[90vw]'
+                ? 'fixed top-0 left-0 bottom-0 z-50 bg-background flex flex-col border-r border-border/50 shadow-xl w-[var(--library-sidebar-width)] max-w-[90vw]'
                 : 'fixed inset-0 z-50 bg-background flex flex-col'
             }
           >
@@ -791,6 +809,7 @@ export function LibraryPanel() {
                     LIBRARY
                   </span>
                   <div className="flex items-center gap-3">
+                    {detailsToggle}
                     <span className="text-[11px] font-mono text-muted-foreground/50">{totalCount}</span>
                     <button
                       onClick={() => setSidebarMode(!sidebarMode)}
@@ -1078,6 +1097,7 @@ export function LibraryPanel() {
                               key={item.id}
                               item={item}
                               isMobile={false}
+                              showDetails={showDetails}
                               onEdit={() => setEditingItem(item)}
                             />
                           ))}
@@ -1106,6 +1126,7 @@ export function LibraryPanel() {
                     LIBRARY
                   </span>
                   <div className="flex items-center gap-3">
+                    {detailsToggle}
                     <span className="text-[11px] font-mono text-muted-foreground/50">{totalCount}</span>
                     <button
                       onClick={() => setPanelOpen(false)}
@@ -1412,7 +1433,7 @@ export function LibraryPanel() {
                   ) : (
                     <div data-tutorial="library-list" className="space-y-1.5">
                       {items.map((item) => (
-                        <LibraryItem key={item.id} item={item} isMobile={isMobile} onEdit={() => setEditingItem(item)} />
+                        <LibraryItem key={item.id} item={item} isMobile={isMobile} showDetails={showDetails} onEdit={() => setEditingItem(item)} />
                       ))}
                     </div>
                   )}

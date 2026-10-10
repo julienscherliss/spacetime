@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { Calendar as CalIcon } from 'lucide-react';
 import { useCalendarStore, eventSpansDate } from '@/store/calendarStore';
+import { useTaskStore } from '@/store/taskStore';
+import { calendarEventKey, convertedCalendarEventKeys } from '@/lib/calendarConversion';
 
 interface AllDayEventStripProps {
   dates: string[];
@@ -8,6 +10,7 @@ interface AllDayEventStripProps {
 }
 
 export function AllDayEventStrip({ dates, compact = false }: AllDayEventStripProps) {
+  const tasks = useTaskStore((s) => s.tasks);
   const events = useCalendarStore((s) => s.events);
   const calendars = useCalendarStore((s) => s.calendars);
   const completedEventIds = useCalendarStore((s) => s.completedEventIds);
@@ -17,7 +20,8 @@ export function AllDayEventStrip({ dates, compact = false }: AllDayEventStripPro
   const eventsByDate = useMemo(() => {
     const grouped = new Map<string, typeof events>();
     const visibleCalIds = new Set(calendars.filter(c => c.visible).map(c => c.google_calendar_id));
-    const visibleEvents = events.filter(e => !deletedEventIds.includes(e.id) && visibleCalIds.has(e.calendarId));
+    const converted = convertedCalendarEventKeys(tasks);
+    const visibleEvents = events.filter(e => !converted.has(calendarEventKey(e)) && !deletedEventIds.includes(e.id) && visibleCalIds.has(e.calendarId));
 
     dates.forEach((date) => {
       grouped.set(
@@ -27,7 +31,7 @@ export function AllDayEventStrip({ dates, compact = false }: AllDayEventStripPro
     });
 
     return grouped;
-  }, [dates, events, deletedEventIds, calendars]);
+  }, [dates, events, deletedEventIds, calendars, tasks]);
 
   const hasAnyEvents = Array.from(eventsByDate.values()).some((dayEvents) => dayEvents.length > 0);
 
@@ -45,13 +49,12 @@ export function AllDayEventStrip({ dates, compact = false }: AllDayEventStripPro
       <button
         key={`${event.id}-${date}`}
         onClick={() => setEditingEvent(event.id)}
-        className={`w-full px-2 py-1.5 text-left transition-colors hover:bg-muted/60 ${
-          isCompleted ? 'opacity-50' : ''
-        } ${isMultiDay
+        className={`w-full px-2 py-1.5 text-left transition-colors hover:bg-muted/60 ${isMultiDay
           ? `${isStart ? 'rounded-l-sm' : ''} ${isEnd ? 'rounded-r-sm' : ''} ${!isStart && !isEnd ? '' : ''}`
           : 'rounded-sm'
         }`}
         style={{
+          opacity: 0.75,
           borderWidth: '1.5px',
           borderColor: color,
           borderStyle: 'solid',

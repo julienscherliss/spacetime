@@ -11,6 +11,8 @@
   --editor-padding: 24px;
 }
 .task-editor-card [hidden] { display: none !important; }
+/* The card receives initial focus without opening the mobile keyboard. */
+.task-editor-card:focus { outline: none; }
 .task-editor-header {
   display: flex;
   align-items: center;
@@ -73,7 +75,7 @@
 .task-editor-reminders { max-height: min(70dvh, 100%); overflow-y: auto; overscroll-behavior: contain; }
 .task-editor-reminders button { min-height: 44px; font-size: 13px; }
 .task-editor-reminders button[aria-label="Close reminders"] { min-width: 44px; display: grid; place-items: center; }
-.task-editor-card button:focus-visible, .task-editor-card textarea:focus-visible, .task-editor-card input:focus-visible { outline: 2px solid hsl(var(--primary) / .7); outline-offset: 2px; }
+.task-editor-card button:focus-visible { outline: 2px solid hsl(var(--primary) / .7); outline-offset: 2px; }
 @media (max-width: 767px) {
   .task-editor-overlay { padding-inline: 8px; }
   .task-editor-card { max-height: 68dvh; }
@@ -85,4 +87,26 @@
   .quick-controls { margin-left: -14.5px; }
   .quick-controls button[data-setting] { width: 44px; }
   .task-editor-attributes button { min-height: 44px; }
+}
+
+/* Text editing is indicated by the caret, without boxing the borderless fields. */
+.task-editor-card input:focus, .task-editor-card textarea:focus {
+  outline: none;
+  box-shadow: none;
+  caret-color: hsl(var(--primary));
+}
+/* Keep long pickers next to their trigger and scroll within the visible viewport. */
+.task-editor-popover {
+  max-height: min(280px, var(--radix-popover-content-available-height));
+  max-width: calc(100vw - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+@media (max-width: 767px) and (max-height: 600px) {
+  .task-editor-card { max-height: calc(100dvh - 24px); }
+}
+
+@media (max-width: 767px) {
+  .task-editor-popover input { font-size: 16px; }
 }

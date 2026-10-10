@@ -1039,6 +1039,8 @@ export type Database = {
           recurrence_exceptions: string[]
           recurrence_parent_id: string | null
           series_id: string | null
+          source_calendar_id: string | null
+          source_calendar_event_id: string | null
           subtasks: Json | null
           time: string | null
           title: string
@@ -1077,6 +1079,8 @@ export type Database = {
           recurrence_exceptions?: string[]
           recurrence_parent_id?: string | null
           series_id?: string | null
+          source_calendar_id?: string | null
+          source_calendar_event_id?: string | null
           subtasks?: Json | null
           time?: string | null
           title: string
@@ -1115,6 +1119,8 @@ export type Database = {
           recurrence_exceptions?: string[]
           recurrence_parent_id?: string | null
           series_id?: string | null
+          source_calendar_id?: string | null
+          source_calendar_event_id?: string | null
           subtasks?: Json | null
           time?: string | null
           title?: string
@@ -1172,6 +1178,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      convert_calendar_event_to_task: {
+        Args: { calendar_id: string; event_id: string; event_title: string; event_date: string; event_time: string; event_duration: number; event_description?: string | null; event_category?: string | null }
+        Returns: Database["public"]["Tables"]["tasks"]["Row"][]
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
