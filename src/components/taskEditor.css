@@ -1,0 +1,88 @@
+.task-editor-overlay {
+  padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom));
+}
+.task-editor-card {
+  width: 520px;
+  max-width: 100%;
+  max-height: 84dvh;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  --editor-padding: 24px;
+}
+.task-editor-card [hidden] { display: none !important; }
+.task-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+  padding: 16px var(--editor-padding) 12px;
+  font: 12px/20px 'JetBrains Mono', monospace;
+  color: hsl(var(--foreground) / .6);
+}
+.task-editor-header-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.task-editor-menu { flex-shrink: 0; width: 44px; height: 44px; margin-left: -12px; display: grid; place-items: center; }
+.task-editor-menu svg { width: 20px; height: 20px; stroke-width: 1.5; }
+.task-editor-header > div:last-child { flex-shrink: 0; }
+.task-editor-header button[aria-label="Done editing task"] { min-height: 44px; font-size: 13px; }
+.task-editor-attributes { display: flex; flex-wrap: wrap; align-items: center; gap: 0; min-width: 0; }
+.task-editor-attributes > span { display: inline-flex; align-items: center; min-width: 0; }
+.task-editor-attributes button { min-height: 36px; overflow-wrap: anywhere; text-align: left; }
+.task-editor-attributes svg { width: 16px; height: 16px; stroke-width: 1.5; }
+.task-editor-divider { padding: 0 8px; color: hsl(var(--foreground) / .3); }
+.task-editor-attributes .missing-tag { color: hsl(var(--destructive)); }
+.task-editor-scroll { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 var(--editor-padding) 16px; scroll-padding-block: 16px; }
+.task-editor-title-wrap input { font-size: 22px !important; line-height: 1.3; padding: 0; margin-bottom: 10px; font-weight: 700; }
+.task-editor-description { margin-bottom: 16px; }
+.task-editor-description textarea, .task-editor-description > div > div { font-size: 15px !important; line-height: 1.65; padding-left: 0; padding-right: 0; }
+.task-editor-description a { font-size: 13px; }
+.task-editor-controls { display: flex; }
+.task-editor-controls button[data-setting] > svg { width: 15px; height: 15px; flex-shrink: 0; stroke-width: 1.5; }
+.quick-controls { flex-wrap: wrap; gap: 0; margin: 0 0 20px -9.5px; }
+.quick-controls button[data-setting] { width: 34px; min-height: 44px; padding: 0; border: 0; border-radius: 3px; background: transparent; justify-content: center; color: hsl(var(--foreground) / .6); }
+.quick-controls button[data-setting] span, .quick-controls button[data-setting] > svg ~ svg { display: none; }
+.quick-controls button[data-setting]:hover { color: hsl(var(--foreground)); }
+.settings-controls { flex-direction: column; gap: 0; margin: 12px 0 0; }
+.settings-controls button[data-setting] { min-height: 49px; border: 0; border-bottom: 1px solid hsl(var(--border) / .4); border-radius: 0; padding: 8px 0; gap: 12px; background: transparent; color: hsl(var(--foreground) / .7); font-size: 13px; text-align: left; }
+.settings-controls button[data-setting]::before { content: attr(aria-label); order: 1; }
+.settings-controls button[data-setting] > span { order: 2; margin-left: auto; text-align: right; font-size: 12px; color: hsl(var(--foreground) / .5); }
+.settings-controls button[data-setting] > svg ~ svg { order: 3; }
+.settings-controls button[data-setting="unlink"] > span { display: none; }
+.settings-controls button[data-setting="routine"][aria-pressed="true"] > span { color: hsl(var(--primary)); }
+.task-editor-settings-title { font: 600 22px/1.3 'Space Grotesk', sans-serif; margin-bottom: 6px; }
+.task-editor-settings-name { font: 13px/1.5 'JetBrains Mono', monospace; color: hsl(var(--foreground) / .5); overflow-wrap: anywhere; }
+.task-editor-recurrence button, .task-editor-recurrence input, .task-editor-recurrence select { min-height: 40px; font-size: 13px; }
+.task-editor-subtasks [draggable] { position: relative; gap: 8px; }
+.task-editor-subtasks { margin-bottom: 0; }
+.task-editor-subtasks [draggable] > div:first-child { position: absolute; left: -18px; top: 12px; margin-top: 0; }
+.task-editor-subtasks [role="checkbox"] { width: 18px; height: 18px; margin-top: 9px; }
+.task-editor-subtasks textarea, .task-editor-subtasks [draggable] > div.relative > div { font-size: 15px; line-height: 1.4; padding-left: 0; padding-right: 0; }
+.task-editor-subtasks > div > div:last-child > svg { width: 18px; height: 18px; margin-left: 0; margin-top: 9px; }
+.task-editor-actions { flex-shrink: 0; padding: 8px calc(var(--editor-padding) - 13px) max(12px, env(safe-area-inset-bottom)); justify-content: flex-end; }
+.task-editor-actions > button { min-width: 44px; min-height: 44px; justify-content: center; }
+.task-editor-actions > button { color: hsl(var(--foreground) / .6); }
+.task-editor-actions > button > svg { width: 18px; height: 18px; }
+.task-editor-card[data-settings="false"] .task-editor-actions [data-action],
+.task-editor-card[data-settings="false"] .task-editor-actions > .flex-1,
+.task-editor-actions button[aria-label="Send to Library"] > span { display: none; }
+.task-editor-card[data-settings="true"] .task-editor-actions { flex-wrap: wrap; }
+.task-editor-card[data-settings="true"] .task-editor-actions [data-action] { font-size: 11px; }
+.task-editor-delete-confirm { flex-shrink: 0; margin: 0 12px 12px; }
+.task-editor-delete-confirm button { min-height: 44px; font-size: 12px; }
+.task-editor-reminders { max-height: min(70dvh, 100%); overflow-y: auto; overscroll-behavior: contain; }
+.task-editor-reminders button { min-height: 44px; font-size: 13px; }
+.task-editor-reminders button[aria-label="Close reminders"] { min-width: 44px; display: grid; place-items: center; }
+.task-editor-card button:focus-visible, .task-editor-card textarea:focus-visible, .task-editor-card input:focus-visible { outline: 2px solid hsl(var(--primary) / .7); outline-offset: 2px; }
+@media (max-width: 767px) {
+  .task-editor-overlay { padding-inline: 8px; }
+  .task-editor-card { max-height: 68dvh; }
+  .task-editor-header { gap: 8px; }
+  .task-editor-header-left { gap: 6px; }
+  .task-editor-description textarea, .task-editor-subtasks textarea { font-size: 16px !important; }
+}
+@media (pointer: coarse) {
+  .quick-controls { margin-left: -14.5px; }
+  .quick-controls button[data-setting] { width: 44px; }
+  .task-editor-attributes button { min-height: 44px; }
+}

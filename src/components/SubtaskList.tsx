@@ -108,7 +108,15 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
       onChange(subtasks.map((s) => (s.id === id ? { ...s, title } : s)));
     };
 
+    const focusSubtaskEnd = (id: string) => {
+      const editor = subtaskRefs.current[id];
+      if (!editor) return;
+      editor.focus();
+      editor.setSelectionRange(editor.value.length, editor.value.length);
+    };
+
     const handleSubtaskKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>, index: number) => {
+      if (e.nativeEvent.isComposing) return;
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         const current = subtasks[index];
@@ -130,15 +138,12 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
       } else if (e.key === 'Backspace' && subtasks[index].title === '') {
         e.preventDefault();
         onChange(subtasks.filter((_, i) => i !== index));
-        // Focus previous subtask or input
-        setTimeout(() => {
-          if (index > 0) {
-            const prevId = subtasks[index - 1].id;
-            subtaskRefs.current[prevId]?.focus();
-          } else {
-            inputRef.current?.focus();
-          }
-        }, 0);
+        // Keep backward deletion flowing from the end of the previous row.
+        if (index > 0) {
+          focusSubtaskEnd(subtasks[index - 1].id);
+        } else {
+          inputRef.current?.focus();
+        }
       }
     };
 
@@ -318,7 +323,11 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
             }}
             onInput={(e) => autosizeTextarea(e.currentTarget)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
+              if (e.nativeEvent.isComposing) return;
+              if (e.key === 'Backspace' && e.currentTarget.value === '' && subtasks.length > 0) {
+                e.preventDefault();
+                focusSubtaskEnd(subtasks[subtasks.length - 1].id);
+              } else if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 handleAdd();
               }

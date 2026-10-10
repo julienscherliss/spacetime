@@ -29,6 +29,7 @@ import { LibraryDueDatePrompt } from "@/components/LibraryDueDatePrompt";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { isElectron } from "@/utils/nativePlatform";
 import { ElectronDragRegion } from "@/components/ElectronDragRegion";
+import { DesktopUpdateNotice } from '@/components/DesktopUpdateNotice';
 
 import { AppEntryAccountContext } from '@/hooks/useAppEntryNavigation';
 
@@ -242,6 +243,7 @@ const App = () => {
           <TooltipProvider>
             <Toaster />
             <Sonner />
+            <DesktopUpdateNotice />
             <LibraryDueDatePrompt />
             <BrowserRouter>
               <Routes>

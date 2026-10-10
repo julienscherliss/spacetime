@@ -1,3 +1,4 @@
+import { getScheduleTopOffset, getScheduleViewportHeight } from '@/lib/scheduleViewport';
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Clock, RotateCcw, Scan, Maximize } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
@@ -10,12 +11,11 @@ import { SCALE_MIN, SCALE_MAX, animatePinchZoom } from '@/hooks/useTimeScale';
 const FRAME_PADDING = 40;
 
 function getStickyOffset(): number {
-  return window.innerWidth < 640 ? 36 : 84;
+  return getScheduleTopOffset();
 }
 
 function usableViewport(): number {
-  const bottomNav = window.innerWidth < 640 ? 64 : 0;
-  return window.innerHeight - getStickyOffset() - bottomNav;
+  return getScheduleViewportHeight(getStickyOffset());
 }
 
 interface FitViewButtonProps {

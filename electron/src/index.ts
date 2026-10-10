@@ -4,7 +4,7 @@ import type { MenuItemConstructorOptions } from 'electron';
 import { app, MenuItem } from 'electron';
 import electronIsDev from 'electron-is-dev';
 import unhandled from 'electron-unhandled';
-import { autoUpdater } from 'electron-updater';
+import { installDesktopUpdates } from './desktopUpdates';
 
 import { ElectronCapacitorApp, setupContentSecurityPolicy, setupReloadWatcher } from './setup';
 
@@ -16,6 +16,12 @@ const trayMenuTemplate: (MenuItemConstructorOptions | MenuItem)[] = [new MenuIte
 const appMenuBarMenuTemplate: (MenuItemConstructorOptions | MenuItem)[] = [
   { role: process.platform === 'darwin' ? 'appMenu' : 'fileMenu' },
   { role: 'viewMenu' },
+  { label: 'Updates', submenu: [{ label: 'Check for updates…', click: async () => {
+    await startup;
+    const win = myCapacitorApp.getMainWindow();
+    if (!win || win.isDestroyed()) await myCapacitorApp.init();
+    void desktopUpdates?.check(true);
+  }, enabled: !electronIsDev }] },
 ];
 
 // Get Config options from capacitor.config
@@ -24,6 +30,7 @@ const capacitorFileConfig: CapacitorElectronConfig = getCapacitorElectronConfig(
 // Initialize our app. You can pass menu templates into the app here.
 // const myCapacitorApp = new ElectronCapacitorApp(capacitorFileConfig);
 const myCapacitorApp = new ElectronCapacitorApp(capacitorFileConfig, trayMenuTemplate, appMenuBarMenuTemplate);
+let desktopUpdates: ReturnType<typeof installDesktopUpdates> | undefined;
 
 // If deeplinking is enabled then we will set it up here.
 if (capacitorFileConfig.electron?.deepLinkingEnabled) {
@@ -46,7 +53,10 @@ const startup = (async () => {
   // Initialize our app, build windows, and load content.
   await myCapacitorApp.init();
   // Check for updates if we are in a packaged app.
-  autoUpdater.checkForUpdatesAndNotify();
+  if (!electronIsDev) {
+    desktopUpdates = installDesktopUpdates(() => myCapacitorApp.getMainWindow(), myCapacitorApp.getCustomURLScheme());
+    void desktopUpdates.check();
+  }
 })();
 
 // Handle when all of our windows are close (platforms have their own expectations).

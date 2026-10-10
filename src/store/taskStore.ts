@@ -559,7 +559,7 @@ export const useTaskStore = create<TaskState>()(
       tasks: [],
       viewMode: 'day',
       daySubMode: 'timeline',
-      weekSubMode: 'list',
+      weekSubMode: 'timeline',
       dayToggleTarget: 'sequencer',
       hasInitializedSubModes: false,
       dayStartHour: 6,
@@ -578,7 +578,7 @@ export const useTaskStore = create<TaskState>()(
       setViewMode: (mode) => {
         const prev = get().viewMode;
         if (mode === 'focus' && prev !== 'focus') playUISound('swell');
-        set({ viewMode: mode, focusEntryPanel: null });
+        set({ viewMode: mode, focusEntryPanel: null, ...(mode === 'week' && prev !== 'week' ? { weekSubMode: 'timeline' as const } : {}) });
       },
       setDaySubMode: (mode) => set({ daySubMode: mode }),
       setWeekSubMode: (mode) => set({ weekSubMode: mode }),

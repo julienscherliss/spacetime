@@ -38,8 +38,10 @@ function startApp() {
     'electron-updater': { autoUpdater: { checkForUpdatesAndNotify() {} } },
     '@capacitor-community/electron': { getCapacitorElectronConfig: () => ({}) },
     './setup': { ElectronCapacitorApp, setupContentSecurityPolicy() {}, setupReloadWatcher() {} },
+    './desktopUpdates': { installDesktopUpdates: () => ({ check() {} }) },
   };
-  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../build/src/index.js'), 'utf8'), {
+  const buildRoot = process.env.SPACETIME_NATIVE_TEST_BUILD || path.join(__dirname, '../build');
+  vm.runInNewContext(fs.readFileSync(path.join(buildRoot, 'src/index.js'), 'utf8'), {
     exports: {}, process: { platform: 'darwin' }, require: (name) => {
       assert.ok(Object.hasOwn(modules, name), `Unexpected module: ${name}`);
       return modules[name];

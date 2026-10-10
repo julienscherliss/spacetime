@@ -165,3 +165,44 @@ describe('SubtaskList links', () => {
     expect(screen.getByRole('link')).toHaveAttribute('href', 'https://example.com/other?x=1&y=2');
   });
 });
+
+
+describe('SubtaskList backward deletion', () => {
+  it('walks backward through empty rows with the caret at the previous text end', () => {
+    render(<Harness />);
+    pasteText(getComposer(), 'one\ntwo');
+    const composer = getComposer();
+    composer.focus();
+    fireEvent.keyDown(composer, { key: 'Backspace' });
+    let rows = screen.getAllByRole('textbox', { name: 'Edit subtask' }) as HTMLTextAreaElement[];
+    expect(rows[1]).toHaveFocus();
+    expect(rows[1].selectionStart).toBe(3);
+    expectTitles(['one', 'two']);
+    fireEvent.change(rows[1], { target: { value: '' } });
+    fireEvent.keyDown(rows[1], { key: 'Backspace', repeat: true });
+    rows = screen.getAllByRole('textbox', { name: 'Edit subtask' }) as HTMLTextAreaElement[];
+    expect(rows[0]).toHaveFocus();
+    expect(rows[0].selectionStart).toBe(3);
+    expectTitles(['one']);
+    fireEvent.change(rows[0], { target: { value: '' } });
+    fireEvent.keyDown(rows[0], { key: 'Backspace', repeat: true });
+    expectTitles([]);
+    expect(getComposer()).toHaveFocus();
+    fireEvent.keyDown(getComposer(), { key: 'Backspace' });
+    expectTitles([]);
+  });
+
+  it('does not jump away from nonempty draft text or IME composition', () => {
+    render(<Harness />);
+    pasteText(getComposer(), 'one\ntwo');
+    const composer = getComposer();
+    composer.focus();
+    fireEvent.change(composer, { target: { value: 'draft' } });
+    fireEvent.keyDown(composer, { key: 'Backspace' });
+    expect(composer).toHaveFocus();
+    fireEvent.change(composer, { target: { value: '' } });
+    fireEvent.keyDown(composer, { key: 'Backspace', isComposing: true });
+    expect(composer).toHaveFocus();
+    expectTitles(['one', 'two']);
+  });
+});

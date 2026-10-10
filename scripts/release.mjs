@@ -5,14 +5,20 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import assert from 'node:assert/strict';
+import { fileURLToPath } from 'node:url';
+import { runReleasePipeline } from './release-pipeline.mjs';
 
 const root = process.cwd();
+const command = process.argv[2] ?? 'status';
+if (command === 'package' || command === 'distribute') {
+  runReleasePipeline(command, { script: fileURLToPath(import.meta.url), cwd: root });
+  process.exit(0);
+}
 const config = JSON.parse(fs.readFileSync('release.config.json', 'utf8'));
 const dir = path.resolve('.migration-private/releases', `${config.mac}-ios${config.ios}`);
 fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
 const receiptPath = path.join(dir, 'receipt.json');
 const receipt = fs.existsSync(receiptPath) ? JSON.parse(fs.readFileSync(receiptPath, 'utf8')) : {};
-const command = process.argv[2] ?? 'status';
 const env = { ...process.env };
 delete env.GH_TOKEN; delete env.GITHUB_TOKEN;
 delete env.SPACETIME_MIGRATION_TEST; delete env.SKIP_NOTARIZE;
@@ -129,7 +135,7 @@ if (command === 'prepare') {
   pin(); git('fetch', 'origin', 'main');
   if (!receipt.webCommit) {
     const base = git('rev-parse', 'origin/main'); const index = path.join(dir, 'web.index');
-    const paths = ['src', 'public', 'index.html', 'package.json', 'package-lock.json', 'vite.config.ts', 'scripts/release.mjs', 'scripts/verify-release-web.mjs', 'release.config.json', 'docs/RELEASING.md'];
+    const paths = ['src', 'public', 'index.html', 'package.json', 'package-lock.json', 'vite.config.ts', 'scripts/release.mjs', 'scripts/release-pipeline.mjs', 'scripts/release-pipeline.test.mjs', 'scripts/verify-release-web.mjs', 'release.config.json', 'docs/RELEASING.md'];
     const patch = run('git', ['diff', '--binary', config.webBaseSource, head, '--', ...paths]);
     const patchFile = path.join(dir, 'web.patch'); fs.writeFileSync(patchFile, patch + '\n');
     run('git', ['read-tree', base], 'web-read-tree', root, { GIT_INDEX_FILE: index });
@@ -147,6 +153,15 @@ if (command === 'prepare') {
     run('npm', ['run', 'build'], 'website-build', candidate);
     receipt.websiteFiles = inspectWeb(path.join(candidate, 'dist')); receipt.webBase = base; receipt.webCommit = commit; receipt.webChangedFiles = changed; save();
   }
+} else if (command === 'check-release') {
+  prepared();
+  assert(receipt.nativeCopiesVerified && receipt.macVerified && receipt.iosArchiveVerified && receipt.webCommit, 'Package all three clients before distributing.');
+  verifyIos(path.join(dir, 'Spacetime.xcarchive'));
+  assert(receipt.macAssets?.length === 5, 'Mac updater/download assets are incomplete.');
+  for (const file of receipt.macAssets) assert.equal(hash(fs.readFileSync(path.join(dir, 'mac', file.name))), file.sha256, `Changed Mac asset: ${file.name}`);
+  git('fetch', 'origin', 'main');
+  const current = git('rev-parse', 'origin/main');
+  assert(current === receipt.webBase || current === receipt.webCommit, 'Main moved; reconcile before distributing.');
 } else if (command === 'push-web') {
   pin(); assert(receipt.webCommit); git('fetch', 'origin', 'main');
   const current = git('rev-parse', 'origin/main');
@@ -173,5 +188,5 @@ if (command === 'prepare') {
   const proof = await verifyReleaseWeb({ receipt, dir, website: config.website, privateSettings });
   receipt.websiteProof = { appAssets: proof.appAssets, checkedAt: proof.at, cacheModuleMatched: true, workerMatched: true, repairInvariants: true };
   receipt.websitePublished = true; save();
-} else if (command !== 'status') throw new Error('Use prepare, mac, ios, upload-ios, web, push-web, publish-mac, verify-web or status.');
+} else if (command !== 'status') throw new Error('Use package, distribute, prepare, mac, ios, upload-ios, web, check-release, push-web, publish-mac, verify-web or status.');
 console.log(JSON.stringify({ source: receipt.source, mac: config.mac, ios: config.ios, prepared: Boolean(receipt.nativeCopiesVerified), macVerified: receipt.macVerified ?? false, macPublished: receipt.macPublished ?? false, iosArchiveVerified: receipt.iosArchiveVerified ?? false, iosUploaded: receipt.iosUploaded ?? false, iosAvailability: receipt.iosAvailability ?? 'Not uploaded', webCommit: receipt.webCommit, websitePublished: receipt.websitePublished ?? false, receipt: receiptPath }, null, 2));

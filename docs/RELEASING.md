@@ -31,9 +31,34 @@ through all three checkpoints; no separate chats or general migration retests.
 
 ## One source, one shared build
 
+Routine releases now use two commands, with review before packaging and an explicit
+distribution instruction before publication:
+
+```sh
+npm run release -- package
+npm run release -- distribute
+```
+
+`package` prepares the shared build, checks the website candidate, signs/notarizes
+the Mac package, and archives iOS. It does not upload or publish. `distribute`
+checks that every package is ready and hosting main has not changed, then uploads
+internal TestFlight, pushes the prepared website commit, and publishes the Mac
+download/update assets. Either command stops on the first failure. Rerun the same
+command after fixing that stage; its saved receipts reuse completed work.
+
+The remaining operator steps are choosing unused release versions and committing
+the approved source, clicking Lovable **Publish changes**, checking Apple's
+processed build is available to the internal group, and a short check of the changed
+behavior. Dashboard sign-in may be needed. After Lovable publishes, run
+`npm run release -- verify-web`. Replacing a locally installed Mac app still needs
+sync/quit and a private backup; it is separate from publishing its download.
+For this task-editor release, check the physical iPhone keyboard after installation.
+Public App Store release remains deferred. No scheduled or unattended publishing
+is configured by these commands.
+
 Update `release.config.json` with the next Mac version, unused internal iOS build number, and the **previous successfully published shared source commit** as `webBaseSource`. Bump `electron/package.json` and both root version fields in its lockfile to that Mac version. Commit and push the shared source branch. Confirm the iOS number in App Store Connect. Run focused tests for changed behavior once before packaging; do not rerun the full migration smoke suite for an ordinary frontend patch.
 
-From the app repository:
+Individual stages remain available for troubleshooting from the app repository:
 
 ```sh
 npm run release -- prepare

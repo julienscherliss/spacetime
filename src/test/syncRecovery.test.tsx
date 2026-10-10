@@ -88,6 +88,31 @@ describe('failed-save and account recovery guards', () => {
     });
   }
 
+  it('desktop restart awaits acknowledged task/library/category saves and blocks a failed save', async () => {
+    const h = await harness();
+    const { prepareDesktopRestart } = await import('@/lib/desktopUpdates');
+    h.tasks.setState({ tasks: h.tasks.getState().tasks.map(row => ({ ...row, title: 'Pending restart task' })) });
+    h.library.setState({ items: h.library.getState().items.map(row => ({ ...row, title: 'Pending restart library' })) });
+    h.library.setState({ categories: [{ value: 'work', label: 'Pending restart category' }] });
+    expect(await prepareDesktopRestart()).toBe(false);
+    expect(Object.values(h.writes).every(write => write.mock.calls.length > 0)).toBe(true);
+    h.succeed();
+    expect(await prepareDesktopRestart()).toBe(true);
+  });
+
+  it('desktop restart aborts when sign-out begins during an acknowledged save', async () => {
+    const h = await harness(); h.succeed();
+    const { prepareDesktopRestart } = await import('@/lib/desktopUpdates');
+    let resolve!: (value: any) => void;
+    h.writes.tasks.mockImplementationOnce(() => new Promise(done => { resolve = done; }));
+    h.tasks.setState({ tasks: h.tasks.getState().tasks.map(row => ({ ...row, title: 'Save during sign-out' })) });
+    const pending = prepareDesktopRestart();
+    await waitFor(() => expect(resolve).toBeDefined());
+    h.sync.markSigningOut();
+    resolve({ error: null });
+    expect(await pending).toBe(false);
+  });
+
   it('rejects a read that began clean but finished after a local edit', async () => {
     const h = await harness();
     let resolve!: (value: any) => void;

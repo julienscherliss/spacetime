@@ -2,7 +2,7 @@ import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTaskStore, Priority, RecurrencePattern, CustomUnit, NthWeekday, NthWeek } from '@/store/taskStore';
 import { SubtaskList, Subtask, SubtaskListHandle } from '@/components/SubtaskList';
-import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar, Inbox, CalendarCheck, XCircle, Paperclip, ExternalLink, Check, AlertTriangle, Tag, Upload, FileText, Bell, PauseCircle, Layers, Sparkles } from 'lucide-react';
+import { X, Trash2, Repeat, ChevronDown, Archive, Link, Unlink, Clock, Calendar, Inbox, CalendarCheck, XCircle, Paperclip, ExternalLink, Check, AlertTriangle, Tag, Upload, FileText, Bell, PauseCircle, Layers, Sparkles, Menu, ArrowLeft, Flag, ListChecks } from 'lucide-react';
 import { GroupNamePrompt } from '@/components/GroupNamePrompt';
 import { AttachmentLightbox } from '@/components/AttachmentLightbox';
 import { AttachmentThumb } from '@/components/AttachmentThumb';
@@ -19,7 +19,9 @@ import { formatTime12h } from '@/hooks/useCurrentTime';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import { DurationPicker } from '@/components/ScrollWheelPicker';
-import { format } from 'date-fns';
+import { format, differenceInCalendarDays } from 'date-fns';
+import { getAppClock } from '@/lib/appEntryDestination';
+import './taskEditor.css';
 import { DescriptionWithLinks } from '@/components/DescriptionWithLinks';
 import { toast } from 'sonner';
 import { useColorSchemeStore } from '@/store/colorSchemeStore';
@@ -148,6 +150,32 @@ export function TaskEditPanel() {
   } = useTaskStore();
   const task = tasks.find((t) => t.id === editingTaskId);
   const [showGroupPrompt, setShowGroupPrompt] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [editingDetails, setEditingDetails] = useState(false);
+  const [showPriorityPicker, setShowPriorityPicker] = useState(false);
+  const detailsRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const [viewport, setViewport] = useState<{height:number;top:number}|null>(null);
+  useEffect(() => {
+    if (!task || task.type === 'group') return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const refresh = () => setViewport({height:vv.height,top:vv.offsetTop});
+    refresh(); vv.addEventListener('resize',refresh);vv.addEventListener('scroll',refresh);
+    return () => {vv.removeEventListener('resize',refresh);vv.removeEventListener('scroll',refresh);};
+  }, [task?.id]);
+  useEffect(() => {
+    if (!task || task.type === 'group') return;
+    const outside = (event: Event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (detailsRef.current?.contains(target) || target.closest('[data-radix-popper-content-wrapper], [data-task-setting-overlay]')) return;
+      setEditingDetails(false);
+      if (!showSettings) setShowRecurrence(false);
+    };
+    document.addEventListener('pointerdown',outside);document.addEventListener('focusin',outside);
+    return () => {document.removeEventListener('pointerdown',outside);document.removeEventListener('focusin',outside);};
+  }, [showSettings, task?.id]);
 
   // If the editing target is a Group, the dedicated GroupEditPanel handles it.
   // We need to render nothing here, but we MUST keep all hooks running in
@@ -249,6 +277,11 @@ export function TaskEditPanel() {
         const week = (Math.ceil(dayOfMonth / 7) as 1 | 2 | 3 | 4 | -1);
         setNthPositions([{ week, day: dt.getDay() }]);
       }
+      setShowSettings(false);
+      setEditingDetails(false);
+      setShowPriorityPicker(false);
+      setShowIconPicker(false);
+      setShowRecurrence(false);
       setShowDeleteConfirm(false);
       setDueDate(task.dueDate || '');
       setTaskCategory(task.category || '');
@@ -416,12 +449,55 @@ export function TaskEditPanel() {
     }
   };
 
-  const handleClose = () => {
-    if (Date.now() - openedAtRef.current < 350) return;
+  const handleClose = (explicit = false) => {
+    if (!explicit && Date.now() - openedAtRef.current < 350) return;
     handleSave();
     showSaveConfirmation();
     setTimeout(() => setEditingTask(null), 400);
   };
+
+  const closeRef = useRef(handleClose);
+  closeRef.current = handleClose;
+  useEffect(() => {
+    if (!task || isGroup) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    // Focus the card without opening the mobile keyboard.
+    if (document.activeElement !== titleInputRef.current) dialogRef.current?.focus({ preventScroll: true });
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+    };
+  }, [task?.id, isGroup]);
+  useEffect(() => {
+    if (!task || isGroup) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.isComposing || lightboxIndex !== null || showGroupPrompt) return;
+      const target = event.target;
+      // Radix manages keyboard focus and Escape within its portaled pickers.
+      if (target instanceof Element && target.closest('[data-radix-popper-content-wrapper]')) return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        if (showReminderModal) setShowReminderModal(false);
+        else if (showRecurrence) setShowRecurrence(false);
+        else closeRef.current(true);
+      } else if (event.key === 'Tab') {
+        const scope = showReminderModal ? dialogRef.current?.querySelector('[data-task-setting-overlay]') : dialogRef.current;
+        const controls = Array.from(scope?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), a[href], [tabindex="0"]') || []).filter(el => el.getClientRects().length > 0);
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (!first) { event.preventDefault(); return; }
+        if (event.shiftKey && (document.activeElement === first || document.activeElement === dialogRef.current)) {
+          event.preventDefault(); last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault(); first.focus();
+        }
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [task?.id, isGroup, showReminderModal, showRecurrence, lightboxIndex, showGroupPrompt]);
 
   const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
 
@@ -461,59 +537,25 @@ export function TaskEditPanel() {
   }, []);
 
   const dueInfo = dueDate ? getDueDateText(dueDate) : null;
-
-  return (
-    <AnimatePresence>
-      {task && !isGroup && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.15 }}
-          className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-background/60 backdrop-blur-[2px]"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) handleClose();
-          }}
-        >
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 24 }}
-            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className="bg-card border border-border/50 rounded-t-lg sm:rounded-lg w-full sm:max-w-md shadow-lg max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* ─── Header ─── */}
-            <div className="px-5 pt-4 pb-1 flex items-center justify-between">
-              <span className="text-[10px] font-mono text-muted-foreground/40 tracking-wider">
-                {task.time ? formatScheduleContext(task.date, task.time) : formatScheduleContext(task.date)}
-              </span>
-              <div className="flex items-center gap-2">
-                <AnimatePresence mode="wait">
-                  {saveStatus === 'saving' && (
-                    <motion.span key="saving" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                      className="text-[9px] font-mono text-muted-foreground/35 tracking-wider">Saving…</motion.span>
-                  )}
-                  {saveStatus === 'saved' && (
-                    <motion.span key="saved" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                      className="flex items-center gap-1 text-[9px] font-mono text-primary/60 tracking-wider">
-                      <Check size={10} /> Saved
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-                <button onClick={handleClose}
-                  className="text-[11px] font-mono tracking-wider text-foreground/60 hover:text-foreground transition-colors">
-                  Done
-                </button>
-              </div>
-            </div>
-
-            {/* ─── Metadata chips (top, above title) ─── */}
-            <div className="px-5 pb-2 flex items-center gap-1.5 flex-wrap">
+  const tagLabel = useLibraryStore.getState().categories.find(c=>c.value===taskCategory)?.label || taskCategory;
+  const today = getAppClock(new Date(), useTimezoneStore.getState().timezone).date;
+  const dueDays = dueDate ? differenceInCalendarDays(new Date(dueDate+'T12:00:00'),new Date(today+'T12:00:00')) : null;
+  const dueLabel = dueDays === null ? '' : dueDays < 0 ? `${Math.abs(dueDays)}d overdue` : dueDays === 0 ? 'Due today' : `${dueDays}d left`;
+  const openSetting = (open:()=>void) => {setEditingDetails(true);open();};
+  const attributes = [
+    ...(dueDate ? [<button key="due" aria-label="Edit due date" title={dueDate} onClick={()=>openSetting(()=>setShowDuePicker(true))}>{dueLabel}</button>] : []),
+    <button key="tag" aria-label="Edit tag" className={!taskCategory?'missing-tag':''} onClick={()=>openSetting(()=>setShowCatPicker(true))}>{tagLabel || 'no tag'}</button>,
+    ...(reminders.length ? [<button key="reminders" aria-label="Edit reminders" title="Reminders" onClick={()=>setShowReminderModal(true)}><Bell/></button>] : []),
+    ...(taskIcon ? [<button key="icon" aria-label="Edit task icon" onClick={()=>openSetting(()=>setShowIconPicker(true))}>{(() => {const Icon=getIconByName(taskIcon)||Sparkles;return <Icon/>;})()}</button>] : []),
+    ...(priority ? [<button key="priority" aria-label="Edit priority" onClick={()=>openSetting(()=>setShowPriorityPicker(true))}>{PRIORITY_LABELS[priority]}</button>] : []),
+    ...(recurrenceType !== 'none' ? [<button key="repeat" aria-label="Edit repeat" onClick={()=>openSetting(()=>setShowRecurrence(true))}>{recurrenceLabel(buildRecurrence())}</button>] : []),
+    ...(isRoutine && recurrenceType !== 'none' ? [<button key="routine" aria-label="Turn off routine" onClick={()=>setIsRoutine(false)}>Routine</button>] : []),
+  ];
+  const settingControls = (<div className={`task-editor-controls ${showSettings?'settings-controls':'quick-controls'}`} hidden={!showSettings && !editingDetails && !showDuePicker && !showCatPicker && !showIconPicker && !showPriorityPicker && !showRecurrence}>
               {/* Due date */}
               <Popover open={showDuePicker} onOpenChange={setShowDuePicker}>
                 <PopoverTrigger asChild>
-                  <button className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
+                  <button data-setting="due" aria-label="Due date" title="Due date" className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
                     dueInfo?.isOverdue
                       ? 'text-destructive/80 bg-destructive/10'
                       : dueDate
@@ -521,7 +563,7 @@ export function TaskEditPanel() {
                         : 'text-muted-foreground/40 bg-muted/30 hover:bg-muted/50'
                   }`}>
                     <CalendarCheck size={11} strokeWidth={1.5} />
-                    {dueInfo ? dueInfo.relative : 'Due'}
+                    <span>{dueInfo ? dueInfo.relative : 'Due'}</span>
                   </button>
                 </PopoverTrigger>
                 <PopoverContent data-date-autocomplete className="w-auto p-0 z-[9999]" align="start" onClick={(e) => e.stopPropagation()}>
@@ -529,7 +571,7 @@ export function TaskEditPanel() {
                     mode="single"
                     selected={dueDate ? new Date(dueDate + 'T12:00:00') : undefined}
                     onSelect={(d) => {
-                      if (d) setDueDate(d.toISOString().split('T')[0]);
+                      if (d) setDueDate(format(d, 'yyyy-MM-dd'));
                       else setDueDate('');
                       setShowDuePicker(false);
                     }}
@@ -545,9 +587,9 @@ export function TaskEditPanel() {
                       <button
                         key={opt.label}
                         onClick={() => {
-                          const d = new Date();
+                          const d = new Date(today + 'T12:00:00');
                           d.setDate(d.getDate() + opt.days);
-                          setDueDate(d.toISOString().split('T')[0]);
+                          setDueDate(format(d, 'yyyy-MM-dd'));
                           setShowDuePicker(false);
                         }}
                         className="px-2.5 py-1 rounded-sm text-[10px] font-mono tracking-wider text-muted-foreground/60 bg-muted/30 hover:bg-muted/60 hover:text-foreground/70 transition-colors"
@@ -568,7 +610,7 @@ export function TaskEditPanel() {
               {/* Category / Tag */}
               <Popover open={showCatPicker} onOpenChange={setShowCatPicker}>
                 <PopoverTrigger asChild>
-                  <button className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
+                  <button data-setting="tag" aria-label="Tag" title="Tag" className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
                     taskCategory
                       ? 'text-foreground/70 bg-muted/40 hover:bg-muted/60'
                       : 'text-muted-foreground/40 bg-muted/30 hover:bg-muted/50'
@@ -578,7 +620,7 @@ export function TaskEditPanel() {
                       const TagI = getIconByName(cats.find(c => c.value === taskCategory)?.icon);
                       return TagI ? <TagI size={10} strokeWidth={1.5} /> : <Tag size={10} strokeWidth={1.5} />;
                     })()}
-                    {taskCategory ? (useLibraryStore.getState().categories.find(c => c.value === taskCategory)?.label || taskCategory) : 'Tag'}
+                    <span>{taskCategory ? (useLibraryStore.getState().categories.find(c => c.value === taskCategory)?.label || taskCategory) : 'Tag'}</span>
                   </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-44 p-1 z-[10000]" align="start" onClick={(e) => e.stopPropagation()}>
@@ -593,7 +635,7 @@ export function TaskEditPanel() {
               {/* Icon */}
               <Popover open={showIconPicker} onOpenChange={setShowIconPicker}>
                 <PopoverTrigger asChild>
-                  <button className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
+                  <button data-setting="icon" aria-label="Task icon" title="Task icon" className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
                     taskIcon
                       ? 'text-foreground/80 bg-muted/40 hover:bg-muted/60'
                       : 'text-muted-foreground/40 bg-muted/30 hover:bg-muted/50'
@@ -606,7 +648,7 @@ export function TaskEditPanel() {
                         ? <Resolved size={11} strokeWidth={1.5} />
                         : <Sparkles size={10} strokeWidth={1.5} />;
                     })()}
-                    {taskIcon ? 'Icon' : (resolveCategoryIcon(taskCategory, useLibraryStore.getState().categories) ? 'Inherit' : 'Icon')}
+                    <span>{taskIcon ? 'Icon' : (resolveCategoryIcon(taskCategory, useLibraryStore.getState().categories) ? 'Inherit' : 'Icon')}</span>
                   </button>
                 </PopoverTrigger>
                 <PopoverContent className="p-0 z-[10000]" align="start" onClick={(e) => e.stopPropagation()}>
@@ -621,16 +663,12 @@ export function TaskEditPanel() {
               </Popover>
 
               {/* Priority dropdown chip */}
-              <Popover>
+              <Popover open={showPriorityPicker} onOpenChange={setShowPriorityPicker}>
                 <PopoverTrigger asChild>
-                  <button
+                  <button data-setting="priority" aria-label="Priority" title="Priority"
                     className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors border bg-muted/40 hover:bg-muted/60"
-                    style={{
-                      color: `hsl(${getPriorityColor(priority)})`,
-                      borderColor: `hsl(${getPriorityColor(priority)} / 0.45)`,
-                    }}
                   >
-                    {PRIORITY_LABELS[priority]}
+                    <Flag size={15}/><span>{PRIORITY_LABELS[priority]}</span>
                     <ChevronDown size={10} strokeWidth={1.5} />
                   </button>
                 </PopoverTrigger>
@@ -642,7 +680,7 @@ export function TaskEditPanel() {
                     return (
                     <button
                       key={p}
-                      onClick={() => !isDisabled && setPriority(p)}
+                      onClick={() => {if (!isDisabled) {setPriority(p);setShowPriorityPicker(false);}}}
                       disabled={isDisabled}
                       className={`w-full text-left px-3 py-2 text-[11px] font-mono rounded-sm transition-colors ${
                         isDisabled
@@ -651,12 +689,8 @@ export function TaskEditPanel() {
                             ? 'bg-muted/50'
                             : 'hover:bg-muted/30'
                       }`}
-                      style={
-                        isDisabled
-                          ? undefined
-                          : { color: `hsl(${getPriorityColor(p)})` }
-                      }
                     >
+                      <span aria-hidden="true" className="inline-block w-2 h-2 mr-2 border border-border/50" style={{backgroundColor: `hsl(${getPriorityColor(p)})`}} />
                       {PRIORITY_LABELS[p]}
                       {isDisabled && <span className="text-[8px] ml-1 opacity-50">▼</span>}
                     </button>
@@ -666,7 +700,7 @@ export function TaskEditPanel() {
               </Popover>
 
               {/* Repeat */}
-              <button
+              <button data-setting="repeat" aria-label="Repeat" title="Repeat"
                 onClick={() => setShowRecurrence(!showRecurrence)}
                 className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
                   recurrenceType !== 'none'
@@ -675,12 +709,12 @@ export function TaskEditPanel() {
                 }`}
               >
                 <Repeat size={10} strokeWidth={1.5} />
-                {recurrenceType !== 'none' ? recurrenceLabel(buildRecurrence()) : ''}
+                <span>{recurrenceType !== 'none' ? recurrenceLabel(buildRecurrence()) : 'No repeat'}</span>
               </button>
 
               {/* Routine chip — visible when task is recurring */}
               {recurrenceType !== 'none' && (
-                <button
+                <button data-setting="routine" aria-label="Routine" title="Routine" aria-pressed={isRoutine}
                   onClick={() => setIsRoutine(!isRoutine)}
                   className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
                     isRoutine
@@ -688,13 +722,13 @@ export function TaskEditPanel() {
                       : 'text-muted-foreground/35 bg-muted/25 hover:bg-muted/40'
                   }`}
                 >
-                  {isRoutine ? 'Routine' : 'Not routine'}
+                  <ListChecks size={15}/><span>{isRoutine ? 'Routine' : 'Not routine'}</span>
                 </button>
               )}
 
               {/* Unlink chip — only shown for linked recurring tasks, fully detaches */}
               {isRecurring && isLinked && (
-                <button
+                <button data-setting="unlink" aria-label="Unlink repeating task" title="Unlink repeating task"
                   onClick={() => {
                     setIsLinked(false);
                     setRecurrenceType('none');
@@ -717,12 +751,12 @@ export function TaskEditPanel() {
                   className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors text-destructive/60 bg-destructive/10 hover:bg-destructive/15"
                 >
                   <Unlink size={10} strokeWidth={1.5} />
-                  Unlink
+                  <span>Unlink</span>
                 </button>
               )}
 
               {/* Reminder chip */}
-              <button
+              <button data-setting="reminder" aria-label="Reminders" title="Reminders"
                 onClick={() => setShowReminderModal(true)}
                 className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-mono tracking-wide transition-colors ${
                   reminders.length > 0
@@ -731,11 +765,11 @@ export function TaskEditPanel() {
                 }`}
               >
                 <Bell size={10} strokeWidth={1.5} />
-                {reminders.length > 0 ? `${reminders.length}` : ''}
+                <span>{reminders.length > 0 ? `${reminders.length} reminder${reminders.length === 1 ? '' : 's'}` : 'None'}</span>
               </button>
 
               {/* Attachment chip — paperclip only */}
-              <button
+              <button data-setting="attachment" aria-label="Add attachment"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
                 title="Add attachment"
@@ -750,8 +784,59 @@ export function TaskEditPanel() {
                 ) : (
                   <Paperclip size={10} strokeWidth={1.5} />
                 )}
-                {attachments.length > 0 ? `${attachments.length}` : ''}
+                <span>{attachments.length > 0 ? `${attachments.length} attachments` : 'Attachments'}</span>
               </button>
+            </div>);
+
+  return (
+    <AnimatePresence>
+      {task && !isGroup && (
+        <motion.div
+          key="task-editor"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+          className="task-editor-overlay fixed inset-0 z-[9999] flex items-center justify-center bg-background/60 backdrop-blur-[2px]"
+          style={viewport?{height:viewport.height,top:viewport.top,bottom:'auto'}:undefined}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) handleClose();
+          }}
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 24 }}
+            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            className="task-editor-card bg-card border border-border/50 rounded-lg shadow-lg"
+            ref={dialogRef} tabIndex={-1}
+            role="dialog" aria-modal="true" aria-label={showSettings?'Task settings':'Edit task'} data-settings={showSettings}
+            style={{maxHeight:viewport?Math.max(0,Math.min(viewport.height-24,isMobile?window.innerHeight*.68:window.innerHeight*.84)):undefined}}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="task-editor-header">
+              <div className="task-editor-header-left">
+                <button aria-label={showSettings?'Back to task':'Open task settings'} className="task-editor-menu" onClick={()=>{setShowSettings(!showSettings);setEditingDetails(false);setShowRecurrence(false);}}>{showSettings?<ArrowLeft/>:<Menu/>}</button>
+                {showSettings?<span>Back to task</span>:<div className="task-editor-attributes" aria-label="Applied task attributes">{attributes.map((item,i)=><span key={item.key}>{i>0&&<span className="task-editor-divider" aria-hidden="true">|</span>}{item}</span>)}</div>}
+              </div>
+              <div className="flex items-center gap-2">
+                <AnimatePresence mode="wait">
+                  {saveStatus === 'saving' && (
+                    <motion.span key="saving" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      className="text-[9px] font-mono text-muted-foreground/35 tracking-wider">Saving…</motion.span>
+                  )}
+                  {saveStatus === 'saved' && (
+                    <motion.span key="saved" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      className="flex items-center gap-1 text-[9px] font-mono text-primary/60 tracking-wider">
+                      <Check size={10} /> Saved
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+                <button aria-label="Done editing task" onClick={() => handleClose(true)}
+                  className="text-[11px] font-mono tracking-wider text-foreground/60 hover:text-foreground transition-colors">
+                  Done
+                </button>
+              </div>
             </div>
 
             {/* Reminder modal */}
@@ -761,18 +846,19 @@ export function TaskEditPanel() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="fixed inset-0 z-[10001] flex items-center justify-center"
+                  data-task-setting-overlay className="fixed inset-0 z-[10001] flex items-center justify-center"
                 >
                   <div className="absolute inset-0 bg-black/30" onClick={() => setShowReminderModal(false)} />
                   <motion.div
                     initial={{ scale: 0.95, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.95, opacity: 0 }}
-                    className="relative bg-card border border-border rounded-lg shadow-lg w-[300px] max-h-[70vh] overflow-hidden"
+                    role="dialog" aria-modal="true" aria-label="Task reminders"
+                    className="task-editor-reminders relative bg-card border border-border rounded-lg shadow-lg w-[300px]"
                   >
                     <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
                       <h3 className="text-[12px] font-display font-bold text-foreground tracking-tight">REMINDERS</h3>
-                      <button onClick={() => setShowReminderModal(false)} className="text-muted-foreground hover:text-foreground transition-colors">
+                      <button aria-label="Close reminders" onClick={() => setShowReminderModal(false)} className="text-muted-foreground hover:text-foreground transition-colors">
                         <X size={14} strokeWidth={1.5} />
                       </button>
                     </div>
@@ -815,11 +901,13 @@ export function TaskEditPanel() {
               )}
             </AnimatePresence>
 
-            <div className="px-5 pb-5">
+            <div className="task-editor-scroll">
+              {showSettings&&<><h2 className="task-editor-settings-title">Task settings</h2><p className="task-editor-settings-name">{title}</p></>}
               {/* ─── Title ─── */}
-              <div className="relative">
+              <div className="relative task-editor-title-wrap" hidden={showSettings}>
                 <input
                   ref={titleInputRef}
+                  aria-label="Task name"
                   value={title}
                   onChange={(e) => {
                     const val = e.target.value;
@@ -839,6 +927,8 @@ export function TaskEditPanel() {
               </div>
 
               {/* ─── Subtitle / Description (always fully visible) ─── */}
+              <div ref={detailsRef} className="task-editor-details-group" onFocusCapture={()=>setEditingDetails(true)}>
+                <div className="task-editor-description" hidden={showSettings}>
               <DescriptionWithLinks
                 value={description}
                 onChange={(val) => {
@@ -846,6 +936,9 @@ export function TaskEditPanel() {
                 }}
                 placeholder="Description"
               />
+                </div>
+                {settingControls}
+              </div>
 
               {/* ─── Recurrence expanded ─── */}
               <AnimatePresence>
@@ -855,7 +948,7 @@ export function TaskEditPanel() {
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.15 }}
-                    className="overflow-hidden mb-4"
+                    data-task-setting-overlay className="task-editor-recurrence overflow-hidden mb-4"
                   >
                     <div className="space-y-1 pl-3 border-l-2 border-border/30">
                       {RECURRENCE_OPTIONS.map((opt) => (
@@ -1066,7 +1159,7 @@ export function TaskEditPanel() {
               </AnimatePresence>
 
               {/* ─── Subtasks ─── */}
-              <div className="mb-4">
+              <div className="task-editor-subtasks mb-4" hidden={showSettings}>
                 <SubtaskList ref={subtaskListRef} subtasks={subtasks} onChange={setSubtasks} />
               </div>
 
@@ -1128,38 +1221,41 @@ export function TaskEditPanel() {
                 </div>
               )}
 
+            </div>
               {/* ─── Actions ─── */}
               {(
 
-                <div className="flex items-center gap-2 pt-3 border-t border-border/20"
+                <div className="task-editor-actions flex items-center gap-2"
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={(e) => e.stopPropagation()}>
-                  <button type="button"
+                  <button type="button" data-action="limbo"
                     onClick={(e) => {
                       e.stopPropagation();
                       if (!task) return;
+                      handleSave();
                       updateTask(task.id, { inWaitingRoom: true, time: undefined });
                       setEditingTask(null);
                     }}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-sm text-[9px] font-mono tracking-wider text-muted-foreground/50 hover:text-foreground hover:bg-muted/30 transition-colors"
                     title="Move to Limbo">
                     <PauseCircle size={12} strokeWidth={1.5} />
-                    LIMBO
+                    <span>LIMBO</span>
                   </button>
                   <button type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       e.preventDefault();
                       if (!task) return;
-                      const taskTitle = task.title;
+                      const draft = getUpdates(subtaskListRef.current?.flushPendingInput());
+                      const taskTitle = draft.title;
                       const libNavBtn = document.querySelector('[data-library-nav-btn]') as HTMLElement | null;
                       import('@/components/LibraryDueDatePrompt').then(({ useLibraryDuePrompt }) => {
                         useLibraryDuePrompt.getState().request({
-                          title: task.title,
+                          title: draft.title,
                           duration: task.duration || 30,
-                          category: task.category,
-                          note: task.description,
-                          dueDate: task.dueDate ?? null,
+                          category: draft.category,
+                          note: draft.description,
+                          dueDate: draft.dueDate ?? null,
                           anchor: libNavBtn,
                           side: 'bottom',
                           align: 'end',
@@ -1170,17 +1266,17 @@ export function TaskEditPanel() {
                       toast.success(`"${taskTitle}" sent to library`);
                     }}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-sm text-[9px] font-mono tracking-wider text-muted-foreground/50 hover:text-foreground hover:bg-muted/30 transition-colors"
-                    title="Send to Library">
+                    aria-label="Send to Library" title="Send to Library">
                     <Archive size={12} strokeWidth={1.5} />
-                    LIBRARY
+                    <span>LIBRARY</span>
                   </button>
                   {/* Convert to Group — allowed for normal scheduled tasks not already in a Group.
                       Recurring tasks are disallowed unless explicitly unlinked from their series. */}
-                  {task && !task.groupId && task.time && task.duration && (
+                  {task && !task.groupId && task.time && task.duration && recurrenceType === 'none' && (
                     task.linked === false ||
                     (!task.recurrence && !task.isRecurrenceInstance && !task.recurrenceParentId)
                   ) && (
-                    <button type="button"
+                    <button type="button" data-action="group"
                       onClick={(e) => {
                         e.stopPropagation();
                         setShowGroupPrompt(true);
@@ -1188,7 +1284,7 @@ export function TaskEditPanel() {
                       className="flex items-center gap-1.5 px-3 py-2 rounded-sm text-[9px] font-mono tracking-wider text-muted-foreground/50 hover:text-foreground hover:bg-muted/30 transition-colors"
                       title="Convert this task into a Group container">
                       <Layers size={12} strokeWidth={1.5} />
-                      GROUP
+                      <span>GROUP</span>
                     </button>
                   )}
                   <div className="flex-1" />
@@ -1204,7 +1300,7 @@ export function TaskEditPanel() {
                       }
                     }}
                     className="p-2.5 rounded-sm text-muted-foreground/35 hover:text-destructive transition-colors"
-                    title="Delete task">
+                    aria-label="Delete task" title="Delete task">
                     <Trash2 size={14} strokeWidth={1.5} />
                   </button>
                 </div>
@@ -1212,7 +1308,7 @@ export function TaskEditPanel() {
 
               {/* Delete confirmation for recurring */}
               {showDeleteConfirm && (
-                <div className="p-3 border border-border/40 rounded-sm bg-muted/20 mt-2">
+                <div className="task-editor-delete-confirm p-3 border border-border/40 rounded-sm bg-muted/20 mt-2">
                   <p className="text-[9px] font-mono text-foreground/60 mb-2.5">Delete routine task?</p>
                   <div className="flex gap-2">
                     <button
@@ -1237,12 +1333,12 @@ export function TaskEditPanel() {
                   </div>
                 </div>
               )}
-            </div>
           </motion.div>
         </motion.div>
       )}
       {lightboxIndex !== null && (
         <AttachmentLightbox
+          key="task-attachment-lightbox"
           attachments={attachments}
           currentIndex={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
@@ -1250,13 +1346,15 @@ export function TaskEditPanel() {
         />
       )}
       <GroupNamePrompt
+        key="task-group-prompt"
         open={showGroupPrompt}
         contextLabel="CONVERT TO GROUP"
-        defaultName={task?.title ? `${task.title} block` : ''}
+        defaultName={title ? `${title} block` : ''}
         confirmLabel="CREATE GROUP"
         onCancel={() => setShowGroupPrompt(false)}
         onConfirm={(name) => {
           if (!task) return;
+          handleSave();
           const groupId = convertTaskToGroup(task.id, name);
           setShowGroupPrompt(false);
           if (groupId) {

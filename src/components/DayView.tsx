@@ -1,3 +1,4 @@
+import { getScheduleTopOffset, getScheduleViewportHeight } from '@/lib/scheduleViewport';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useTrackpadSwipe } from '@/hooks/useTrackpadSwipe';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -92,8 +93,8 @@ export function DayView() {
     preClusterScaleRef.current = hourHeight;
     preClusterScrollRef.current = window.scrollY;
 
-    const stickyOffset = window.innerWidth < 640 ? 36 : 84;
-    const viewportH = window.innerHeight - stickyOffset;
+    const stickyOffset = getScheduleTopOffset();
+    const viewportH = getScheduleViewportHeight(stickyOffset);
 
     setClusterZoomed(true);
 
@@ -120,8 +121,8 @@ export function DayView() {
     const restoreScroll = preClusterScrollRef.current ?? 0;
 
     // Compute what minute is at the center of the restore scroll position
-    const stickyOffset = window.innerWidth < 640 ? 36 : 84;
-    const viewportH = window.innerHeight - stickyOffset;
+    const stickyOffset = getScheduleTopOffset();
+    const viewportH = getScheduleViewportHeight(stickyOffset);
     const timelineDocTop = getTimelineDocTop();
     const centerDocY = restoreScroll + stickyOffset + viewportH / 2;
     const centerMin = START_HOUR * 60 + ((centerDocY - timelineDocTop) / restoreScale) * 60;
@@ -164,8 +165,8 @@ export function DayView() {
     const windowStartMin = Math.max(0, taskStartMin - padMin);
     const windowEndMin = Math.min(24 * 60, taskEndMin + padMin);
     const windowHours = (windowEndMin - windowStartMin) / 60;
-    const stickyOffset = 96;
-    const viewportH = window.innerHeight - stickyOffset;
+    const stickyOffset = getScheduleTopOffset(96);
+    const viewportH = getScheduleViewportHeight(stickyOffset);
     const targetHourHeight = Math.min(SCALE_MAX, Math.max(SCALE_MIN, viewportH / windowHours));
 
     setScale(targetHourHeight);
@@ -326,7 +327,7 @@ export function DayView() {
       onTouchEnd={handleTouchEnd}
     >
       {/* Sticky header: title + controls pinned together */}
-      <div className="sticky top-[env(safe-area-inset-top)] sm:top-12 z-30 bg-background border-b border-border/30">
+      <div data-schedule-header className="sticky top-[env(safe-area-inset-top)] sm:top-12 z-30 bg-background border-b border-border/30">
         <div className="py-3 flex items-center justify-between gap-2">
           <h2 className="text-base sm:text-lg font-display font-bold text-foreground tracking-tight truncate">
             {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', {
@@ -391,9 +392,10 @@ export function DayView() {
             hideButton={isMobile}
           />
         </div>
+        {isMobile && <div className="max-h-[28dvh] overflow-y-auto overscroll-contain"><AllDayEventStrip dates={[selectedDate]} /></div>}
       </div>
 
-      <AllDayEventStrip dates={[selectedDate]} />
+      {!isMobile && <AllDayEventStrip dates={[selectedDate]} />}
 
       {/* Calendar grid — flows naturally, no inner scroll */}
       <div
@@ -410,6 +412,7 @@ export function DayView() {
         style={{
           transform: swiping ? `translateX(${swipeOffset * 0.3}px)` : 'none',
           overflow: 'hidden',
+          isolation: 'isolate',
         }}
       >
         <TimelineColumn

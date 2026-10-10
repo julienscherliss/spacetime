@@ -73,14 +73,13 @@ const Index = () => {
     }
   }, []);
 
-  // Preserve the unrelated first-run week defaults.
+  // Week starts in the editable grid on every device.
   useEffect(() => {
     const s = useTaskStore.getState();
-    const isMobileViewport = typeof window !== 'undefined' && window.innerWidth < 768;
     // Week sub-mode: only set a default on the very first app entry; otherwise
     // respect whatever the user last switched to.
     if (!s.hasInitializedSubModes) {
-      s.setWeekSubMode(isMobileViewport ? 'list' : 'timeline');
+      s.setWeekSubMode('timeline');
       s.setHasInitializedSubModes(true);
     }
   }, []);

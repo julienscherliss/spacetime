@@ -1,8 +1,8 @@
 {
-  "mac": "1.0.26",
-  "ios": 26,
+  "mac": "1.0.27",
+  "ios": 27,
   "webBaseSource": "f8779f7b25bff831f1a63b4b5ec5c5a44ed7b045",
   "repo": "julienscherliss/spacetime",
   "website": "https://launchspacetime.com",
-  "notes": "Start every new recurring task with an unchecked checklist. Keep each occurrence\u2019s subtask progress independent. Open links directly from subtasks while preserving their complete URLs and editing controls. Existing account data is retained."
+  "notes": "A roomier task editor with quick settings and a clear settings card. Week opens in the schedule grid, Month selects today, and mobile calendar events stay visible. Recurring checklists reset for each occurrence, subtask links open directly, and empty subtasks support backspace navigation. Mac updates can be downloaded from inside the app. Existing account data is retained."
 }
