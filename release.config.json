@@ -1,8 +1,8 @@
 {
-  "mac": "1.0.27",
-  "ios": 27,
-  "webBaseSource": "f8779f7b25bff831f1a63b4b5ec5c5a44ed7b045",
+  "mac": "1.0.28",
+  "ios": 28,
+  "webBaseSource": "71263ec213473b1f0853e65e29d0b4a19727a4a2",
   "repo": "julienscherliss/spacetime",
   "website": "https://launchspacetime.com",
-  "notes": "A roomier task editor with quick settings and a clear settings card. Week opens in the schedule grid, Month selects today, and mobile calendar events stay visible. Recurring checklists reset for each occurrence, subtask links open directly, and empty subtasks support backspace navigation. Mac updates can be downloaded from inside the app. Existing account data is retained."
+  "notes": "Calendar events stay behind tasks, and converting an event stays synchronized across devices without reappearing. Library has a wider desktop panel that makes room in the schedule and an optional Details view. Mobile task editing has improved dropdown placement and cleaner focus styling. Existing account data is retained."
 }
