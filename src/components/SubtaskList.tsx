@@ -16,6 +16,7 @@ interface SubtaskListProps {
   subtasks: Subtask[];
   onChange: (subtasks: Subtask[]) => void;
   compact?: boolean;
+  inputPlaceholder?: string;
 }
 
 export interface SubtaskListHandle {
@@ -27,7 +28,7 @@ export interface SubtaskListHandle {
 const generateId = () => Math.random().toString(36).substring(2, 8);
 
 export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
-  ({ subtasks, onChange, compact = false }, ref) => {
+  ({ subtasks, onChange, compact = false, inputPlaceholder = '' }, ref) => {
     const [input, setInput] = useState('');
     const [editingId, setEditingId] = useState<string | null>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -333,7 +334,8 @@ export const SubtaskList = forwardRef<SubtaskListHandle, SubtaskListProps>(
               }
             }}
             onPaste={handleInputPaste}
-            placeholder=""
+            aria-label={inputPlaceholder || undefined}
+            placeholder={inputPlaceholder}
             className="block flex-1 min-w-0 w-full bg-transparent text-[12px] font-mono leading-[1.4] whitespace-pre-wrap [overflow-wrap:anywhere] text-foreground/50 placeholder:text-muted-foreground/60 focus:outline-none resize-none overflow-hidden py-2"
           />
         </div>

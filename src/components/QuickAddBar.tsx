@@ -1,24 +1,24 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Tag, CalendarDays, Pencil, X } from 'lucide-react';
-import { useLibraryStore, LibraryTask } from '@/store/libraryStore';
+import { Plus, Tag, CalendarDays, X } from 'lucide-react';
+import { useLibraryStore } from '@/store/libraryStore';
 import { useQuickAddStore } from '@/store/quickAddStore';
 import { TagAutocomplete } from '@/components/TagAutocomplete';
 import { DateAutocomplete } from '@/components/DateAutocomplete';
 import { useLibraryDuePrompt } from '@/components/LibraryDueDatePrompt';
-import { LibraryEditModal } from '@/components/LibraryEditModal';
+import { InlineLibraryDetails, LibraryExpandButton, useInlineLibraryDraft } from '@/components/InlineLibraryDetails';
 import { QuickDuePicker, getRelativeQuickDueLabel } from '@/components/LibraryPanel';
 import { incrementEntryCount } from '@/hooks/useEntryHint';
 
 export function QuickAddBar() {
   const { open, initialText, close } = useQuickAddStore();
   const categories = useLibraryStore((s) => s.categories);
-  const addItem = useLibraryStore((s) => s.addItem);
+  const addFromSchedule = useLibraryStore((s) => s.addFromSchedule);
 
   const [input, setInput] = useState('');
   const [quickDueDate, setQuickDueDate] = useState('');
   const [quickCategory, setQuickCategory] = useState('');
-  const [editingItem, setEditingItem] = useState<LibraryTask | null>(null);
+  const details = useInlineLibraryDraft();
   const pendingShortcutDueDate = useRef<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const awaitingPromptRef = useRef(false);
@@ -46,6 +46,8 @@ export function QuickAddBar() {
       setInput(initialText);
       setQuickDueDate('');
       setQuickCategory('');
+      details.reset();
+      pendingShortcutDueDate.current = null;
       awaitingPromptRef.current = false;
       // Focus and move caret to the end after the bar mounts.
       requestAnimationFrame(() => {
@@ -71,8 +73,9 @@ export function QuickAddBar() {
     const dueDate = overrides?.dueDate ?? pendingShortcutDueDate.current ?? quickDueDate;
     pendingShortcutDueDate.current = null;
 
-    if (dueDate) {
-      addItem(titleText, autoCategory || undefined, dueDate);
+    const fields = details.fields();
+    if (dueDate || details.expanded) {
+      addFromSchedule({ title: titleText, category: autoCategory || undefined, dueDate: dueDate || null, ...fields });
       incrementEntryCount();
       close();
     } else {
@@ -80,22 +83,13 @@ export function QuickAddBar() {
       useLibraryDuePrompt.getState().request({
         title: titleText,
         category: autoCategory || undefined,
-        duration: 30,
+        ...fields,
         anchor: inputRef.current,
         side: 'bottom',
         align: 'start',
       });
       incrementEntryCount();
     }
-  };
-
-  // Create the item now and open the full edit modal for details/tags/subtasks.
-  const handleEditAdd = () => {
-    const titleText = cleanTitle(input);
-    const id = addItem(titleText, quickCategory || undefined, quickDueDate || null);
-    const created = useLibraryStore.getState().items.find((i) => i.id === id);
-    incrementEntryCount();
-    if (created) setEditingItem(created);
   };
 
   return (
@@ -116,7 +110,7 @@ export function QuickAddBar() {
               exit={{ opacity: 0, y: -12, scale: 0.98 }}
               transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
               onMouseDown={(e) => e.stopPropagation()}
-              className="w-full max-w-lg rounded-xl border border-border/50 bg-card shadow-2xl"
+              className="w-full max-w-lg max-h-[calc(82dvh-1rem)] overflow-y-auto overscroll-contain rounded-xl border border-border/50 bg-card shadow-2xl"
             >
               <div className="flex items-center gap-2 px-4 py-2 border-b border-border/30">
                 <span className="text-[9px] font-mono tracking-[0.18em] text-muted-foreground/50">QUICK ADD TO LIBRARY</span>
@@ -181,30 +175,16 @@ export function QuickAddBar() {
                       <X size={8} />
                     </button>
                   )}
-                  <button
-                    onClick={handleEditAdd}
-                    title="Add details"
-                    className="p-2 text-muted-foreground/40 hover:text-foreground transition-colors shrink-0"
-                  >
-                    <Pencil size={15} />
-                  </button>
+                  <LibraryExpandButton details={details} />
                   <QuickDuePicker dueDate={quickDueDate} setDueDate={setQuickDueDate} />
                 </div>
+                <InlineLibraryDetails details={details} canAdd={!!cleanTitle(input)} onAdd={() => handleAdd()} />
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {editingItem && (
-        <LibraryEditModal
-          item={editingItem}
-          onClose={() => {
-            setEditingItem(null);
-            close();
-          }}
-        />
-      )}
     </>
   );
 }
