@@ -37,22 +37,23 @@ it.each(['quick', 'sidebar', 'fullscreen'] as const)('keeps %s drafts inline and
   const region = screen.getByRole('region', { name: 'New library item details' });
   expect(useLibraryStore.getState().items).toHaveLength(0);
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Add', exact: true })).toBeDisabled();
+  expect(screen.getByRole('button', { name: /^Add$/ })).toBeDisabled();
   fireEvent.change(screen.getByPlaceholderText(/^Add to library/), { target: { value: 'Prepare outline' } });
   fireEvent.change(screen.getByLabelText('Details', { exact: true }), { target: { value: 'Read the brief first.' } });
   fireEvent.change(screen.getByLabelText('Duration'), { target: { value: '45' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Important', exact: true }));
+  fireEvent.click(screen.getByRole('button', { name: /^Important$/ }));
   fireEvent.change(within(region).getAllByRole('textbox')[1], { target: { value: 'Uncommitted checklist line' } });
   fireEvent.click(screen.getByRole('button', { name: 'Collapse details' }));
   expect(screen.queryByRole('region', { name: 'New library item details' })).not.toBeInTheDocument();
   expect(useLibraryStore.getState().items).toHaveLength(0);
   fireEvent.click(screen.getByRole('button', { name: 'Expand details' }));
   expect(screen.getByLabelText('Details', { exact: true })).toHaveValue('Read the brief first.');
-  fireEvent.click(screen.getByRole('button', { name: 'Add', exact: true }));
+  fireEvent.change(screen.getByLabelText('Add subtask…'), { target: { value: 'Typed just before saving' } });
+  fireEvent.click(screen.getByRole('button', { name: /^Add$/ }));
   expect(useLibraryStore.getState().items).toHaveLength(1);
   expect(useLibraryStore.getState().items[0]).toMatchObject({ title: 'Prepare outline', note: 'Read the brief first.',
     defaultDuration: 45, isImportant: true, dueDate: null, category: surface === 'quick' ? '' : 'work',
-    subtasks: [{ title: 'Uncommitted checklist line', completed: false }] });
+    subtasks: [{ title: 'Uncommitted checklist line', completed: false }, { title: 'Typed just before saving', completed: false }] });
   expect(useLibraryDuePrompt.getState().pending).toBeNull();
   if (surface === 'quick') expect(useQuickAddStore.getState().open).toBe(false);
   else expect(screen.getByPlaceholderText(/^Add to library/)).toHaveValue('');
@@ -68,4 +69,16 @@ it('discards an unsubmitted Quick Add draft on close and starts clean on reopeni
   fireEvent.click(screen.getByRole('button', { name: 'Expand details' }));
   expect(screen.getByLabelText('Details', { exact: true })).toHaveValue('');
   expect(useLibraryStore.getState().items).toHaveLength(0);
+});
+
+it('retains the compact Enter-to-date-prompt flow', async () => {
+  render(<QuickAddBar />);
+  const title = screen.getByPlaceholderText(/^Add to library/);
+  fireEvent.change(title, { target: { value: 'Quick capture' } });
+  await act(async () => { fireEvent.keyDown(title, { key: 'Enter' }); });
+  expect(useLibraryStore.getState().items).toHaveLength(0);
+  expect(useLibraryDuePrompt.getState().pending).toMatchObject({ title: 'Quick capture', duration: 30, subtasks: [] });
+  expect(useQuickAddStore.getState().open).toBe(true);
+  act(() => useLibraryDuePrompt.getState().clear());
+  expect(useQuickAddStore.getState().open).toBe(false);
 });
