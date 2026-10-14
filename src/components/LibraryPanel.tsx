@@ -9,7 +9,7 @@ import {
 import {
   X, Plus, Check, Clock, AlertTriangle, Trash2,
   ArrowDownAZ, CalendarClock, Tag, ChevronDown, ChevronRight, GripVertical, CalendarDays,
-  PanelLeftClose, PanelLeftOpen, Pencil, AlignLeft,
+  PanelLeftClose, PanelLeftOpen, AlignLeft,
 } from 'lucide-react';
 import { TagAutocomplete, isSubtagOf, hasSubtags, getParentValue } from '@/components/TagAutocomplete';
 import { DateAutocomplete } from '@/components/DateAutocomplete';
@@ -17,6 +17,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useCarryStore } from '@/store/carryStore';
 import { useLibraryDragStore } from '@/store/libraryDragStore';
 import { useTaskStore } from '@/store/taskStore';
+import { InlineLibraryDetails, LibraryExpandButton, useInlineLibraryDraft } from '@/components/InlineLibraryDetails';
 import { LibraryEditModal } from '@/components/LibraryEditModal';
 import { LibraryDetailPane } from '@/components/LibraryDetailPane';
 import { Calendar } from '@/components/ui/calendar';
@@ -560,11 +561,12 @@ export function LibraryPanel() {
     panelOpen, setPanelOpen, renameCategory,
     sortMode, setSortMode,
     filters, setFilter,
-    addItem, getFilteredItems,
+    getFilteredItems,
     categories, addCategory, removeCategory,
   } = useLibraryStore();
 
   const [input, setInput] = useState('');
+  const addDetails = useInlineLibraryDraft();
   const [quickDueDate, setQuickDueDate] = useState('');
   // Tracks a date picked via the @-shortcut so handleAdd can read it
   // synchronously (state updates are async and would be stale).
@@ -721,15 +723,15 @@ export function LibraryPanel() {
     const dueDate = overrides?.dueDate ?? pendingShortcutDueDate.current ?? quickDueDate;
     pendingShortcutDueDate.current = null;
 
-    if (dueDate) {
-      // User already picked a date inline — skip the prompt.
-      useLibraryStore.getState().addItem(titleText, autoCategory || undefined, dueDate);
+    const fields = addDetails.fields();
+    if (dueDate || addDetails.expanded) {
+      useLibraryStore.getState().addFromSchedule({ title: titleText, category: autoCategory || undefined, dueDate: dueDate || null, ...fields });
     } else {
       // Always prompt for due date on enter — anchored to the quick-add input.
       useLibraryDuePrompt.getState().request({
         title: titleText,
         category: autoCategory || undefined,
-        duration: 30,
+        ...fields,
         anchor: inputRef.current,
         side: 'top',
         align: 'start',
@@ -739,21 +741,8 @@ export function LibraryPanel() {
     setInput('');
     setQuickDueDate('');
     setQuickCategory('');
+    addDetails.reset();
     inputRef.current?.focus();
-  };
-
-  // Create the item from the current input and immediately open the full edit
-  // modal so the user can add details, tags, subtasks, etc.
-  const handleEditAdd = () => {
-    const titleText = input.replace(/#\S*$/, '').replace(/@\S*$/, '').replace(/\/\/\S*$/, '').trim();
-    const autoCategory = quickCategory || (filters.category !== 'all' && filters.category !== 'none' ? filters.category : '');
-    const id = addItem(titleText, autoCategory || undefined, quickDueDate || null);
-    const created = useLibraryStore.getState().items.find((i) => i.id === id);
-    if (created) setEditingItem(created);
-    incrementEntryCount();
-    setInput('');
-    setQuickDueDate('');
-    setQuickCategory('');
   };
 
   const handleAddCategory = () => {
@@ -1059,15 +1048,10 @@ export function LibraryPanel() {
                             <X size={8} />
                           </button>
                         )}
-                        <button
-                          onClick={handleEditAdd}
-                          title="Add details"
-                          className="p-2 text-muted-foreground/40 hover:text-foreground transition-colors shrink-0"
-                        >
-                          <Pencil size={15} />
-                        </button>
+                        <LibraryExpandButton details={addDetails} />
                         <QuickDuePicker dueDate={quickDueDate} setDueDate={setQuickDueDate} />
                       </div>
+                      <InlineLibraryDetails details={addDetails} canAdd={!!input.trim()} onAdd={() => handleAdd()} />
                     </div>
 
                     {/* Task list */}
@@ -1192,15 +1176,10 @@ export function LibraryPanel() {
                         <X size={8} />
                       </button>
                     )}
-                    <button
-                      onClick={handleEditAdd}
-                      title="Add details"
-                      className="p-2 text-muted-foreground/40 hover:text-foreground transition-colors shrink-0"
-                    >
-                      <Pencil size={15} />
-                    </button>
+                    <LibraryExpandButton details={addDetails} />
                     <QuickDuePicker dueDate={quickDueDate} setDueDate={setQuickDueDate} />
                   </div>
+                  <InlineLibraryDetails details={addDetails} canAdd={!!input.trim()} onAdd={() => handleAdd()} />
                 </div>
 
                 {/* Filter / Sort bar */}
