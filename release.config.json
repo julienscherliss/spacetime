@@ -1,8 +1,8 @@
 {
-  "mac": "1.0.28",
-  "ios": 28,
-  "webBaseSource": "71263ec213473b1f0853e65e29d0b4a19727a4a2",
+  "mac": "1.0.29",
+  "ios": 29,
+  "webBaseSource": "fd15347ccfb2bab1eeb0db7d9a5e2faa83ef2e5e",
   "repo": "julienscherliss/spacetime",
   "website": "https://launchspacetime.com",
-  "notes": "Calendar events stay behind tasks, and converting an event stays synchronized across devices without reappearing. Library has a wider desktop panel that makes room in the schedule and an optional Details view. Mobile task editing has improved dropdown placement and cleaner focus styling. Existing account data is retained."
+  "notes": "Quick Add and Library now expand inline for notes, subtasks, duration and urgency. Drafts are preserved when collapsed, and adding saves the complete item without opening another editor. Clean text-field focus styling preserves the existing Spacetime look. Existing account data is retained."
 }
