@@ -44,7 +44,7 @@ export function InlineLibraryDetails({ details, canAdd, onAdd }: {
     className="mt-2 space-y-3 max-h-[min(50dvh,24rem)] overflow-y-auto overscroll-contain pr-1">
     <textarea aria-label="Details" placeholder="Details…" rows={3} value={draft.note}
       onChange={event => setDraft(previous => ({ ...previous, note: event.target.value }))}
-      className="block w-full resize-y min-h-20 max-h-48 bg-transparent py-2 font-mono text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/40 rounded-sm" />
+      className="block w-full resize-y min-h-20 max-h-48 bg-transparent py-2 font-mono text-sm text-foreground placeholder:text-muted-foreground focus:outline-none rounded-sm" />
     <SubtaskList ref={details.subtaskRef} subtasks={draft.subtasks} inputPlaceholder="Add subtask…"
       onChange={subtasks => setDraft(previous => ({ ...previous, subtasks }))} />
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border/30 pt-2 font-mono text-xs text-muted-foreground">
